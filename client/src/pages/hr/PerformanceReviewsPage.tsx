@@ -1,10 +1,10 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  Button, Card, DatePicker, Form, Input, InputNumber, Modal, Popconfirm, Select, Space, Table, Tag, message,
+  Button, Card, DatePicker, Form, Input, InputNumber, Modal, Popconfirm, Select, Space, Table, message,
 } from 'antd';
 import { PlusOutlined, StarFilled } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
-import dayjs, { Dayjs } from 'dayjs';
+import dayjs from 'dayjs';
 import { performanceReviewsApi } from '../../api/attendance';
 import { employeesApi } from '../../api/hr';
 import { getApiError } from '../../api/farmApi';
@@ -39,7 +39,10 @@ const PerformanceReviewsPage: React.FC = () => {
     }
   }, [empFilter]);
 
-  useEffect(() => { load(1); }, [load]);
+  useEffect(() => {
+    const timer = window.setTimeout(() => { load(1); }, 0);
+    return () => window.clearTimeout(timer);
+  }, [load]);
 
   const openCreate = () => {
     setEditing(null);

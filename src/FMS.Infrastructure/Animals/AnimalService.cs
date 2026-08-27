@@ -103,6 +103,10 @@ public class AnimalService : IAnimalService
                 StatusCategory = a.AnimalStatus.Category,
                 LocationId = a.LocationId,
                 LocationName = a.Location != null ? a.Location.Name : null,
+                SireId = a.SireId,
+                SireTagNumber = a.Sire != null ? a.Sire.TagNumber : null,
+                DamId = a.DamId,
+                DamTagNumber = a.Dam != null ? a.Dam.TagNumber : null,
                 DateOfBirth = a.DateOfBirth,
                 LatestWeightKg = a.WeightRecords
                     .OrderByDescending(w => w.RecordedAt)
@@ -131,6 +135,8 @@ public class AnimalService : IAnimalService
             .Include(a => a.AgeCategory)
             .Include(a => a.AnimalStatus)
             .Include(a => a.Location)
+            .Include(a => a.Sire)
+            .Include(a => a.Dam)
             .Include(a => a.Identifications).ThenInclude(i => i.IdentificationType)
             .FirstOrDefaultAsync(a => a.Id == id && a.FarmId == farmId && !a.IsDeleted);
 
@@ -195,6 +201,22 @@ public class AnimalService : IAnimalService
                 return Result<AnimalDetailDto>.NotFound("Location not found");
         }
 
+        if (request.SireId.HasValue)
+        {
+            var sire = await _context.Animals
+                .FirstOrDefaultAsync(a => a.Id == request.SireId.Value && a.FarmId == farmId && !a.IsDeleted);
+            if (sire == null)
+                return Result<AnimalDetailDto>.NotFound("Sire animal not found");
+        }
+
+        if (request.DamId.HasValue)
+        {
+            var dam = await _context.Animals
+                .FirstOrDefaultAsync(a => a.Id == request.DamId.Value && a.FarmId == farmId && !a.IsDeleted);
+            if (dam == null)
+                return Result<AnimalDetailDto>.NotFound("Dam animal not found");
+        }
+
         var identificationValidation = await ValidateIdentificationValuesAsync(farmId, request.Identifications);
         if (!identificationValidation.IsSuccess)
             return Result<AnimalDetailDto>.Failure(identificationValidation.Error!);
@@ -214,6 +236,8 @@ public class AnimalService : IAnimalService
             AgeCategoryId = request.AgeCategoryId,
             AnimalStatusId = request.AnimalStatusId,
             LocationId = request.LocationId,
+            SireId = request.SireId,
+            DamId = request.DamId,
             DateOfBirth = request.DateOfBirth,
             AcquisitionDate = request.AcquisitionDate,
             Notes = request.Notes,
@@ -299,12 +323,30 @@ public class AnimalService : IAnimalService
                 return Result<AnimalDetailDto>.NotFound("Location not found");
         }
 
+        if (request.SireId.HasValue)
+        {
+            var sire = await _context.Animals
+                .FirstOrDefaultAsync(a => a.Id == request.SireId.Value && a.FarmId == farmId && !a.IsDeleted);
+            if (sire == null)
+                return Result<AnimalDetailDto>.NotFound("Sire animal not found");
+        }
+
+        if (request.DamId.HasValue)
+        {
+            var dam = await _context.Animals
+                .FirstOrDefaultAsync(a => a.Id == request.DamId.Value && a.FarmId == farmId && !a.IsDeleted);
+            if (dam == null)
+                return Result<AnimalDetailDto>.NotFound("Dam animal not found");
+        }
+
         animal.TagNumber = tag;
         animal.Name = request.Name?.Trim();
         animal.BreedId = request.BreedId;
         animal.SexOptionId = request.SexOptionId;
         animal.AgeCategoryId = request.AgeCategoryId;
         animal.LocationId = request.LocationId;
+        animal.SireId = request.SireId;
+        animal.DamId = request.DamId;
         animal.DateOfBirth = request.DateOfBirth;
         animal.AcquisitionDate = request.AcquisitionDate;
         animal.Notes = request.Notes;
@@ -1282,6 +1324,10 @@ public class AnimalService : IAnimalService
             StatusCategory = animal.AnimalStatus.Category,
             LocationId = animal.LocationId,
             LocationName = animal.Location?.Name,
+            SireId = animal.SireId,
+            SireTagNumber = animal.Sire?.TagNumber,
+            DamId = animal.DamId,
+            DamTagNumber = animal.Dam?.TagNumber,
             DateOfBirth = animal.DateOfBirth,
             AcquisitionDate = animal.AcquisitionDate,
             Notes = animal.Notes,

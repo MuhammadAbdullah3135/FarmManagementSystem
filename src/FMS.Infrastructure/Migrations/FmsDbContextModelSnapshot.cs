@@ -110,6 +110,9 @@ namespace FMS.Infrastructure.Migrations
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<Guid?>("DamId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<DateTime?>("DateOfBirth")
                         .HasColumnType("datetime2");
 
@@ -145,6 +148,9 @@ namespace FMS.Infrastructure.Migrations
                     b.Property<Guid>("SexOptionId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<Guid?>("SireId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("TagNumber")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -160,9 +166,13 @@ namespace FMS.Infrastructure.Migrations
 
                     b.HasIndex("BreedId");
 
+                    b.HasIndex("DamId");
+
                     b.HasIndex("LocationId");
 
                     b.HasIndex("SexOptionId");
+
+                    b.HasIndex("SireId");
 
                     b.HasIndex("FarmId", "AnimalStatusId");
 
@@ -375,6 +385,11 @@ namespace FMS.Infrastructure.Migrations
                         .HasColumnType("bit")
                         .HasDefaultValue(true);
 
+                    b.Property<bool>("IsSystemDefined")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
                     b.Property<DateTime?>("ModifiedAt")
                         .HasColumnType("datetime2");
 
@@ -572,6 +587,123 @@ namespace FMS.Infrastructure.Migrations
                     b.ToTable("AttendanceRecords");
                 });
 
+            modelBuilder.Entity("FMS.Domain.Entities.BirthOffspring", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("BirthRecordId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal?>("BirthWeightKg")
+                        .HasPrecision(7, 2)
+                        .HasColumnType("decimal(7,2)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("FarmId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("ModifiedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Name")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<Guid?>("OffspringAnimalId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Outcome")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("SexOptionId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("TagNumber")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BirthRecordId");
+
+                    b.HasIndex("OffspringAnimalId");
+
+                    b.HasIndex("SexOptionId");
+
+                    b.HasIndex("FarmId", "TagNumber")
+                        .IsUnique();
+
+                    b.ToTable("BirthOffspring");
+                });
+
+            modelBuilder.Entity("FMS.Domain.Entities.BirthRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("BirthDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("BreedingRecordId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("DamId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("FarmId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("GestationRecordId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("ModifiedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<int>("OffspringCount")
+                        .HasColumnType("int");
+
+                    b.Property<string>("VetName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BreedingRecordId");
+
+                    b.HasIndex("DamId");
+
+                    b.HasIndex("GestationRecordId");
+
+                    b.HasIndex("FarmId", "BirthDate");
+
+                    b.HasIndex("FarmId", "DamId");
+
+                    b.ToTable("BirthRecords");
+                });
+
             modelBuilder.Entity("FMS.Domain.Entities.Breed", b =>
                 {
                     b.Property<Guid>("Id")
@@ -580,6 +712,11 @@ namespace FMS.Infrastructure.Migrations
 
                     b.Property<Guid>("AnimalTypeId")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("AverageGestationDays")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(283);
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -597,6 +734,65 @@ namespace FMS.Infrastructure.Migrations
                     b.HasIndex("AnimalTypeId");
 
                     b.ToTable("Breeds");
+                });
+
+            modelBuilder.Entity("FMS.Domain.Entities.BreedingRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("BreedingDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("DamId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("FarmId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Method")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("ModifiedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<int>("Result")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("SireId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("VetName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DamId");
+
+                    b.HasIndex("SireId");
+
+                    b.HasIndex("FarmId", "BreedingDate");
+
+                    b.HasIndex("FarmId", "DamId");
+
+                    b.HasIndex("FarmId", "SireId");
+
+                    b.ToTable("BreedingRecords");
                 });
 
             modelBuilder.Entity("FMS.Domain.Entities.CustomFieldDefinition", b =>
@@ -636,6 +832,107 @@ namespace FMS.Infrastructure.Migrations
                     b.HasIndex("FarmId");
 
                     b.ToTable("CustomFieldDefinitions");
+                });
+
+            modelBuilder.Entity("FMS.Domain.Entities.Customer", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ContactInfo")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("FarmId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("ModifiedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FarmId", "Name")
+                        .IsUnique();
+
+                    b.ToTable("Customers");
+                });
+
+            modelBuilder.Entity("FMS.Domain.Entities.CustomerSale", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("CustomerId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("FarmId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("IncomeRecordId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("InventoryItemId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("ModifiedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<decimal>("Quantity")
+                        .HasPrecision(18, 3)
+                        .HasColumnType("decimal(18,3)");
+
+                    b.Property<DateTime>("SaleDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("StockMovementId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("TotalAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CustomerId");
+
+                    b.HasIndex("IncomeRecordId");
+
+                    b.HasIndex("InventoryItemId");
+
+                    b.HasIndex("StockMovementId");
+
+                    b.HasIndex("FarmId", "SaleDate");
+
+                    b.ToTable("CustomerSales");
                 });
 
             modelBuilder.Entity("FMS.Domain.Entities.Department", b =>
@@ -885,6 +1182,107 @@ namespace FMS.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("EmployeeRoles");
+                });
+
+            modelBuilder.Entity("FMS.Domain.Entities.Expense", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<Guid?>("AnimalId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<Guid>("ExpenseCategoryId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("ExpenseDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("FarmId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("LocationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("ModifiedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("PaymentMethodId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AnimalId");
+
+                    b.HasIndex("ExpenseCategoryId");
+
+                    b.HasIndex("LocationId");
+
+                    b.HasIndex("PaymentMethodId");
+
+                    b.HasIndex("FarmId", "ExpenseCategoryId");
+
+                    b.HasIndex("FarmId", "ExpenseDate");
+
+                    b.HasIndex("FarmId", "PaymentMethodId");
+
+                    b.ToTable("Expenses");
+                });
+
+            modelBuilder.Entity("FMS.Domain.Entities.ExpenseCategory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<Guid>("FarmId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("ModifiedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FarmId", "Name")
+                        .IsUnique();
+
+                    b.ToTable("ExpenseCategories");
                 });
 
             modelBuilder.Entity("FMS.Domain.Entities.Farm", b =>
@@ -1327,6 +1725,107 @@ namespace FMS.Infrastructure.Migrations
                     b.ToTable("FeedingTasks");
                 });
 
+            modelBuilder.Entity("FMS.Domain.Entities.GestationHealthCheck", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CheckDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("FarmId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("GestationRecordId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("ModifiedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("PerformedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<decimal?>("WeightKg")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("decimal(10,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GestationRecordId");
+
+                    b.HasIndex("FarmId", "GestationRecordId");
+
+                    b.ToTable("GestationHealthChecks");
+                });
+
+            modelBuilder.Entity("FMS.Domain.Entities.GestationRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("AnimalId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("BreedingRecordId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("ConfirmedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("CurrentStage")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("ExpectedDeliveryDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("FarmId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("HealthCheckNotes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<DateTime?>("ModifiedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AnimalId");
+
+                    b.HasIndex("BreedingRecordId");
+
+                    b.HasIndex("FarmId", "AnimalId");
+
+                    b.HasIndex("FarmId", "BreedingRecordId");
+
+                    b.ToTable("GestationRecords");
+                });
+
             modelBuilder.Entity("FMS.Domain.Entities.IdentificationType", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1352,6 +1851,168 @@ namespace FMS.Infrastructure.Migrations
                     b.HasIndex("FarmId");
 
                     b.ToTable("IdentificationTypes");
+                });
+
+            modelBuilder.Entity("FMS.Domain.Entities.IncomeCategory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<Guid>("FarmId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("ModifiedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FarmId", "Name")
+                        .IsUnique();
+
+                    b.ToTable("IncomeCategories");
+                });
+
+            modelBuilder.Entity("FMS.Domain.Entities.IncomeRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<Guid?>("AnimalId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<Guid>("FarmId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("IncomeCategoryId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("IncomeDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("LocationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("ModifiedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("PaymentMethodId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AnimalId");
+
+                    b.HasIndex("IncomeCategoryId");
+
+                    b.HasIndex("LocationId");
+
+                    b.HasIndex("PaymentMethodId");
+
+                    b.HasIndex("FarmId", "IncomeCategoryId");
+
+                    b.HasIndex("FarmId", "IncomeDate");
+
+                    b.HasIndex("FarmId", "PaymentMethodId");
+
+                    b.ToTable("IncomeRecords");
+                });
+
+            modelBuilder.Entity("FMS.Domain.Entities.InventoryItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Category")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("FarmId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Location")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime?>("ModifiedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<decimal>("Quantity")
+                        .HasPrecision(18, 3)
+                        .HasColumnType("decimal(18,3)");
+
+                    b.Property<decimal>("ReorderLevel")
+                        .HasPrecision(18, 3)
+                        .HasColumnType("decimal(18,3)");
+
+                    b.Property<string>("Unit")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<decimal>("UnitCost")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FarmId", "Category");
+
+                    b.HasIndex("FarmId", "Name")
+                        .IsUnique();
+
+                    b.ToTable("InventoryItems");
                 });
 
             modelBuilder.Entity("FMS.Domain.Entities.Location", b =>
@@ -1416,6 +2077,294 @@ namespace FMS.Infrastructure.Migrations
                     b.HasIndex("FarmId");
 
                     b.ToTable("LocationTypes");
+                });
+
+            modelBuilder.Entity("FMS.Domain.Entities.MedicalRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("AnimalId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Cost")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("DateRecorded")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Diagnosis")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("Dosage")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<Guid?>("ExpenseId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("FarmId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("FollowUpDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("FollowUpTaskId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("MedicineUsed")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime?>("ModifiedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Symptoms")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("Treatment")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("VetName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AnimalId");
+
+                    b.HasIndex("ExpenseId");
+
+                    b.HasIndex("FarmId", "AnimalId");
+
+                    b.HasIndex("FarmId", "DateRecorded");
+
+                    b.HasIndex("FarmId", "Status");
+
+                    b.ToTable("MedicalRecords");
+                });
+
+            modelBuilder.Entity("FMS.Domain.Entities.Medicine", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<int>("ExpiringSoonDays")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("FarmId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("LowStockThreshold")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("ModifiedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Unit")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FarmId", "Name")
+                        .IsUnique();
+
+                    b.ToTable("Medicines");
+                });
+
+            modelBuilder.Entity("FMS.Domain.Entities.MedicineStock", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("BatchNumber")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("DateReceived")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("ExpiryDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("FarmId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("MedicineId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("ModifiedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("int");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<string>("Supplier")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<decimal>("UnitCost")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FarmId");
+
+                    b.HasIndex("MedicineId", "BatchNumber");
+
+                    b.HasIndex("MedicineId", "ExpiryDate");
+
+                    b.ToTable("MedicineStocks");
+                });
+
+            modelBuilder.Entity("FMS.Domain.Entities.MedicineUsage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("DateUsed")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("FarmId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("MedicalRecordId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("MedicineId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("MedicineStockId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("ModifiedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<int>("QuantityUsed")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FarmId");
+
+                    b.HasIndex("MedicalRecordId");
+
+                    b.HasIndex("MedicineStockId");
+
+                    b.HasIndex("MedicineId", "DateUsed");
+
+                    b.ToTable("MedicineUsages");
+                });
+
+            modelBuilder.Entity("FMS.Domain.Entities.PaymentMethod", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<Guid>("FarmId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("ModifiedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FarmId", "Name")
+                        .IsUnique();
+
+                    b.ToTable("PaymentMethods");
                 });
 
             modelBuilder.Entity("FMS.Domain.Entities.PerformanceReview", b =>
@@ -1613,6 +2562,163 @@ namespace FMS.Infrastructure.Migrations
                     b.ToTable("SexOptions");
                 });
 
+            modelBuilder.Entity("FMS.Domain.Entities.StockMovement", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("FarmId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("InventoryItemId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("ModifiedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("MovementDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("MovementType")
+                        .HasColumnType("int");
+
+                    b.Property<Guid?>("PerformedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Quantity")
+                        .HasPrecision(18, 3)
+                        .HasColumnType("decimal(18,3)");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("InventoryItemId");
+
+                    b.HasIndex("FarmId", "InventoryItemId", "MovementDate");
+
+                    b.HasIndex("FarmId", "MovementType", "MovementDate");
+
+                    b.ToTable("StockMovements");
+                });
+
+            modelBuilder.Entity("FMS.Domain.Entities.Supplier", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ContactInfo")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("FarmId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("ModifiedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("ProductsSupplied")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FarmId", "Name")
+                        .IsUnique();
+
+                    b.ToTable("Suppliers");
+                });
+
+            modelBuilder.Entity("FMS.Domain.Entities.SupplierPurchase", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("ExpenseId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("FarmId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("InventoryItemId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("ModifiedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<DateTime>("PurchaseDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("Quantity")
+                        .HasPrecision(18, 3)
+                        .HasColumnType("decimal(18,3)");
+
+                    b.Property<Guid?>("StockMovementId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("SupplierId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("TotalCost")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExpenseId");
+
+                    b.HasIndex("InventoryItemId");
+
+                    b.HasIndex("StockMovementId");
+
+                    b.HasIndex("SupplierId");
+
+                    b.HasIndex("FarmId", "PurchaseDate");
+
+                    b.ToTable("SupplierPurchases");
+                });
+
             modelBuilder.Entity("FMS.Domain.Entities.User", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1729,6 +2835,172 @@ namespace FMS.Infrastructure.Migrations
                     b.ToTable("UserRoles");
                 });
 
+            modelBuilder.Entity("FMS.Domain.Entities.VaccinationRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("AnimalId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("BatchNumber")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<decimal>("Cost")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("DateGiven")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("ExpenseId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("FarmId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("ModifiedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<Guid>("VaccineTypeId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("VetName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExpenseId");
+
+                    b.HasIndex("VaccineTypeId");
+
+                    b.HasIndex("AnimalId", "VaccineTypeId");
+
+                    b.HasIndex("FarmId", "DateGiven");
+
+                    b.ToTable("VaccinationRecords");
+                });
+
+            modelBuilder.Entity("FMS.Domain.Entities.VaccinationSchedule", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("AnimalTypeId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("BreedId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("FarmId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("ModifiedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<int>("RecurrenceDays")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("VaccineTypeId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("VaccineTypeId1")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AnimalTypeId");
+
+                    b.HasIndex("BreedId");
+
+                    b.HasIndex("VaccineTypeId");
+
+                    b.HasIndex("VaccineTypeId1");
+
+                    b.HasIndex("FarmId", "VaccineTypeId");
+
+                    b.ToTable("VaccinationSchedules");
+                });
+
+            modelBuilder.Entity("FMS.Domain.Entities.VaccineType", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("DefaultDosage")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<Guid>("FarmId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("LinkedMedicineId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("ModifiedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LinkedMedicineId");
+
+                    b.HasIndex("FarmId", "Name")
+                        .IsUnique();
+
+                    b.ToTable("VaccineTypes");
+                });
+
             modelBuilder.Entity("FMS.Domain.Entities.WeightRecord", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1806,6 +3078,11 @@ namespace FMS.Infrastructure.Migrations
                         .HasForeignKey("BreedId")
                         .OnDelete(DeleteBehavior.Restrict);
 
+                    b.HasOne("FMS.Domain.Entities.Animal", "Dam")
+                        .WithMany("OffspringAsDam")
+                        .HasForeignKey("DamId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("FMS.Domain.Entities.Farm", "Farm")
                         .WithMany("Animals")
                         .HasForeignKey("FarmId")
@@ -1823,6 +3100,11 @@ namespace FMS.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("FMS.Domain.Entities.Animal", "Sire")
+                        .WithMany("OffspringAsSire")
+                        .HasForeignKey("SireId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.Navigation("AgeCategory");
 
                     b.Navigation("AnimalStatus");
@@ -1831,11 +3113,15 @@ namespace FMS.Infrastructure.Migrations
 
                     b.Navigation("Breed");
 
+                    b.Navigation("Dam");
+
                     b.Navigation("Farm");
 
                     b.Navigation("Location");
 
                     b.Navigation("SexOption");
+
+                    b.Navigation("Sire");
                 });
 
             modelBuilder.Entity("FMS.Domain.Entities.AnimalDocument", b =>
@@ -1949,6 +3235,73 @@ namespace FMS.Infrastructure.Migrations
                     b.Navigation("Employee");
                 });
 
+            modelBuilder.Entity("FMS.Domain.Entities.BirthOffspring", b =>
+                {
+                    b.HasOne("FMS.Domain.Entities.BirthRecord", "BirthRecord")
+                        .WithMany("Offspring")
+                        .HasForeignKey("BirthRecordId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("FMS.Domain.Entities.Farm", "Farm")
+                        .WithMany()
+                        .HasForeignKey("FarmId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("FMS.Domain.Entities.Animal", "OffspringAnimal")
+                        .WithMany()
+                        .HasForeignKey("OffspringAnimalId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("FMS.Domain.Entities.SexOption", "SexOption")
+                        .WithMany()
+                        .HasForeignKey("SexOptionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("BirthRecord");
+
+                    b.Navigation("Farm");
+
+                    b.Navigation("OffspringAnimal");
+
+                    b.Navigation("SexOption");
+                });
+
+            modelBuilder.Entity("FMS.Domain.Entities.BirthRecord", b =>
+                {
+                    b.HasOne("FMS.Domain.Entities.BreedingRecord", "BreedingRecord")
+                        .WithMany()
+                        .HasForeignKey("BreedingRecordId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("FMS.Domain.Entities.Animal", "Dam")
+                        .WithMany()
+                        .HasForeignKey("DamId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("FMS.Domain.Entities.Farm", "Farm")
+                        .WithMany()
+                        .HasForeignKey("FarmId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("FMS.Domain.Entities.GestationRecord", "GestationRecord")
+                        .WithMany()
+                        .HasForeignKey("GestationRecordId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("BreedingRecord");
+
+                    b.Navigation("Dam");
+
+                    b.Navigation("Farm");
+
+                    b.Navigation("GestationRecord");
+                });
+
             modelBuilder.Entity("FMS.Domain.Entities.Breed", b =>
                 {
                     b.HasOne("FMS.Domain.Entities.AnimalType", "AnimalType")
@@ -1960,6 +3313,33 @@ namespace FMS.Infrastructure.Migrations
                     b.Navigation("AnimalType");
                 });
 
+            modelBuilder.Entity("FMS.Domain.Entities.BreedingRecord", b =>
+                {
+                    b.HasOne("FMS.Domain.Entities.Animal", "Dam")
+                        .WithMany()
+                        .HasForeignKey("DamId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("FMS.Domain.Entities.Farm", "Farm")
+                        .WithMany()
+                        .HasForeignKey("FarmId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("FMS.Domain.Entities.Animal", "Sire")
+                        .WithMany()
+                        .HasForeignKey("SireId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Dam");
+
+                    b.Navigation("Farm");
+
+                    b.Navigation("Sire");
+                });
+
             modelBuilder.Entity("FMS.Domain.Entities.CustomFieldDefinition", b =>
                 {
                     b.HasOne("FMS.Domain.Entities.Farm", "Farm")
@@ -1969,6 +3349,58 @@ namespace FMS.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Farm");
+                });
+
+            modelBuilder.Entity("FMS.Domain.Entities.Customer", b =>
+                {
+                    b.HasOne("FMS.Domain.Entities.Farm", "Farm")
+                        .WithMany()
+                        .HasForeignKey("FarmId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Farm");
+                });
+
+            modelBuilder.Entity("FMS.Domain.Entities.CustomerSale", b =>
+                {
+                    b.HasOne("FMS.Domain.Entities.Customer", "Customer")
+                        .WithMany("Sales")
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("FMS.Domain.Entities.Farm", "Farm")
+                        .WithMany()
+                        .HasForeignKey("FarmId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("FMS.Domain.Entities.IncomeRecord", "IncomeRecord")
+                        .WithMany()
+                        .HasForeignKey("IncomeRecordId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("FMS.Domain.Entities.InventoryItem", "InventoryItem")
+                        .WithMany()
+                        .HasForeignKey("InventoryItemId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("FMS.Domain.Entities.StockMovement", "StockMovement")
+                        .WithMany()
+                        .HasForeignKey("StockMovementId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Customer");
+
+                    b.Navigation("Farm");
+
+                    b.Navigation("IncomeRecord");
+
+                    b.Navigation("InventoryItem");
+
+                    b.Navigation("StockMovement");
                 });
 
             modelBuilder.Entity("FMS.Domain.Entities.Department", b =>
@@ -2069,6 +3501,58 @@ namespace FMS.Infrastructure.Migrations
                     b.Navigation("Farm");
                 });
 
+            modelBuilder.Entity("FMS.Domain.Entities.Expense", b =>
+                {
+                    b.HasOne("FMS.Domain.Entities.Animal", "Animal")
+                        .WithMany()
+                        .HasForeignKey("AnimalId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("FMS.Domain.Entities.ExpenseCategory", "Category")
+                        .WithMany("Expenses")
+                        .HasForeignKey("ExpenseCategoryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("FMS.Domain.Entities.Farm", "Farm")
+                        .WithMany("Expenses")
+                        .HasForeignKey("FarmId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("FMS.Domain.Entities.Location", "Location")
+                        .WithMany()
+                        .HasForeignKey("LocationId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("FMS.Domain.Entities.PaymentMethod", "PaymentMethod")
+                        .WithMany("Expenses")
+                        .HasForeignKey("PaymentMethodId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Animal");
+
+                    b.Navigation("Category");
+
+                    b.Navigation("Farm");
+
+                    b.Navigation("Location");
+
+                    b.Navigation("PaymentMethod");
+                });
+
+            modelBuilder.Entity("FMS.Domain.Entities.ExpenseCategory", b =>
+                {
+                    b.HasOne("FMS.Domain.Entities.Farm", "Farm")
+                        .WithMany("ExpenseCategories")
+                        .HasForeignKey("FarmId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Farm");
+                });
+
             modelBuilder.Entity("FMS.Domain.Entities.Farm", b =>
                 {
                     b.HasOne("FMS.Domain.Entities.Account", "Account")
@@ -2096,17 +3580,17 @@ namespace FMS.Infrastructure.Migrations
                     b.HasOne("FMS.Domain.Entities.Animal", "Animal")
                         .WithMany()
                         .HasForeignKey("AnimalId")
-                        .OnDelete(DeleteBehavior.SetNull);
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("FMS.Domain.Entities.Employee", "AssignedEmployee")
                         .WithMany()
                         .HasForeignKey("AssignedEmployeeId")
-                        .OnDelete(DeleteBehavior.SetNull);
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("FMS.Domain.Entities.Location", "Location")
                         .WithMany()
                         .HasForeignKey("LocationId")
-                        .OnDelete(DeleteBehavior.SetNull);
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Animal");
 
@@ -2192,10 +3676,119 @@ namespace FMS.Infrastructure.Migrations
                     b.Navigation("FeedingSchedule");
                 });
 
+            modelBuilder.Entity("FMS.Domain.Entities.GestationHealthCheck", b =>
+                {
+                    b.HasOne("FMS.Domain.Entities.Farm", "Farm")
+                        .WithMany()
+                        .HasForeignKey("FarmId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("FMS.Domain.Entities.GestationRecord", "GestationRecord")
+                        .WithMany("HealthChecks")
+                        .HasForeignKey("GestationRecordId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Farm");
+
+                    b.Navigation("GestationRecord");
+                });
+
+            modelBuilder.Entity("FMS.Domain.Entities.GestationRecord", b =>
+                {
+                    b.HasOne("FMS.Domain.Entities.Animal", "Animal")
+                        .WithMany()
+                        .HasForeignKey("AnimalId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("FMS.Domain.Entities.BreedingRecord", "BreedingRecord")
+                        .WithMany()
+                        .HasForeignKey("BreedingRecordId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("FMS.Domain.Entities.Farm", "Farm")
+                        .WithMany()
+                        .HasForeignKey("FarmId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Animal");
+
+                    b.Navigation("BreedingRecord");
+
+                    b.Navigation("Farm");
+                });
+
             modelBuilder.Entity("FMS.Domain.Entities.IdentificationType", b =>
                 {
                     b.HasOne("FMS.Domain.Entities.Farm", "Farm")
                         .WithMany("IdentificationTypes")
+                        .HasForeignKey("FarmId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Farm");
+                });
+
+            modelBuilder.Entity("FMS.Domain.Entities.IncomeCategory", b =>
+                {
+                    b.HasOne("FMS.Domain.Entities.Farm", "Farm")
+                        .WithMany("IncomeCategories")
+                        .HasForeignKey("FarmId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Farm");
+                });
+
+            modelBuilder.Entity("FMS.Domain.Entities.IncomeRecord", b =>
+                {
+                    b.HasOne("FMS.Domain.Entities.Animal", "Animal")
+                        .WithMany()
+                        .HasForeignKey("AnimalId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("FMS.Domain.Entities.Farm", "Farm")
+                        .WithMany("IncomeRecords")
+                        .HasForeignKey("FarmId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("FMS.Domain.Entities.IncomeCategory", "Category")
+                        .WithMany("IncomeRecords")
+                        .HasForeignKey("IncomeCategoryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("FMS.Domain.Entities.Location", "Location")
+                        .WithMany()
+                        .HasForeignKey("LocationId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("FMS.Domain.Entities.PaymentMethod", "PaymentMethod")
+                        .WithMany("IncomeRecords")
+                        .HasForeignKey("PaymentMethodId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Animal");
+
+                    b.Navigation("Category");
+
+                    b.Navigation("Farm");
+
+                    b.Navigation("Location");
+
+                    b.Navigation("PaymentMethod");
+                });
+
+            modelBuilder.Entity("FMS.Domain.Entities.InventoryItem", b =>
+                {
+                    b.HasOne("FMS.Domain.Entities.Farm", "Farm")
+                        .WithMany()
                         .HasForeignKey("FarmId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -2233,6 +3826,100 @@ namespace FMS.Infrastructure.Migrations
                 {
                     b.HasOne("FMS.Domain.Entities.Farm", "Farm")
                         .WithMany("LocationTypes")
+                        .HasForeignKey("FarmId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Farm");
+                });
+
+            modelBuilder.Entity("FMS.Domain.Entities.MedicalRecord", b =>
+                {
+                    b.HasOne("FMS.Domain.Entities.Animal", "Animal")
+                        .WithMany()
+                        .HasForeignKey("AnimalId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("FMS.Domain.Entities.Farm", "Farm")
+                        .WithMany()
+                        .HasForeignKey("FarmId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Animal");
+
+                    b.Navigation("Farm");
+                });
+
+            modelBuilder.Entity("FMS.Domain.Entities.Medicine", b =>
+                {
+                    b.HasOne("FMS.Domain.Entities.Farm", "Farm")
+                        .WithMany()
+                        .HasForeignKey("FarmId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Farm");
+                });
+
+            modelBuilder.Entity("FMS.Domain.Entities.MedicineStock", b =>
+                {
+                    b.HasOne("FMS.Domain.Entities.Farm", "Farm")
+                        .WithMany()
+                        .HasForeignKey("FarmId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("FMS.Domain.Entities.Medicine", "Medicine")
+                        .WithMany("StockBatches")
+                        .HasForeignKey("MedicineId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Farm");
+
+                    b.Navigation("Medicine");
+                });
+
+            modelBuilder.Entity("FMS.Domain.Entities.MedicineUsage", b =>
+                {
+                    b.HasOne("FMS.Domain.Entities.Farm", "Farm")
+                        .WithMany()
+                        .HasForeignKey("FarmId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("FMS.Domain.Entities.MedicalRecord", "MedicalRecord")
+                        .WithMany()
+                        .HasForeignKey("MedicalRecordId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("FMS.Domain.Entities.Medicine", "Medicine")
+                        .WithMany("Usages")
+                        .HasForeignKey("MedicineId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("FMS.Domain.Entities.MedicineStock", "MedicineStock")
+                        .WithMany()
+                        .HasForeignKey("MedicineStockId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Farm");
+
+                    b.Navigation("MedicalRecord");
+
+                    b.Navigation("Medicine");
+
+                    b.Navigation("MedicineStock");
+                });
+
+            modelBuilder.Entity("FMS.Domain.Entities.PaymentMethod", b =>
+                {
+                    b.HasOne("FMS.Domain.Entities.Farm", "Farm")
+                        .WithMany("PaymentMethods")
                         .HasForeignKey("FarmId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -2284,6 +3971,77 @@ namespace FMS.Infrastructure.Migrations
                     b.Navigation("Farm");
                 });
 
+            modelBuilder.Entity("FMS.Domain.Entities.StockMovement", b =>
+                {
+                    b.HasOne("FMS.Domain.Entities.Farm", "Farm")
+                        .WithMany()
+                        .HasForeignKey("FarmId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("FMS.Domain.Entities.InventoryItem", "InventoryItem")
+                        .WithMany("StockMovements")
+                        .HasForeignKey("InventoryItemId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Farm");
+
+                    b.Navigation("InventoryItem");
+                });
+
+            modelBuilder.Entity("FMS.Domain.Entities.Supplier", b =>
+                {
+                    b.HasOne("FMS.Domain.Entities.Farm", "Farm")
+                        .WithMany()
+                        .HasForeignKey("FarmId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Farm");
+                });
+
+            modelBuilder.Entity("FMS.Domain.Entities.SupplierPurchase", b =>
+                {
+                    b.HasOne("FMS.Domain.Entities.Expense", "Expense")
+                        .WithMany()
+                        .HasForeignKey("ExpenseId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("FMS.Domain.Entities.Farm", "Farm")
+                        .WithMany()
+                        .HasForeignKey("FarmId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("FMS.Domain.Entities.InventoryItem", "InventoryItem")
+                        .WithMany()
+                        .HasForeignKey("InventoryItemId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("FMS.Domain.Entities.StockMovement", "StockMovement")
+                        .WithMany()
+                        .HasForeignKey("StockMovementId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("FMS.Domain.Entities.Supplier", "Supplier")
+                        .WithMany("Purchases")
+                        .HasForeignKey("SupplierId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Expense");
+
+                    b.Navigation("Farm");
+
+                    b.Navigation("InventoryItem");
+
+                    b.Navigation("StockMovement");
+
+                    b.Navigation("Supplier");
+                });
+
             modelBuilder.Entity("FMS.Domain.Entities.User", b =>
                 {
                     b.HasOne("FMS.Domain.Entities.Account", "Account")
@@ -2333,6 +4091,88 @@ namespace FMS.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("FMS.Domain.Entities.VaccinationRecord", b =>
+                {
+                    b.HasOne("FMS.Domain.Entities.Animal", "Animal")
+                        .WithMany()
+                        .HasForeignKey("AnimalId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("FMS.Domain.Entities.Farm", "Farm")
+                        .WithMany()
+                        .HasForeignKey("FarmId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("FMS.Domain.Entities.VaccineType", "VaccineType")
+                        .WithMany("VaccinationRecords")
+                        .HasForeignKey("VaccineTypeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Animal");
+
+                    b.Navigation("Farm");
+
+                    b.Navigation("VaccineType");
+                });
+
+            modelBuilder.Entity("FMS.Domain.Entities.VaccinationSchedule", b =>
+                {
+                    b.HasOne("FMS.Domain.Entities.AnimalType", "AnimalType")
+                        .WithMany()
+                        .HasForeignKey("AnimalTypeId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("FMS.Domain.Entities.Breed", "Breed")
+                        .WithMany()
+                        .HasForeignKey("BreedId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("FMS.Domain.Entities.Farm", "Farm")
+                        .WithMany()
+                        .HasForeignKey("FarmId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("FMS.Domain.Entities.VaccineType", "VaccineType")
+                        .WithMany()
+                        .HasForeignKey("VaccineTypeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("FMS.Domain.Entities.VaccineType", null)
+                        .WithMany("VaccinationSchedules")
+                        .HasForeignKey("VaccineTypeId1");
+
+                    b.Navigation("AnimalType");
+
+                    b.Navigation("Breed");
+
+                    b.Navigation("Farm");
+
+                    b.Navigation("VaccineType");
+                });
+
+            modelBuilder.Entity("FMS.Domain.Entities.VaccineType", b =>
+                {
+                    b.HasOne("FMS.Domain.Entities.Farm", "Farm")
+                        .WithMany()
+                        .HasForeignKey("FarmId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("FMS.Domain.Entities.Medicine", "LinkedMedicine")
+                        .WithMany()
+                        .HasForeignKey("LinkedMedicineId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Farm");
+
+                    b.Navigation("LinkedMedicine");
+                });
+
             modelBuilder.Entity("FMS.Domain.Entities.WeightRecord", b =>
                 {
                     b.HasOne("FMS.Domain.Entities.Animal", "Animal")
@@ -2364,6 +4204,10 @@ namespace FMS.Infrastructure.Migrations
 
                     b.Navigation("Images");
 
+                    b.Navigation("OffspringAsDam");
+
+                    b.Navigation("OffspringAsSire");
+
                     b.Navigation("TimelineEvents");
 
                     b.Navigation("Transfers");
@@ -2383,9 +4227,19 @@ namespace FMS.Infrastructure.Migrations
                     b.Navigation("Breeds");
                 });
 
+            modelBuilder.Entity("FMS.Domain.Entities.BirthRecord", b =>
+                {
+                    b.Navigation("Offspring");
+                });
+
             modelBuilder.Entity("FMS.Domain.Entities.Breed", b =>
                 {
                     b.Navigation("Animals");
+                });
+
+            modelBuilder.Entity("FMS.Domain.Entities.Customer", b =>
+                {
+                    b.Navigation("Sales");
                 });
 
             modelBuilder.Entity("FMS.Domain.Entities.Department", b =>
@@ -2403,6 +4257,11 @@ namespace FMS.Infrastructure.Migrations
             modelBuilder.Entity("FMS.Domain.Entities.EmployeeRole", b =>
                 {
                     b.Navigation("Employees");
+                });
+
+            modelBuilder.Entity("FMS.Domain.Entities.ExpenseCategory", b =>
+                {
+                    b.Navigation("Expenses");
                 });
 
             modelBuilder.Entity("FMS.Domain.Entities.Farm", b =>
@@ -2425,13 +4284,23 @@ namespace FMS.Infrastructure.Migrations
 
                     b.Navigation("Employees");
 
+                    b.Navigation("ExpenseCategories");
+
+                    b.Navigation("Expenses");
+
                     b.Navigation("FeedTypes");
 
                     b.Navigation("IdentificationTypes");
 
+                    b.Navigation("IncomeCategories");
+
+                    b.Navigation("IncomeRecords");
+
                     b.Navigation("LocationTypes");
 
                     b.Navigation("Locations");
+
+                    b.Navigation("PaymentMethods");
 
                     b.Navigation("SexOptions");
 
@@ -2439,6 +4308,21 @@ namespace FMS.Infrastructure.Migrations
                 });
 
             modelBuilder.Entity("FMS.Domain.Entities.FeedType", b =>
+                {
+                    b.Navigation("StockMovements");
+                });
+
+            modelBuilder.Entity("FMS.Domain.Entities.GestationRecord", b =>
+                {
+                    b.Navigation("HealthChecks");
+                });
+
+            modelBuilder.Entity("FMS.Domain.Entities.IncomeCategory", b =>
+                {
+                    b.Navigation("IncomeRecords");
+                });
+
+            modelBuilder.Entity("FMS.Domain.Entities.InventoryItem", b =>
                 {
                     b.Navigation("StockMovements");
                 });
@@ -2455,6 +4339,20 @@ namespace FMS.Infrastructure.Migrations
                     b.Navigation("Locations");
                 });
 
+            modelBuilder.Entity("FMS.Domain.Entities.Medicine", b =>
+                {
+                    b.Navigation("StockBatches");
+
+                    b.Navigation("Usages");
+                });
+
+            modelBuilder.Entity("FMS.Domain.Entities.PaymentMethod", b =>
+                {
+                    b.Navigation("Expenses");
+
+                    b.Navigation("IncomeRecords");
+                });
+
             modelBuilder.Entity("FMS.Domain.Entities.Role", b =>
                 {
                     b.Navigation("UserRoles");
@@ -2465,6 +4363,11 @@ namespace FMS.Infrastructure.Migrations
                     b.Navigation("Animals");
                 });
 
+            modelBuilder.Entity("FMS.Domain.Entities.Supplier", b =>
+                {
+                    b.Navigation("Purchases");
+                });
+
             modelBuilder.Entity("FMS.Domain.Entities.User", b =>
                 {
                     b.Navigation("RefreshTokens");
@@ -2472,6 +4375,13 @@ namespace FMS.Infrastructure.Migrations
                     b.Navigation("UserFarms");
 
                     b.Navigation("UserRoles");
+                });
+
+            modelBuilder.Entity("FMS.Domain.Entities.VaccineType", b =>
+                {
+                    b.Navigation("VaccinationRecords");
+
+                    b.Navigation("VaccinationSchedules");
                 });
 #pragma warning restore 612, 618
         }

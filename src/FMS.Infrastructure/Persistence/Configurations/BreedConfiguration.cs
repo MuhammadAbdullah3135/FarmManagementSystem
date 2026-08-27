@@ -10,6 +10,7 @@ public class BreedConfiguration : IEntityTypeConfiguration<Breed>
     {
         builder.HasKey(b => b.Id);
         builder.Property(b => b.Name).IsRequired().HasMaxLength(100);
+        builder.Property(b => b.AverageGestationDays).HasDefaultValue(283);
 
         builder.HasOne(b => b.AnimalType)
             .WithMany(at => at.Breeds)

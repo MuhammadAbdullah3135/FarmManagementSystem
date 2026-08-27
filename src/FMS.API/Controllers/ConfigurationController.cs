@@ -48,6 +48,13 @@ public class ConfigurationController : ControllerBase
     }
 
     // Breeds
+    [HttpGet("breeds")]
+    public async Task<IActionResult> GetBreeds(Guid farmId, [FromQuery] Guid? animalTypeId = null)
+    {
+        var result = await _configurationService.GetBreedsAsync(farmId, animalTypeId);
+        return result.IsSuccess ? Ok(result.Value) : StatusCode(500, result.Error?.Message);
+    }
+
     [HttpPost("breeds")]
     public async Task<IActionResult> CreateBreed(Guid farmId, [FromBody] CreateBreedRequest request)
     {

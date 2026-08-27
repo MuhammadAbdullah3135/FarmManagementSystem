@@ -4,11 +4,11 @@ import {
 } from 'antd';
 import { PlusOutlined, PlayCircleOutlined, CheckOutlined, StopOutlined, UndoOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
-import dayjs, { Dayjs } from 'dayjs';
-import { tasksApi } from '../../api/tasks';
-import { employeesApi } from '../../api/hr';
-import { getApiError } from '../../api/farmApi';
-import type { Employee, FarmTask, FarmTaskPriority, FarmTaskStatus } from '../../types';
+import dayjs from 'dayjs';
+import { tasksApi } from '../api/tasks';
+import { employeesApi } from '../api/hr';
+import { getApiError } from '../api/farmApi';
+import type { Employee, FarmTask, FarmTaskPriority, FarmTaskStatus } from '../types';
 
 const PRIORITY_COLORS: Record<FarmTaskPriority, string> = { Low: 'default', Medium: 'blue', High: 'red' };
 const STATUS_COLORS: Record<FarmTaskStatus, string> = { Pending: 'gold', InProgress: 'processing', Completed: 'green', Cancelled: 'default' };
@@ -49,7 +49,10 @@ const TasksPage: React.FC = () => {
     }
   }, [filters]);
 
-  useEffect(() => { load(1); }, [load]);
+  useEffect(() => {
+    const timer = window.setTimeout(() => { load(1); }, 0);
+    return () => window.clearTimeout(timer);
+  }, [load]);
 
   const openCreate = () => {
     setEditing(null);

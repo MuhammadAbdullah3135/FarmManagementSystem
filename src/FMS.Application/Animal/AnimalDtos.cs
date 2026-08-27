@@ -13,6 +13,8 @@ public class CreateAnimalRequest
     public Guid? AgeCategoryId { get; set; }
     public Guid AnimalStatusId { get; set; }
     public Guid? LocationId { get; set; }
+    public Guid? SireId { get; set; }
+    public Guid? DamId { get; set; }
     public DateTime? DateOfBirth { get; set; }
     public DateTime? AcquisitionDate { get; set; }
     public string? Notes { get; set; }
@@ -34,6 +36,8 @@ public class UpdateAnimalRequest
     public Guid SexOptionId { get; set; }
     public Guid? AgeCategoryId { get; set; }
     public Guid? LocationId { get; set; }
+    public Guid? SireId { get; set; }
+    public Guid? DamId { get; set; }
     public DateTime? DateOfBirth { get; set; }
     public DateTime? AcquisitionDate { get; set; }
     public string? Notes { get; set; }
@@ -84,6 +88,10 @@ public class AnimalListItemDto
     public AnimalStatusCategory StatusCategory { get; set; }
     public Guid? LocationId { get; set; }
     public string? LocationName { get; set; }
+    public Guid? SireId { get; set; }
+    public string? SireTagNumber { get; set; }
+    public Guid? DamId { get; set; }
+    public string? DamTagNumber { get; set; }
     public DateTime? DateOfBirth { get; set; }
     public decimal? LatestWeightKg { get; set; }
     public DateTime CreatedAt { get; set; }
@@ -119,6 +127,10 @@ public class AnimalDetailDto
     public AnimalStatusCategory StatusCategory { get; set; }
     public Guid? LocationId { get; set; }
     public string? LocationName { get; set; }
+    public Guid? SireId { get; set; }
+    public string? SireTagNumber { get; set; }
+    public Guid? DamId { get; set; }
+    public string? DamTagNumber { get; set; }
     public DateTime? DateOfBirth { get; set; }
     public DateTime? AcquisitionDate { get; set; }
     public string? Notes { get; set; }

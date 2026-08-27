@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  Button, Card, DatePicker, Form, Input, InputNumber, Modal, Row, Col, Select, Space, Statistic, Table, Tag, message,
+  Button, Card, DatePicker, Form, Input, InputNumber, Modal, Popconfirm, Row, Col, Select, Space, Statistic, Table, message,
 } from 'antd';
-import { PlusOutlined, DollarOutlined } from '@ant-design/icons';
+import { PlusOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs, { Dayjs } from 'dayjs';
 import { salaryPaymentsApi, payrollApi, employeesApi } from '../../api/hr';
@@ -57,12 +57,16 @@ const SalaryPaymentsPage: React.FC = () => {
   }, [payRange]);
 
   useEffect(() => {
-    loadEmployees();
-    loadReport();
+    const timer = window.setTimeout(() => {
+      loadEmployees();
+      loadReport();
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [loadEmployees, loadReport]);
 
   useEffect(() => {
-    if (selectedEmp) loadPayments(selectedEmp, 1);
+    const timer = window.setTimeout(() => { if (selectedEmp) loadPayments(selectedEmp, 1); }, 0);
+    return () => window.clearTimeout(timer);
   }, [selectedEmp, loadPayments]);
 
   const handleRecord = async () => {

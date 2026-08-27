@@ -74,6 +74,27 @@ public class ConfigurationService : IConfigurationService
     }
 
     // Breeds
+    public async Task<Result<List<BreedDto>>> GetBreedsAsync(Guid farmId, Guid? animalTypeId = null)
+    {
+        var query = _context.Breeds
+            .Where(b => b.AnimalType.FarmId == farmId);
+
+        if (animalTypeId.HasValue)
+            query = query.Where(b => b.AnimalTypeId == animalTypeId.Value);
+
+        var breeds = await query
+            .Select(b => new BreedDto
+            {
+                Id = b.Id,
+                Name = b.Name,
+                AnimalTypeId = b.AnimalTypeId,
+                AverageGestationDays = b.AverageGestationDays
+            })
+            .ToListAsync();
+
+        return Result<List<BreedDto>>.Success(breeds);
+    }
+
     public async Task<Result<BreedDto>> CreateBreedAsync(Guid farmId, CreateBreedRequest request)
     {
         var animalType = await _context.AnimalTypes
@@ -87,6 +108,7 @@ public class ConfigurationService : IConfigurationService
             Id = Guid.NewGuid(),
             AnimalTypeId = request.AnimalTypeId,
             Name = request.Name,
+            AverageGestationDays = request.AverageGestationDays,
             CreatedAt = DateTime.UtcNow
         };
 
@@ -97,7 +119,8 @@ public class ConfigurationService : IConfigurationService
         {
             Id = breed.Id,
             Name = breed.Name,
-            AnimalTypeId = breed.AnimalTypeId
+            AnimalTypeId = breed.AnimalTypeId,
+            AverageGestationDays = breed.AverageGestationDays
         });
     }
 
@@ -217,7 +240,7 @@ public class ConfigurationService : IConfigurationService
     {
         var statuses = await _context.AnimalStatuses
             .Where(a => a.FarmId == farmId)
-            .Select(a => new AnimalStatusDto { Id = a.Id, Name = a.Name, IsActive = a.IsActive, Category = a.Category })
+            .Select(a => new AnimalStatusDto { Id = a.Id, Name = a.Name, IsActive = a.IsActive, Category = a.Category, IsSystemDefined = a.IsSystemDefined })
             .ToListAsync();
 
         return Result<List<AnimalStatusDto>>.Success(statuses);

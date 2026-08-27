@@ -73,4 +73,17 @@ export const lookupsApi = {
     api.get<{ id: string; name: string }[]>(farmUrl('/configuration/animal-types')),
   ageCategories: () =>
     api.get<{ id: string; name: string }[]>(farmUrl('/configuration/age-categories')),
+  breeds: (animalTypeId?: string) => {
+    const params: Record<string, string> = {};
+    if (animalTypeId) params.animalTypeId = animalTypeId;
+    return api.get<{ id: string; name: string; animalTypeId: string; averageGestationDays: number }[]>(
+      farmUrl('/configuration/breeds'), { params }
+    );
+  },
+  sexOptions: () =>
+    api.get<{ id: string; value: string }[]>(farmUrl('/configuration/sex-options')),
+  statuses: () =>
+    api.get<{ id: string; name: string; isActive: boolean; category: number; isSystemDefined: boolean }[]>(
+      farmUrl('/configuration/statuses')
+    ),
 };

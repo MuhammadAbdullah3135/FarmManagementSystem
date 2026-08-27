@@ -6,6 +6,7 @@ public class Breed : BaseEntity
 {
     public Guid AnimalTypeId { get; set; }
     public string Name { get; set; } = string.Empty;
+    public int AverageGestationDays { get; set; } = 283;
 
     public AnimalType AnimalType { get; set; } = null!;
     public ICollection<Animal> Animals { get; set; } = new List<Animal>();

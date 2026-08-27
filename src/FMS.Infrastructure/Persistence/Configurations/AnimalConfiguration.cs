@@ -56,5 +56,15 @@ public class AnimalConfiguration : IEntityTypeConfiguration<Animal>
             .WithMany(l => l.Animals)
             .HasForeignKey(a => a.LocationId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(a => a.Sire)
+            .WithMany(a => a.OffspringAsSire)
+            .HasForeignKey(a => a.SireId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(a => a.Dam)
+            .WithMany(a => a.OffspringAsDam)
+            .HasForeignKey(a => a.DamId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }

@@ -14,4 +14,11 @@ public static class TimelineEventTypes
     public const string FeedUpdated = "FeedUpdated";
     public const string FeedDeleted = "FeedDeleted";
     public const string TaskCompleted = "TaskCompleted";
+    public const string MedicalRecord = "MedicalRecord";
+    public const string VaccinationRecord = "VaccinationRecord";
+    public const string BreedingRecord = "BreedingRecord";
+    public const string PregnancyConfirmed = "PregnancyConfirmed";
+    public const string PregnancyFailed = "PregnancyFailed";
+    public const string GestationHealthCheck = "GestationHealthCheck";
+    public const string BirthRecord = "BirthRecord";
 }

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  Button, Card, DatePicker, Modal, Select, Space, Table, Tabs, Tag, message,
+  Button, Card, DatePicker, Modal, Select, Space, Table, Tag, message,
 } from 'antd';
 import { ThunderboltOutlined, CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
@@ -45,7 +45,10 @@ const FeedingTasksPage: React.FC = () => {
     }
   }, [date, statusFilter]);
 
-  useEffect(() => { load(1); }, [load]);
+  useEffect(() => {
+    const timer = window.setTimeout(() => { load(1); }, 0);
+    return () => window.clearTimeout(timer);
+  }, [load]);
 
   const handleGenerate = async () => {
     if (!date) { message.warning('Pick a date'); return; }

@@ -42,9 +42,32 @@ public class FmsDbContext : DbContext
     public DbSet<EmployeeRole> EmployeeRoles => Set<EmployeeRole>();
     public DbSet<Employee> Employees => Set<Employee>();
     public DbSet<SalaryPayment> SalaryPayments => Set<SalaryPayment>();
+    public DbSet<ExpenseCategory> ExpenseCategories => Set<ExpenseCategory>();
+    public DbSet<PaymentMethod> PaymentMethods => Set<PaymentMethod>();
+    public DbSet<Expense> Expenses => Set<Expense>();
+    public DbSet<IncomeCategory> IncomeCategories => Set<IncomeCategory>();
+    public DbSet<IncomeRecord> IncomeRecords => Set<IncomeRecord>();
     public DbSet<FarmTask> FarmTasks => Set<FarmTask>();
     public DbSet<AttendanceRecord> AttendanceRecords => Set<AttendanceRecord>();
     public DbSet<PerformanceReview> PerformanceReviews => Set<PerformanceReview>();
+    public DbSet<MedicalRecord> MedicalRecords => Set<MedicalRecord>();
+    public DbSet<Medicine> Medicines => Set<Medicine>();
+    public DbSet<MedicineStock> MedicineStocks => Set<MedicineStock>();
+    public DbSet<MedicineUsage> MedicineUsages => Set<MedicineUsage>();
+    public DbSet<VaccineType> VaccineTypes => Set<VaccineType>();
+    public DbSet<VaccinationRecord> VaccinationRecords => Set<VaccinationRecord>();
+    public DbSet<VaccinationSchedule> VaccinationSchedules => Set<VaccinationSchedule>();
+    public DbSet<BreedingRecord> BreedingRecords => Set<BreedingRecord>();
+    public DbSet<GestationRecord> GestationRecords => Set<GestationRecord>();
+    public DbSet<GestationHealthCheck> GestationHealthChecks => Set<GestationHealthCheck>();
+    public DbSet<BirthRecord> BirthRecords => Set<BirthRecord>();
+    public DbSet<BirthOffspring> BirthOffspring => Set<BirthOffspring>();
+    public DbSet<InventoryItem> InventoryItems => Set<InventoryItem>();
+    public DbSet<StockMovement> StockMovements => Set<StockMovement>();
+    public DbSet<Supplier> Suppliers => Set<Supplier>();
+    public DbSet<SupplierPurchase> SupplierPurchases => Set<SupplierPurchase>();
+    public DbSet<Customer> Customers => Set<Customer>();
+    public DbSet<CustomerSale> CustomerSales => Set<CustomerSale>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -43,7 +43,10 @@ const EmployeesPage: React.FC = () => {
     }
   }, [search]);
 
-  useEffect(() => { load(1); }, [load]);
+  useEffect(() => {
+    const timer = window.setTimeout(() => { load(1); }, 0);
+    return () => window.clearTimeout(timer);
+  }, [load]);
 
   const openCreate = () => {
     setEditing(null);

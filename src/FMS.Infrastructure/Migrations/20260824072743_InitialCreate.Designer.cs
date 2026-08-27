@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FMS.Infrastructure.Migrations
 {
     [DbContext(typeof(FmsDbContext))]
-    [Migration("20260824065842_InitialCreate")]
+    [Migration("20260824072743_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -2099,17 +2099,17 @@ namespace FMS.Infrastructure.Migrations
                     b.HasOne("FMS.Domain.Entities.Animal", "Animal")
                         .WithMany()
                         .HasForeignKey("AnimalId")
-                        .OnDelete(DeleteBehavior.SetNull);
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("FMS.Domain.Entities.Employee", "AssignedEmployee")
                         .WithMany()
                         .HasForeignKey("AssignedEmployeeId")
-                        .OnDelete(DeleteBehavior.SetNull);
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("FMS.Domain.Entities.Location", "Location")
                         .WithMany()
                         .HasForeignKey("LocationId")
-                        .OnDelete(DeleteBehavior.SetNull);
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Animal");
 

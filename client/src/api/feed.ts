@@ -3,7 +3,7 @@ import { farmUrl } from './farmApi';
 import type {
   FeedType,
   FeedStock,
-  StockMovement,
+  FeedStockMovement,
   FeedRecord,
   DietPlan,
   FeedingSchedule,
@@ -28,7 +28,7 @@ export const feedTypesApi = {
 export const feedInventoryApi = {
   stock: () => api.get<FeedStock[]>(farmUrl('/feed/inventory/stock')),
   movements: (feedTypeId?: string, page = 1, pageSize = 20) =>
-    api.get<PagedResult<StockMovement>>(farmUrl('/feed/inventory/movements'), {
+    api.get<PagedResult<FeedStockMovement>>(farmUrl('/feed/inventory/movements'), {
       params: { feedTypeId, page, pageSize },
     }),
   recordMovement: (data: {

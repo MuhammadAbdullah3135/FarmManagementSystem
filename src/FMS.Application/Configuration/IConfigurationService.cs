@@ -10,6 +10,7 @@ public interface IConfigurationService
     Task<Result> DeleteAnimalTypeAsync(Guid farmId, Guid id);
 
     // Breeds
+    Task<Result<List<BreedDto>>> GetBreedsAsync(Guid farmId, Guid? animalTypeId = null);
     Task<Result<BreedDto>> CreateBreedAsync(Guid farmId, CreateBreedRequest request);
     Task<Result> DeleteBreedAsync(Guid farmId, Guid id);
 

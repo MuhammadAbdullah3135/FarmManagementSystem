@@ -71,11 +71,13 @@ const FeedRecordsPage: React.FC = () => {
   }, [filters]);
 
   useEffect(() => {
-    loadLookups();
+    const timer = window.setTimeout(() => { loadLookups(); }, 0);
+    return () => window.clearTimeout(timer);
   }, [loadLookups]);
 
   useEffect(() => {
-    loadRecords(1);
+    const timer = window.setTimeout(() => { loadRecords(1); }, 0);
+    return () => window.clearTimeout(timer);
   }, [loadRecords]);
 
   const openCreate = () => {
@@ -183,7 +185,7 @@ const FeedRecordsPage: React.FC = () => {
         />
         <DatePicker.RangePicker
           value={filters.range}
-          onChange={(range) => setFilters((f) => ({ ...f, range }))}
+          onChange={(range) => setFilters((f) => ({ ...f, range: range ?? undefined }))}
         />
       </Space>
 

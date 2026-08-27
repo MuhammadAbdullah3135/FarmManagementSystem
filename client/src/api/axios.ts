@@ -46,6 +46,8 @@ api.interceptors.response.use(
           localStorage.removeItem('accessToken');
           localStorage.removeItem('refreshToken');
           localStorage.removeItem('user');
+          localStorage.removeItem('auth-storage');
+          localStorage.removeItem('farm-storage');
           window.location.href = '/login';
         }
       }

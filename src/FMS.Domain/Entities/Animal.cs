@@ -13,6 +13,8 @@ public class Animal : SoftDeleteEntity
     public Guid? AgeCategoryId { get; set; }
     public Guid AnimalStatusId { get; set; }
     public Guid? LocationId { get; set; }
+    public Guid? SireId { get; set; }
+    public Guid? DamId { get; set; }
     public DateTime? DateOfBirth { get; set; }
     public DateTime? AcquisitionDate { get; set; }
     public string? Notes { get; set; }
@@ -24,10 +26,14 @@ public class Animal : SoftDeleteEntity
     public AgeCategory? AgeCategory { get; set; }
     public AnimalStatus AnimalStatus { get; set; } = null!;
     public Location? Location { get; set; }
+    public Animal? Sire { get; set; }
+    public Animal? Dam { get; set; }
     public ICollection<AnimalIdentification> Identifications { get; set; } = new List<AnimalIdentification>();
     public ICollection<WeightRecord> WeightRecords { get; set; } = new List<WeightRecord>();
     public ICollection<AnimalImage> Images { get; set; } = new List<AnimalImage>();
     public ICollection<AnimalDocument> Documents { get; set; } = new List<AnimalDocument>();
     public ICollection<AnimalTimelineEvent> TimelineEvents { get; set; } = new List<AnimalTimelineEvent>();
     public ICollection<AnimalTransfer> Transfers { get; set; } = new List<AnimalTransfer>();
+    public ICollection<Animal> OffspringAsSire { get; set; } = new List<Animal>();
+    public ICollection<Animal> OffspringAsDam { get; set; } = new List<Animal>();
 }

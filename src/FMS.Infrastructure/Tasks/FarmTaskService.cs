@@ -111,7 +111,7 @@ public class FarmTaskService : IFarmTaskService
         _context.FarmTasks.Add(task);
         await _context.SaveChangesAsync();
 
-        return Result<FarmTaskDto>.Success(MapTask(await LoadFullAsync(farmId, task.Id)));
+        return await MapLoadedAsync(farmId, task.Id);
     }
 
     public async Task<Result<FarmTaskDto>> UpdateFarmTaskAsync(Guid farmId, Guid id, UpdateFarmTaskRequest request)
@@ -145,7 +145,7 @@ public class FarmTaskService : IFarmTaskService
 
         await _context.SaveChangesAsync();
 
-        return Result<FarmTaskDto>.Success(MapTask(await LoadFullAsync(farmId, task.Id)));
+        return await MapLoadedAsync(farmId, task.Id);
     }
 
     public async Task<Result> DeleteFarmTaskAsync(Guid farmId, Guid id)
@@ -178,7 +178,7 @@ public class FarmTaskService : IFarmTaskService
 
         await _context.SaveChangesAsync();
 
-        return Result<FarmTaskDto>.Success(MapTask(await LoadFullAsync(farmId, task.Id)));
+        return await MapLoadedAsync(farmId, task.Id);
     }
 
     public async Task<Result<FarmTaskDto>> CompleteTaskAsync(Guid farmId, Guid id, CompleteFarmTaskRequest request)
@@ -222,7 +222,7 @@ public class FarmTaskService : IFarmTaskService
 
         await _context.SaveChangesAsync();
 
-        return Result<FarmTaskDto>.Success(MapTask(await LoadFullAsync(farmId, task.Id)));
+        return await MapLoadedAsync(farmId, task.Id);
     }
 
     public async Task<Result<FarmTaskDto>> CancelTaskAsync(Guid farmId, Guid id, CancelFarmTaskRequest request)
@@ -246,7 +246,7 @@ public class FarmTaskService : IFarmTaskService
 
         await _context.SaveChangesAsync();
 
-        return Result<FarmTaskDto>.Success(MapTask(await LoadFullAsync(farmId, task.Id)));
+        return await MapLoadedAsync(farmId, task.Id);
     }
 
     public async Task<Result<FarmTaskDto>> ReopenTaskAsync(Guid farmId, Guid id)
@@ -270,7 +270,7 @@ public class FarmTaskService : IFarmTaskService
 
         await _context.SaveChangesAsync();
 
-        return Result<FarmTaskDto>.Success(MapTask(await LoadFullAsync(farmId, task.Id)));
+        return await MapLoadedAsync(farmId, task.Id);
     }
 
     // Helpers
@@ -285,6 +285,14 @@ public class FarmTaskService : IFarmTaskService
 
     private async Task<FarmTask?> LoadFullAsync(Guid farmId, Guid id) =>
         await QueryTasks(farmId).FirstAsync(t => t.Id == id);
+
+    private async Task<Result<FarmTaskDto>> MapLoadedAsync(Guid farmId, Guid taskId)
+    {
+        var task = await LoadFullAsync(farmId, taskId);
+        return task == null
+            ? Result<FarmTaskDto>.NotFound("Task not found")
+            : Result<FarmTaskDto>.Success(MapTask(task));
+    }
 
     private static string? ValidateDetails(string title, string? description, DateTime dueDate)
     {

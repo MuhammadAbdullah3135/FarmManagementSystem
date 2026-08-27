@@ -7,7 +7,7 @@ import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import { feedInventoryApi, feedTypesApi } from '../../api/feed';
 import { getApiError } from '../../api/farmApi';
-import type { FeedCategory, FeedStock, FeedType, FeedUnit, StockMovement } from '../../types';
+import type { FeedCategory, FeedStock, FeedType, FeedUnit, FeedStockMovement } from '../../types';
 
 const FEED_CATEGORIES: FeedCategory[] = ['Forage', 'Concentrate', 'Mineral', 'Supplement', 'Additive', 'Other'];
 const FEED_UNITS: FeedUnit[] = ['Kilogram', 'Gram', 'Ton', 'Liter', 'Bale', 'Bag', 'Other'];
@@ -25,7 +25,7 @@ const categoryColor: Record<string, string> = {
 const FeedTypesPage: React.FC = () => {
   const [types, setTypes] = useState<FeedType[]>([]);
   const [stock, setStock] = useState<FeedStock[]>([]);
-  const [movements, setMovements] = useState<StockMovement[]>([]);
+  const [movements, setMovements] = useState<FeedStockMovement[]>([]);
   const [movementsTotal, setMovementsTotal] = useState(0);
   const [movementsPage, setMovementsPage] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -64,8 +64,11 @@ const FeedTypesPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    loadTypes();
-    loadMovements(1);
+    const timer = window.setTimeout(() => {
+      loadTypes();
+      loadMovements(1);
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [loadTypes, loadMovements]);
 
   const openCreate = () => {
@@ -172,7 +175,7 @@ const FeedTypesPage: React.FC = () => {
     { title: 'Inventory Value', dataIndex: 'totalCost', align: 'right' },
   ];
 
-  const movementColumns: ColumnsType<StockMovement> = [
+  const movementColumns: ColumnsType<FeedStockMovement> = [
     { title: 'Date', dataIndex: 'movementDate', render: (d: string) => dayjs(d).format('YYYY-MM-DD') },
     { title: 'Feed Type', dataIndex: 'feedTypeName' },
     {

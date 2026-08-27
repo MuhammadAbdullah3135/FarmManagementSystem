@@ -13,6 +13,7 @@ public class AnimalStatusConfiguration : IEntityTypeConfiguration<AnimalStatus>
         builder.Property(a => a.Name).IsRequired().HasMaxLength(100);
         builder.Property(a => a.IsActive).HasDefaultValue(true);
         builder.Property(a => a.Category).HasDefaultValue(AnimalStatusCategory.Active);
+        builder.Property(a => a.IsSystemDefined).HasDefaultValue(false);
 
         builder.HasOne(a => a.Farm)
             .WithMany(f => f.AnimalStatuses)

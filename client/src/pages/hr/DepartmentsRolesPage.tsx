@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  Button, Card, Col, Form, Input, Modal, Popconfirm, Row, Space, Table, message,
+  Button, Card, Col, Form, Input, Modal, Popconfirm, Row, Table, message,
 } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
@@ -30,7 +30,10 @@ const DepartmentsRolesPage: React.FC = () => {
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    const timer = window.setTimeout(() => { load(); }, 0);
+    return () => window.clearTimeout(timer);
+  }, [load]);
 
   const handleCreateDept = async () => {
     try {

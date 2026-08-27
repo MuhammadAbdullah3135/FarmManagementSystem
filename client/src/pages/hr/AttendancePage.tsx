@@ -5,7 +5,7 @@ import {
 import { LoginOutlined, LogoutOutlined, PlusOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs, { Dayjs } from 'dayjs';
-import { attendanceApi, lookupsApi } from '../../api/attendance';
+import { attendanceApi } from '../../api/attendance';
 import { employeesApi } from '../../api/hr';
 import { getApiError } from '../../api/farmApi';
 import type { AttendanceRecord, AttendanceStatus, Employee } from '../../types';
@@ -60,11 +60,13 @@ const AttendancePage: React.FC = () => {
   }, [dateRange]);
 
   useEffect(() => {
-    loadEmployees();
+    const timer = window.setTimeout(() => { loadEmployees(); }, 0);
+    return () => window.clearTimeout(timer);
   }, [loadEmployees]);
 
   useEffect(() => {
-    loadRecords(1);
+    const timer = window.setTimeout(() => { loadRecords(1); }, 0);
+    return () => window.clearTimeout(timer);
   }, [loadRecords]);
 
   const handleCheckIn = async (empId: string) => {

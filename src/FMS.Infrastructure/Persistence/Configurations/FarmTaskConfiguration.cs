@@ -24,16 +24,16 @@ public class FarmTaskConfiguration : IEntityTypeConfiguration<FarmTask>
         builder.HasOne(t => t.AssignedEmployee)
             .WithMany()
             .HasForeignKey(t => t.AssignedEmployeeId)
-            .OnDelete(DeleteBehavior.SetNull);
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne(t => t.Animal)
             .WithMany()
             .HasForeignKey(t => t.AnimalId)
-            .OnDelete(DeleteBehavior.SetNull);
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne(t => t.Location)
             .WithMany()
             .HasForeignKey(t => t.LocationId)
-            .OnDelete(DeleteBehavior.SetNull);
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }

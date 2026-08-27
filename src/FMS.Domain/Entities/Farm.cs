@@ -25,4 +25,9 @@ public class Farm : SoftDeleteEntity
     public ICollection<Department> Departments { get; set; } = new List<Department>();
     public ICollection<EmployeeRole> EmployeeRoles { get; set; } = new List<EmployeeRole>();
     public ICollection<Employee> Employees { get; set; } = new List<Employee>();
+    public ICollection<ExpenseCategory> ExpenseCategories { get; set; } = new List<ExpenseCategory>();
+    public ICollection<PaymentMethod> PaymentMethods { get; set; } = new List<PaymentMethod>();
+    public ICollection<Expense> Expenses { get; set; } = new List<Expense>();
+    public ICollection<IncomeCategory> IncomeCategories { get; set; } = new List<IncomeCategory>();
+    public ICollection<IncomeRecord> IncomeRecords { get; set; } = new List<IncomeRecord>();
 }

@@ -8,7 +8,7 @@ export const getActiveFarmId = (): string => {
   return farmId;
 };
 
-export const farmUrl = (path: string): string => `/farms/${getActiveFarmId()}${path}`;
+export const farmUrl = (path: string): string => `/farm/${getActiveFarmId()}${path}`;
 
 export const getApiError = (err: unknown): string => {
   const e = err as { response?: { data?: unknown }; message?: string };

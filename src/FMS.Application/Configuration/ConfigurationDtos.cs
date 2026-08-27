@@ -21,12 +21,14 @@ public class BreedDto
     public Guid Id { get; set; }
     public string Name { get; set; } = string.Empty;
     public Guid AnimalTypeId { get; set; }
+    public int AverageGestationDays { get; set; }
 }
 
 public class CreateBreedRequest
 {
     public string Name { get; set; } = string.Empty;
     public Guid AnimalTypeId { get; set; }
+    public int AverageGestationDays { get; set; } = 283;
 }
 
 // Sex Options
@@ -64,6 +66,7 @@ public class AnimalStatusDto
     public string Name { get; set; } = string.Empty;
     public bool IsActive { get; set; }
     public AnimalStatusCategory Category { get; set; }
+    public bool IsSystemDefined { get; set; }
 }
 
 public class CreateAnimalStatusRequest

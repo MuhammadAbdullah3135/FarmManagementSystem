@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ConfigProvider } from 'antd';
+import enUS from 'antd/locale/en_US';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
@@ -18,11 +19,35 @@ import DepartmentsRolesPage from './pages/hr/DepartmentsRolesPage';
 import SalaryPaymentsPage from './pages/hr/SalaryPaymentsPage';
 import AttendancePage from './pages/hr/AttendancePage';
 import PerformanceReviewsPage from './pages/hr/PerformanceReviewsPage';
+import ExpensesPage from './pages/finance/ExpensesPage';
+import IncomesPage from './pages/finance/IncomesPage';
+import FinanceReportsPage from './pages/finance/FinanceReportsPage';
+import CategoriesPage from './pages/finance/CategoriesPage';
 import TasksPage from './pages/TasksPage';
+import MedicalRecordsPage from './pages/health/MedicalRecordsPage';
+import MedicinesPage from './pages/health/MedicinesPage';
+import MedicineAlertsPage from './pages/health/MedicineAlertsPage';
+import VaccineTypesPage from './pages/health/VaccineTypesPage';
+import VaccinationRecordsPage from './pages/health/VaccinationRecordsPage';
+import VaccinationSchedulePage from './pages/health/VaccinationSchedulePage';
+import VetCostsPage from './pages/health/VetCostsPage';
+import AnimalsPage from './pages/animals/AnimalsPage';
+import AnimalDetailPage from './pages/animals/AnimalDetailPage';
+import BreedingRecordsPage from './pages/breeding/BreedingRecordsPage';
+import GestationPage from './pages/breeding/GestationPage';
+import BirthRecordingPage from './pages/breeding/BirthRecordingPage';
+import LineagePage from './pages/breeding/LineagePage';
+import BreedingReportsPage from './pages/breeding/BreedingReportsPage';
+import InventoryItemsPage from './pages/inventory/InventoryItemsPage';
+import InventoryMovementsPage from './pages/inventory/InventoryMovementsPage';
+import SuppliersPage from './pages/inventory/SuppliersPage';
+import CustomersPage from './pages/inventory/CustomersPage';
+import InventoryReportsPage from './pages/inventory/InventoryReportsPage';
 
 const App: React.FC = () => {
   return (
     <ConfigProvider
+      locale={enUS}
       theme={{
         token: {
           colorPrimary: '#1677ff',
@@ -61,6 +86,39 @@ const App: React.FC = () => {
             <Route path="hr/salary-payments" element={<SalaryPaymentsPage />} />
             <Route path="hr/attendance" element={<AttendancePage />} />
             <Route path="hr/performance" element={<PerformanceReviewsPage />} />
+
+            {/* Finance */}
+            <Route path="finance/expenses" element={<ExpensesPage />} />
+            <Route path="finance/incomes" element={<IncomesPage />} />
+            <Route path="finance/reports" element={<FinanceReportsPage />} />
+            <Route path="finance/categories" element={<CategoriesPage />} />
+
+            {/* Health */}
+            <Route path="health/medical" element={<MedicalRecordsPage />} />
+            <Route path="health/medicines" element={<MedicinesPage />} />
+            <Route path="health/medicines/alerts" element={<MedicineAlertsPage />} />
+            <Route path="health/vaccines" element={<VaccineTypesPage />} />
+            <Route path="health/vaccinations" element={<VaccinationRecordsPage />} />
+            <Route path="health/vaccinations/schedule" element={<VaccinationSchedulePage />} />
+            <Route path="health/costs" element={<VetCostsPage />} />
+
+            {/* Animals */}
+            <Route path="animals" element={<AnimalsPage />} />
+            <Route path="animals/:id" element={<AnimalDetailPage />} />
+
+            {/* Inventory */}
+            <Route path="inventory/items" element={<InventoryItemsPage />} />
+            <Route path="inventory/movements" element={<InventoryMovementsPage />} />
+            <Route path="inventory/suppliers" element={<SuppliersPage />} />
+            <Route path="inventory/customers" element={<CustomersPage />} />
+            <Route path="inventory/reports" element={<InventoryReportsPage />} />
+
+            {/* Breeding */}
+            <Route path="breeding/records" element={<BreedingRecordsPage />} />
+            <Route path="breeding/gestation" element={<GestationPage />} />
+            <Route path="breeding/births" element={<BirthRecordingPage />} />
+            <Route path="breeding/lineage" element={<LineagePage />} />
+            <Route path="breeding/reports" element={<BreedingReportsPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>

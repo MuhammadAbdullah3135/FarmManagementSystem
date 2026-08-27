@@ -1,6 +1,7 @@
 using FMS.Application.Common;
 using FMS.Application.Farm;
 using FMS.Domain.Entities;
+using FMS.Domain.Enums;
 using FMS.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -39,6 +40,71 @@ public class FarmService : IFarmService
             Role = "Owner",
             CreatedAt = DateTime.UtcNow
         });
+
+        // Seed system-defined animal statuses
+        var now = DateTime.UtcNow;
+        _context.AnimalStatuses.AddRange(
+            new AnimalStatus
+            {
+                Id = Guid.NewGuid(),
+                FarmId = farm.Id,
+                Name = "Active",
+                IsActive = true,
+                Category = AnimalStatusCategory.Active,
+                IsSystemDefined = true,
+                CreatedAt = now
+            },
+            new AnimalStatus
+            {
+                Id = Guid.NewGuid(),
+                FarmId = farm.Id,
+                Name = "Pregnant",
+                IsActive = true,
+                Category = AnimalStatusCategory.Active,
+                IsSystemDefined = true,
+                CreatedAt = now
+            },
+            new AnimalStatus
+            {
+                Id = Guid.NewGuid(),
+                FarmId = farm.Id,
+                Name = "Lactating",
+                IsActive = true,
+                Category = AnimalStatusCategory.Active,
+                IsSystemDefined = true,
+                CreatedAt = now
+            },
+            new AnimalStatus
+            {
+                Id = Guid.NewGuid(),
+                FarmId = farm.Id,
+                Name = "Dry",
+                IsActive = true,
+                Category = AnimalStatusCategory.Active,
+                IsSystemDefined = true,
+                CreatedAt = now
+            },
+            new AnimalStatus
+            {
+                Id = Guid.NewGuid(),
+                FarmId = farm.Id,
+                Name = "Sold",
+                IsActive = true,
+                Category = AnimalStatusCategory.Terminal,
+                IsSystemDefined = true,
+                CreatedAt = now
+            },
+            new AnimalStatus
+            {
+                Id = Guid.NewGuid(),
+                FarmId = farm.Id,
+                Name = "Deceased",
+                IsActive = true,
+                Category = AnimalStatusCategory.Terminal,
+                IsSystemDefined = true,
+                CreatedAt = now
+            }
+        );
 
         await _context.SaveChangesAsync();
 

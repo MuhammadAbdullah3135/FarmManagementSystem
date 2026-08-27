@@ -20,7 +20,7 @@ const DietPlansPage: React.FC = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<DietPlan | null>(null);
   const [itemsTarget, setItemsTarget] = useState<DietPlan | null>(null);
-  const [feedTypeOptions, setFeedTypeOptions] = useState<FeedType[]>([]);
+  const [, setFeedTypeOptions] = useState<FeedType[]>([]);
   const [animalTypes, setAnimalTypes] = useState<LookupOption[]>([]);
   const [ageCategories, setAgeCategories] = useState<LookupOption[]>([]);
   const [itemForm] = Form.useForm();
@@ -39,7 +39,7 @@ const DietPlansPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    loadPlans();
+    window.setTimeout(() => { loadPlans(); }, 0);
     feedTypesApi.list().then((r) => setFeedTypeOptions(r.data)).catch(() => undefined);
     lookupsApi.animalTypes().then((r) => setAnimalTypes(r.data)).catch(() => undefined);
     lookupsApi.ageCategories().then((r) => setAgeCategories(r.data)).catch(() => undefined);
