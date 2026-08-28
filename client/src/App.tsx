@@ -47,6 +47,7 @@ import AnimalReportsPage from './pages/reports/AnimalReportsPage';
 import MedicalReportsPage from './pages/reports/MedicalReportsPage';
 import VaccinationReportsPage from './pages/reports/VaccinationReportsPage';
 import EmployeeReportsPage from './pages/reports/EmployeeReportsPage';
+import AuditLogPage from './pages/admin/AuditLogPage';
 
 const App: React.FC = () => {
   return (
@@ -132,6 +133,9 @@ const App: React.FC = () => {
             <Route path="breeding/births" element={<BirthRecordingPage />} />
             <Route path="breeding/lineage" element={<LineagePage />} />
             <Route path="breeding/reports" element={<BreedingReportsPage />} />
+
+            {/* Admin */}
+            <Route path="admin/audit-log" element={<AuditLogPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>

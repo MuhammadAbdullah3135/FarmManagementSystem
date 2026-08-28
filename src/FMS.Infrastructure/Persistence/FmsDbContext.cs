@@ -7,6 +7,9 @@ public class FmsDbContext : DbContext
 {
     public FmsDbContext(DbContextOptions<FmsDbContext> options) : base(options) { }
 
+    // Flag to prevent audit log interceptor recursion
+    internal bool IsSavingAuditLogs { get; set; }
+
     public DbSet<Account> Accounts => Set<Account>();
     public DbSet<User> Users => Set<User>();
     public DbSet<Role> Roles => Set<Role>();
@@ -68,6 +71,7 @@ public class FmsDbContext : DbContext
     public DbSet<SupplierPurchase> SupplierPurchases => Set<SupplierPurchase>();
     public DbSet<Customer> Customers => Set<Customer>();
     public DbSet<CustomerSale> CustomerSales => Set<CustomerSale>();
+    public DbSet<Domain.Entities.AuditLog> AuditLogs => Set<Domain.Entities.AuditLog>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

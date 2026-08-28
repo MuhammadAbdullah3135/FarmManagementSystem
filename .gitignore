@@ -75,3 +75,11 @@ temp-*.csx
 ## Error artifacts
 Microsoft.AspNetCore.*
 System.Net.Sockets.*
+
+# Rewrite monorepo
+rewrite/node_modules/
+rewrite/**/node_modules/
+rewrite/**/.next/
+rewrite/**/.turbo/
+rewrite/apps/web/.next/
+rewrite/apps/web/.env.local

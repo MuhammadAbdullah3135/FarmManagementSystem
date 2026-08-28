@@ -1,0 +1,14 @@
+**/bin/
+**/obj/
+**/node_modules/
+**/.git/
+**/.vs/
+**/.vscode/
+**/dist/
+**/backups/
+**/*.md
+**/.env
+**/logs/
+**/uploads/
+client/
+tests/

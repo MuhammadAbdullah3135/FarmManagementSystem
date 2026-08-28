@@ -19,6 +19,7 @@ import {
   BugOutlined,
   NodeIndexOutlined,
   InboxOutlined,
+  SettingOutlined,
 } from '@ant-design/icons';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
@@ -170,6 +171,14 @@ const AppLayout: React.FC = () => {
         { key: '/dashboard/reports/vaccination', label: 'Vaccination Reports' },
         { key: '/dashboard/reports/breeding', label: 'Breeding Reports' },
         { key: '/dashboard/reports/employees', label: 'Employee Reports' },
+      ],
+    },
+    {
+      key: 'admin',
+      icon: <SettingOutlined />,
+      label: 'Admin',
+      children: [
+        { key: '/dashboard/admin/audit-log', icon: <AuditOutlined />, label: 'Audit Log' },
       ],
     },
   ];
