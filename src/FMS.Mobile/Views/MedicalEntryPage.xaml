@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:FMS.Mobile.ViewModels"
+             x:Class="FMS.Mobile.Views.MedicalEntryPage"
+             x:DataType="vm:MedicalEntryViewModel"
+             Title="{Binding Title}">
+    <ScrollView>
+        <VerticalStackLayout Spacing="12" Padding="16">
+            <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" />
+
+            <!-- Animal Tag Display -->
+            <Label Text="{Binding AnimalTag, StringFormat='Animal: {0}'}"
+                   FontSize="16" FontAttributes="Bold" TextColor="{StaticResource Primary}"
+                   IsVisible="{Binding AnimalTag, Converter={StaticResource IsNotNullConverter}}" />
+
+            <!-- Symptoms (required) -->
+            <Label Text="Symptoms *" FontSize="14" FontAttributes="Bold" />
+            <Editor Text="{Binding Symptoms}" Placeholder="Describe symptoms observed..."
+                    HeightRequest="100" />
+
+            <!-- Diagnosis -->
+            <Label Text="Diagnosis" FontSize="14" />
+            <Entry Text="{Binding Diagnosis}" Placeholder="Diagnosis if known" />
+
+            <!-- Treatment -->
+            <Label Text="Treatment" FontSize="14" />
+            <Editor Text="{Binding Treatment}" Placeholder="Treatment given..."
+                    HeightRequest="80" />
+
+            <!-- Medicine + Dosage side by side -->
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                <VerticalStackLayout Grid.Column="0" Spacing="4">
+                    <Label Text="Medicine Used" FontSize="14" />
+                    <Entry Text="{Binding MedicineUsed}" Placeholder="Medicine name" />
+                </VerticalStackLayout>
+                <VerticalStackLayout Grid.Column="1" Spacing="4">
+                    <Label Text="Dosage" FontSize="14" />
+                    <Entry Text="{Binding Dosage}" Placeholder="e.g. 10ml twice daily" />
+                </VerticalStackLayout>
+            </Grid>
+
+            <!-- Vet Name + Cost side by side -->
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                <VerticalStackLayout Grid.Column="0" Spacing="4">
+                    <Label Text="Veterinarian" FontSize="14" />
+                    <Entry Text="{Binding VetName}" Placeholder="Vet name" />
+                </VerticalStackLayout>
+                <VerticalStackLayout Grid.Column="1" Spacing="4">
+                    <Label Text="Cost ($)" FontSize="14" />
+                    <Entry Keyboard="Numeric" Text="{Binding Cost}" Placeholder="0.00" />
+                </VerticalStackLayout>
+            </Grid>
+
+            <!-- Date Recorded + Follow-up Date side by side -->
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                <VerticalStackLayout Grid.Column="0" Spacing="4">
+                    <Label Text="Date Recorded *" FontSize="14" />
+                    <DatePicker Date="{Binding DateRecorded}" />
+                </VerticalStackLayout>
+                <VerticalStackLayout Grid.Column="1" Spacing="4">
+                    <Label Text="Follow-up Date" FontSize="14" />
+                    <DatePicker Date="{Binding FollowUpDate}" />
+                </VerticalStackLayout>
+            </Grid>
+
+            <!-- Status -->
+            <Label Text="Status" FontSize="14" />
+            <Picker Title="Select status"
+                    ItemsSource="{Binding Statuses}"
+                    SelectedItem="{Binding SelectedStatus}" />
+
+            <!-- Notes -->
+            <Label Text="Notes" FontSize="14" />
+            <Editor Text="{Binding Notes}" Placeholder="Additional observations..."
+                    HeightRequest="80" />
+
+            <Button Text="Save Medical Record"
+                    Command="{Binding SaveCommand}"
+                    BackgroundColor="{StaticResource Primary}"
+                    TextColor="White" CornerRadius="8" HeightRequest="50"
+                    Margin="0,8,0,0" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

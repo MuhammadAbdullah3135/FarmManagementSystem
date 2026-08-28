@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Shell xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+       xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+       xmlns:views="clr-namespace:FMS.Mobile.Views"
+       x:Class="FMS.Mobile.AppShell"
+       Shell.FlyoutBehavior="Disabled"
+       x:Name="AppShellRoot">
+
+    <!-- Login -->
+    <ShellContent x:Name="LoginShell"
+                  Route="Login"
+                  ContentTemplate="{DataTemplate views:LoginPage}"
+                  Shell.TabBarIsVisible="False"
+                  Shell.NavBarIsVisible="False" />
+
+    <!-- Farm Picker -->
+    <ShellContent x:Name="FarmPickerShell"
+                  Route="FarmPicker"
+                  ContentTemplate="{DataTemplate views:FarmPickerPage}"
+                  Shell.TabBarIsVisible="False" />
+
+    <!-- Main Tabbed Area -->
+    <TabBar x:Name="MainTabBar" Route="Main">
+        <Tab Title="Dashboard" Icon="{OnPlatform iOS='house'}">
+            <ShellContent ContentTemplate="{DataTemplate views:DashboardPage}" />
+        </Tab>
+        <Tab Title="Animals" Icon="{OnPlatform iOS='list.bullet'}">
+            <ShellContent ContentTemplate="{DataTemplate views:AnimalListPage}" />
+        </Tab>
+        <Tab Title="Tasks" Icon="{OnPlatform iOS='checkmark.circle'}">
+            <ShellContent ContentTemplate="{DataTemplate views:TaskListPage}" />
+        </Tab>
+        <Tab Title="Feed" Icon="{OnPlatform iOS='leaf'}">
+            <ShellContent ContentTemplate="{DataTemplate views:FeedEntryPage}" />
+        </Tab>
+        <Tab Title="Settings" Icon="{OnPlatform iOS='gearshape'}">
+            <ShellContent ContentTemplate="{DataTemplate views:SettingsPage}" />
+        </Tab>
+    </TabBar>
+
+    <!-- Detail Routes -->
+    <ShellContent Route="AnimalDetail"
+                  ContentTemplate="{DataTemplate views:AnimalDetailPage}"
+                  Shell.TabBarIsVisible="False"
+                  Shell.NavBarIsVisible="True" />
+
+    <ShellContent Route="AnimalCreate"
+                  ContentTemplate="{DataTemplate views:AnimalCreatePage}"
+                  Shell.TabBarIsVisible="False" />
+
+    <ShellContent Route="WeightEntry"
+                  ContentTemplate="{DataTemplate views:WeightEntryPage}"
+                  Shell.TabBarIsVisible="False" />
+
+    <ShellContent Route="FeedEntry"
+                  ContentTemplate="{DataTemplate views:FeedEntryPage}"
+                  Shell.TabBarIsVisible="False" />
+
+    <ShellContent Route="MedicalEntry"
+                  ContentTemplate="{DataTemplate views:MedicalEntryPage}"
+                  Shell.TabBarIsVisible="False" />
+
+    <ShellContent Route="VaccinationEntry"
+                  ContentTemplate="{DataTemplate views:VaccinationEntryPage}"
+                  Shell.TabBarIsVisible="False" />
+
+    <ShellContent Route="BreedingEntry"
+                  ContentTemplate="{DataTemplate views:BreedingEntryPage}"
+                  Shell.TabBarIsVisible="False" />
+
+    <ShellContent Route="Scanner"
+                  ContentTemplate="{DataTemplate views:ScannerPage}"
+                  Shell.TabBarIsVisible="False"
+                  Shell.NavBarIsVisible="False" />
+
+</Shell>

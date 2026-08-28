@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:FMS.Mobile.ViewModels"
+             x:Class="FMS.Mobile.Views.SettingsPage"
+             x:DataType="vm:SettingsViewModel"
+             Title="{Binding Title}">
+
+    <ScrollView>
+        <VerticalStackLayout Spacing="16" Padding="16">
+            <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" />
+
+            <Frame CornerRadius="12" Padding="16" BorderColor="LightGray">
+                <VerticalStackLayout Spacing="6">
+                    <Label Text="{Binding UserName}" FontSize="20" FontAttributes="Bold" />
+                    <Label Text="{Binding UserEmail}" FontSize="14" TextColor="Gray" />
+                </VerticalStackLayout>
+            </Frame>
+
+            <Frame CornerRadius="12" Padding="16" BorderColor="LightGray">
+                <VerticalStackLayout Spacing="8">
+                    <Label Text="Current Farm" FontSize="14" FontAttributes="Bold" />
+                    <Label Text="{Binding CurrentFarmName}" FontSize="16" />
+                    <Button Text="Switch Farm" Command="{Binding SwitchFarmCommand}"
+                            BackgroundColor="LightGray" CornerRadius="8" />
+                </VerticalStackLayout>
+            </Frame>
+
+            <Frame CornerRadius="12" Padding="16" BorderColor="LightGray">
+                <VerticalStackLayout Spacing="8">
+                    <Label Text="Sync Status" FontSize="14" FontAttributes="Bold" />
+                    <Label FontSize="13" TextColor="Gray">
+                        <Label.Text>
+                            <Binding Path="LastSyncTime" StringFormat="Last sync: {0:dd MMM yyyy HH:mm}" />
+                        </Label.Text>
+                    </Label>
+                    <Label FontSize="13" TextColor="Orange"
+                           Text="{Binding PendingRecords, StringFormat='{0} records pending sync'}"
+                           IsVisible="{Binding PendingRecords, Converter={StaticResource IsNonZeroConverter}}" />
+                    <!-- Queue Warning -->
+                    <Border BackgroundColor="#FFF3E0" Stroke="#FF9800" StrokeThickness="1"
+                            StrokeShape="RoundRectangle 6" Padding="10"
+                            IsVisible="{Binding ShowQueueWarning}">
+                        <Label Text="⚠️ Large queue — sync soon to avoid data loss" FontSize="12" TextColor="#E65100" />
+                    </Border>
+                </VerticalStackLayout>
+            </Frame>
+
+            <Button Text="Logout" Command="{Binding LogoutCommand}"
+                    BackgroundColor="#FFEBEE" TextColor="Red" CornerRadius="8" HeightRequest="50" />
+        </VerticalStackLayout>
+    </ScrollView>
+
+</ContentPage>

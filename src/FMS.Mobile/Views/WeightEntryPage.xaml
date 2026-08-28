@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:FMS.Mobile.ViewModels"
+             x:Class="FMS.Mobile.Views.WeightEntryPage"
+             x:DataType="vm:WeightEntryViewModel"
+             Title="{Binding Title}">
+    <ScrollView>
+        <VerticalStackLayout Spacing="12" Padding="16">
+            <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" />
+            <Label Text="Weight (kg) *" FontSize="14" />
+            <Entry Keyboard="Numeric" Text="{Binding WeightKg}" Placeholder="0.0" />
+            <Label Text="Date &amp; Time" FontSize="14" />
+            <DatePicker Date="{Binding RecordedAt}" />
+            <TimePicker Time="{Binding RecordedAt}" />
+            <Label Text="Notes" FontSize="14" />
+            <Editor Text="{Binding Notes}" Placeholder="Optional" HeightRequest="60" />
+            <Button Text="Save Weight" Command="{Binding SaveCommand}" BackgroundColor="{StaticResource Primary}" TextColor="White" CornerRadius="8" HeightRequest="50" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:FMS.Mobile.ViewModels"
+             x:Class="FMS.Mobile.Views.FarmPickerPage"
+             x:DataType="vm:FarmPickerViewModel"
+             Title="{Binding Title}">
+
+    <Grid RowDefinitions="Auto,*">
+
+        <HorizontalStackLayout Grid.Row="0" Padding="16" Spacing="10">
+            <Button Text="Logout" Command="{Binding LogoutCommand}"
+                    BackgroundColor="LightGray" CornerRadius="8" />
+            <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" />
+        </HorizontalStackLayout>
+
+        <CollectionView Grid.Row="1"
+                        ItemsSource="{Binding Farms}"
+                        SelectionMode="None"
+                        Margin="16">
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="vm:FarmDto">
+                    <Frame Margin="0,4" Padding="16" CornerRadius="8"
+                           BorderColor="LightGray" BackgroundColor="White">
+                        <Frame.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type vm:FarmPickerViewModel}}, Path=SelectFarmCommand}"
+                                                  CommandParameter="{Binding .}" />
+                        </Frame.GestureRecognizers>
+                        <VerticalStackLayout Spacing="4">
+                            <Label Text="{Binding Name}" FontSize="18" FontAttributes="Bold" />
+                            <Label Text="{Binding Description}" FontSize="14" TextColor="Gray"
+                                   IsVisible="{Binding Description, Converter={StaticResource IsNotNullConverter}}" />
+                        </VerticalStackLayout>
+                    </Frame>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+
+    </Grid>
+
+</ContentPage>
