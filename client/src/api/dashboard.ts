@@ -8,6 +8,7 @@ export interface DashboardSummary {
   pregnantCount: number;
   sickCount: number;
   dueVaccinationCount: number;
+  dueWeightCheckCount: number;
   overdueTasks: number;
   upcomingBirths: number;
   totalFeedStockValue: number;

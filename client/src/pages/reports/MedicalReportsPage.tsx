@@ -94,7 +94,7 @@ const MedicalReportsPage: React.FC = () => {
                     >
                       {vetData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
                     </Pie>
-                    <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                    <Tooltip formatter={(value) => formatCurrency(Number(value ?? 0))} />
                   </PieChart>
                 </ResponsiveContainer>
               ) : <Empty description="No data" />}

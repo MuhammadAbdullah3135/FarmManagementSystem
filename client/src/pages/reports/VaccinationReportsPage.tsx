@@ -8,7 +8,8 @@ import {
 import DateRangeFilter from '../../components/DateRangeFilter';
 import ExportButton from '../../components/ExportButton';
 import { reportsApi, type VaccinationReport, type VaccinationByVaccine } from '../../api/reports';
-import { vaccinationStatusApi, type VaccinationStatus } from '../../api/health';
+import { vaccinationStatusApi } from '../../api/health';
+import type { VaccinationStatus } from '../../types';
 import { getApiError } from '../../api/farmApi';
 
 const { Text } = Typography;

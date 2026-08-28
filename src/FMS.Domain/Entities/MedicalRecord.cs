@@ -3,7 +3,7 @@ using FMS.Domain.Enums;
 
 namespace FMS.Domain.Entities;
 
-public class MedicalRecord : AuditableEntity
+public class MedicalRecord : SoftDeleteEntity
 {
     public Guid FarmId { get; set; }
     public Guid AnimalId { get; set; }

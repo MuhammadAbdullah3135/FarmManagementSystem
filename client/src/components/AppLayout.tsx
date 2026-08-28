@@ -156,6 +156,7 @@ const AppLayout: React.FC = () => {
         { key: '/dashboard/health/vaccines', label: 'Vaccine Types' },
         { key: '/dashboard/health/vaccinations', label: 'Vaccination Records' },
         { key: '/dashboard/health/vaccinations/schedule', label: 'Vaccination Schedules' },
+        { key: '/dashboard/health/weight-schedules', label: 'Weight Check Schedules' },
         { key: '/dashboard/health/costs', label: 'Vet Costs' },
       ],
     },

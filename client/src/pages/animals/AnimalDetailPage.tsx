@@ -3,10 +3,11 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Card, Descriptions, Tag, Tabs, Table, Button, Spin, message, Breadcrumb, Empty } from 'antd';
 import { ArrowLeftOutlined } from '@ant-design/icons';
 import { animalsApi } from '../../api/animals';
+import { weightCheckStatusApi } from '../../api/health';
 import { breedingRecordsApi } from '../../api/breeding';
 import { getApiError } from '../../api/farmApi';
 import dayjs from 'dayjs';
-import type { AnimalDetail, BreedingRecord } from '../../types';
+import type { AnimalDetail, BreedingRecord, WeightCheckStatus } from '../../types';
 
 const STATUS_COLORS: Record<number, string> = { 0: 'green', 1: 'orange', 2: 'red' };
 
@@ -17,6 +18,7 @@ export default function AnimalDetailPage() {
   const [loading, setLoading] = useState(true);
   const [breedingRecords, setBreedingRecords] = useState<BreedingRecord[]>([]);
   const [breedingLoading, setBreedingLoading] = useState(false);
+  const [weightStatuses, setWeightStatuses] = useState<WeightCheckStatus[]>([]);
 
   const loadAnimal = useCallback(async () => {
     if (!id) return;
@@ -53,8 +55,17 @@ export default function AnimalDetailPage() {
     return () => window.clearTimeout(timer);
   }, [loadAnimal]);
 
+  const loadWeightStatus = useCallback(async () => {
+    if (!id) return;
+    try {
+      const res = await weightCheckStatusApi.all();
+      setWeightStatuses(res.data.filter(s => s.animalId === id));
+    } catch { /* Optional */ }
+  }, [id]);
+
   const handleTabChange = (key: string) => {
     if (key === 'breeding') loadBreeding();
+    if (key === 'weights') loadWeightStatus();
   };
 
   if (loading) return <Spin size="large" style={{ display: 'block', margin: '100px auto' }} />;
@@ -140,7 +151,25 @@ export default function AnimalDetailPage() {
       key: 'weights',
       label: 'Weights',
       children: (
-        <Empty description={`Weight records: ${animal.weightRecordsCount}`} />
+        <div>
+          {weightStatuses.length > 0 && (
+            <div style={{ marginBottom: 16 }}>
+              <strong>Weight Check Status:</strong>
+              <div style={{ marginTop: 8 }}>
+                {weightStatuses.map((ws, i) => (
+                  <Tag
+                    key={i}
+                    color={ws.status === 'Overdue' ? 'red' : ws.status === 'Due' ? 'orange' : 'blue'}
+                    style={{ marginBottom: 4 }}
+                  >
+                    {ws.status} — Next due: {dayjs(ws.nextDueDate).format('YYYY-MM-DD')} ({ws.daysUntilDue} days)
+                  </Tag>
+                ))}
+              </div>
+            </div>
+          )}
+          <Empty description={`Weight records: ${animal.weightRecordsCount}`} />
+        </div>
       ),
     },
     {

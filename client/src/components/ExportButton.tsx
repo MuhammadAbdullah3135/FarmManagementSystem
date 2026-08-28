@@ -11,19 +11,19 @@ interface ExportButtonProps {
   disabled?: boolean;
 }
 
-const ExportButton: React.FC<ExportButtonProps> = ({ filename, title, headers, rows, disabled }) => {
+const ExportButton: React.FC<ExportButtonProps> = ({ filename, title: _title, headers, rows, disabled }) => {
   const items = [
     {
       key: 'pdf',
       icon: <FilePdfOutlined />,
       label: 'Export PDF',
-      onClick: () => exportPdf(filename, title, headers, rows),
+      onClick: () => exportPdf(filename, _title, headers, rows),
     },
     {
       key: 'excel',
       icon: <FileExcelOutlined />,
       label: 'Export Excel',
-      onClick: () => exportExcel(filename, title, headers, rows),
+      onClick: () => exportExcel(filename, headers, rows),
     },
     {
       key: 'csv',

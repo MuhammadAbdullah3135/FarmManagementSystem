@@ -2,7 +2,7 @@ using FMS.Domain.Common;
 
 namespace FMS.Domain.Entities;
 
-public class Expense : AuditableEntity
+public class Expense : SoftDeleteEntity
 {
     public Guid FarmId { get; set; }
     public DateTime ExpenseDate { get; set; }

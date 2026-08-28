@@ -9,7 +9,7 @@ public class CachedConfigurationService : IConfigurationService
     private readonly IConfigurationService _inner;
     private readonly IMemoryCache _cache;
     private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(5);
-    private string CKey(Guid farmId, string e) => $"config:{farmId}:{e}";
+    private string CKey(Guid farmId, string e, Guid? scope = null) => $"config:{farmId}:{e}:{scope?.ToString() ?? "all"}";
 
     public CachedConfigurationService(IConfigurationService inner, IMemoryCache cache)
     {
@@ -29,7 +29,7 @@ public class CachedConfigurationService : IConfigurationService
     private void Inv(Guid farmId, string entity) => _cache.Remove(CKey(farmId, entity));
 
     public Task<Result<List<AnimalTypeDto>>> GetAnimalTypesAsync(Guid farmId) => GetOrSet(farmId, "AT", () => _inner.GetAnimalTypesAsync(farmId));
-    public Task<Result<List<BreedDto>>> GetBreedsAsync(Guid farmId, Guid? animalTypeId = null) => GetOrSet(farmId, "BR", () => _inner.GetBreedsAsync(farmId, animalTypeId));
+    public Task<Result<List<BreedDto>>> GetBreedsAsync(Guid farmId, Guid? animalTypeId = null) => GetOrSet(farmId, $"BR:{animalTypeId?.ToString() ?? "all"}", () => _inner.GetBreedsAsync(farmId, animalTypeId));
     public Task<Result<List<SexOptionDto>>> GetSexOptionsAsync(Guid farmId) => GetOrSet(farmId, "SX", () => _inner.GetSexOptionsAsync(farmId));
     public Task<Result<List<AgeCategoryDto>>> GetAgeCategoriesAsync(Guid farmId) => GetOrSet(farmId, "AC", () => _inner.GetAgeCategoriesAsync(farmId));
     public Task<Result<List<AnimalStatusDto>>> GetAnimalStatusesAsync(Guid farmId) => GetOrSet(farmId, "AS", () => _inner.GetAnimalStatusesAsync(farmId));

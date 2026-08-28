@@ -631,6 +631,30 @@ public class FinanceServiceTests
     }
 
     [Fact]
+    public async Task ProfitLoss_AndMonthlySummary_ExcludeSoftDeletedExpenses()
+    {
+        using var context = CreateContext();
+        var seed = await SeedAsync(context);
+        var service = CreateService(context);
+        var expense = new Expense
+        {
+            Id = Guid.NewGuid(), FarmId = seed.FarmId, ExpenseDate = new DateTime(DateTime.UtcNow.Year, 1, 15),
+            Amount = 999m, ExpenseCategoryId = seed.FeedCategoryId, PaymentMethodId = seed.CashMethodId,
+            IsDeleted = true, DeletedAt = DateTime.UtcNow
+        };
+        context.Expenses.Add(expense);
+        await context.SaveChangesAsync();
+
+        var profitLoss = await service.GetProfitLossReportAsync(seed.FarmId, new FinanceReportFilter());
+        var monthly = await service.GetMonthlySummaryAsync(seed.FarmId, DateTime.UtcNow.Year);
+
+        Assert.True(profitLoss.IsSuccess);
+        Assert.Equal(0m, profitLoss.Value!.TotalExpenses);
+        Assert.True(monthly.IsSuccess);
+        Assert.Equal(0m, monthly.Value!.Single(m => m.Month == 1).Expenses);
+    }
+
+    [Fact]
     public async Task ExpenseBreakdown_GroupsByCategory()
     {
         using var context = CreateContext();

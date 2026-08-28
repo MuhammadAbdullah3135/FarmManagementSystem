@@ -1,6 +1,7 @@
 import api from './axios';
 import { farmUrl } from './farmApi';
-import type { MedicalRecord, MedicalRecordListItem, Medicine, MedicineListItem, MedicineStock, MedicineAlert, VaccineType, VaccineTypeListItem, VaccinationRecord, VaccinationRecordListItem, VaccinationSchedule, VaccinationStatus, HealthCostSummary, HealthCostByVet, HealthCostByAnimal, HealthCostByMonth, PagedResult } from '../types';
+import type { MedicalRecord, MedicalRecordListItem, Medicine, MedicineListItem, MedicineStock, MedicineAlert, VaccineType, VaccineTypeListItem, VaccinationRecord, VaccinationRecordListItem, VaccinationSchedule, WeightCheckSchedule, WeightCheckStatus, HealthCostSummary, HealthCostByVet, HealthCostByAnimal, HealthCostByMonth, PagedResult } from '../types';
+import type { VaccinationStatus } from '../types';
 
 export interface MedicalRecordListFilter {
   search?: string;
@@ -180,6 +181,41 @@ export interface HealthCostFilter {
   from?: string;
   to?: string;
 }
+
+
+
+// ── Weight Check Schedules & Status ────────────────────
+
+export const weightCheckSchedulesApi = {
+  list: (params: { page?: number; pageSize?: number } = {}) =>
+    api.get<PagedResult<WeightCheckSchedule>>(farmUrl('/weight-schedules'), { params }),
+  create: (data: {
+    animalTypeId?: string;
+    breedId?: string;
+    ageCategoryId?: string;
+    recurrenceDays: number;
+    isActive?: boolean;
+    notes?: string;
+  }) => api.post<WeightCheckSchedule>(farmUrl('/weight-schedules'), data),
+  update: (id: string, data: {
+    animalTypeId?: string;
+    breedId?: string;
+    ageCategoryId?: string;
+    recurrenceDays: number;
+    isActive?: boolean;
+    notes?: string;
+  }) => api.put<WeightCheckSchedule>(farmUrl(`/weight-schedules/${id}`), data),
+  remove: (id: string) => api.delete(farmUrl(`/weight-schedules/${id}`)),
+};
+
+export const weightCheckStatusApi = {
+  all: () =>
+    api.get<WeightCheckStatus[]>(farmUrl('/weight-schedules/status')),
+  overdue: () =>
+    api.get<WeightCheckStatus[]>(farmUrl('/weight-schedules/status/overdue')),
+};
+
+// ── Health Cost Rollups ────────────────────────────────
 
 export const healthCostsApi = {
   summary: (filter: HealthCostFilter = {}) =>

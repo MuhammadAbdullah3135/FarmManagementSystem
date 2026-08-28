@@ -16,13 +16,17 @@ public static class JwtTokenHelper
     public static readonly Guid TestUserId = new("11111111-1111-1111-1111-111111111111");
 
     public static string GenerateTestToken()
+        => GenerateTestToken(TestUserId, new[] { "FarmManager" }, "testuser@test.com");
+
+    public static string GenerateTestToken(Guid userId, IEnumerable<string> roles, string? email = "testuser@test.com")
     {
         var claims = new List<Claim>
         {
-            new(ClaimTypes.NameIdentifier, TestUserId.ToString()),
-            new(ClaimTypes.Name, "testuser@test.com"),
-            new(ClaimTypes.Role, "FarmManager"),
+            new(ClaimTypes.NameIdentifier, userId.ToString()),
+            new(ClaimTypes.Name, email ?? "testuser@test.com"),
         };
+        foreach (var role in roles)
+            claims.Add(new Claim(ClaimTypes.Role, role));
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes("TestSecretKeyThatIsAtLeast32BytesLong!!"));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);

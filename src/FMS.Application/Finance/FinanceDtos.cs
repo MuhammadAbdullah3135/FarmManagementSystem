@@ -73,7 +73,7 @@ public class CreateExpenseRequest
 
 public class UpdateExpenseRequest
 {
-    public DateTime ExpenseDate { get; set; }
+    public DateTime? ExpenseDate { get; set; }
     public decimal Amount { get; set; }
     public Guid ExpenseCategoryId { get; set; }
     public Guid PaymentMethodId { get; set; }
@@ -149,7 +149,7 @@ public class CreateIncomeRecordRequest
 
 public class UpdateIncomeRecordRequest
 {
-    public DateTime IncomeDate { get; set; }
+    public DateTime? IncomeDate { get; set; }
     public decimal Amount { get; set; }
     public Guid IncomeCategoryId { get; set; }
     public Guid PaymentMethodId { get; set; }

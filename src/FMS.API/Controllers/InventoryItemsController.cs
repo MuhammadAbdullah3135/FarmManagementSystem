@@ -7,7 +7,7 @@ namespace FMS.API.Controllers;
 
 [ApiController]
 [Route("api/farm/{farmId:guid}/inventory-items")]
-[Authorize(Roles = "FarmWorker,Vet,FarmManager,SystemOwner,Owner")]
+[Authorize(Roles = "Employee,Veterinarian,FarmManager,SystemOwner")]
 public class InventoryItemsController : ControllerBase
 {
     private readonly IInventoryService _inventoryService;

@@ -383,6 +383,9 @@ public class VaccineService : IVaccineService
 
         await _context.SaveChangesAsync();
 
+        if (vaxType.LinkedMedicineId.HasValue && !await DeductLinkedMedicineAsync(farmId, vaxType.LinkedMedicineId.Value, userId, record.Id, record.DateGiven))
+            return Result<VaccinationRecordDto>.Validation("Insufficient linked medicine stock");
+
         // Auto-create Expense when Cost > 0
         if (request.Cost > 0)
         {
@@ -729,6 +732,21 @@ public class VaccineService : IVaccineService
         }
 
         return results.OrderBy(s => s.DaysUntilDue).ToList();
+    }
+
+    private async Task<bool> DeductLinkedMedicineAsync(Guid farmId, Guid medicineId, Guid? userId, Guid vaccinationId, DateTime dateUsed)
+    {
+        var batches = await _context.MedicineStocks.Where(s => s.FarmId == farmId && s.MedicineId == medicineId && s.Quantity > 0).OrderBy(s => s.ExpiryDate).ToListAsync();
+        if (batches.Count == 0) return false;
+        var batch = batches[0];
+        batch.Quantity--;
+        _context.MedicineUsages.Add(new MedicineUsage
+        {
+            FarmId = farmId, MedicineId = medicineId, MedicineStockId = batch.Id,
+            QuantityUsed = 1, DateUsed = dateUsed, Notes = $"Vaccination {vaccinationId}", CreatedBy = userId
+        });
+        await _context.SaveChangesAsync();
+        return true;
     }
 
     private async Task<Expense> AutoCreateVetExpenseAsync(Guid farmId, decimal amount, string? vetName, string description, DateTime expenseDate, Guid? userId)

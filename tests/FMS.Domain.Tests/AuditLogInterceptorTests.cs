@@ -128,6 +128,56 @@ public class AuditLogInterceptorTests
     }
 
     [Fact]
+    public async Task MedicalRecordPlusMedicineUsage_OneSave_CapturesBothNoDupes()
+    {
+        var userId = Guid.NewGuid();
+        var httpContext = CreateHttpContextAccessor(userId, "test@example.com");
+        using var context = CreateContextWithInterceptor(httpContext);
+        var farm = await SeedFarmAsync(context);
+
+        var animal = new Animal
+        {
+            Id = Guid.NewGuid(), FarmId = farm.Id, TagNumber = "T1",
+            AnimalTypeId = Guid.NewGuid(), SexOptionId = Guid.NewGuid(), AnimalStatusId = Guid.NewGuid()
+        };
+        var medicine = new Medicine { Id = Guid.NewGuid(), FarmId = farm.Id, Name = "Oxytetracycline", Unit = "ml" };
+        var stock = new MedicineStock
+        {
+            Id = Guid.NewGuid(), FarmId = farm.Id, MedicineId = medicine.Id,
+            BatchNumber = "B1", Quantity = 100, UnitCost = 1, ExpiryDate = DateTime.UtcNow.AddDays(60)
+        };
+        context.Animals.Add(animal);
+        context.Medicines.Add(medicine);
+        context.MedicineStocks.Add(stock);
+        await context.SaveChangesAsync();
+        context.AuditLogs.RemoveRange(context.AuditLogs);
+        await context.SaveChangesAsync();
+
+        var medical = new MedicalRecord
+        {
+            Id = Guid.NewGuid(), FarmId = farm.Id, AnimalId = animal.Id,
+            Symptoms = "Fever", DateRecorded = DateTime.UtcNow, CreatedAt = DateTime.UtcNow
+        };
+        var usage = new MedicineUsage
+        {
+            Id = Guid.NewGuid(), FarmId = farm.Id, MedicineId = medicine.Id,
+            MedicineStockId = stock.Id, MedicalRecordId = medical.Id,
+            QuantityUsed = 5, DateUsed = DateTime.UtcNow, Notes = null, CreatedBy = userId
+        };
+        context.MedicalRecords.Add(medical);
+        context.MedicineUsages.Add(usage);
+        await context.SaveChangesAsync();
+
+        var logs = await context.AuditLogs.ToListAsync();
+        var medicalLogs = logs.Where(l => l.EntityType == "MedicalRecord").ToList();
+        var usageLogs = logs.Where(l => l.EntityType == "MedicineUsage").ToList();
+
+        Assert.Single(medicalLogs);
+        Assert.Single(usageLogs);
+        Assert.All(logs, l => Assert.Equal(AuditAction.Create, l.Action));
+    }
+
+    [Fact]
     public async Task NoHttpContext_DoesNotCrash()
     {
         var httpContext = CreateHttpContextAccessor();

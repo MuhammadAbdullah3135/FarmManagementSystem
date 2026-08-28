@@ -117,7 +117,7 @@ const DashboardPage: React.FC = () => {
           <Col xs={12} sm={8} md={6}>
             <Card>
               <Statistic
-                title="Due Vaccination"
+                title="Due Weight Checks"
                 value={summary?.dueVaccinationCount ?? 0}
                 prefix={<MedicineBoxOutlined />}
                 valueStyle={{ color: summary?.dueVaccinationCount ? '#faad14' : undefined }}
@@ -251,7 +251,7 @@ const DashboardPage: React.FC = () => {
                           <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
                         ))}
                       </Pie>
-                      <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                      <Tooltip formatter={(value) => formatCurrency(Number(value ?? 0))} />
                     </PieChart>
                   </ResponsiveContainer>
                 ) : (
@@ -290,7 +290,7 @@ const DashboardPage: React.FC = () => {
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="monthName" tick={{ fontSize: 11 }} />
                       <YAxis />
-                      <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                      <Tooltip formatter={(value) => formatCurrency(Number(value ?? 0))} />
                       <Legend />
                       <Bar dataKey="income" name="Income" fill="#52c41a" />
                       <Bar dataKey="expenses" name="Expenses" fill="#ff4d4f" />

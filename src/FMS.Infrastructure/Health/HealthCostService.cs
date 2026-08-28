@@ -20,7 +20,7 @@ public class HealthCostService : IHealthCostService
         var to = filter.To?.Date.AddDays(1);
 
         var medical = _context.MedicalRecords
-            .Where(m => m.FarmId == farmId && m.Cost > 0
+            .Where(m => m.FarmId == farmId && !m.IsDeleted && m.Cost > 0
                 && (!from.HasValue || m.DateRecorded >= from.Value)
                 && (!to.HasValue || m.DateRecorded < to.Value));
 
@@ -50,7 +50,7 @@ public class HealthCostService : IHealthCostService
         var to = filter.To?.Date.AddDays(1);
 
         var medicalVets = await _context.MedicalRecords
-            .Where(m => m.FarmId == farmId && m.Cost > 0 && m.VetName != null
+            .Where(m => m.FarmId == farmId && !m.IsDeleted && m.Cost > 0 && m.VetName != null
                 && (!from.HasValue || m.DateRecorded >= from.Value)
                 && (!to.HasValue || m.DateRecorded < to.Value))
             .GroupBy(m => m.VetName!)
@@ -85,7 +85,7 @@ public class HealthCostService : IHealthCostService
         var to = filter.To?.Date.AddDays(1);
 
         var medicalByAnimal = await _context.MedicalRecords
-            .Where(m => m.FarmId == farmId && m.Cost > 0
+            .Where(m => m.FarmId == farmId && !m.IsDeleted && m.Cost > 0
                 && (!from.HasValue || m.DateRecorded >= from.Value)
                 && (!to.HasValue || m.DateRecorded < to.Value))
             .GroupBy(m => new { m.AnimalId, m.Animal.TagNumber, m.Animal.Name })
@@ -122,7 +122,7 @@ public class HealthCostService : IHealthCostService
         var end = new DateTime(year + 1, 1, 1);
 
         var medicalByMonth = await _context.MedicalRecords
-            .Where(m => m.FarmId == farmId && m.Cost > 0 && m.DateRecorded >= start && m.DateRecorded < end)
+            .Where(m => m.FarmId == farmId && !m.IsDeleted && m.Cost > 0 && m.DateRecorded >= start && m.DateRecorded < end)
             .GroupBy(m => m.DateRecorded.Month)
             .Select(g => new { Month = g.Key, Total = g.Sum(m => m.Cost) })
             .ToDictionaryAsync(g => g.Month, g => g.Total);

@@ -634,6 +634,8 @@ public class BreedingService : IBreedingService
     {
         if (request.Offspring == null || request.Offspring.Count == 0)
             return Result<BirthRecordDto>.Validation("At least one offspring is required");
+        if (!request.BreedingRecordId.HasValue && !request.GestationRecordId.HasValue)
+            return Result<BirthRecordDto>.Validation("A breeding record or gestation record is required to establish lineage");
 
         // Validate dam
         var dam = await _context.Animals
@@ -714,7 +716,7 @@ public class BreedingService : IBreedingService
                 BreedId = dam.BreedId,
                 SexOptionId = offReq.SexOptionId,
                 AnimalStatusId = activeStatus?.Id ?? dam.AnimalStatusId,
-                SireId = dam.DamId != null ? null : null, // Sire comes from breeding/gestation record if available
+                // Sire is populated from the validated breeding or gestation record below.
                 DamId = request.DamId,
                 DateOfBirth = request.BirthDate,
                 AcquisitionDate = request.BirthDate,

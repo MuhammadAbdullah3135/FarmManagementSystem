@@ -29,7 +29,7 @@ public class FinanceService : IFinanceService
                 Id = c.Id,
                 Name = c.Name,
                 Description = c.Description,
-                ExpenseCount = _context.Expenses.Count(e => e.ExpenseCategoryId == c.Id)
+                ExpenseCount = _context.Expenses.Count(e => e.ExpenseCategoryId == c.Id && !e.IsDeleted)
             })
             .ToListAsync();
 
@@ -129,7 +129,7 @@ public class FinanceService : IFinanceService
                 Id = m.Id,
                 Name = m.Name,
                 Description = m.Description,
-                ExpenseCount = _context.Expenses.Count(e => e.PaymentMethodId == m.Id),
+                ExpenseCount = _context.Expenses.Count(e => e.PaymentMethodId == m.Id && !e.IsDeleted),
                 IncomeRecordCount = _context.IncomeRecords.Count(r => r.PaymentMethodId == m.Id)
             })
             .ToListAsync();
@@ -227,7 +227,7 @@ public class FinanceService : IFinanceService
             .Include(e => e.PaymentMethod)
             .Include(e => e.Animal)
             .Include(e => e.Location)
-            .FirstOrDefaultAsync(e => e.Id == id && e.FarmId == farmId);
+            .FirstOrDefaultAsync(e => e.Id == id && e.FarmId == farmId && !e.IsDeleted);
         if (expense == null)
             return Result<ExpenseDto>.NotFound("Expense not found");
 
@@ -244,7 +244,7 @@ public class FinanceService : IFinanceService
             .Include(e => e.PaymentMethod)
             .Include(e => e.Animal)
             .Include(e => e.Location)
-            .Where(e => e.FarmId == farmId);
+            .Where(e => e.FarmId == farmId && !e.IsDeleted);
 
         if (filter.From.HasValue)
             query = query.Where(e => e.ExpenseDate >= filter.From.Value.Date);
@@ -322,7 +322,7 @@ public class FinanceService : IFinanceService
     public async Task<Result<ExpenseDto>> UpdateExpenseAsync(Guid farmId, Guid id, UpdateExpenseRequest request)
     {
         var expense = await _context.Expenses
-            .FirstOrDefaultAsync(e => e.Id == id && e.FarmId == farmId);
+            .FirstOrDefaultAsync(e => e.Id == id && e.FarmId == farmId && !e.IsDeleted);
         if (expense == null)
             return Result<ExpenseDto>.NotFound("Expense not found");
 
@@ -330,7 +330,7 @@ public class FinanceService : IFinanceService
         if (amountError != null)
             return Result<ExpenseDto>.Validation(amountError);
 
-        if (request.ExpenseDate > DateTime.UtcNow.AddMinutes(5))
+        if (request.ExpenseDate.HasValue && request.ExpenseDate > DateTime.UtcNow.AddMinutes(5))
             return Result<ExpenseDto>.Validation("Expense date cannot be in the future");
         if (request.Description?.Length > 1000)
             return Result<ExpenseDto>.Validation("Description cannot exceed 1000 characters");
@@ -339,7 +339,7 @@ public class FinanceService : IFinanceService
         if (referenceError != null)
             return Result<ExpenseDto>.Failure(referenceError);
 
-        expense.ExpenseDate = request.ExpenseDate;
+        expense.ExpenseDate = request.ExpenseDate ?? expense.ExpenseDate;
         expense.Amount = Math.Round(request.Amount, 2);
         expense.ExpenseCategoryId = request.ExpenseCategoryId;
         expense.PaymentMethodId = request.PaymentMethodId;
@@ -357,7 +357,7 @@ public class FinanceService : IFinanceService
     public async Task<Result> DeleteExpenseAsync(Guid farmId, Guid id)
     {
         var expense = await _context.Expenses
-            .FirstOrDefaultAsync(e => e.Id == id && e.FarmId == farmId);
+            .FirstOrDefaultAsync(e => e.Id == id && e.FarmId == farmId && !e.IsDeleted);
         if (expense == null)
             return Result.NotFound("Expense not found");
 
@@ -579,7 +579,7 @@ public class FinanceService : IFinanceService
         if (amountError != null)
             return Result<IncomeRecordDto>.Validation(amountError);
 
-        if (request.IncomeDate > DateTime.UtcNow.AddMinutes(5))
+        if (request.IncomeDate.HasValue && request.IncomeDate > DateTime.UtcNow.AddMinutes(5))
             return Result<IncomeRecordDto>.Validation("Income date cannot be in the future");
         if (request.Description?.Length > 1000)
             return Result<IncomeRecordDto>.Validation("Description cannot exceed 1000 characters");
@@ -588,7 +588,7 @@ public class FinanceService : IFinanceService
         if (referenceError != null)
             return Result<IncomeRecordDto>.Failure(referenceError);
 
-        record.IncomeDate = request.IncomeDate;
+        record.IncomeDate = request.IncomeDate ?? record.IncomeDate;
         record.Amount = Math.Round(request.Amount, 2);
         record.IncomeCategoryId = request.IncomeCategoryId;
         record.PaymentMethodId = request.PaymentMethodId;
@@ -630,7 +630,7 @@ public class FinanceService : IFinanceService
             .SumAsync(r => r.Amount);
 
         var totalExpenses = await _context.Expenses
-            .Where(e => e.FarmId == farmId
+            .Where(e => e.FarmId == farmId && !e.IsDeleted
                 && (!from.HasValue || e.ExpenseDate >= from.Value)
                 && (!to.HasValue || e.ExpenseDate < to.Value))
             .SumAsync(e => e.Amount);
@@ -651,7 +651,7 @@ public class FinanceService : IFinanceService
         var to = filter.To?.Date.AddDays(1);
 
         var items = await _context.Expenses
-            .Where(e => e.FarmId == farmId
+            .Where(e => e.FarmId == farmId && !e.IsDeleted
                 && (!from.HasValue || e.ExpenseDate >= from.Value)
                 && (!to.HasValue || e.ExpenseDate < to.Value))
             .GroupBy(e => new { e.ExpenseCategoryId, e.Category.Name })
@@ -717,7 +717,7 @@ public class FinanceService : IFinanceService
             .ToDictionaryAsync(g => g.Month, g => g.Total);
 
         var expenseByMonth = await _context.Expenses
-            .Where(e => e.FarmId == farmId && e.ExpenseDate >= startDate && e.ExpenseDate < endDate)
+            .Where(e => e.FarmId == farmId && !e.IsDeleted && e.ExpenseDate >= startDate && e.ExpenseDate < endDate)
             .GroupBy(e => e.ExpenseDate.Month)
             .Select(g => new { Month = g.Key, Total = g.Sum(e => e.Amount) })
             .ToDictionaryAsync(g => g.Month, g => g.Total);

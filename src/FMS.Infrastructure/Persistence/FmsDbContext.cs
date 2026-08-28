@@ -60,6 +60,7 @@ public class FmsDbContext : DbContext
     public DbSet<VaccineType> VaccineTypes => Set<VaccineType>();
     public DbSet<VaccinationRecord> VaccinationRecords => Set<VaccinationRecord>();
     public DbSet<VaccinationSchedule> VaccinationSchedules => Set<VaccinationSchedule>();
+    public DbSet<WeightCheckSchedule> WeightCheckSchedules => Set<WeightCheckSchedule>();
     public DbSet<BreedingRecord> BreedingRecords => Set<BreedingRecord>();
     public DbSet<GestationRecord> GestationRecords => Set<GestationRecord>();
     public DbSet<GestationHealthCheck> GestationHealthChecks => Set<GestationHealthCheck>();

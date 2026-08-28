@@ -21,25 +21,23 @@ public class AuditLogInterceptor : SaveChangesInterceptor
         _httpContextAccessor = httpContextAccessor;
     }
 
-    public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
+    public override async ValueTask<InterceptionResult<int>> SavingChangesAsync(
         DbContextEventData eventData,
         InterceptionResult<int> result,
         CancellationToken cancellationToken = default)
     {
         var dbContext = eventData.Context as FmsDbContext;
         if (dbContext == null || dbContext.IsSavingAuditLogs)
-            return base.SavingChangesAsync(eventData, result, cancellationToken);
+            return await base.SavingChangesAsync(eventData, result, cancellationToken);
 
         var auditEntries = CollectAuditEntries(dbContext);
-
         if (auditEntries.Count > 0)
         {
-            // Prevent recursion
             dbContext.IsSavingAuditLogs = true;
             try
             {
                 dbContext.AuditLogs.AddRange(auditEntries);
-                dbContext.SaveChangesAsync(cancellationToken).GetAwaiter().GetResult();
+                await dbContext.SaveChangesAsync(cancellationToken);
             }
             finally
             {
@@ -47,7 +45,7 @@ public class AuditLogInterceptor : SaveChangesInterceptor
             }
         }
 
-        return base.SavingChangesAsync(eventData, result, cancellationToken);
+        return await base.SavingChangesAsync(eventData, result, cancellationToken);
     }
 
     private List<Domain.Entities.AuditLog> CollectAuditEntries(FmsDbContext dbContext)

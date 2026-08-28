@@ -716,6 +716,36 @@ export interface VaccinationStatus {
   daysUntilDue: number;
 }
 
+
+
+// Health - Weight Check Schedules
+export interface WeightCheckSchedule {
+  id: string;
+  animalTypeId?: string;
+  animalTypeName?: string;
+  breedId?: string;
+  breedName?: string;
+  ageCategoryId?: string;
+  ageCategoryName?: string;
+  recurrenceDays: number;
+  isActive: boolean;
+  notes?: string;
+  createdAt: string;
+}
+
+export type WeightCheckStatusType = 'Upcoming' | 'Due' | 'Overdue';
+
+export interface WeightCheckStatus {
+  animalId: string;
+  animalTagNumber: string;
+  animalName?: string;
+  lastWeightDate?: string;
+  nextDueDate: string;
+  status: WeightCheckStatusType;
+  statusName: string;
+  daysUntilDue: number;
+}
+
 // Health - Cost Rollups
 export interface HealthCostSummary {
   totalMedicalCost: number;

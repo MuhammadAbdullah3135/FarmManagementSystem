@@ -161,7 +161,7 @@ const FinanceReportsPage: React.FC = () => {
                   >
                     {expenseBreakdown.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
                   </Pie>
-                  <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                  <Tooltip formatter={(value) => formatCurrency(Number(value ?? 0))} />
                 </PieChart>
               </ResponsiveContainer>
             ) : null}
@@ -195,7 +195,7 @@ const FinanceReportsPage: React.FC = () => {
                   >
                     {incomeBreakdown.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
                   </Pie>
-                  <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                  <Tooltip formatter={(value) => formatCurrency(Number(value ?? 0))} />
                 </PieChart>
               </ResponsiveContainer>
             ) : null}
@@ -226,7 +226,7 @@ const FinanceReportsPage: React.FC = () => {
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="monthName" />
               <YAxis />
-              <Tooltip formatter={(value: number) => formatCurrency(value)} />
+              <Tooltip formatter={(value) => formatCurrency(Number(value ?? 0))} />
               <Legend />
               <Bar dataKey="income" name="Income" fill="#52c41a" />
               <Bar dataKey="expenses" name="Expenses" fill="#ff4d4f" />

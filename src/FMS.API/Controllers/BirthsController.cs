@@ -32,7 +32,7 @@ public class BirthsController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = "Vet,FarmManager,SystemOwner,Owner")]
+    [Authorize(Roles = "Veterinarian,FarmManager,SystemOwner")]
     public async Task<IActionResult> CreateBirthRecord(Guid farmId, [FromBody] CreateBirthRecordRequest request)
     {
         var result = await _breedingService.CreateBirthRecordAsync(farmId, request);
@@ -42,7 +42,7 @@ public class BirthsController : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
-    [Authorize(Roles = "Vet,FarmManager,SystemOwner,Owner")]
+    [Authorize(Roles = "Veterinarian,FarmManager,SystemOwner")]
     public async Task<IActionResult> DeleteBirthRecord(Guid farmId, Guid id)
     {
         var result = await _breedingService.DeleteBirthRecordAsync(farmId, id);

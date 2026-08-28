@@ -32,7 +32,7 @@ public class BreedingRecordsController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = "Vet,FarmManager,SystemOwner,Owner")]
+    [Authorize(Roles = "Veterinarian,FarmManager,SystemOwner")]
     public async Task<IActionResult> CreateBreedingRecord(Guid farmId, [FromBody] CreateBreedingRecordRequest request)
     {
         var result = await _breedingService.CreateBreedingRecordAsync(farmId, request);
@@ -42,7 +42,7 @@ public class BreedingRecordsController : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
-    [Authorize(Roles = "Vet,FarmManager,SystemOwner,Owner")]
+    [Authorize(Roles = "Veterinarian,FarmManager,SystemOwner")]
     public async Task<IActionResult> UpdateBreedingRecord(Guid farmId, Guid id, [FromBody] UpdateBreedingRecordRequest request)
     {
         var result = await _breedingService.UpdateBreedingRecordAsync(farmId, id, request);
@@ -50,7 +50,7 @@ public class BreedingRecordsController : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
-    [Authorize(Roles = "Vet,FarmManager,SystemOwner,Owner")]
+    [Authorize(Roles = "Veterinarian,FarmManager,SystemOwner")]
     public async Task<IActionResult> DeleteBreedingRecord(Guid farmId, Guid id)
     {
         var result = await _breedingService.DeleteBreedingRecordAsync(farmId, id);

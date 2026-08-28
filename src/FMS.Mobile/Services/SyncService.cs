@@ -93,7 +93,7 @@ public class SyncService : ISyncService
                 record.SyncStatus = SyncStatus.Syncing;
                 await _db.UpdatePendingRecordAsync(record);
 
-                var serverId = await PushRecordAsync(record);
+                var serverId = await PushRecordAsync(record, farmId);
                 if (serverId.HasValue)
                 {
                     record.SyncStatus = SyncStatus.Synced;
@@ -209,20 +209,20 @@ public class SyncService : ISyncService
 
     // ── Push record to API ─────────────────────────────
 
-    private async Task<Guid?> PushRecordAsync(PendingRecord record)
+    private async Task<Guid?> PushRecordAsync(PendingRecord record, Guid farmId)
     {
         if (record.EntityType == "Image")
             return await PushImageAsync(record);
 
         if (record.EntityType == "TaskComplete")
-            return await PushTaskCompleteAsync(record);
+            return await PushTaskCompleteAsync(record, farmId);
 
         // WeightRecord uses animal-specific endpoint
         string endpoint;
         if (record.EntityType == "WeightRecord")
         {
             var payloadCheck = JsonSerializer.Deserialize<JsonElement>(record.Payload, JsonOptions);
-            var animalId = payloadCheck.GetProperty("animalId").GetString();
+            var animalId = await ResolveReferencedIdAsync(payloadCheck.GetProperty("animalId"), "Animal", farmId);
             endpoint = $"/farm/{record.FarmId}/animals/{animalId}/weights";
         }
         else
@@ -231,6 +231,7 @@ public class SyncService : ISyncService
         }
 
         var payload = JsonSerializer.Deserialize<JsonElement>(record.Payload, JsonOptions);
+        payload = await ResolvePayloadReferencesAsync(payload, farmId);
         var content = new StringContent(JsonSerializer.Serialize(payload, JsonOptions), System.Text.Encoding.UTF8, "application/json");
         var response = await _api.Client.PostAsync(endpoint, content);
         response.EnsureSuccessStatusCode();
@@ -246,7 +247,7 @@ public class SyncService : ISyncService
         if (doc.RootElement.TryGetProperty("id", out var idNum) && idNum.ValueKind == JsonValueKind.Number)
             return Guid.Parse(idNum.ToString());
 
-        return Guid.NewGuid();
+        throw new InvalidOperationException($"Server response for {record.EntityType} did not contain an ID.");
     }
 
     private async Task<Guid?> PushImageAsync(PendingRecord record)
@@ -264,19 +265,48 @@ public class SyncService : ISyncService
             endpoint, fileStream, Path.GetFileName(record.FilePath), "image/jpeg",
             new Dictionary<string, string> { ["caption"] = payload.Caption ?? "", ["isPrimary"] = "false" });
 
-        return result?.Id ?? Guid.NewGuid();
+        return result?.Id ?? throw new InvalidOperationException("Server response for Image did not contain an ID.");
     }
 
-    private async Task<Guid?> PushTaskCompleteAsync(PendingRecord record)
+    private async Task<Guid?> PushTaskCompleteAsync(PendingRecord record, Guid farmId)
     {
         var payload = JsonSerializer.Deserialize<TaskCompletePayload>(record.Payload, JsonOptions);
         if (payload is null) throw new InvalidOperationException("TaskComplete payload is null");
 
-        var endpoint = $"/farm/{record.FarmId}/tasks/{payload.TaskId}/complete";
+        var taskId = await ResolveServerIdAsync(payload.TaskId, "Task", farmId);
+        var endpoint = $"/farm/{record.FarmId}/tasks/{taskId}/complete";
         await _api.PostAsync(endpoint, new { completionNotes = "" });
 
         // Task completion doesn't return an ID — use the taskId as server ID
-        return payload.TaskId;
+        return taskId;
+    }
+
+    private async Task<Guid> ResolveServerIdAsync(Guid localId, string entityType, Guid farmId)
+    {
+        var mapping = await _db.ResolveServerIdAsync(localId, entityType);
+        if (mapping is null || mapping.FarmId != farmId)
+            return localId;
+        return mapping.ServerId;
+    }
+
+    private async Task<JsonElement> ResolvePayloadReferencesAsync(JsonElement payload, Guid farmId)
+    {
+        if (payload.ValueKind != JsonValueKind.Object) return payload;
+        using var stream = new MemoryStream();
+        using (var writer = new Utf8JsonWriter(stream))
+        {
+            writer.WriteStartObject();
+            foreach (var property in payload.EnumerateObject())
+            {
+                writer.WritePropertyName(property.Name);
+                if (property.Name.EndsWith("Id", StringComparison.OrdinalIgnoreCase) && property.Value.ValueKind == JsonValueKind.String && Guid.TryParse(property.Value.GetString(), out var localId))
+                    writer.WriteStringValue(await ResolveServerIdAsync(localId, property.Name[..^2], farmId));
+                else
+                    property.Value.WriteTo(writer);
+            }
+            writer.WriteEndObject();
+        }
+        return JsonDocument.Parse(stream.ToArray()).RootElement.Clone();
     }
 
     // ── Endpoint mapping ───────────────────────────────

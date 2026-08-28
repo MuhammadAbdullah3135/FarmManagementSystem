@@ -98,12 +98,14 @@ public class TestWebApplicationFactory : IDisposable
                     services.AddScoped<FMS.Application.Health.IMedicineService, FMS.Infrastructure.Health.MedicineService>();
                     services.AddScoped<FMS.Application.Health.IMedicalRecordService, FMS.Infrastructure.Health.MedicalRecordService>();
                     services.AddScoped<FMS.Application.Health.IHealthCostService, FMS.Infrastructure.Health.HealthCostService>();
+                    services.AddScoped<FMS.Application.Health.IWeightCheckScheduleService, FMS.Infrastructure.Health.WeightCheckScheduleService>();
                     services.AddScoped<FMS.Application.Tasks.IFarmTaskService, FMS.Infrastructure.Tasks.FarmTaskService>();
                     services.AddScoped<FMS.Application.Animal.IAnimalService, FMS.Infrastructure.Animals.AnimalService>();
                     services.AddScoped<FMS.Application.Breeding.IBreedingService, FMS.Infrastructure.Breeding.BreedingService>();
                     services.AddScoped<FMS.Application.Employees.IEmployeeService, FMS.Infrastructure.Employees.EmployeeService>();
                     services.AddScoped<FMS.Application.Dashboard.IDashboardService, FMS.Infrastructure.Dashboard.DashboardService>();
                     services.AddScoped<FMS.Application.Reports.IReportService, FMS.Infrastructure.Reports.ReportService>();
+                    services.AddScoped<FMS.Application.AuditLog.IAuditLogService, FMS.Infrastructure.AuditLog.AuditLogService>();
 
                     // Simple test auth: scheme "Test" that always authenticates with the claims from the token
                     services.AddAuthentication("Test")
@@ -164,18 +166,35 @@ public class TestAuthHandler : AuthenticationHandler<AuthenticationSchemeOptions
             new(ClaimTypes.Role, "FarmManager"),
         };
 
-        // Extract the NameIdentifier from the JWT
+        // Extract claims from the JWT so tests can exercise role-based authorization.
+        // Defaults to FarmManager when no token claims are present (backwards compatible).
         try
         {
             var jwt = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler().ReadJwtToken(token);
-            // JWT serializes ClaimTypes.NameIdentifier as "nameid"
-            var nameIdClaim = jwt.Claims.FirstOrDefault(c =>
+            var jwtClaims = jwt.Claims.ToList();
+
+            var nameIdClaim = jwtClaims.FirstOrDefault(c =>
                 c.Type == "sub" ||
                 c.Type == ClaimTypes.NameIdentifier ||
                 c.Type == "nameid");
             if (nameIdClaim != null)
-            {
                 claims[0] = new Claim(ClaimTypes.NameIdentifier, nameIdClaim.Value);
+
+            var nameClaim = jwtClaims.FirstOrDefault(c =>
+                c.Type == ClaimTypes.Name || c.Type == "unique_name" || c.Type == "email");
+            if (nameClaim != null)
+                claims[1] = new Claim(ClaimTypes.Name, nameClaim.Value);
+
+            var roleClaims = jwtClaims
+                .Where(c => c.Type == ClaimTypes.Role || c.Type == "role")
+                .Select(c => c.Value)
+                .Distinct()
+                .ToList();
+            if (roleClaims.Count > 0)
+            {
+                claims.RemoveAll(c => c.Type == ClaimTypes.Role);
+                foreach (var role in roleClaims)
+                    claims.Add(new Claim(ClaimTypes.Role, role));
             }
         }
         catch { /* Use default claims */ }

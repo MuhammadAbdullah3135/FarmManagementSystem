@@ -23,6 +23,7 @@ public class DashboardService : IDashboardService
     private readonly IInventoryService _inventoryService;
     private readonly IFeedService _feedService;
     private readonly IFinanceService _financeService;
+    private readonly IWeightCheckScheduleService _weightCheckService;
 
     public DashboardService(
         FmsDbContext db,
@@ -32,7 +33,8 @@ public class DashboardService : IDashboardService
         IBreedingSvc breedingService,
         IInventoryService inventoryService,
         IFeedService feedService,
-        IFinanceService financeService)
+        IFinanceService financeService,
+        IWeightCheckScheduleService weightCheckService)
     {
         _db = db;
         _vaccineService = vaccineService;
@@ -42,6 +44,7 @@ public class DashboardService : IDashboardService
         _inventoryService = inventoryService;
         _feedService = feedService;
         _financeService = financeService;
+        _weightCheckService = weightCheckService;
     }
 
     public async Task<Result<DashboardSummaryDto>> GetSummaryAsync(Guid farmId)
@@ -65,7 +68,10 @@ public class DashboardService : IDashboardService
             .ToDictionary(g => g.Key, g => g.Count());
 
         var pregnantCount = await _db.GestationRecords
-            .CountAsync(g => g.FarmId == farmId && g.ExpectedDeliveryDate > DateTime.UtcNow);
+            .CountAsync(g => g.FarmId == farmId
+                && g.ConfirmedDate != null
+                && g.ExpectedDeliveryDate > DateTime.UtcNow
+                && !g.Animal.IsDeleted);
 
         var sickCount = await _db.Animals
             .CountAsync(a => a.FarmId == farmId && !a.IsDeleted && a.AnimalStatus.Category == AnimalStatusCategory.Inactive);
@@ -82,6 +88,17 @@ public class DashboardService : IDashboardService
                 : 0;
         }
         catch { /* InMemory DB doesn't support DateDiffDay */ }
+
+        // Due weight check count
+        int dueWeightCheckCount = 0;
+        try
+        {
+            var weightCheckStatus = await _weightCheckService.GetWeightCheckStatusAsync(farmId);
+            dueWeightCheckCount = weightCheckStatus.IsSuccess
+                ? weightCheckStatus.Value!.Count(w => w.Status == WeightCheckStatusType.Due || w.Status == WeightCheckStatusType.Overdue)
+                : 0;
+        }
+        catch { /* InMemory DB compat */ }
 
         // Overdue tasks
         var overdueTasksResult = await _taskService.GetTasksAsync(farmId, new Application.Tasks.FarmTaskListFilter
@@ -126,6 +143,7 @@ public class DashboardService : IDashboardService
             PregnantCount = pregnantCount,
             SickCount = sickCount,
             DueVaccinationCount = dueVaccinationCount,
+            DueWeightCheckCount = dueWeightCheckCount,
             OverdueTasks = overdueTasks,
             UpcomingBirths = upcomingBirths,
             TotalFeedStockValue = totalFeedStockValue,
@@ -161,6 +179,28 @@ public class DashboardService : IDashboardService
         }
         catch { /* InMemory DB doesn't support DateDiffDay */ }
 
+        // ── Overdue weight checks ──
+        try
+        {
+            var overdueWeightResult = await _weightCheckService.GetOverdueWeightChecksAsync(farmId);
+            if (overdueWeightResult.IsSuccess)
+            {
+                foreach (var w in overdueWeightResult.Value!)
+                {
+                    alerts.Add(new DashboardAlertDto
+                    {
+                        AlertType = "OverdueWeightCheck",
+                        Severity = "Warning",
+                        Title = $"Weight check due: {w.AnimalTagNumber}",
+                        Message = $"Last recorded: {(w.LastWeightDate?.ToString("MMM dd, yyyy") ?? "Never")}. Next due: {w.NextDueDate:MMM dd, yyyy}",
+                        DueDate = w.NextDueDate,
+                        Link = "/dashboard/health/weight-schedules"
+                    });
+                }
+            }
+        }
+        catch { /* InMemory DB compat */ }
+
         // ── Medicine alerts ──
         var medicineAlerts = await _medicineService.GetAlertsAsync(farmId);
         if (medicineAlerts.IsSuccess)
@@ -170,15 +210,12 @@ public class DashboardService : IDashboardService
                 var severity = a.AlertType == MedicineAlertType.Expired ? "Critical"
                     : a.AlertType == MedicineAlertType.ExpiringSoon ? "Warning"
                     : "Info";
-
                 alerts.Add(new DashboardAlertDto
                 {
-                    AlertType = "Medicine",
-                    Severity = severity,
+                    AlertType = "Medicine", Severity = severity,
                     Title = $"{a.AlertTypeName}: {a.MedicineName}",
                     Message = $"Batch {a.BatchNumber} — {a.CurrentQuantity} {a.Unit} remaining (threshold: {a.LowStockThreshold}). Expires {a.ExpiryDate:MMM dd, yyyy}.",
-                    DueDate = a.ExpiryDate,
-                    Link = "/dashboard/health/medicines/alerts"
+                    DueDate = a.ExpiryDate, Link = "/dashboard/health/medicines/alerts"
                 });
             }
         }
@@ -186,8 +223,7 @@ public class DashboardService : IDashboardService
         // ── Overdue tasks ──
         var overdueTasks = await _taskService.GetTasksAsync(farmId, new Application.Tasks.FarmTaskListFilter
         {
-            IncludeOverdueOnly = true,
-            PageSize = 50
+            IncludeOverdueOnly = true, PageSize = 50
         });
         if (overdueTasks.IsSuccess)
         {
@@ -200,19 +236,17 @@ public class DashboardService : IDashboardService
                     Title = $"Overdue: {t.Title}",
                     Message = $"Task was due {t.DueDate:MMM dd, yyyy}" +
                               (t.AssignedEmployeeName != null ? $" — assigned to {t.AssignedEmployeeName}" : ""),
-                    DueDate = t.DueDate,
-                    Link = "/dashboard/tasks"
+                    DueDate = t.DueDate, Link = "/dashboard/tasks"
                 });
             }
         }
 
-        // ── Upcoming births (may fail on InMemory due to DateDiffDay) ──
+        // ── Upcoming births ──
         try
         {
             var gestationResult = await _breedingService.GetGestationRecordsAsync(farmId, new GestationFilter
             {
-                ActiveOnly = true,
-                PageSize = 100
+                ActiveOnly = true, PageSize = 100
             });
             if (gestationResult.IsSuccess)
             {
@@ -224,13 +258,12 @@ public class DashboardService : IDashboardService
                         Severity = g.DaysUntilDue <= 3 ? "Critical" : "Warning",
                         Title = $"Birth due: {g.AnimalTagNumber}",
                         Message = $"Expected {g.ExpectedDeliveryDate:MMM dd, yyyy} ({g.DaysUntilDue} days). Stage: {g.CurrentStage}.",
-                        DueDate = g.ExpectedDeliveryDate,
-                        Link = "/dashboard/breeding/gestation"
+                        DueDate = g.ExpectedDeliveryDate, Link = "/dashboard/breeding/gestation"
                     });
                 }
             }
         }
-        catch { /* InMemory DB doesn't support DateDiffDay */ }
+        catch { }
 
         // ── Low inventory stock ──
         var inventoryReport = await _inventoryService.GetReportAsync(farmId);
@@ -240,8 +273,7 @@ public class DashboardService : IDashboardService
             {
                 alerts.Add(new DashboardAlertDto
                 {
-                    AlertType = "LowInventory",
-                    Severity = "Warning",
+                    AlertType = "LowInventory", Severity = "Warning",
                     Title = $"Low stock: {item.ItemName}",
                     Message = $"{item.Quantity} {item.Unit} remaining (reorder level: {item.ReorderLevel}). Shortfall: {item.Shortfall} {item.Unit}.",
                     Link = "/dashboard/inventory/reports"
@@ -249,45 +281,25 @@ public class DashboardService : IDashboardService
             }
         }
 
-        // Sort: Critical first, then Warning, then Info
         var severityOrder = new Dictionary<string, int> { ["Critical"] = 0, ["Warning"] = 1, ["Info"] = 2 };
         alerts = alerts.OrderBy(a => severityOrder.GetValueOrDefault(a.Severity, 3)).ToList();
-
         return Result<List<DashboardAlertDto>>.Success(alerts);
     }
 
     public async Task<Result<DashboardChartsDto>> GetChartsAsync(Guid farmId, DateTime? from, DateTime? to)
     {
-        // ── Animal trends (animals created per month) ──
-        var animalQuery = _db.Animals
-            .Where(a => a.FarmId == farmId && !a.IsDeleted);
-
-        if (from.HasValue)
-            animalQuery = animalQuery.Where(a => a.CreatedAt >= from.Value);
-        if (to.HasValue)
-            animalQuery = animalQuery.Where(a => a.CreatedAt <= to.Value);
-
+        var animalQuery = _db.Animals.Where(a => a.FarmId == farmId && !a.IsDeleted);
+        if (from.HasValue) animalQuery = animalQuery.Where(a => a.CreatedAt >= from.Value);
+        if (to.HasValue) animalQuery = animalQuery.Where(a => a.CreatedAt <= to.Value);
         var animalTrends = await animalQuery
             .GroupBy(a => new { a.CreatedAt.Year, a.CreatedAt.Month })
-            .Select(g => new AnimalTrendPoint
-            {
-                Month = $"{g.Key.Year}-{g.Key.Month:D2}",
-                Count = g.Count()
-            })
-            .OrderBy(t => t.Month)
-            .ToListAsync();
-
-        // ── Expense breakdown ──
+            .Select(g => new AnimalTrendPoint { Month = $"{g.Key.Year}-{g.Key.Month:D2}", Count = g.Count() })
+            .OrderBy(t => t.Month).ToListAsync();
         var expenseFilter = new FinanceReportFilter { From = from, To = to };
         var expenseResult = await _financeService.GetExpenseBreakdownAsync(farmId, expenseFilter);
-
-        // ── Feed consumption trend ──
         var feedTrendResult = await _feedService.GetConsumptionTrendAsync(farmId, "day", from, to);
-
-        // ── Monthly P/L ──
         var year = (to ?? DateTime.UtcNow).Year;
         var monthlyPLResult = await _financeService.GetMonthlySummaryAsync(farmId, year);
-
         var charts = new DashboardChartsDto
         {
             AnimalTrends = animalTrends,
@@ -295,7 +307,6 @@ public class DashboardService : IDashboardService
             FeedConsumptionTrend = feedTrendResult.IsSuccess ? feedTrendResult.Value! : new(),
             MonthlyPL = monthlyPLResult.IsSuccess ? monthlyPLResult.Value! : new()
         };
-
         return Result<DashboardChartsDto>.Success(charts);
     }
 }

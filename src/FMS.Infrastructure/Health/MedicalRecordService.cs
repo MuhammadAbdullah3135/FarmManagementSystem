@@ -26,7 +26,7 @@ public class MedicalRecordService : IMedicalRecordService
 
         var query = _context.MedicalRecords
             .AsNoTracking()
-            .Where(m => m.FarmId == farmId);
+            .Where(m => m.FarmId == farmId && !m.IsDeleted);
 
         if (filter.AnimalId.HasValue)
             query = query.Where(m => m.AnimalId == filter.AnimalId.Value);
@@ -253,6 +253,15 @@ public class MedicalRecordService : IMedicalRecordService
         record.Dosage = request.Dosage?.Trim();
         record.VetName = request.VetName?.Trim();
         record.Cost = request.Cost;
+        if (record.ExpenseId.HasValue)
+        {
+            var expense = await _context.Expenses.FirstOrDefaultAsync(e => e.Id == record.ExpenseId.Value && e.FarmId == farmId);
+            if (expense is not null)
+            {
+                expense.Amount = Math.Round(request.Cost, 2);
+                expense.ExpenseDate = request.DateRecorded;
+            }
+        }
         record.DateRecorded = request.DateRecorded;
         record.FollowUpDate = request.FollowUpDate;
         record.Status = request.Status;
@@ -277,7 +286,20 @@ public class MedicalRecordService : IMedicalRecordService
         if (record == null)
             return Result.NotFound("Medical record not found");
 
-        _context.MedicalRecords.Remove(record);
+        var deletedBy = _currentUser.GetUserId();
+        record.IsDeleted = true;
+        record.DeletedAt = DateTime.UtcNow;
+        record.DeletedBy = deletedBy;
+        if (record.ExpenseId.HasValue)
+        {
+            var expense = await _context.Expenses.FirstOrDefaultAsync(e => e.Id == record.ExpenseId.Value && e.FarmId == farmId);
+            if (expense is not null)
+            {
+                expense.IsDeleted = true;
+                expense.DeletedAt = DateTime.UtcNow;
+                expense.DeletedBy = deletedBy;
+            }
+        }
         await _context.SaveChangesAsync();
 
         return Result.Success();

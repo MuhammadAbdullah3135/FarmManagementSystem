@@ -159,7 +159,7 @@ const FeedReportsPage: React.FC = () => {
                         >
                           {byType.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
                         </Pie>
-                        <Tooltip formatter={(v: number) => `$${v.toFixed(2)}`} />
+                        <Tooltip formatter={(v) => `$${Number(v ?? 0).toFixed(2)}`} />
                       </PieChart>
                     </ResponsiveContainer>
                   ) : null}

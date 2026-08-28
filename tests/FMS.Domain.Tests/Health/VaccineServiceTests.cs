@@ -66,6 +66,12 @@ public class VaccineServiceTests
 
         context.Farms.Add(farm);
         context.Medicines.Add(medicine);
+        context.MedicineStocks.Add(new Domain.Entities.MedicineStock
+        {
+            Id = Guid.NewGuid(), FarmId = farm.Id, MedicineId = medicine.Id,
+            BatchNumber = "TEST-BATCH", Quantity = 100, UnitCost = 1m,
+            ExpiryDate = DateTime.UtcNow.AddDays(365), DateReceived = DateTime.UtcNow
+        });
         context.AnimalTypes.Add(type);
         context.Breeds.Add(breed);
         context.SexOptions.Add(sex);
@@ -245,6 +251,8 @@ public class VaccineServiceTests
             VaccineTypeId = seed.VaccineTypeId,
             DateGiven = DateTime.UtcNow.Date.AddDays(-1)
         });
+
+        Assert.True(rec.IsSuccess, rec.Error?.Message);
 
         var updated = await service.UpdateVaccinationRecordAsync(seed.FarmId, rec.Value!.Id, new UpdateVaccinationRecordRequest
         {

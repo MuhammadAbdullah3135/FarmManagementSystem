@@ -32,7 +32,7 @@ public class GestationController : ControllerBase
     }
 
     [HttpPost("confirm")]
-    [Authorize(Roles = "Vet,FarmManager,SystemOwner,Owner")]
+    [Authorize(Roles = "Veterinarian,FarmManager,SystemOwner")]
     public async Task<IActionResult> ConfirmPregnancy(Guid farmId, [FromBody] ConfirmPregnancyRequest request)
     {
         var result = await _breedingService.ConfirmPregnancyAsync(farmId, request);
@@ -42,7 +42,7 @@ public class GestationController : ControllerBase
     }
 
     [HttpPost("{id:guid}/revert")]
-    [Authorize(Roles = "Vet,FarmManager,SystemOwner,Owner")]
+    [Authorize(Roles = "Veterinarian,FarmManager,SystemOwner")]
     public async Task<IActionResult> RevertPregnancy(Guid farmId, Guid id, [FromBody] RevertPregnancyRequest request)
     {
         var result = await _breedingService.RevertPregnancyAsync(farmId, id, request.Reason);
@@ -57,7 +57,7 @@ public class GestationController : ControllerBase
     }
 
     [HttpPost("{id:guid}/health-checks")]
-    [Authorize(Roles = "Vet,FarmManager,SystemOwner,Owner")]
+    [Authorize(Roles = "Veterinarian,FarmManager,SystemOwner")]
     public async Task<IActionResult> LogHealthCheck(Guid farmId, Guid id, [FromBody] LogGestationHealthCheckRequest request)
     {
         var result = await _breedingService.LogHealthCheckAsync(farmId, id, request);

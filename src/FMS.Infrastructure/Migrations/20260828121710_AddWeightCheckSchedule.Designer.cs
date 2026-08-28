@@ -4,6 +4,7 @@ using FMS.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FMS.Infrastructure.Migrations
 {
     [DbContext(typeof(FmsDbContext))]
-    partial class FmsDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260828121710_AddWeightCheckSchedule")]
+    partial class AddWeightCheckSchedule
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1266,12 +1269,6 @@ namespace FMS.Infrastructure.Migrations
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<Guid?>("DeletedBy")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<string>("Description")
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
@@ -1284,9 +1281,6 @@ namespace FMS.Infrastructure.Migrations
 
                     b.Property<Guid>("FarmId")
                         .HasColumnType("uniqueidentifier");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
 
                     b.Property<Guid?>("LocationId")
                         .HasColumnType("uniqueidentifier");
@@ -2172,12 +2166,6 @@ namespace FMS.Infrastructure.Migrations
                     b.Property<DateTime>("DateRecorded")
                         .HasColumnType("datetime2");
 
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<Guid?>("DeletedBy")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<string>("Diagnosis")
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
@@ -2197,9 +2185,6 @@ namespace FMS.Infrastructure.Migrations
 
                     b.Property<Guid?>("FollowUpTaskId")
                         .HasColumnType("uniqueidentifier");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
 
                     b.Property<string>("MedicineUsed")
                         .HasMaxLength(500)

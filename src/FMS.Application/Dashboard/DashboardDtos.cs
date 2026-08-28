@@ -13,6 +13,7 @@ public class DashboardSummaryDto
     public int PregnantCount { get; set; }
     public int SickCount { get; set; }
     public int DueVaccinationCount { get; set; }
+    public int DueWeightCheckCount { get; set; }
     public int OverdueTasks { get; set; }
     public int UpcomingBirths { get; set; }
     public decimal TotalFeedStockValue { get; set; }

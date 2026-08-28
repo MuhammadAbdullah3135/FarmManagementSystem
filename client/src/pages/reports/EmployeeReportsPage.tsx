@@ -69,7 +69,7 @@ const EmployeeReportsPage: React.FC = () => {
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="month" tick={{ fontSize: 10 }} />
                     <YAxis />
-                    <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                    <Tooltip formatter={(value) => formatCurrency(Number(value ?? 0))} />
                     <Legend />
                     <Bar dataKey="amount" name="Amount" fill="#1677ff" />
                   </BarChart>
@@ -92,7 +92,7 @@ const EmployeeReportsPage: React.FC = () => {
                     >
                       {deptData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
                     </Pie>
-                    <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                    <Tooltip formatter={(value) => formatCurrency(Number(value ?? 0))} />
                   </PieChart>
                 </ResponsiveContainer>
               ) : <Empty description="No data" />}
