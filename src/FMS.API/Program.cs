@@ -13,6 +13,8 @@ using FMS.Application.Feed;
 using FMS.Application.Finance;
 using FMS.Application.Health;
 using FMS.Application.Inventory;
+using FMS.Application.Dashboard;
+using FMS.Application.Reports;
 using FMS.Application.Tasks;
 using FMS.Infrastructure.Animals;
 using FMS.Infrastructure.Auth;
@@ -28,6 +30,8 @@ using FMS.Infrastructure.Finance;
 using FMS.Infrastructure.Files;
 using FMS.Infrastructure.Health;
 using FMS.Infrastructure.Inventory;
+using FMS.Infrastructure.Dashboard;
+using FMS.Infrastructure.Reports;
 using FMS.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -37,7 +41,10 @@ using Microsoft.OpenApi.Models;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-builder.Services.AddControllers();
+builder.Services.AddControllers().AddJsonOptions(o =>
+{
+    o.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
+});
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -116,6 +123,8 @@ builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
     builder.Services.AddScoped<IInventoryService, InventoryService>();
     builder.Services.AddScoped<ISupplierService, SupplierService>();
     builder.Services.AddScoped<ICustomerService, CustomerService>();
+builder.Services.AddScoped<IDashboardService, DashboardService>();
+builder.Services.AddScoped<IReportService, ReportService>();
 
 // File Storage
 var uploadsRoot = Path.Combine(builder.Environment.ContentRootPath, builder.Configuration["Storage:UploadsRoot"] ?? "uploads");

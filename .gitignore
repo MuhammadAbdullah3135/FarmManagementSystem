@@ -64,3 +64,14 @@ Desktop.ini
 *.tmp
 *.bak
 *.orig
+
+## Freebuff / Tooling
+.freebuff/
+
+## Temp scripts
+temp-*.ps1
+temp-*.csx
+
+## Error artifacts
+Microsoft.AspNetCore.*
+System.Net.Sockets.*

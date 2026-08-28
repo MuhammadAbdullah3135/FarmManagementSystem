@@ -24,6 +24,6 @@ public class StockMovementConfiguration : IEntityTypeConfiguration<StockMovement
         builder.HasOne(m => m.InventoryItem)
             .WithMany(i => i.StockMovements)
             .HasForeignKey(m => m.InventoryItemId)
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }

@@ -4,9 +4,12 @@ import {
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs, { Dayjs } from 'dayjs';
+import { PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { feedReportsApi } from '../../api/feed';
 import { getApiError } from '../../api/farmApi';
 import { message } from 'antd';
+
+const PIE_COLORS = ['#1677ff', '#52c41a', '#faad14', '#ff4d4f', '#722ed1', '#13c2c2'];
 import type {
   ConsumptionTrendPoint,
   FeedTypeBreakdown,
@@ -121,12 +124,48 @@ const FeedReportsPage: React.FC = () => {
             {
               key: 'trend',
               label: 'Consumption Trend',
-              children: <Table rowKey="label" columns={trendCols} dataSource={trend} loading={loading} pagination={false} />,
+              children: (
+                <>
+                  {trend.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={260}>
+                      <LineChart data={trend}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="label" tick={{ fontSize: 10 }} />
+                        <YAxis />
+                        <Tooltip />
+                        <Legend />
+                        <Line type="monotone" dataKey="quantity" name="Quantity" stroke="#1677ff" dot={false} />
+                        <Line type="monotone" dataKey="cost" name="Cost" stroke="#52c41a" dot={false} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  ) : null}
+                  <Table rowKey="label" columns={trendCols} dataSource={trend} loading={loading} pagination={false} style={{ marginTop: 16 }} />
+                </>
+              ),
             },
             {
               key: 'byType',
               label: 'By Feed Type',
-              children: <Table rowKey="feedTypeId" columns={typeCols} dataSource={byType} loading={loading} pagination={false} />,
+              children: (
+                <>
+                  {byType.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={260}>
+                      <PieChart>
+                        <Pie
+                          data={byType.map(i => ({ name: i.feedTypeName, value: i.cost }))}
+                          cx="50%" cy="50%" outerRadius={90}
+                          label={({ name, percent }) => `${name} (${((percent ?? 0) * 100).toFixed(0)}%)`}
+                          dataKey="value"
+                        >
+                          {byType.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
+                        </Pie>
+                        <Tooltip formatter={(v: number) => `$${v.toFixed(2)}`} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  ) : null}
+                  <Table rowKey="feedTypeId" columns={typeCols} dataSource={byType} loading={loading} pagination={false} style={{ marginTop: 16 }} />
+                </>
+              ),
             },
             {
               key: 'byAnimal',

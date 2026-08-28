@@ -4,6 +4,7 @@
     <Project Path="src/FMS.Application/FMS.Application.csproj" />
     <Project Path="src/FMS.Domain/FMS.Domain.csproj" />
     <Project Path="src/FMS.Infrastructure/FMS.Infrastructure.csproj" />
+    <Project Path="src/FMS.Mobile/FMS.Mobile.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/FMS.Domain.Tests/FMS.Domain.Tests.csproj" />

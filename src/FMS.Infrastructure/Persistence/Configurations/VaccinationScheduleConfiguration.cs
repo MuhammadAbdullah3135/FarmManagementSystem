@@ -19,7 +19,7 @@ public class VaccinationScheduleConfiguration : IEntityTypeConfiguration<Vaccina
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasOne(s => s.VaccineType)
-            .WithMany()
+            .WithMany(v => v.VaccinationSchedules)
             .HasForeignKey(s => s.VaccineTypeId)
             .OnDelete(DeleteBehavior.Restrict);
 

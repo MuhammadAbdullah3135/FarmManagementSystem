@@ -3,9 +3,12 @@ import { Card, Col, DatePicker, Row, Select, Statistic, Table, message } from 'a
 import { ArrowDownOutlined, ArrowUpOutlined, DollarOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import type { Dayjs } from 'dayjs';
+import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { financeReportsApi, type FinanceReportFilter } from '../../api/finance';
 import { getApiError } from '../../api/farmApi';
 import type { CategoryBreakdownItem, MonthlySummaryItem, ProfitLossReport } from '../../types';
+
+const PIE_COLORS = ['#1677ff', '#52c41a', '#faad14', '#ff4d4f', '#722ed1', '#13c2c2', '#eb2f96', '#fa8c16'];
 
 const { RangePicker } = DatePicker;
 
@@ -143,10 +146,25 @@ const FinanceReportsPage: React.FC = () => {
         </Col>
       </Row>
 
-      {/* Breakdowns */}
+      {/* Breakdown Charts */}
       <Row gutter={16} style={{ marginBottom: 24 }}>
         <Col span={12}>
           <Card title="Expense Breakdown" loading={loading}>
+            {expenseBreakdown.length > 0 ? (
+              <ResponsiveContainer width="100%" height={260}>
+                <PieChart>
+                  <Pie
+                    data={expenseBreakdown.map(i => ({ name: i.categoryName, value: i.total }))}
+                    cx="50%" cy="50%" outerRadius={90}
+                    label={({ name, percent }) => `${name} (${((percent ?? 0) * 100).toFixed(0)}%)`}
+                    dataKey="value"
+                  >
+                    {expenseBreakdown.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
+                  </Pie>
+                  <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : null}
             <Table
               rowKey="categoryId"
               columns={breakdownColumns}
@@ -166,6 +184,21 @@ const FinanceReportsPage: React.FC = () => {
         </Col>
         <Col span={12}>
           <Card title="Income Breakdown" loading={loading}>
+            {incomeBreakdown.length > 0 ? (
+              <ResponsiveContainer width="100%" height={260}>
+                <PieChart>
+                  <Pie
+                    data={incomeBreakdown.map(i => ({ name: i.categoryName, value: i.total }))}
+                    cx="50%" cy="50%" outerRadius={90}
+                    label={({ name, percent }) => `${name} (${((percent ?? 0) * 100).toFixed(0)}%)`}
+                    dataKey="value"
+                  >
+                    {incomeBreakdown.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
+                  </Pie>
+                  <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : null}
             <Table
               rowKey="categoryId"
               columns={breakdownColumns}
@@ -185,7 +218,24 @@ const FinanceReportsPage: React.FC = () => {
         </Col>
       </Row>
 
-      {/* Monthly Summary */}
+      {/* Monthly P/L Chart */}
+      {monthlySummary.length > 0 && (
+        <Card title={`Monthly Profit & Loss — ${year}`} loading={loading} style={{ marginBottom: 24 }}>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={monthlySummary}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="monthName" />
+              <YAxis />
+              <Tooltip formatter={(value: number) => formatCurrency(value)} />
+              <Legend />
+              <Bar dataKey="income" name="Income" fill="#52c41a" />
+              <Bar dataKey="expenses" name="Expenses" fill="#ff4d4f" />
+            </BarChart>
+          </ResponsiveContainer>
+        </Card>
+      )}
+
+      {/* Monthly Summary Table */}
       <Card title={`Monthly Summary — ${year}`} loading={loading}>
         <Table
           rowKey="month"

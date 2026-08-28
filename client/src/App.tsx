@@ -43,6 +43,10 @@ import InventoryMovementsPage from './pages/inventory/InventoryMovementsPage';
 import SuppliersPage from './pages/inventory/SuppliersPage';
 import CustomersPage from './pages/inventory/CustomersPage';
 import InventoryReportsPage from './pages/inventory/InventoryReportsPage';
+import AnimalReportsPage from './pages/reports/AnimalReportsPage';
+import MedicalReportsPage from './pages/reports/MedicalReportsPage';
+import VaccinationReportsPage from './pages/reports/VaccinationReportsPage';
+import EmployeeReportsPage from './pages/reports/EmployeeReportsPage';
 
 const App: React.FC = () => {
   return (
@@ -112,6 +116,15 @@ const App: React.FC = () => {
             <Route path="inventory/suppliers" element={<SuppliersPage />} />
             <Route path="inventory/customers" element={<CustomersPage />} />
             <Route path="inventory/reports" element={<InventoryReportsPage />} />
+
+            {/* Reports */}
+            <Route path="reports/animals" element={<AnimalReportsPage />} />
+            <Route path="reports/financial" element={<FinanceReportsPage />} />
+            <Route path="reports/feed" element={<FeedReportsPage />} />
+            <Route path="reports/breeding" element={<BreedingReportsPage />} />
+            <Route path="reports/medical" element={<MedicalReportsPage />} />
+            <Route path="reports/vaccination" element={<VaccinationReportsPage />} />
+            <Route path="reports/employees" element={<EmployeeReportsPage />} />
 
             {/* Breeding */}
             <Route path="breeding/records" element={<BreedingRecordsPage />} />

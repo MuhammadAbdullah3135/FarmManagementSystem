@@ -42,7 +42,7 @@ namespace FMS.Infrastructure.Migrations
                         column: x => x.InventoryItemId,
                         principalTable: "InventoryItems",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateIndex(

@@ -158,6 +158,20 @@ const AppLayout: React.FC = () => {
         { key: '/dashboard/health/costs', label: 'Vet Costs' },
       ],
     },
+    {
+      key: 'reports',
+      icon: <BarChartOutlined />,
+      label: 'Reports',
+      children: [
+        { key: '/dashboard/reports/animals', label: 'Animal Reports' },
+        { key: '/dashboard/reports/financial', label: 'Financial Reports' },
+        { key: '/dashboard/reports/feed', label: 'Feed Reports' },
+        { key: '/dashboard/reports/medical', label: 'Medical Reports' },
+        { key: '/dashboard/reports/vaccination', label: 'Vaccination Reports' },
+        { key: '/dashboard/reports/breeding', label: 'Breeding Reports' },
+        { key: '/dashboard/reports/employees', label: 'Employee Reports' },
+      ],
+    },
   ];
 
   return (

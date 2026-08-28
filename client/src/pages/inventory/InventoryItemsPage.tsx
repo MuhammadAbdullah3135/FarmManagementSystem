@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, Button, Card, Form, Input, InputNumber, Modal, Popconfirm, Select, Space, Table, Tag, message } from 'antd';
+import { Alert, Button, Card, DatePicker, Form, Input, InputNumber, Modal, Popconfirm, Select, Space, Table, Tag, message } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { inventoryApi } from '../../api/inventory';
@@ -158,7 +158,7 @@ const InventoryItemsPage: React.FC = () => {
         <Form.Item name="quantity" label="Quantity" extra="Use a negative quantity for a downward adjustment or transfer." rules={[{ required: true, message: 'Quantity is required' }]}>
           <InputNumber precision={3} style={{ width: '100%' }} />
         </Form.Item>
-        <Form.Item name="movementDate" label="Date"><Input type="date" /></Form.Item>
+        <Form.Item name="movementDate" label="Date"><DatePicker style={{ width: '100%' }} /></Form.Item>
         <Form.Item name="reason" label="Reason"><Input.TextArea rows={3} maxLength={1000} /></Form.Item>
       </Form>
     </Modal>
