@@ -101,7 +101,7 @@ public class ReportService : IReportService
     public async Task<Result<MedicalReportDto>> GetMedicalReportAsync(Guid farmId, DateTime? from, DateTime? to)
     {
         var query = _db.MedicalRecords
-            .Where(m => m.FarmId == farmId);
+            .Where(m => m.FarmId == farmId && !m.IsDeleted);
 
         if (from.HasValue)
             query = query.Where(m => m.DateRecorded >= from.Value);
@@ -209,16 +209,35 @@ public class ReportService : IReportService
             .OrderByDescending(v => v.Count)
             .ToList();
 
-        // Overdue & upcoming counts from schedules
-        var overdueCount = await _db.VaccinationRecords
-            .CountAsync(v => v.FarmId == farmId); // simplified — actual overdue requires schedule logic
+        var today = DateTime.UtcNow.Date;
+        var schedules = await _db.VaccinationSchedules
+            .Where(s => s.FarmId == farmId && s.IsActive)
+            .ToListAsync();
+        var animals = await _db.Animals
+            .Where(a => a.FarmId == farmId && !a.IsDeleted)
+            .ToListAsync();
+        var overdueCount = 0;
+        var upcomingCount = 0;
+        foreach (var schedule in schedules)
+        {
+            foreach (var animal in animals.Where(a => (!schedule.AnimalTypeId.HasValue || a.AnimalTypeId == schedule.AnimalTypeId) && (!schedule.BreedId.HasValue || a.BreedId == schedule.BreedId)))
+            {
+                var lastDate = await _db.VaccinationRecords
+                    .Where(v => v.AnimalId == animal.Id && v.VaccineTypeId == schedule.VaccineTypeId)
+                    .OrderByDescending(v => v.DateGiven)
+                    .Select(v => (DateTime?)v.DateGiven)
+                    .FirstOrDefaultAsync();
+                var dueDate = lastDate?.AddDays(schedule.RecurrenceDays).Date ?? today;
+                if (dueDate < today) overdueCount++; else upcomingCount++;
+            }
+        }
 
         var report = new VaccinationReportDto
         {
             TotalVaccinations = totalVaccinations,
             TotalCost = totalCost,
-            OverdueCount = 0, // Will be computed from schedule status
-            UpcomingCount = 0,
+            OverdueCount = overdueCount,
+            UpcomingCount = upcomingCount,
             MonthlyTrend = monthlyTrend,
             ByVaccine = byVaccine
         };
@@ -229,7 +248,7 @@ public class ReportService : IReportService
     public async Task<Result<EmployeeReportDto>> GetEmployeeReportAsync(Guid farmId, DateTime? from, DateTime? to)
     {
         var employees = await _db.Employees
-            .Where(e => e.FarmId == farmId)
+            .Where(e => e.FarmId == farmId && !e.IsDeleted)
             .Select(e => new { e.Id, e.FirstName, e.LastName, e.IsActive, DeptName = e.Department!.Name })
             .ToListAsync();
 
@@ -237,7 +256,7 @@ public class ReportService : IReportService
         var activeEmployees = employees.Count(e => e.IsActive);
 
         var paymentQuery = _db.SalaryPayments
-            .Where(p => p.Employee.FarmId == farmId);
+            .Where(p => p.Employee.FarmId == farmId && !p.Employee.IsDeleted);
 
         if (from.HasValue)
             paymentQuery = paymentQuery.Where(p => p.PaymentDate >= from.Value);
