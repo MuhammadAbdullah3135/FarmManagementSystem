@@ -45,6 +45,15 @@
                                IsVisible="{Binding IsBusy}"
                                Color="{StaticResource Primary}" />
 
+            <Button Text="Create Account"
+                    Command="{Binding GoToRegisterCommand}"
+                    IsEnabled="{Binding IsBusy, Converter={StaticResource InvertBoolConverter}}"
+                    BackgroundColor="#E8F5E9"
+                    TextColor="#2E7D32"
+                    CornerRadius="8"
+                    HeightRequest="45"
+                    FontSize="15" />
+
         </VerticalStackLayout>
     </ScrollView>
 

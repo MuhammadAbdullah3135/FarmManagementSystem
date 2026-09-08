@@ -17,6 +17,11 @@
                   Route="FarmPicker"
                   Shell.TabBarIsVisible="False" />
 
+    <!-- Register -->
+    <ShellContent x:Name="RegisterRoute"
+                  Route="Register"
+                  Shell.TabBarIsVisible="False" />
+
     <!-- Main Tabbed Area -->
     <TabBar x:Name="MainTabBar" Route="Main">
         <Tab Title="Dashboard" Icon="{OnPlatform iOS='house'}">

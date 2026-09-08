@@ -7,6 +7,7 @@ public partial class AppShell : Shell
         InitializeComponent();
         LoginShell.Content = services.GetRequiredService<Views.LoginPage>();
         FarmPickerShell.Content = services.GetRequiredService<Views.FarmPickerPage>();
+        RegisterRoute.Content = services.GetRequiredService<Views.RegisterPage>();
 
         // Shell templates otherwise call parameterless constructors and bypass DI ViewModels.
         // Assign every page through the container so bindings and OnAppearing loaders are active.

@@ -46,6 +46,26 @@
                 </VerticalStackLayout>
             </Frame>
 
+            <!-- Crash Log / Diagnostics -->
+            <Frame CornerRadius="12" Padding="16" BorderColor="LightGray">
+                <VerticalStackLayout Spacing="8">
+                    <Label Text="Crash Log" FontSize="14" FontAttributes="Bold" />
+                    <Button Text="View / Hide Crash Log" Command="{Binding ToggleCrashLogCommand}"
+                            BackgroundColor="#E3F2FD" TextColor="#1565C0" CornerRadius="8" />
+                    <Editor Text="{Binding CrashLogText}" IsReadOnly="True" AutoSize="TextChanges"
+                            FontSize="11" FontFamily="MonospaceSpace" IsVisible="{Binding IsCrashLogVisible}"
+                            MinimumHeightRequest="120" />
+                    <HorizontalStackLayout Spacing="8" IsVisible="{Binding IsCrashLogVisible}">
+                        <Button Text="Copy" Command="{Binding CopyCrashLogCommand}"
+                                BackgroundColor="#E8F5E9" TextColor="#2E7D32" CornerRadius="8" HorizontalOptions="FillAndExpand" />
+                        <Button Text="Share" Command="{Binding ShareCrashLogCommand}"
+                                BackgroundColor="#EDE7F6" TextColor="#4527A0" CornerRadius="8" HorizontalOptions="FillAndExpand" />
+                        <Button Text="Clear" Command="{Binding ClearCrashLogCommand}"
+                                BackgroundColor="#FFEBEE" TextColor="#C62828" CornerRadius="8" HorizontalOptions="FillAndExpand" />
+                    </HorizontalStackLayout>
+                </VerticalStackLayout>
+            </Frame>
+
             <Button Text="Logout" Command="{Binding LogoutCommand}"
                     BackgroundColor="#FFEBEE" TextColor="Red" CornerRadius="8" HeightRequest="50" />
         </VerticalStackLayout>

@@ -42,7 +42,9 @@ public partial class LoginViewModel : BaseViewModel
             }
             else
             {
-                ErrorMessage = "Invalid email or password";
+                // Show the real reason (connection error, HTTP status, etc.)
+                // rather than a generic message that hides the actual problem.
+                ErrorMessage = _authService.LastErrorMessage ?? "Invalid email or password";
             }
         });
     }

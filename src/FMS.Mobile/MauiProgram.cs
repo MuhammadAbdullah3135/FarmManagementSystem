@@ -21,6 +21,7 @@ public static class MauiProgram
             });
 
         // ── Services ──────────────────────────────────────
+        builder.Services.AddSingleton<ICrashLogService, CrashLogService>();
         builder.Services.AddSingleton<ITokenService, TokenService>();
         builder.Services.AddSingleton<IDatabaseService, DatabaseService>();
         builder.Services.AddSingleton<IConnectivityService, ConnectivityService>();
@@ -54,6 +55,7 @@ public static class MauiProgram
 
         // ── ViewModels ────────────────────────────────────
         builder.Services.AddTransient<LoginViewModel>();
+        builder.Services.AddTransient<RegisterViewModel>();
         builder.Services.AddTransient<FarmPickerViewModel>();
         builder.Services.AddTransient<DashboardViewModel>();
         builder.Services.AddTransient<AnimalListViewModel>();
@@ -69,6 +71,7 @@ public static class MauiProgram
 
         // ── Pages ─────────────────────────────────────────
         builder.Services.AddTransient<LoginPage>();
+        builder.Services.AddTransient<RegisterPage>();
         builder.Services.AddTransient<FarmPickerPage>();
         builder.Services.AddTransient<DashboardPage>();
         builder.Services.AddTransient<AnimalListPage>();
@@ -93,6 +96,25 @@ public static class MauiProgram
         // in both Debug and Release builds during remote testing.
         builder.Logging.AddDebug();
 
-        return builder.Build();
+        var app = builder.Build();
+
+        // ── Global crash capture ───────────────────────────
+        // Any unhandled exception is written to a local file and can be
+        // viewed/copied from the Settings page ("Crash Log" section).
+        var crashLog = app.Services.GetRequiredService<ICrashLogService>();
+        crashLog.LogEvent("App session started");
+
+        AppDomain.CurrentDomain.UnhandledException += (_, args) =>
+        {
+            if (args.ExceptionObject is Exception ex)
+                crashLog.LogCrash("AppDomain.UnhandledException", ex);
+        };
+        TaskScheduler.UnobservedTaskException += (_, args) =>
+        {
+            crashLog.LogCrash("TaskScheduler.UnobservedTaskException", args.Exception);
+            args.SetObserved();
+        };
+
+        return app;
     }
 }
