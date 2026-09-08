@@ -263,4 +263,6 @@ app.MapHealthChecks("/health/live", new Microsoft.AspNetCore.Diagnostics.HealthC
 });
 
 app.MapControllers();
+Console.WriteLine("[boot] calling app.Run()");
 app.Run();
+Console.WriteLine("[boot] app.Ran() returned");
