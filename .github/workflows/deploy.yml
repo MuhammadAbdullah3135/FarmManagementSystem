@@ -14,52 +14,18 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-    env:
-      HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
-      HEROKU_APP_NAME: ${{ secrets.HEROKU_APP_NAME }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      - name: Install Heroku CLI
+        run: npm install --global heroku
 
-      - name: Log in to Heroku Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: registry.heroku.com
-          username: _
-          password: ${{ secrets.HEROKU_API_KEY }}
-
-      - name: Build web image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          push: false
-          load: true
-          tags: registry.heroku.com/${{ secrets.HEROKU_APP_NAME }}/web
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Push web image to Heroku registry
-        run: docker push registry.heroku.com/${{ secrets.HEROKU_APP_NAME }}/web
-
-      - name: Release to Heroku
+      - name: Build and release container to Heroku
         run: |
           set -euo pipefail
-          IMAGE_ID=$(docker inspect registry.heroku.com/${{ secrets.HEROKU_APP_NAME }}/web --format={{.Id}})
-          PAYLOAD='{"updates":[{"type":"web","docker_image":"'"$IMAGE_ID"'"}]}'
-          for i in 1 2 3 4 5; do
-            RESPONSE=$(curl -sS -o /tmp/release.json -w "%{http_code}" \
-              -X PATCH "https://api.heroku.com/apps/${{ secrets.HEROKU_APP_NAME }}/formation" \
-              -H "Accept: application/vnd.heroku+json; version=3" \
-              -H "Authorization: Bearer ${{ secrets.HEROKU_API_KEY }}" \
-              -H "Content-Type: application/json" \
-              -d "$PAYLOAD")
-            echo "attempt $i -> release api status: $RESPONSE"
-            if [ "$RESPONSE" = "200" ]; then exit 0; fi
-            cat /tmp/release.json
-            sleep 15
-          done
-          echo "release did not succeed after retries"
-          exit 1
+          export HEROKU_API_KEY="${{ secrets.HEROKU_API_KEY }}"
+          heroku container:login
+          heroku container:push web --app "${{ secrets.HEROKU_APP_NAME }}"
+          heroku container:release web --app "${{ secrets.HEROKU_APP_NAME }}"
+          echo "Deployed: https://${{ secrets.HEROKU_APP_NAME }}.herokuapp.com"
