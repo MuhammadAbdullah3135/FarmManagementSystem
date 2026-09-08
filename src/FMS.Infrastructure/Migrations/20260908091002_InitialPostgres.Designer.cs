@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace FMS.Infrastructure.Migrations
 {
     [DbContext(typeof(FmsDbContext))]
-    [Migration("20260908080000_InitialPostgres")]
+    [Migration("20260908091002_InitialPostgres")]
     partial class InitialPostgres
     {
         /// <inheritdoc />
@@ -187,7 +187,7 @@ namespace FMS.Infrastructure.Migrations
 
                     b.HasIndex("FarmId", "TagNumber")
                         .IsUnique()
-                        .HasFilter("[IsDeleted] = 0");
+                        .HasFilter("\"IsDeleted\" = false");
 
                     b.ToTable("Animals");
                 });
@@ -300,7 +300,7 @@ namespace FMS.Infrastructure.Migrations
 
                     b.HasIndex("FarmId", "IdentificationTypeId", "Value")
                         .IsUnique()
-                        .HasFilter("[DateRemoved] IS NULL");
+                        .HasFilter("\"DateRemoved\" IS NULL");
 
                     b.ToTable("AnimalIdentifications");
                 });

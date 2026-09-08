@@ -15,7 +15,7 @@ public class AnimalConfiguration : IEntityTypeConfiguration<Animal>
 
         builder.HasIndex(a => new { a.FarmId, a.TagNumber })
             .IsUnique()
-            .HasFilter("[IsDeleted] = 0");
+            .HasFilter("\"IsDeleted\" = false");
 
         builder.HasIndex(a => new { a.FarmId, a.AnimalStatusId });
         builder.HasIndex(a => new { a.FarmId, a.LocationId });

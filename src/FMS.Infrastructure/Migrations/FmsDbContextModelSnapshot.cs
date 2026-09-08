@@ -184,7 +184,7 @@ namespace FMS.Infrastructure.Migrations
 
                     b.HasIndex("FarmId", "TagNumber")
                         .IsUnique()
-                        .HasFilter("[IsDeleted] = 0");
+                        .HasFilter("\"IsDeleted\" = false");
 
                     b.ToTable("Animals");
                 });
@@ -297,7 +297,7 @@ namespace FMS.Infrastructure.Migrations
 
                     b.HasIndex("FarmId", "IdentificationTypeId", "Value")
                         .IsUnique()
-                        .HasFilter("[DateRemoved] IS NULL");
+                        .HasFilter("\"DateRemoved\" IS NULL");
 
                     b.ToTable("AnimalIdentifications");
                 });

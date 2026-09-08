@@ -13,7 +13,7 @@ public class AnimalIdentificationConfiguration : IEntityTypeConfiguration<Animal
 
         builder.HasIndex(i => new { i.FarmId, i.IdentificationTypeId, i.Value })
             .IsUnique()
-            .HasFilter("[DateRemoved] IS NULL");
+            .HasFilter("\"DateRemoved\" IS NULL");
 
         builder.HasOne(i => i.Animal)
             .WithMany(a => a.Identifications)

@@ -2122,7 +2122,7 @@ namespace FMS.Infrastructure.Migrations
                 table: "AnimalIdentifications",
                 columns: new[] { "FarmId", "IdentificationTypeId", "Value" },
                 unique: true,
-                filter: "[DateRemoved] IS NULL");
+                filter: "\"DateRemoved\" IS NULL");
 
             migrationBuilder.CreateIndex(
                 name: "IX_AnimalIdentifications_IdentificationTypeId",
@@ -2184,7 +2184,7 @@ namespace FMS.Infrastructure.Migrations
                 table: "Animals",
                 columns: new[] { "FarmId", "TagNumber" },
                 unique: true,
-                filter: "[IsDeleted] = 0");
+                filter: "\"IsDeleted\" = false");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Animals_LocationId",
