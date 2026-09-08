@@ -263,6 +263,13 @@ app.MapHealthChecks("/health/live", new Microsoft.AspNetCore.Diagnostics.HealthC
 });
 
 app.MapControllers();
+
+var herokuPort = Environment.GetEnvironmentVariable("PORT");
+if (!string.IsNullOrWhiteSpace(herokuPort))
+{
+    Console.WriteLine($"[boot] binding to Heroku PORT={herokuPort}");
+    app.Urls.Clear();
+    app.Urls.Add($"http://+:{herokuPort}");
+}
 Console.WriteLine("[boot] calling app.Run()");
 app.Run();
-Console.WriteLine("[boot] app.Ran() returned");
