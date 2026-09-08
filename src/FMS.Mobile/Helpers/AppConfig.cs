@@ -7,7 +7,7 @@ public static class AppConfig
 #if DEBUG
     private const string DefaultBaseUrl = "http://10.0.2.2:5000"; // Android emulator localhost
 #else
-    private const string DefaultBaseUrl = "https://shaved-downloadable-owns-watson.trycloudflare.com";
+    private const string DefaultBaseUrl = "https://fms-api-3ba95327d590.herokuapp.com";
 #endif
 
     private const string CustomBaseUrlKey = "fms_custom_base_url";
