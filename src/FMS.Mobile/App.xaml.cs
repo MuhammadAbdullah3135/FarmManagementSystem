@@ -8,15 +8,18 @@ public partial class App : Microsoft.Maui.Controls.Application
     private readonly IDatabaseService _databaseService;
     private readonly ISyncService _syncService;
     private readonly IConnectivityService _connectivityService;
+    private readonly IServiceProvider _services;
 
     public App(IAuthService authService, IDatabaseService databaseService,
-               ISyncService syncService, IConnectivityService connectivityService)
+               ISyncService syncService, IConnectivityService connectivityService,
+               IServiceProvider services)
     {
         InitializeComponent();
         _authService = authService;
         _databaseService = databaseService;
         _syncService = syncService;
         _connectivityService = connectivityService;
+        _services = services;
 
         _ = _databaseService.InitializeAsync();
 
@@ -28,7 +31,7 @@ public partial class App : Microsoft.Maui.Controls.Application
     }
 
     protected override Window CreateWindow(IActivationState? activationState)
-        => new Window(new AppShell());
+        => new Window(new AppShell(_services));
 
     protected override async void OnStart()
     {

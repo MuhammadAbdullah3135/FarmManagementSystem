@@ -12,7 +12,10 @@ public class MedicineStockConfiguration : IEntityTypeConfiguration<MedicineStock
         builder.Property(s => s.BatchNumber).IsRequired().HasMaxLength(100);
         builder.Property(s => s.UnitCost).HasColumnType("decimal(18,2)");
         builder.Property(s => s.Supplier).HasMaxLength(200);
-        builder.Property(s => s.RowVersion).IsRowVersion();
+
+        builder.Property<uint>("xmin")
+            .HasColumnName("xmin")
+            .IsRowVersion();
 
         builder.HasIndex(s => new { s.MedicineId, s.BatchNumber });
         builder.HasIndex(s => new { s.MedicineId, s.ExpiryDate });

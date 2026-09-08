@@ -222,7 +222,10 @@ public class SyncService : ISyncService
         if (record.EntityType == "WeightRecord")
         {
             var payloadCheck = JsonSerializer.Deserialize<JsonElement>(record.Payload, JsonOptions);
-            var animalId = await ResolveReferencedIdAsync(payloadCheck.GetProperty("animalId"), "Animal", farmId);
+            var animalIdValue = payloadCheck.GetProperty("animalId").GetString();
+            if (!Guid.TryParse(animalIdValue, out var localAnimalId))
+                throw new InvalidOperationException("WeightRecord payload contains an invalid animal ID.");
+            var animalId = await ResolveServerIdAsync(localAnimalId, "Animal", farmId);
             endpoint = $"/farm/{record.FarmId}/animals/{animalId}/weights";
         }
         else
@@ -237,7 +240,8 @@ public class SyncService : ISyncService
         response.EnsureSuccessStatusCode();
 
         var responseBody = await response.Content.ReadAsStringAsync();
-        if (string.IsNullOrWhiteSpace(responseBody)) return Guid.NewGuid();
+        if (string.IsNullOrWhiteSpace(responseBody))
+            throw new InvalidOperationException($"Server response for {record.EntityType} did not contain an ID.");
 
         using var doc = JsonDocument.Parse(responseBody);
         if (doc.RootElement.TryGetProperty("id", out var idProp) && idProp.ValueKind == JsonValueKind.String)

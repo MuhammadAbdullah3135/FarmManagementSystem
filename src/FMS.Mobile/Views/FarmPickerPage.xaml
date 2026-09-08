@@ -2,30 +2,48 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:vm="clr-namespace:FMS.Mobile.ViewModels"
+             xmlns:services="clr-namespace:FMS.Mobile.Services"
              x:Class="FMS.Mobile.Views.FarmPickerPage"
+             x:Name="FarmPickerPageRoot"
              x:DataType="vm:FarmPickerViewModel"
              Title="{Binding Title}">
 
     <Grid RowDefinitions="Auto,*">
 
-        <HorizontalStackLayout Grid.Row="0" Padding="16" Spacing="10">
-            <Button Text="Logout" Command="{Binding LogoutCommand}"
-                    BackgroundColor="LightGray" CornerRadius="8" />
-            <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" />
-        </HorizontalStackLayout>
+        <VerticalStackLayout Grid.Row="0" Padding="16" Spacing="8">
+            <HorizontalStackLayout Spacing="10">
+                <Button Text="Logout" Command="{Binding LogoutCommand}"
+                        BackgroundColor="LightGray" CornerRadius="8" />
+                <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" />
+            </HorizontalStackLayout>
+            <Label Text="{Binding ErrorMessage}" TextColor="Red" FontSize="13"
+                   IsVisible="{Binding ErrorMessage, Converter={StaticResource IsNotNullConverter}}" />
+            <Button Text="Copy Error Details"
+                    Command="{Binding CopyErrorCommand}"
+                    IsVisible="{Binding ErrorMessage, Converter={StaticResource IsNotNullConverter}}"
+                    BackgroundColor="LightCoral" TextColor="White"
+                    CornerRadius="8" FontSize="13" Padding="12,6" />
+        </VerticalStackLayout>
 
-        <CollectionView Grid.Row="1"
+        <CollectionView x:Name="FarmCollection" Grid.Row="1"
                         ItemsSource="{Binding Farms}"
-                        SelectionMode="None"
+                        SelectionMode="Single"
+                        SelectionChanged="OnFarmSelectionChanged"
                         Margin="16">
+            <CollectionView.EmptyView>
+                <VerticalStackLayout Spacing="10" HorizontalOptions="Center" VerticalOptions="Center">
+                    <Label Text="{Binding Source={x:Reference FarmPickerPageRoot}, Path=BindingContext.EmptyStateText}"
+                           TextColor="Gray" HorizontalTextAlignment="Center" />
+                    <Button Text="Retry"
+                            Command="{Binding Source={x:Reference FarmPickerPageRoot}, Path=BindingContext.LoadFarmsCommand}"
+                            BackgroundColor="{StaticResource Primary}" TextColor="White"
+                            CornerRadius="8" />
+                </VerticalStackLayout>
+            </CollectionView.EmptyView>
             <CollectionView.ItemTemplate>
-                <DataTemplate x:DataType="vm:FarmDto">
+                <DataTemplate x:DataType="services:FarmDto">
                     <Frame Margin="0,4" Padding="16" CornerRadius="8"
                            BorderColor="LightGray" BackgroundColor="White">
-                        <Frame.GestureRecognizers>
-                            <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type vm:FarmPickerViewModel}}, Path=SelectFarmCommand}"
-                                                  CommandParameter="{Binding .}" />
-                        </Frame.GestureRecognizers>
                         <VerticalStackLayout Spacing="4">
                             <Label Text="{Binding Name}" FontSize="18" FontAttributes="Bold" />
                             <Label Text="{Binding Description}" FontSize="14" TextColor="Gray"

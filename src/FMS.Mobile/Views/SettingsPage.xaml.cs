@@ -1,12 +1,19 @@
+using FMS.Mobile.ViewModels;
+
 namespace FMS.Mobile.Views;
+
 public partial class SettingsPage : ContentPage
 {
-    public SettingsPage() { InitializeComponent(); }
+    public SettingsPage(SettingsViewModel viewModel)
+    {
+        InitializeComponent();
+        BindingContext = viewModel;
+    }
 
     protected override void OnAppearing()
     {
         base.OnAppearing();
-        if (BindingContext is ViewModels.SettingsViewModel vm)
+        if (BindingContext is SettingsViewModel vm)
             vm.LoadSettingsCommand.Execute(null);
     }
 }

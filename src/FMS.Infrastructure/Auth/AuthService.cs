@@ -1,6 +1,7 @@
 using FMS.Application.Auth;
 using FMS.Application.Common;
 using FMS.Domain.Entities;
+using FMS.Domain.Enums;
 using FMS.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -51,6 +52,35 @@ public class AuthService : IAuthService
         };
         _context.Users.Add(user);
 
+        // Create the user's initial farm so registration can proceed directly to farm selection.
+        var farm = new Domain.Entities.Farm
+        {
+            Id = Guid.NewGuid(),
+            AccountId = account.Id,
+            Name = request.AccountName,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow
+        };
+        _context.Farms.Add(farm);
+        _context.UserFarms.Add(new UserFarm
+        {
+            Id = Guid.NewGuid(),
+            UserId = user.Id,
+            FarmId = farm.Id,
+            Role = "Owner",
+            CreatedAt = DateTime.UtcNow
+        });
+
+        // Seed the statuses required by the initial farm.
+        var now = DateTime.UtcNow;
+        _context.AnimalStatuses.AddRange(
+            new AnimalStatus { Id = Guid.NewGuid(), FarmId = farm.Id, Name = "Active", IsActive = true, Category = AnimalStatusCategory.Active, IsSystemDefined = true, CreatedAt = now },
+            new AnimalStatus { Id = Guid.NewGuid(), FarmId = farm.Id, Name = "Pregnant", IsActive = true, Category = AnimalStatusCategory.Active, IsSystemDefined = true, CreatedAt = now },
+            new AnimalStatus { Id = Guid.NewGuid(), FarmId = farm.Id, Name = "Lactating", IsActive = true, Category = AnimalStatusCategory.Active, IsSystemDefined = true, CreatedAt = now },
+            new AnimalStatus { Id = Guid.NewGuid(), FarmId = farm.Id, Name = "Dry", IsActive = true, Category = AnimalStatusCategory.Active, IsSystemDefined = true, CreatedAt = now },
+            new AnimalStatus { Id = Guid.NewGuid(), FarmId = farm.Id, Name = "Sold", IsActive = true, Category = AnimalStatusCategory.Terminal, IsSystemDefined = true, CreatedAt = now },
+            new AnimalStatus { Id = Guid.NewGuid(), FarmId = farm.Id, Name = "Deceased", IsActive = true, Category = AnimalStatusCategory.Terminal, IsSystemDefined = true, CreatedAt = now });
+
         // Assign default "SystemOwner" role
         var systemOwnerRole = await _context.Roles.FirstOrDefaultAsync(r => r.Name == "SystemOwner");
         if (systemOwnerRole != null)
@@ -96,12 +126,16 @@ public class AuthService : IAuthService
     public async Task<Result<AuthResponse>> LoginAsync(LoginRequest request)
     {
         var user = await _context.Users
+            .Include(u => u.Account)
             .Include(u => u.UserRoles)
             .ThenInclude(ur => ur.Role)
             .FirstOrDefaultAsync(u => u.Email == request.Email && u.IsActive);
 
         if (user == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
             return Result<AuthResponse>.Unauthorized("Invalid email or password");
+
+        // Preserve the registration invariant for accounts created before the initial-farm fix.
+        await EnsureUserHasFarmAsync(user);
 
         var roles = user.UserRoles.Select(ur => ur.Role.Name).ToList();
         var accessToken = _jwtTokenService.GenerateAccessToken(user.Id, user.AccountId, user.Email, roles);
@@ -128,6 +162,46 @@ public class AuthService : IAuthService
             FirstName = user.FirstName,
             LastName = user.LastName
         });
+    }
+
+    private async Task EnsureUserHasFarmAsync(User user)
+    {
+        var hasActiveFarm = await _context.UserFarms
+            .Include(uf => uf.Farm)
+            .AnyAsync(uf => uf.UserId == user.Id && uf.Farm.IsActive && !uf.Farm.IsDeleted);
+
+        if (hasActiveFarm)
+            return;
+
+        var farm = new Domain.Entities.Farm
+        {
+            Id = Guid.NewGuid(),
+            AccountId = user.AccountId,
+            Name = string.IsNullOrWhiteSpace(user.Account.Name) ? "My Farm" : user.Account.Name,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow,
+            CreatedBy = user.Id
+        };
+        _context.Farms.Add(farm);
+        _context.UserFarms.Add(new UserFarm
+        {
+            Id = Guid.NewGuid(),
+            UserId = user.Id,
+            FarmId = farm.Id,
+            Role = "Owner",
+            CreatedAt = DateTime.UtcNow
+        });
+
+        var now = DateTime.UtcNow;
+        _context.AnimalStatuses.AddRange(
+            new AnimalStatus { Id = Guid.NewGuid(), FarmId = farm.Id, Name = "Active", IsActive = true, Category = AnimalStatusCategory.Active, IsSystemDefined = true, CreatedAt = now },
+            new AnimalStatus { Id = Guid.NewGuid(), FarmId = farm.Id, Name = "Pregnant", IsActive = true, Category = AnimalStatusCategory.Active, IsSystemDefined = true, CreatedAt = now },
+            new AnimalStatus { Id = Guid.NewGuid(), FarmId = farm.Id, Name = "Lactating", IsActive = true, Category = AnimalStatusCategory.Active, IsSystemDefined = true, CreatedAt = now },
+            new AnimalStatus { Id = Guid.NewGuid(), FarmId = farm.Id, Name = "Dry", IsActive = true, Category = AnimalStatusCategory.Active, IsSystemDefined = true, CreatedAt = now },
+            new AnimalStatus { Id = Guid.NewGuid(), FarmId = farm.Id, Name = "Sold", IsActive = true, Category = AnimalStatusCategory.Terminal, IsSystemDefined = true, CreatedAt = now },
+            new AnimalStatus { Id = Guid.NewGuid(), FarmId = farm.Id, Name = "Deceased", IsActive = true, Category = AnimalStatusCategory.Terminal, IsSystemDefined = true, CreatedAt = now });
+
+        await _context.SaveChangesAsync();
     }
 
     public async Task<Result<AuthResponse>> RefreshTokenAsync(RefreshTokenRequest request)

@@ -28,6 +28,7 @@ public class ApiService : IApiService
         _onAuthFailure = onAuthFailure;
         _httpClient = new HttpClient { BaseAddress = new Uri(AppConfig.ApiBaseUrl) };
         _httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+        _httpClient.DefaultRequestHeaders.Add("bypass-tunnel-reminder", "true");
     }
 
     public void SetFarmHeader(Guid farmId)
@@ -35,6 +36,18 @@ public class ApiService : IApiService
         if (_httpClient.DefaultRequestHeaders.Contains("X-Farm-Id"))
             _httpClient.DefaultRequestHeaders.Remove("X-Farm-Id");
         _httpClient.DefaultRequestHeaders.Add("X-Farm-Id", farmId.ToString());
+    }
+
+    public void SetBaseUrl(string baseUrl)
+    {
+        var trimmed = baseUrl?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(trimmed)) return;
+
+        if (!trimmed.StartsWith("http://") && !trimmed.StartsWith("https://"))
+            trimmed = "https://" + trimmed;
+
+        AppConfig.BaseUrl = trimmed; // persists for next launch
+        _httpClient.BaseAddress = new Uri(AppConfig.ApiBaseUrl);
     }
 
     private async Task EnsureAuthHeaderAsync()
@@ -45,6 +58,8 @@ public class ApiService : IApiService
             _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
         }
     }
+
+    private static string NormalizeEndpoint(string endpoint) => endpoint.TrimStart('/');
 
     private async Task<bool> TryRefreshTokenAsync()
     {
@@ -57,7 +72,8 @@ public class ApiService : IApiService
             if (string.IsNullOrEmpty(refreshToken)) return false;
 
             using var refreshClient = new HttpClient { BaseAddress = new Uri(AppConfig.ApiBaseUrl) };
-            var response = await refreshClient.PostAsJsonAsync("/auth/refresh", new { refreshToken }, JsonOptions);
+            refreshClient.DefaultRequestHeaders.Add("bypass-tunnel-reminder", "true");
+            var response = await refreshClient.PostAsJsonAsync("auth/refresh", new { refreshToken }, JsonOptions);
             if (!response.IsSuccessStatusCode) return false;
 
             var authResponse = await response.Content.ReadFromJsonAsync<AuthResponse>(JsonOptions);
@@ -130,14 +146,14 @@ public class ApiService : IApiService
     }
 
     public Task<T?> GetAsync<T>(string endpoint) =>
-        SendWithRetryAsync<T>(client => client.GetAsync(endpoint));
+        SendWithRetryAsync<T>(client => client.GetAsync(NormalizeEndpoint(endpoint)));
 
     public Task<T?> PostAsync<T>(string endpoint, object? body = null) =>
         SendWithRetryAsync<T>(client =>
         {
             var json = JsonSerializer.Serialize(body, JsonOptions);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
-            return client.PostAsync(endpoint, content);
+            return client.PostAsync(NormalizeEndpoint(endpoint), content);
         });
 
     public Task PostAsync(string endpoint, object? body = null) =>
@@ -145,7 +161,7 @@ public class ApiService : IApiService
         {
             var json = JsonSerializer.Serialize(body, JsonOptions);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
-            return client.PostAsync(endpoint, content);
+            return client.PostAsync(NormalizeEndpoint(endpoint), content);
         });
 
     public Task<T?> PutAsync<T>(string endpoint, object? body = null) =>
@@ -153,11 +169,11 @@ public class ApiService : IApiService
         {
             var json = JsonSerializer.Serialize(body, JsonOptions);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
-            return client.PutAsync(endpoint, content);
+            return client.PutAsync(NormalizeEndpoint(endpoint), content);
         });
 
     public Task DeleteAsync(string endpoint) =>
-        SendWithRetryAsync(client => client.DeleteAsync(endpoint));
+        SendWithRetryAsync(client => client.DeleteAsync(NormalizeEndpoint(endpoint)));
 
     public async Task<T?> PostMultipartAsync<T>(string endpoint, Stream fileStream, string fileName, string contentType, Dictionary<string, string>? formFields = null)
     {
@@ -174,7 +190,7 @@ public class ApiService : IApiService
                 content.Add(new StringContent(kv.Value), kv.Key);
         }
 
-        var response = await _httpClient.PostAsync(endpoint, content);
+        var response = await _httpClient.PostAsync(NormalizeEndpoint(endpoint), content);
 
         if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
         {
@@ -183,7 +199,7 @@ public class ApiService : IApiService
             {
                 await EnsureAuthHeaderAsync();
                 fileStream.Position = 0;
-                response = await _httpClient.PostAsync(endpoint, content);
+                response = await _httpClient.PostAsync(NormalizeEndpoint(endpoint), content);
             }
             else
             {

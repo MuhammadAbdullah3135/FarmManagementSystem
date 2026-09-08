@@ -9,67 +9,57 @@
     <!-- Login -->
     <ShellContent x:Name="LoginShell"
                   Route="Login"
-                  ContentTemplate="{DataTemplate views:LoginPage}"
                   Shell.TabBarIsVisible="False"
                   Shell.NavBarIsVisible="False" />
 
     <!-- Farm Picker -->
     <ShellContent x:Name="FarmPickerShell"
                   Route="FarmPicker"
-                  ContentTemplate="{DataTemplate views:FarmPickerPage}"
                   Shell.TabBarIsVisible="False" />
 
     <!-- Main Tabbed Area -->
     <TabBar x:Name="MainTabBar" Route="Main">
         <Tab Title="Dashboard" Icon="{OnPlatform iOS='house'}">
-            <ShellContent ContentTemplate="{DataTemplate views:DashboardPage}" />
+            <ShellContent x:Name="DashboardShell" />
         </Tab>
         <Tab Title="Animals" Icon="{OnPlatform iOS='list.bullet'}">
-            <ShellContent ContentTemplate="{DataTemplate views:AnimalListPage}" />
+            <ShellContent x:Name="AnimalListShell" />
         </Tab>
         <Tab Title="Tasks" Icon="{OnPlatform iOS='checkmark.circle'}">
-            <ShellContent ContentTemplate="{DataTemplate views:TaskListPage}" />
+            <ShellContent x:Name="TaskListShell" />
         </Tab>
         <Tab Title="Feed" Icon="{OnPlatform iOS='leaf'}">
-            <ShellContent ContentTemplate="{DataTemplate views:FeedEntryPage}" />
+            <ShellContent x:Name="FeedShell" />
         </Tab>
         <Tab Title="Settings" Icon="{OnPlatform iOS='gearshape'}">
-            <ShellContent ContentTemplate="{DataTemplate views:SettingsPage}" />
+            <ShellContent x:Name="SettingsShell" />
         </Tab>
     </TabBar>
 
     <!-- Detail Routes -->
-    <ShellContent Route="AnimalDetail"
-                  ContentTemplate="{DataTemplate views:AnimalDetailPage}"
+    <ShellContent x:Name="AnimalDetailShell" Route="AnimalDetail"
                   Shell.TabBarIsVisible="False"
                   Shell.NavBarIsVisible="True" />
 
-    <ShellContent Route="AnimalCreate"
-                  ContentTemplate="{DataTemplate views:AnimalCreatePage}"
+    <ShellContent x:Name="AnimalCreateShell" Route="AnimalCreate"
                   Shell.TabBarIsVisible="False" />
 
-    <ShellContent Route="WeightEntry"
-                  ContentTemplate="{DataTemplate views:WeightEntryPage}"
+    <ShellContent x:Name="WeightEntryShell" Route="WeightEntry"
                   Shell.TabBarIsVisible="False" />
 
-    <ShellContent Route="FeedEntry"
-                  ContentTemplate="{DataTemplate views:FeedEntryPage}"
+    <ShellContent x:Name="FeedEntryRouteShell" Route="FeedEntry"
                   Shell.TabBarIsVisible="False" />
 
-    <ShellContent Route="MedicalEntry"
-                  ContentTemplate="{DataTemplate views:MedicalEntryPage}"
+    <ShellContent x:Name="MedicalEntryShell" Route="MedicalEntry"
                   Shell.TabBarIsVisible="False" />
 
-    <ShellContent Route="VaccinationEntry"
-                  ContentTemplate="{DataTemplate views:VaccinationEntryPage}"
+    <ShellContent x:Name="VaccinationEntryShell" Route="VaccinationEntry"
                   Shell.TabBarIsVisible="False" />
 
-    <ShellContent Route="BreedingEntry"
-                  ContentTemplate="{DataTemplate views:BreedingEntryPage}"
+    <ShellContent x:Name="BreedingEntryShell" Route="BreedingEntry"
                   Shell.TabBarIsVisible="False" />
 
-    <ShellContent Route="Scanner"
-                  ContentTemplate="{DataTemplate views:ScannerPage}"
+    <ShellContent x:Name="ScannerShell" Route="Scanner"
                   Shell.TabBarIsVisible="False"
                   Shell.NavBarIsVisible="False" />
 

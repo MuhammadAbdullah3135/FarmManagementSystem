@@ -251,14 +251,18 @@ public class BreedingService : IBreedingService
                 BreedingDate = gr.BreedingRecord.BreedingDate,
                 ConfirmedDate = gr.ConfirmedDate,
                 ExpectedDeliveryDate = gr.ExpectedDeliveryDate,
-                DaysUntilDue = EF.Functions.DateDiffDay(now, gr.ExpectedDeliveryDate),
-                DaysElapsed = EF.Functions.DateDiffDay(gr.BreedingRecord.BreedingDate, now),
                 CurrentStage = gr.CurrentStage,
                 HealthCheckNotes = gr.HealthCheckNotes,
                 HealthCheckCount = gr.HealthChecks.Count,
                 CreatedAt = gr.CreatedAt
             })
             .ToListAsync();
+
+        foreach (var item in items)
+        {
+            item.DaysUntilDue = (item.ExpectedDeliveryDate.Date - now.Date).Days;
+            item.DaysElapsed = (now.Date - item.BreedingDate.Date).Days;
+        }
 
         return Result<PagedResult<GestationRecordDto>>.Success(new PagedResult<GestationRecordDto>
         {
@@ -1134,11 +1138,14 @@ public class BreedingService : IBreedingService
         var aliveOffspring = await _context.BirthOffspring
             .CountAsync(bo => bo.FarmId == farmId && bo.Outcome == Domain.Enums.BirthOutcome.Alive);
 
-        var avgGestation = await _context.GestationRecords
+        var confirmedGestations = await _context.GestationRecords
             .Where(g => g.FarmId == farmId && g.ConfirmedDate.HasValue)
-            .AverageAsync(g => (double?)EF.Functions.DateDiffDay(
-                g.BreedingRecord.BreedingDate,
-                g.ConfirmedDate)) ?? 283.0;
+            .Select(g => new { Start = g.BreedingRecord.BreedingDate, End = g.ConfirmedDate.GetValueOrDefault() })
+            .ToListAsync();
+
+        var avgGestation = confirmedGestations.Count > 0
+            ? confirmedGestations.Average(x => (x.End.Date - x.Start.Date).Days)
+            : 283.0;
 
         return Result<BreedingSummaryReport>.Success(new BreedingSummaryReport
         {

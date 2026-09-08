@@ -40,7 +40,8 @@ public static class MauiProgram
             new AuthService(
                 sp.GetRequiredService<ITokenService>(),
                 sp.GetRequiredService<IDatabaseService>(),
-                sp.GetRequiredService<IApiService>()));
+                sp.GetRequiredService<IApiService>(),
+                sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<AuthService>>()));
 
         builder.Services.AddSingleton<ISyncService>(sp =>
             new SyncService(
@@ -88,9 +89,9 @@ public static class MauiProgram
         builder.Services.AddSingleton<Converters.NullToEmptyConverter>();
         builder.Services.AddSingleton<Converters.IsNonZeroConverter>();
 
-#if DEBUG
+        // Keep authentication/network diagnostics available through Android logcat
+        // in both Debug and Release builds during remote testing.
         builder.Logging.AddDebug();
-#endif
 
         return builder.Build();
     }

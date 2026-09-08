@@ -84,7 +84,7 @@ builder.Services.AddSwaggerGen(c =>
 
 builder.Services.AddScoped<AuditLogInterceptor>();
 builder.Services.AddDbContext<FmsDbContext>((sp, options) =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"))
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"))
            .AddInterceptors(sp.GetRequiredService<AuditLogInterceptor>()));
 
 var jwtKey = Encoding.UTF8.GetBytes(builder.Configuration["Jwt:SecretKey"]!);
@@ -140,7 +140,7 @@ builder.Services.AddRateLimiter(options => {
 });
 
 builder.Services.AddHealthChecks()
-    .AddSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")!, name: "sqlserver", tags: new[] { "ready" });
+    .AddNpgSql(builder.Configuration.GetConnectionString("DefaultConnection")!, name: "postgresql", tags: new[] { "ready" });
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IFarmService, FarmService>();

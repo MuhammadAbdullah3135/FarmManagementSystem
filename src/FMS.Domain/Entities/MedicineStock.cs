@@ -13,8 +13,6 @@ public class MedicineStock : AuditableEntity
     public string? Supplier { get; set; }
     public DateTime DateReceived { get; set; }
 
-    public byte[] RowVersion { get; set; } = Array.Empty<byte>();
-
     public Farm Farm { get; set; } = null!;
     public Medicine Medicine { get; set; } = null!;
 }
