@@ -35,10 +35,14 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          push: true
+          push: false
+          load: true
           tags: registry.heroku.com/${{ secrets.HEROKU_APP_NAME }}/web
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Push web image to Heroku registry
+        run: docker push registry.heroku.com/${{ secrets.HEROKU_APP_NAME }}/web
 
       - name: Release to Heroku
         run: |
