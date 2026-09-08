@@ -191,8 +191,13 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<FmsDbContext>();
+    Console.WriteLine("[boot] starting migrations");
     await dbContext.Database.MigrateAsync();
+    Console.WriteLine("[boot] migrations complete");
     await RoleSeeder.SeedRolesAsync(dbContext);
+    Console.WriteLine("[boot] roles seeded");
+    Console.WriteLine("[boot] listen url: " + app.Configuration["ASPNETCORE_URLS"]);
+    Console.WriteLine("[boot] connection: " + (app.Configuration.GetConnectionString("DefaultConnection") ?? "<null>").Substring(0, Math.Min(40, (app.Configuration.GetConnectionString("DefaultConnection") ?? "").Length)));
 }
 
 app.UseMiddleware<GlobalExceptionMiddleware>();
