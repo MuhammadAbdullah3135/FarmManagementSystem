@@ -50,7 +50,7 @@ api.interceptors.response.use(
           localStorage.removeItem('user');
           localStorage.removeItem('auth-storage');
           localStorage.removeItem('farm-storage');
-          window.location.href = '/login';
+          window.location.href = `${import.meta.env.BASE_URL}login`;
         }
       }
     }

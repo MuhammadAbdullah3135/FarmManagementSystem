@@ -1,0 +1,38 @@
+.fms-sider-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
+}
+
+.fms-sider-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.fms-sider-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.fms-sider-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 20px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+.fms-sider-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.45);
+  background-clip: content-box;
+}
+
+.ant-modal {
+  max-width: calc(100vw - 32px);
+}
+
+@media (max-width: 576px) {
+  .ant-card-head {
+    flex-wrap: wrap;
+    row-gap: 8px;
+  }
+  .ant-card-head .ant-card-extra {
+    margin-inline-start: 0;
+  }
+}

@@ -1,5 +1,6 @@
-import React, { useEffect } from 'react';
-import { Layout, Menu, Typography, Dropdown, Avatar } from 'antd';
+import React, { useEffect, useState } from 'react';
+import '../AppLayout.css';
+import { Layout, Menu, Typography, Dropdown, Avatar, Button, Drawer } from 'antd';
 import {
   DashboardOutlined,
   SwapOutlined,
@@ -20,6 +21,8 @@ import {
   NodeIndexOutlined,
   InboxOutlined,
   SettingOutlined,
+  MenuOutlined,
+  CloseOutlined,
 } from '@ant-design/icons';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
@@ -28,15 +31,54 @@ import { useFarmStore } from '../stores/farmStore';
 const { Header, Sider, Content } = Layout;
 const { Text } = Typography;
 
+const base = import.meta.env.BASE_URL.replace(/\/+$/, '');
+const stripBase = (pathname: string) =>
+  base && pathname.startsWith(base) ? pathname.slice(base.length) || '/' : pathname;
+
 const AppLayout: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuthStore();
   const { farms, activeFarm, fetchFarms, setActiveFarm } = useFarmStore();
 
+  const [isMobile, setIsMobile] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('screen and (max-width: 991.98px)').matches,
+  );
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
   useEffect(() => {
     fetchFarms();
   }, [fetchFarms]);
+
+  useEffect(() => {
+    const root = document.getElementById('root');
+    document.body.style.height = '100vh';
+    document.body.style.overflow = 'hidden';
+    if (root) {
+      root.style.height = '100vh';
+      root.style.minHeight = '100vh';
+      root.style.overflow = 'hidden';
+    }
+    return () => {
+      document.body.style.height = '';
+      document.body.style.overflow = '';
+      if (root) {
+        root.style.height = '';
+        root.style.minHeight = '';
+        root.style.overflow = '';
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isMobile) {
+      setMobileMenuOpen(false);
+    }
+  }, [isMobile]);
+
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [location.pathname]);
 
   const handleLogout = () => {
     logout();
@@ -184,48 +226,104 @@ const AppLayout: React.FC = () => {
     },
   ];
 
-  return (
-    <Layout style={{ minHeight: '100vh' }}>
-      <Sider theme="dark" breakpoint="lg" collapsedWidth="0">
-        <div style={{ padding: '16px', textAlign: 'center' }}>
-          <Text strong style={{ color: '#fff', fontSize: 18 }}>FMS</Text>
-        </div>
+  const renderNav = (onClose?: () => void) => (
+    <>
+      <div style={{ padding: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <Text strong style={{ color: '#fff', fontSize: 18 }}>FMS</Text>
+        {onClose && (
+          <Button
+            type="text"
+            size="small"
+            icon={<CloseOutlined />}
+            onClick={onClose}
+            aria-label="Close menu"
+            style={{ color: '#fff', marginLeft: 'auto' }}
+          />
+        )}
+      </div>
+      <div className="fms-sider-scroll" style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden' }}>
         <Menu
           theme="dark"
           mode="inline"
-          selectedKeys={[location.pathname]}
+          selectedKeys={[stripBase(location.pathname)]}
           items={menuItems}
           onClick={({ key }) => navigate(key)}
         />
+      </div>
+    </>
+  );
+
+  return (
+    <Layout style={{ height: '100vh', overflow: 'hidden' }}>
+      <Sider
+        theme="dark"
+        breakpoint="lg"
+        collapsedWidth="0"
+        trigger={null}
+        onBreakpoint={setIsMobile}
+        style={{ height: '100vh', overflow: 'hidden', display: isMobile ? 'none' : undefined }}
+        styles={{
+          body: { height: '100%', display: 'flex', flexDirection: 'column' },
+        }}
+      >
+        {renderNav()}
       </Sider>
 
-      <Layout>
-        <Header style={{ background: '#fff', padding: '0 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Dropdown menu={{ items: farmMenuItems }} trigger={['click']}>
-            <div style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <SwapOutlined />
-              {activeFarm ? (
-                <Text strong>{activeFarm.name}</Text>
-              ) : farms.length > 0 ? (
-                <Text type="secondary">Select a farm</Text>
-              ) : (
-                <Text type="secondary">No farms yet</Text>
-              )}
-            </div>
-          </Dropdown>
+      <Layout style={{ overflow: 'hidden' }}>
+        <Header style={{ background: '#fff', padding: isMobile ? '0 12px' : '0 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0, gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+            {isMobile && (
+              <Button
+                type="text"
+                icon={<MenuOutlined />}
+                onClick={() => setMobileMenuOpen(true)}
+                aria-label="Open menu"
+              />
+            )}
+            <Dropdown menu={{ items: farmMenuItems }} trigger={['click']}>
+              <div style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                <SwapOutlined />
+                {activeFarm ? (
+                  <Text strong style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: isMobile ? 120 : undefined }}>{activeFarm.name}</Text>
+                ) : farms.length > 0 ? (
+                  <Text type="secondary">Select a farm</Text>
+                ) : (
+                  <Text type="secondary">No farms yet</Text>
+                )}
+              </div>
+            </Dropdown>
+          </div>
 
           <Dropdown menu={{ items: userMenuItems }} trigger={['click']}>
-            <div style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
               <Avatar icon={<UserOutlined />} />
-              <Text>{user?.firstName} {user?.lastName}</Text>
+              <Text style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: isMobile ? 90 : undefined }}>
+                {user?.firstName} {user?.lastName}
+              </Text>
             </div>
           </Dropdown>
         </Header>
 
-        <Content style={{ margin: '24px', padding: 24, background: '#fff', minHeight: 280 }}>
+        <Content style={{ flex: 1, overflowY: 'auto', margin: isMobile ? 8 : 24, padding: isMobile ? 8 : 24, background: '#fff', minHeight: 280 }}>
           <Outlet />
         </Content>
       </Layout>
+
+      <Drawer
+        placement="left"
+        open={mobileMenuOpen}
+        onClose={() => setMobileMenuOpen(false)}
+        width={240}
+        closable={false}
+        styles={{
+          header: { display: 'none' },
+          body: { backgroundColor: '#001529', padding: 0 },
+        }}
+      >
+        <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+          {renderNav(() => setMobileMenuOpen(false))}
+        </div>
+      </Drawer>
     </Layout>
   );
 };
