@@ -2,7 +2,6 @@
 
 	<PropertyGroup>
 		<TargetFramework>net10.0-android</TargetFramework>
-
 		<OutputType>Exe</OutputType>
 		<RootNamespace>FMS.Mobile</RootNamespace>
 		<UseMaui>true</UseMaui>
@@ -10,56 +9,46 @@
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 
-		<!-- XAML source generation -->
-		<MauiXamlInflator>SourceGen</MauiXamlInflator>
-
-		<!-- Display name -->
 		<ApplicationTitle>FMS Mobile</ApplicationTitle>
-
-		<!-- App Identifier -->
 		<ApplicationId>com.fms.mobile</ApplicationId>
-
-		<!-- Versions -->
 		<ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
 		<ApplicationVersion>1</ApplicationVersion>
 
-		<WindowsPackageType>None</WindowsPackageType>
+		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">23.0</SupportedOSPlatformVersion>
+	</PropertyGroup>
 
-		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">21.0</SupportedOSPlatformVersion>
+	<!-- Firebase: packages + define only when config file is present -->
+	<PropertyGroup Condition="Exists('Platforms/Android/google-services.json')">
+		<DefineConstants>$(DefineConstants);FIREBASE</DefineConstants>
 	</PropertyGroup>
 
 	<ItemGroup>
-		<!-- App Icon -->
 		<MauiIcon Include="Resources\AppIcon\appicon.svg" ForegroundFile="Resources\AppIcon\appiconfg.svg" Color="#512BD4" />
-
-		<!-- Splash Screen -->
 		<MauiSplashScreen Include="Resources\Splash\splash.svg" Color="#512BD4" BaseSize="128,128" />
-
-		<!-- Images -->
-		<MauiImage Include="Resources\Images\*" />
-		<MauiImage Update="Resources\Images\dotnet_bot.png" Resize="True" BaseSize="300,185" />
-
-		<!-- Custom Fonts -->
-		<MauiFont Include="Resources\Fonts\*" />
-
-		<!-- Raw Assets -->
-		<MauiAsset Include="Resources\Raw\**" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
 	</ItemGroup>
 
 	<ItemGroup>
 		<PackageReference Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
 		<PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.0" />
-		<PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
-		<PackageReference Include="SixLabors.ImageSharp" Version="3.1.6" />
-		<PackageReference Include="sqlite-net-pcl" Version="1.9.172" />
-		<PackageReference Include="ZXing.Net.Maui" Version="0.10.4" />
-		<PackageReference Include="ZXing.Net.Maui.Controls" Version="0.10.4" />
-
-
 	</ItemGroup>
 
-	<ItemGroup>
-		<ProjectReference Include="..\FMS.Application\FMS.Application.csproj" />
+	<ItemGroup Condition="Exists('Platforms/Android/google-services.json')">
+		<PackageReference Include="Plugin.Firebase.Core" Version="4.0.0" />
+		<PackageReference Include="Plugin.Firebase.Crashlytics" Version="4.0.0" />
+		<GoogleServicesJson Include="Platforms/Android/google-services.json" />
 	</ItemGroup>
+
+	<!-- Prevent monodroid crash: store native libs uncompressed -->
+	<PropertyGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">
+		<AndroidStoreUncompressedFileExtensions>so;dll</AndroidStoreUncompressedFileExtensions>
+		<AndroidUseAapt2>true</AndroidUseAapt2>
+	</PropertyGroup>
+
+	<!-- Debug: standalone APK with assemblies embedded (SDK default is fast-deploy=false embed) -->
+	<PropertyGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android' and '$(Configuration)' == 'Debug'">
+		<AndroidPackageFormat>apk</AndroidPackageFormat>
+		<EmbedAssembliesIntoApk>true</EmbedAssembliesIntoApk>
+		<RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == '' and '$(RuntimeIdentifiers)' == ''">android-arm64</RuntimeIdentifier>
+	</PropertyGroup>
 
 </Project>

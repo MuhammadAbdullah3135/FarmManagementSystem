@@ -83,3 +83,7 @@ rewrite/**/.next/
 rewrite/**/.turbo/
 rewrite/apps/web/.next/
 rewrite/apps/web/.env.local
+
+## Firebase config (contains API keys — never commit)
+**/google-services.json
+**/GoogleService-Info.plist
