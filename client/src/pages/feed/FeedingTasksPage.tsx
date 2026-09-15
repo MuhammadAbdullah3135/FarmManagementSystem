@@ -4,6 +4,7 @@ import {
 } from 'antd';
 import { ThunderboltOutlined, CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
+import MobileTable from '../../components/MobileTable';
 import dayjs, { Dayjs } from 'dayjs';
 import { feedingTasksApi } from '../../api/feed';
 import { getApiError } from '../../api/farmApi';
@@ -146,8 +147,9 @@ const FeedingTasksPage: React.FC = () => {
         </Space>
       }
     >
-      <Table
+      <MobileTable
         rowKey="id"
+        fixedKeyColumn="dietPlanName"
         columns={columns}
         dataSource={tasks}
         loading={loading}

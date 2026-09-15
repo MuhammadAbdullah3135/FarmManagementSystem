@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, Button, Card, DatePicker, Form, Input, InputNumber, Modal, Popconfirm, Select, Space, Table, Tag, message } from 'antd';
+import { Alert, Button, Card, DatePicker, Form, Input, InputNumber, Modal, Popconfirm, Select, Space, Tag, message } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
+import MobileTable from '../../components/MobileTable';
 import { inventoryApi } from '../../api/inventory';
 import { getApiError } from '../../api/farmApi';
 import type { InventoryItem } from '../../types';
@@ -131,7 +132,7 @@ const InventoryItemsPage: React.FC = () => {
   return <>
     <Card title="Inventory Items" extra={<Space><Input.Search placeholder="Search items..." allowClear onSearch={setSearch} style={{ width: 220 }} /><Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>Add item</Button></Space>}>
       {error && <Alert type="error" showIcon message={error} closable onClose={() => setError(null)} style={{ marginBottom: 16 }} />}
-      <Table rowKey="id" columns={columns} dataSource={items} loading={loading} rowClassName={(item) => item.isLowStock ? 'inventory-low-stock' : ''} pagination={{ current: page, total, pageSize: 10, onChange: (nextPage) => void load(nextPage), showSizeChanger: false }} locale={{ emptyText: 'No inventory items yet. Add equipment, supplies, or consumables to get started.' }} />
+      <MobileTable rowKey="id" fixedKeyColumn="name" fixedActionsWidth={145} columns={columns} dataSource={items} loading={loading} rowClassName={(item) => item.isLowStock ? 'inventory-low-stock' : ''} pagination={{ current: page, total, pageSize: 10, onChange: (nextPage) => void load(nextPage), showSizeChanger: false }} locale={{ emptyText: 'No inventory items yet. Add equipment, supplies, or consumables to get started.' }} />
     </Card>
 
     <Modal title={editing ? 'Edit inventory item' : 'Add inventory item'} open={modalOpen} onOk={() => void save()} onCancel={() => setModalOpen(false)} destroyOnClose>

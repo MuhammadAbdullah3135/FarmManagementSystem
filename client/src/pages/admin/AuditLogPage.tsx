@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Table, Card, Select, Input, DatePicker, Tag, Button, Space, Typography } from 'antd';
+import { Card, Select, Input, DatePicker, Tag, Button, Space, Typography } from 'antd';
 import { ReloadOutlined, SearchOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
+import MobileTable from '../../components/MobileTable';
 import dayjs from 'dayjs';
 import { auditLogsApi } from '../../api/auditLogs';
 import type { AuditLogEntry, PagedResult } from '../../api/auditLogs';
@@ -110,7 +111,8 @@ const AuditLogPage: React.FC = () => {
     if (allKeys.size === 0) return <Text type="secondary">No value details</Text>;
 
     return (
-      <table style={{ width: '100%', fontSize: 13, borderCollapse: 'collapse' }}>
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', minWidth: 420, fontSize: 13, borderCollapse: 'collapse' }}>
         <thead>
           <tr style={{ borderBottom: '1px solid #f0f0f0' }}>
             <th style={{ textAlign: 'left', padding: '4px 8px' }}>Field</th>
@@ -131,7 +133,8 @@ const AuditLogPage: React.FC = () => {
             </tr>
           ))}
         </tbody>
-      </table>
+        </table>
+      </div>
     );
   };
 
@@ -175,8 +178,10 @@ const AuditLogPage: React.FC = () => {
         />
       </Space>
 
-      <Table
+      <MobileTable
         rowKey="id"
+        fixedKeyColumn="timestamp"
+        fixedActions={false}
         columns={columns}
         dataSource={data?.items || []}
         loading={loading}

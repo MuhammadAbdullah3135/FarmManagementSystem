@@ -54,6 +54,7 @@ const App: React.FC = () => {
   return (
     <ConfigProvider
       locale={enUS}
+      table={{ scroll: { x: 'max-content' } }}
       theme={{
         token: {
           colorPrimary: '#1677ff',

@@ -4,6 +4,7 @@ import {
 } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
+import MobileTable from '../../components/MobileTable';
 import dayjs, { Dayjs } from 'dayjs';
 import { salaryPaymentsApi, payrollApi, employeesApi } from '../../api/hr';
 import { getApiError } from '../../api/farmApi';
@@ -137,8 +138,9 @@ const SalaryPaymentsPage: React.FC = () => {
             </Space>
           }>
             {selectedEmp ? (
-              <Table
+              <MobileTable
                 rowKey="id"
+                fixedKeyColumn="paymentDate"
                 columns={payCols}
                 dataSource={payments}
                 loading={loading}

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Card, Table, Button, Tag, Space, Drawer, Form, DatePicker, Input, InputNumber, message, Descriptions, Empty, Tooltip, Modal } from 'antd';
+import { Card, Button, Tag, Space, Drawer, Form, DatePicker, Input, InputNumber, message, Descriptions, Empty, Tooltip, Modal } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
+import MobileTable from '../../components/MobileTable';
 import { PlusOutlined, CloseCircleOutlined, HeartOutlined } from '@ant-design/icons';
 import { gestationApi, breedingRecordsApi, type ConfirmPregnancyPayload, type LogHealthCheckPayload } from '../../api/breeding';
 import { getApiError } from '../../api/farmApi';
@@ -248,8 +249,9 @@ export default function GestationPage() {
           </Card>
         </div>
 
-        <Table
+        <MobileTable
           rowKey="id"
+          fixedKeyColumn="animal"
           columns={columns}
           dataSource={data}
           loading={loading}

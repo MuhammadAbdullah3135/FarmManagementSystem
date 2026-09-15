@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Card, Descriptions, Tag, Tabs, Table, Button, Spin, message, Breadcrumb, Empty } from 'antd';
+import { Card, Descriptions, Tag, Tabs, Button, Spin, message, Breadcrumb, Empty } from 'antd';
+import MobileTable from '../../components/MobileTable';
 import { ArrowLeftOutlined } from '@ant-design/icons';
 import { animalsApi } from '../../api/animals';
 import { weightCheckStatusApi } from '../../api/health';
@@ -189,7 +190,7 @@ export default function AnimalDetailPage() {
               Add Breeding Record
             </Button>
           </div>
-          <Table
+          <MobileTable
             rowKey="id"
             columns={breedingColumns}
             dataSource={breedingRecords}

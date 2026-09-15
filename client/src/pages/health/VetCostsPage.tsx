@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Card, Col, DatePicker, Row, Statistic, Table, Tag, message } from 'antd';
 import { DollarOutlined, MedicineBoxOutlined, ExperimentOutlined, TeamOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
+import MobileTable from '../../components/MobileTable';
 import dayjs from 'dayjs';
 import { healthCostsApi } from '../../api/health';
 import { getApiError } from '../../api/farmApi';
@@ -64,6 +65,7 @@ const VetCostsPage: React.FC = () => {
   const animalColumns: ColumnsType<HealthCostByAnimal> = [
     {
       title: 'Animal',
+      key: 'animal',
       render: (_, r) => (
         <span>
           {r.tagNumber}
@@ -154,8 +156,9 @@ const VetCostsPage: React.FC = () => {
         style={{ marginTop: 16 }}
         extra={<RangePicker onChange={handleRangeChange} />}
       >
-        <Table
+        <MobileTable
           rowKey="vetName"
+          fixedKeyColumn="vetName"
           columns={vetColumns}
           dataSource={byVet}
           loading={loading}
@@ -165,8 +168,9 @@ const VetCostsPage: React.FC = () => {
       </Card>
 
       <Card title="Cost Breakdown by Animal" style={{ marginTop: 16 }}>
-        <Table
+        <MobileTable
           rowKey="animalId"
+          fixedKeyColumn="animal"
           columns={animalColumns}
           dataSource={byAnimal}
           loading={loading}

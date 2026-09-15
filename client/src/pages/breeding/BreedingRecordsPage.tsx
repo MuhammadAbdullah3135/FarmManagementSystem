@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Card, Table, Button, Modal, Form, Select, DatePicker, Input, Space, Tag, message, Popconfirm } from 'antd';
+import { Card, Button, Modal, Form, Select, DatePicker, Input, Space, Tag, message, Popconfirm } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
+import MobileTable from '../../components/MobileTable';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { breedingRecordsApi, type BreedingRecordListFilter, type CreateBreedingRecordPayload, type UpdateBreedingRecordPayload } from '../../api/breeding';
 import { lookupsApi } from '../../api/attendance';
@@ -201,8 +202,9 @@ export default function BreedingRecordsPage() {
         title="Breeding Records"
         extra={<Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>Add Record</Button>}
       >
-        <Table
+        <MobileTable
           rowKey="id"
+          fixedKeyColumn="sire"
           columns={columns}
           dataSource={data}
           loading={loading}

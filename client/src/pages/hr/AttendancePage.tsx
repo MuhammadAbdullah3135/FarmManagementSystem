@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  Button, Card, DatePicker, Form, Input, Modal, Select, Space, Table, Tag, message,
+  Button, Card, DatePicker, Form, Input, Modal, Select, Space, Tag, message,
 } from 'antd';
 import { LoginOutlined, LogoutOutlined, PlusOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
+import MobileTable from '../../components/MobileTable';
 import dayjs, { Dayjs } from 'dayjs';
 import { attendanceApi } from '../../api/attendance';
 import { employeesApi } from '../../api/hr';
@@ -184,8 +185,9 @@ const AttendancePage: React.FC = () => {
           </Space>
         }
       >
-        <Table
+        <MobileTable
           rowKey="id"
+          fixedKeyColumn="employeeName"
           columns={columns}
           dataSource={records}
           loading={loading}

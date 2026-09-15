@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  Button, Card, DatePicker, Form, Input, InputNumber, Modal, Popconfirm, Radio, Select, Space, Table, message,
+  Button, Card, DatePicker, Form, Input, InputNumber, Modal, Popconfirm, Radio, Select, Space, message,
 } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
+import MobileTable from '../../components/MobileTable';
 import dayjs, { Dayjs } from 'dayjs';
 import { feedRecordsApi, feedTypesApi } from '../../api/feed';
 import { lookupsApi } from '../../api/attendance';
@@ -189,8 +190,9 @@ const FeedRecordsPage: React.FC = () => {
         />
       </Space>
 
-      <Table
+      <MobileTable
         rowKey="id"
+        fixedKeyColumn="fedAt"
         columns={columns}
         dataSource={records}
         loading={loading}
