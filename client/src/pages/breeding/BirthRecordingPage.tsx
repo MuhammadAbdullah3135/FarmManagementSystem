@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Card, Table, Button, Tag, Space, Modal, Form, DatePicker, Input, InputNumber, Select, message, Descriptions, Empty, Popconfirm } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import MobileTable from '../../components/MobileTable';
 import { PlusOutlined, DeleteOutlined, EyeOutlined } from '@ant-design/icons';
 import { birthsApi, gestationApi, breedingRecordsApi, type CreateBirthRecordPayload } from '../../api/breeding';
 import { lookupsApi } from '../../api/attendance';
@@ -202,9 +201,8 @@ export default function BirthRecordingPage() {
           </Button>
         }
       >
-        <MobileTable
+        <Table
           rowKey="id"
-          fixedKeyColumn="dam"
           columns={columns}
           dataSource={data}
           loading={loading}

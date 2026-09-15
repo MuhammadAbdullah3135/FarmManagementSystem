@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Card, Button, Modal, Form, Input, Select, DatePicker, Space, Tag, message, Popconfirm } from 'antd';
+import { Card, Table, Button, Modal, Form, Input, Select, DatePicker, Space, Tag, message, Popconfirm } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import MobileTable from '../../components/MobileTable';
 import { PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined } from '@ant-design/icons';
 import { animalsApi, type AnimalListFilter, type CreateAnimalPayload } from '../../api/animals';
 import { lookupsApi } from '../../api/attendance';
@@ -220,9 +219,8 @@ export default function AnimalsPage() {
         title="Animals"
         extra={<Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>Add Animal</Button>}
       >
-        <MobileTable
+        <Table
           rowKey="id"
-          fixedKeyColumn="tagNumber"
           columns={columns}
           dataSource={data}
           loading={loading}

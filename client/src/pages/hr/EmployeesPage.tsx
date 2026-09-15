@@ -1,10 +1,9 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  Button, Card, Form, Input, InputNumber, Modal, Popconfirm, Select, Space, Switch, Tag, message,
+  Button, Card, Form, Input, InputNumber, Modal, Popconfirm, Select, Space, Switch, Table, Tag, message,
 } from 'antd';
 import { PlusOutlined, SearchOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
-import MobileTable from '../../components/MobileTable';
 import dayjs from 'dayjs';
 import { employeesApi, departmentsApi, employeeRolesApi } from '../../api/hr';
 import { getApiError } from '../../api/farmApi';
@@ -107,7 +106,6 @@ const EmployeesPage: React.FC = () => {
   const columns: ColumnsType<Employee> = [
     {
       title: 'Name',
-      key: 'name',
       render: (_, r) => <span>{r.firstName} {r.lastName}</span>,
     },
     { title: 'Phone', dataIndex: 'phone', render: (p?: string) => p ?? '-' },
@@ -156,9 +154,8 @@ const EmployeesPage: React.FC = () => {
         </Space>
       }
     >
-      <MobileTable
+      <Table
         rowKey="id"
-        fixedKeyColumn="name"
         columns={columns}
         dataSource={employees}
         loading={loading}

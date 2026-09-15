@@ -1,10 +1,9 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  Button, Card, DatePicker, Form, Input, InputNumber, Modal, Popconfirm, Select, Space, Tag, message,
+  Button, Card, DatePicker, Form, Input, InputNumber, Modal, Popconfirm, Select, Space, Table, Tag, message,
 } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
-import MobileTable from '../../components/MobileTable';
 import dayjs from 'dayjs';
 import { medicalRecordsApi } from '../../api/health';
 import { lookupsApi } from '../../api/attendance';
@@ -161,7 +160,6 @@ const MedicalRecordsPage: React.FC = () => {
   const columns: ColumnsType<MedicalRecordListItem> = [
     {
       title: 'Animal',
-      key: 'animal',
       render: (_, r) => (
         <span>
           {r.animalTagNumber}
@@ -239,9 +237,8 @@ const MedicalRecordsPage: React.FC = () => {
           </Space>
         }
       >
-        <MobileTable
+        <Table
           rowKey="id"
-          fixedKeyColumn="animal"
           columns={columns}
           dataSource={records}
           loading={loading}
