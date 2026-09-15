@@ -204,7 +204,7 @@ export default function BreedingRecordsPage() {
       >
         <MobileTable
           rowKey="id"
-          fixedKeyColumn="sire"
+          fixedKeyColumn="breedingDate"
           columns={columns}
           dataSource={data}
           loading={loading}

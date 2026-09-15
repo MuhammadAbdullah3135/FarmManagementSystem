@@ -111,7 +111,7 @@ const DepartmentsRolesPage: React.FC = () => {
 
   return (
     <Row gutter={16}>
-      <Col span={12}>
+      <Col xs={24} md={12}>
         <Card
           title="Departments"
           extra={
@@ -123,7 +123,7 @@ const DepartmentsRolesPage: React.FC = () => {
           <Table rowKey="id" columns={deptColumns} dataSource={departments} loading={loading} pagination={false} size="small" />
         </Card>
       </Col>
-      <Col span={12}>
+      <Col xs={24} md={12}>
         <Card
           title="Employee Roles"
           extra={

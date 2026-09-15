@@ -215,7 +215,7 @@ const CategoriesPage: React.FC = () => {
 
   return (
     <Row gutter={16}>
-      <Col span={8}>
+      <Col xs={24} xl={8}>
         <Card
           title="Expense Categories"
           extra={
@@ -237,7 +237,7 @@ const CategoriesPage: React.FC = () => {
           />
         </Card>
       </Col>
-      <Col span={8}>
+      <Col xs={24} xl={8}>
         <Card
           title="Income Categories"
           extra={
@@ -259,7 +259,7 @@ const CategoriesPage: React.FC = () => {
           />
         </Card>
       </Col>
-      <Col span={8}>
+      <Col xs={24} xl={8}>
         <Card
           title="Payment Methods"
           extra={

@@ -24,11 +24,38 @@ export interface MobileTableProps<RecordType> extends TableProps<RecordType> {
 
 const DEFAULT_KEY_WIDTH = 130;
 const DEFAULT_ACTIONS_WIDTH = 120;
+/** Fallback width for widthless columns when pinning makes auto-sizing impossible. */
+const DEFAULT_COLUMN_WIDTH = 130;
+
+/**
+ * Width hints for widthless columns, matched against key/dataIndex then
+ * title. antd collapses widthless columns into unreadable slivers once any
+ * column is fixed, so every column needs a width; these hints keep common
+ * column kinds from getting a one-size-fits-all guess.
+ */
+const WIDTH_HINTS: Array<{ match: RegExp; width: number }> = [
+  { match: /(date|time|timestamp|fedat)$/i, width: 110 },
+  { match: /^(method|result|status|stage|sex|outcome|type|category|role|unit)$/i, width: 100 },
+  { match: /^(qty|quantity|count|amount|cost|price|total|weight|days.*)$/i, width: 96 },
+];
+
+function columnKey(column: NonNullable<TableProps<any>['columns']>[number]): string | undefined {
+  if (!column) return undefined;
+  if (column.key !== undefined) return String(column.key);
+  if ('dataIndex' in column && column.dataIndex !== undefined) {
+    return Array.isArray(column.dataIndex) ? column.dataIndex.join('.') : String(column.dataIndex);
+  }
+  return undefined;
+}
 
 /**
  * Mobile-friendly antd Table. Identical to `Table` on desktop; on phones it
  * enables horizontal swiping and optionally pins the identity/Actions columns
  * so they stay visible while the rest of the table scrolls sideways.
+ *
+ * When any column is pinned, every widthless column gets an explicit width —
+ * antd's fixed-column layout collapses widthless columns into unreadable
+ * slivers otherwise. Columns that already declare a width keep it.
  */
 function MobileTable<RecordType extends object = any>({
   fixedKeyColumn,
@@ -46,19 +73,18 @@ function MobileTable<RecordType extends object = any>({
     return <Table<RecordType> columns={columns} scroll={scroll} {...rest} />;
   }
 
+  const pinning = fixedKeyColumn !== undefined || fixedActions;
+
   const nextColumns = columns?.map((column) => {
-    const key = column.key ?? ('dataIndex' in column
-      ? Array.isArray(column.dataIndex)
-        ? column.dataIndex.join('.')
-        : column.dataIndex
-      : undefined);
+    const key = columnKey(column);
+    const titleText = typeof column.title === 'string' ? column.title : undefined;
     // Some pages define the Actions column without a key; fall back to the title.
-    const isActionsColumn = key === 'actions' || (fixedActions && column.title === 'Actions');
+    const isActionsColumn = key === 'actions' || (fixedActions && titleText === 'Actions');
     if (fixedKeyColumn !== undefined && key === fixedKeyColumn) {
       return {
         ...column,
         fixed: 'left' as const,
-        width: fixedKeyColumnWidth,
+        width: column.width ?? fixedKeyColumnWidth,
       };
     }
     if (fixedActions && isActionsColumn) {
@@ -67,6 +93,16 @@ function MobileTable<RecordType extends object = any>({
         fixed: 'right' as const,
         width: column.width ?? fixedActionsWidth,
       };
+    }
+    // With fixed columns antd cannot auto-size widthless columns — they
+    // collapse into slivers. Give them an explicit width so headers and
+    // cells stay readable while swiping.
+    if (pinning && column.width === undefined) {
+      const hinted = WIDTH_HINTS.find((h) =>
+        (key !== undefined && h.match.test(key)) ||
+        (titleText !== undefined && h.match.test(titleText)),
+      );
+      return { ...column, width: hinted?.width ?? DEFAULT_COLUMN_WIDTH };
     }
     return column;
   });
