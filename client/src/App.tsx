@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ConfigProvider } from 'antd';
 import enUS from 'antd/locale/en_US';
+import ErrorBoundary from './components/ErrorBoundary';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
@@ -52,7 +53,8 @@ import AuditLogPage from './pages/admin/AuditLogPage';
 
 const App: React.FC = () => {
   return (
-    <ConfigProvider
+    <ErrorBoundary>
+      <ConfigProvider
       locale={enUS}
       theme={{
         token: {
@@ -143,6 +145,7 @@ const App: React.FC = () => {
         </Routes>
       </Router>
     </ConfigProvider>
+    </ErrorBoundary>
   );
 };
 
