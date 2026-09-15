@@ -61,6 +61,7 @@ const App: React.FC = () => {
           colorPrimary: '#1677ff',
         },
       }}
+      table={{ scroll: { x: "max-content" } }}
     >
       <Router basename={import.meta.env.BASE_URL}>
         <Routes>

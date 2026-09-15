@@ -39,8 +39,8 @@
   /* Contain table borders inside cards on narrow screens — without this
      border-collapse: separate + horizontal scroll makes table borders bleed
      past the card body. */
-  .ant-table-wrapper {
-    overflow: hidden;
+  .ant-table-wrapper .ant-table {
+    border-collapse: collapse !important;
   }
 
   /* Compact table density so rows stop stretching on phones. */
