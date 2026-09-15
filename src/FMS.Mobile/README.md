@@ -5,6 +5,7 @@ A lightweight .NET MAUI Android app that wraps the [FMS web frontend](https://mu
 ## What It Does
 
 - Loads the FMS web app in a full-screen WebView (URL: `https://muhammadabdullah3135.github.io/FarmManagementSystem/`)
+- The web app communicates with the backend API at `https://fms-api-3ba95327d590.herokuapp.com/api`
 - **Back button handling:** traverses web history first; only exits the app when there's no history left
 - **Offline detection:** shows a "No internet connection" overlay with a Retry button when network drops (via both `Connectivity` listener and native WebView error handling)
 - **Firebase Crashlytics:** unhandled exceptions are reported to the Firebase console (project: `fms-mobile-798f5`)
@@ -17,6 +18,7 @@ A lightweight .NET MAUI Android app that wraps the [FMS web frontend](https://mu
 - **arm64 only** — built for `android-arm64` ABI; does not produce arm32 or x86 builds
 - **Debug build** — current APK includes test-only buttons (Test Crash, Share Report) compiled out of Release builds
 - **No push notifications** — not yet implemented
+- **Tightly coupled to GitHub Pages URL** — the WebView URL is hardcoded in `MainPage.cs`; changing the deployment URL requires a code change and rebuild
 - **google-services.json is not in the repo** — Firebase config is gitignored; you must obtain your own from the Firebase console
 
 ## Building

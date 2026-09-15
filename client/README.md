@@ -7,9 +7,9 @@ React single-page application for the Farm Management System. Provides the full 
 - **Framework:** React 19 + TypeScript 6
 - **Build:** Vite 8
 - **UI:** Ant Design 6 + Recharts (charts) + jsPDF/xlsx (exports)
-- **State:** Zustand (auth + farm selection)
+- **State:** Zustand (auth + farm selection, persisted to localStorage)
 - **Routing:** React Router 7
-- **HTTP:** Axios with JWT interceptors (auto-refresh)
+- **HTTP:** Axios with JWT interceptors (auto-refresh on 401)
 
 ## Running Locally
 
@@ -134,17 +134,28 @@ All routes are defined in `src/App.tsx`. Features verified against source code:
 
 ## Key UI Features
 
-- **Farm switcher** in the header — all data is scoped to the selected farm
-- **Responsive sidebar** — collapses on narrow screens
+- **Farm switcher** in the header — all data is scoped to the selected farm via `X-Farm-Id` header
+- **Responsive sidebar** — collapses to a hamburger drawer on narrow screens
 - **Export** — PDF, Excel, CSV from any table (via `ExportButton` component)
 - **Date range filtering** — reusable `DateRangeFilter` component (default: last 30 days)
 - **Charts** — Recharts area/line/pie/bar on dashboard and report pages
+- **Error boundary** — catches render errors and shows a reload button (built for Android WebView crash resilience)
+- **Auto-refresh** — on 401, silently refreshes the JWT and replays the failed request
 
 ## Authentication
 
 - JWT access tokens (15 min) + refresh tokens (30 days) stored in localStorage
 - Auto-refresh interceptor: on 401, silently refreshes and replays the request
-- No role-based route guarding (all authenticated users see all pages)
+- On refresh failure: clears all auth state and redirects to `/login`
+
+## Known Limitations
+
+- **No role-based menu filtering:** All authenticated users see all sidebar menu items regardless of their role. The backend enforces role restrictions at the API level, so users may see menus they cannot access (resulting in 403 errors when clicked). Roles are not returned from the login endpoint.
+- **Dashboard data display bug:** The "Due Weight Checks" summary card incorrectly shows the vaccination count instead of the weight check count.
+- **Dashboard alerts not clickable:** Alert objects from the API include a `link` field pointing to the relevant page, but the UI renders them as static text without navigation.
+- **No i18n:** English only. Ant Design locale is hardcoded to `en_US`.
+- **No offline support:** Requires an active internet connection. The mobile wrapper shows an offline overlay but provides no cached data.
+- **Single types file:** All domain types are defined in a single `src/types/index.ts` file (1000+ lines).
 
 ## Environment Variables
 
@@ -154,6 +165,6 @@ All routes are defined in `src/App.tsx`. Features verified against source code:
 
 ## Deployment
 
-Automatically deployed to GitHub Pages on every push to `main` (see `.github/workflows/pages-deploy.yml`). The build copies `index.html` to `404.html` for SPA client-side routing fallback.
+Automated via GitHub Actions on every push to `main` (see `.github/workflows/pages-deploy.yml`). The build copies `index.html` to `404.html` for SPA client-side routing fallback.
 
 Live at: `https://muhammadabdullah3135.github.io/FarmManagementSystem/`
