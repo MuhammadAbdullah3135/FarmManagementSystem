@@ -108,7 +108,7 @@ const FinanceReportsPage: React.FC = () => {
 
       {/* P&L Summary Cards */}
       <Row gutter={16} style={{ marginBottom: 24 }}>
-        <Col xs={24} sm={8}>
+        <Col span={8}>
           <Card loading={loading}>
             <Statistic
               title="Total Income"
@@ -120,7 +120,7 @@ const FinanceReportsPage: React.FC = () => {
             />
           </Card>
         </Col>
-        <Col xs={24} sm={8}>
+        <Col span={8}>
           <Card loading={loading}>
             <Statistic
               title="Total Expenses"
@@ -132,7 +132,7 @@ const FinanceReportsPage: React.FC = () => {
             />
           </Card>
         </Col>
-        <Col xs={24} sm={8}>
+        <Col span={8}>
           <Card loading={loading}>
             <Statistic
               title="Net Profit"
@@ -148,7 +148,7 @@ const FinanceReportsPage: React.FC = () => {
 
       {/* Breakdown Charts */}
       <Row gutter={16} style={{ marginBottom: 24 }}>
-        <Col xs={24} lg={12}>
+        <Col span={12}>
           <Card title="Expense Breakdown" loading={loading}>
             {expenseBreakdown.length > 0 ? (
               <ResponsiveContainer width="100%" height={260}>
@@ -182,7 +182,7 @@ const FinanceReportsPage: React.FC = () => {
             />
           </Card>
         </Col>
-        <Col xs={24} lg={12}>
+        <Col span={12}>
           <Card title="Income Breakdown" loading={loading}>
             {incomeBreakdown.length > 0 ? (
               <ResponsiveContainer width="100%" height={260}>

@@ -78,9 +78,4 @@
     flex-wrap: wrap;
     row-gap: 8px;
   }
-
-  /* Drawers with fixed pixel widths (e.g. 600px stock drawer) must fit phones. */
-  body .ant-drawer-content-wrapper {
-    max-width: calc(100vw - 16px) !important;
-  }
 }
