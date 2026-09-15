@@ -16,6 +16,15 @@ public class FarmContextMiddleware
 
     public async Task InvokeAsync(HttpContext context, IFarmContextService farmContext, FmsDbContext dbContext)
     {
+        // Skip farm context enforcement for auth endpoints (login, register, reset, refresh).
+        // These are pre-authentication; stale X-Farm-Id from a previous session must not
+        // cause 403 before the endpoint can even run.
+        if (context.Request.Path.StartsWithSegments("/api/auth"))
+        {
+            await _next(context);
+            return;
+        }
+
         if (context.Request.Headers.TryGetValue("X-Farm-Id", out var farmIdHeader))
         {
             if (Guid.TryParse(farmIdHeader.ToString(), out var farmId))

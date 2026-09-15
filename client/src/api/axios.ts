@@ -10,6 +10,14 @@ const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
+  // Never attach auth headers to auth endpoints — stale tokens/farm IDs
+  // from a previous session cause 403 "Access denied to this farm" on
+  // login/register/reset/refresh before the endpoint can even run.
+  const url = config.url ?? '';
+  if (url.includes('/auth/')) {
+    return config;
+  }
+
   const token = localStorage.getItem('accessToken');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;

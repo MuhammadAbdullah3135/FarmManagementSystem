@@ -29,11 +29,14 @@ export const useFarmStore = create<FarmState>()(
           set({ farms, isLoading: false });
 
           const activeFarmId = localStorage.getItem('activeFarmId');
-          if (activeFarmId) {
-            const activeFarm = farms.find((f) => f.id === activeFarmId);
-            if (activeFarm) {
-              set({ activeFarm });
-            }
+          const activeFarm = activeFarmId ? farms.find((f) => f.id === activeFarmId) : undefined;
+          if (activeFarm) {
+            set({ activeFarm });
+          } else if (activeFarmId) {
+            // Stale farm from a previous account or session — drop it so
+            // requests stop sending X-Farm-Id the current user has no access to.
+            localStorage.removeItem('activeFarmId');
+            set({ activeFarm: null });
           }
         } catch (error: any) {
           set({ error: error.message, isLoading: false });
