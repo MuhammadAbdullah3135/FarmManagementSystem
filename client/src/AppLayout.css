@@ -35,4 +35,25 @@
   .ant-card-head .ant-card-extra {
     margin-inline-start: 0;
   }
+
+  /* Contain table borders inside cards on narrow screens — without this
+     border-collapse: separate + horizontal scroll makes table borders bleed
+     past the card body. */
+  .ant-table-wrapper {
+    overflow: hidden;
+  }
+
+  /* Compact table density so rows stop stretching on phones. */
+  body .ant-table-wrapper .ant-table {
+    font-size: 13px;
+  }
+
+  body .ant-table-wrapper .ant-table-thead > tr > th {
+    white-space: nowrap;
+    padding: 8px;
+  }
+
+  body .ant-table-wrapper .ant-table-tbody > tr > td {
+    padding: 8px;
+  }
 }
