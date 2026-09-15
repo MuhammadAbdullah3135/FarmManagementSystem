@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import api from '../api/axios';
+import { getApiError } from '../api/farmApi';
 import type { AuthResponse, User, LoginRequest, RegisterRequest, ResetPasswordRequest } from '../types';
 
 interface AuthState {
@@ -45,7 +46,7 @@ export const useAuthStore = create<AuthState>()(
           set({ user, isAuthenticated: true, isLoading: false });
           return true;
         } catch (error: any) {
-          const message = error.response?.data || 'Login failed';
+          const message = getApiError(error, 'Login failed');
           set({ error: message, isLoading: false });
           return false;
         }
@@ -73,7 +74,7 @@ export const useAuthStore = create<AuthState>()(
           set({ user, isAuthenticated: true, isLoading: false });
           return true;
         } catch (error: any) {
-          const message = error.response?.data || 'Registration failed';
+          const message = getApiError(error, 'Registration failed');
           set({ error: message, isLoading: false });
           return false;
         }
@@ -86,7 +87,7 @@ export const useAuthStore = create<AuthState>()(
           set({ isLoading: false });
           return true;
         } catch (error: any) {
-          const message = error.response?.data || 'Reset failed';
+          const message = getApiError(error, 'Reset failed');
           set({ error: message, isLoading: false });
           return false;
         }

@@ -31,7 +31,7 @@ const RegisterPage: React.FC = () => {
         <Title level={4} style={{ textAlign: 'center', marginTop: 0 }}>Create Account</Title>
 
         {error && (
-          <Alert message={error} type="error" showIcon closable onClose={clearError} style={{ marginBottom: 24 }} />
+          <Alert message={typeof error === 'string' ? error : 'Registration failed (unexpected response)'} type="error" showIcon closable onClose={clearError} style={{ marginBottom: 24 }} />
         )}
 
         <Form form={form} onFinish={onFinish} layout="vertical">
