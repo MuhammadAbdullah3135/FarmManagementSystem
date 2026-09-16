@@ -15,6 +15,7 @@ public class FmsDbContext : DbContext
     public DbSet<Role> Roles => Set<Role>();
     public DbSet<UserRole> UserRoles => Set<UserRole>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
     public DbSet<Domain.Entities.Farm> Farms => Set<Domain.Entities.Farm>();
     public DbSet<FarmConfiguration> FarmConfigurations => Set<FarmConfiguration>();
     public DbSet<UserFarm> UserFarms => Set<UserFarm>();

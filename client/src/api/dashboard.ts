@@ -13,6 +13,8 @@ export interface DashboardSummary {
   upcomingBirths: number;
   totalFeedStockValue: number;
   totalInventoryStockValue: number;
+  /** Metrics the backend could not calculate; their values default to 0. */
+  degradedMetrics: string[];
 }
 
 export interface DashboardAlert {

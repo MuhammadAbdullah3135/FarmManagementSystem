@@ -118,9 +118,9 @@ const DashboardPage: React.FC = () => {
             <Card>
               <Statistic
                 title="Due Weight Checks"
-                value={summary?.dueVaccinationCount ?? 0}
+                value={summary?.dueWeightCheckCount ?? 0}
                 prefix={<MedicineBoxOutlined />}
-                valueStyle={{ color: summary?.dueVaccinationCount ? '#faad14' : undefined }}
+                valueStyle={{ color: summary?.dueWeightCheckCount ? '#faad14' : undefined }}
               />
             </Card>
           </Col>

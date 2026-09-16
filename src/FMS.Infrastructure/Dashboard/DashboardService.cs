@@ -8,6 +8,7 @@ using FMS.Application.Tasks;
 using FMS.Domain.Enums;
 using FMS.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using IBreedingSvc = FMS.Application.Breeding.IBreedingService;
 using GestationFilter = FMS.Application.Breeding.GestationRecordListFilter;
 
@@ -24,6 +25,7 @@ public class DashboardService : IDashboardService
     private readonly IFeedService _feedService;
     private readonly IFinanceService _financeService;
     private readonly IWeightCheckScheduleService _weightCheckService;
+    private readonly ILogger<DashboardService> _logger;
 
     public DashboardService(
         FmsDbContext db,
@@ -34,7 +36,8 @@ public class DashboardService : IDashboardService
         IInventoryService inventoryService,
         IFeedService feedService,
         IFinanceService financeService,
-        IWeightCheckScheduleService weightCheckService)
+        IWeightCheckScheduleService weightCheckService,
+        ILogger<DashboardService> logger)
     {
         _db = db;
         _vaccineService = vaccineService;
@@ -45,12 +48,11 @@ public class DashboardService : IDashboardService
         _feedService = feedService;
         _financeService = financeService;
         _weightCheckService = weightCheckService;
+        _logger = logger;
     }
 
     public async Task<Result<DashboardSummaryDto>> GetSummaryAsync(Guid farmId)
     {
-        var today = DateTime.UtcNow.Date;
-
         // ── Animal aggregates (DbContext direct — simple COUNT/GROUP BY) ──
         var animals = await _db.Animals
             .Where(a => a.FarmId == farmId && !a.IsDeleted)
@@ -78,27 +80,25 @@ public class DashboardService : IDashboardService
 
         // ── Via existing services ──
 
-        // Due vaccination count (may fail on InMemory due to DateDiffDay)
-        int dueVaccinationCount = 0;
-        try
-        {
-            var vaccinationStatus = await _vaccineService.GetVaccinationStatusAsync(farmId);
-            dueVaccinationCount = vaccinationStatus.IsSuccess
-                ? vaccinationStatus.Value!.Count(v => v.Status == VaccinationStatusType.Due || v.Status == VaccinationStatusType.Overdue)
-                : 0;
-        }
-        catch { /* InMemory DB doesn't support DateDiffDay */ }
+        var degradedMetrics = new List<string>();
+
+        // Due vaccination count
+        var dueVaccinationCount = await TryComputeMetricAsync(
+            farmId, DashboardMetricNames.DueVaccinationCount, degradedMetrics, async () =>
+            {
+                var status = await _vaccineService.GetVaccinationStatusAsync(farmId);
+                return EnsureSuccess(status, DashboardMetricNames.DueVaccinationCount, farmId, degradedMetrics)
+                    ?.Count(v => v.Status == VaccinationStatusType.Due || v.Status == VaccinationStatusType.Overdue) ?? 0;
+            });
 
         // Due weight check count
-        int dueWeightCheckCount = 0;
-        try
-        {
-            var weightCheckStatus = await _weightCheckService.GetWeightCheckStatusAsync(farmId);
-            dueWeightCheckCount = weightCheckStatus.IsSuccess
-                ? weightCheckStatus.Value!.Count(w => w.Status == WeightCheckStatusType.Due || w.Status == WeightCheckStatusType.Overdue)
-                : 0;
-        }
-        catch { /* InMemory DB compat */ }
+        var dueWeightCheckCount = await TryComputeMetricAsync(
+            farmId, DashboardMetricNames.DueWeightCheckCount, degradedMetrics, async () =>
+            {
+                var status = await _weightCheckService.GetWeightCheckStatusAsync(farmId);
+                return EnsureSuccess(status, DashboardMetricNames.DueWeightCheckCount, farmId, degradedMetrics)
+                    ?.Count(w => w.Status == WeightCheckStatusType.Due || w.Status == WeightCheckStatusType.Overdue) ?? 0;
+            });
 
         // Overdue tasks
         var overdueTasksResult = await _taskService.GetTasksAsync(farmId, new Application.Tasks.FarmTaskListFilter
@@ -108,20 +108,18 @@ public class DashboardService : IDashboardService
         });
         var overdueTasks = overdueTasksResult.IsSuccess ? overdueTasksResult.Value!.TotalCount : 0;
 
-        // Upcoming births (gestation records due within 30 days — may fail on InMemory due to DateDiffDay)
-        int upcomingBirths = 0;
-        try
-        {
-            var gestationResult = await _breedingService.GetGestationRecordsAsync(farmId, new GestationFilter
+        // Upcoming births (gestation records due within 30 days)
+        var upcomingBirths = await TryComputeMetricAsync(
+            farmId, DashboardMetricNames.UpcomingBirths, degradedMetrics, async () =>
             {
-                ActiveOnly = true,
-                PageSize = 100
+                var gestation = await _breedingService.GetGestationRecordsAsync(farmId, new GestationFilter
+                {
+                    ActiveOnly = true,
+                    PageSize = 100
+                });
+                return EnsureSuccess(gestation, DashboardMetricNames.UpcomingBirths, farmId, degradedMetrics)
+                    ?.Items.Count(g => g.DaysUntilDue <= 30 && g.DaysUntilDue >= 0) ?? 0;
             });
-            upcomingBirths = gestationResult.IsSuccess
-                ? gestationResult.Value!.Items.Count(g => g.DaysUntilDue <= 30 && g.DaysUntilDue >= 0)
-                : 0;
-        }
-        catch { /* InMemory DB doesn't support DateDiffDay */ }
 
         // Feed stock value
         var feedStockResult = await _feedService.GetStockAsync(farmId);
@@ -147,7 +145,8 @@ public class DashboardService : IDashboardService
             OverdueTasks = overdueTasks,
             UpcomingBirths = upcomingBirths,
             TotalFeedStockValue = totalFeedStockValue,
-            TotalInventoryStockValue = totalInventoryStockValue
+            TotalInventoryStockValue = totalInventoryStockValue,
+            DegradedMetrics = degradedMetrics
         };
 
         return Result<DashboardSummaryDto>.Success(summary);
@@ -157,49 +156,51 @@ public class DashboardService : IDashboardService
     {
         var alerts = new List<DashboardAlertDto>();
 
-        // ── Overdue vaccinations (may fail on InMemory due to DateDiffDay) ──
-        try
-        {
-            var overdueVaccResult = await _vaccineService.GetOverdueVaccinationsAsync(farmId);
-            if (overdueVaccResult.IsSuccess)
+        // ── Overdue vaccinations ──
+        var overdueVaccinations = await TryComputeMetricAsync(
+            farmId, DashboardMetricNames.OverdueVaccinations, null, async () =>
             {
-                foreach (var v in overdueVaccResult.Value!)
+                var result = await _vaccineService.GetOverdueVaccinationsAsync(farmId);
+                return EnsureSuccess(result, DashboardMetricNames.OverdueVaccinations, farmId, null);
+            });
+        if (overdueVaccinations is not null)
+        {
+            foreach (var v in overdueVaccinations)
+            {
+                alerts.Add(new DashboardAlertDto
                 {
-                    alerts.Add(new DashboardAlertDto
-                    {
-                        AlertType = "OverdueVaccination",
-                        Severity = "Critical",
-                        Title = $"Overdue: {v.VaccineTypeName}",
-                        Message = $"Animal {v.AnimalTagNumber} is overdue for {v.VaccineTypeName} (due {v.NextDueDate:MMM dd, yyyy})",
-                        DueDate = v.NextDueDate,
-                        Link = "/dashboard/health/vaccinations"
-                    });
-                }
+                    AlertType = "OverdueVaccination",
+                    Severity = "Critical",
+                    Title = $"Overdue: {v.VaccineTypeName}",
+                    Message = $"Animal {v.AnimalTagNumber} is overdue for {v.VaccineTypeName} (due {v.NextDueDate:MMM dd, yyyy})",
+                    DueDate = v.NextDueDate,
+                    Link = "/dashboard/health/vaccinations"
+                });
             }
         }
-        catch { /* InMemory DB doesn't support DateDiffDay */ }
 
         // ── Overdue weight checks ──
-        try
-        {
-            var overdueWeightResult = await _weightCheckService.GetOverdueWeightChecksAsync(farmId);
-            if (overdueWeightResult.IsSuccess)
+        var overdueWeightChecks = await TryComputeMetricAsync(
+            farmId, DashboardMetricNames.OverdueWeightChecks, null, async () =>
             {
-                foreach (var w in overdueWeightResult.Value!)
+                var result = await _weightCheckService.GetOverdueWeightChecksAsync(farmId);
+                return EnsureSuccess(result, DashboardMetricNames.OverdueWeightChecks, farmId, null);
+            });
+        if (overdueWeightChecks is not null)
+        {
+            foreach (var w in overdueWeightChecks)
+            {
+                alerts.Add(new DashboardAlertDto
                 {
-                    alerts.Add(new DashboardAlertDto
-                    {
-                        AlertType = "OverdueWeightCheck",
-                        Severity = "Warning",
-                        Title = $"Weight check due: {w.AnimalTagNumber}",
-                        Message = $"Last recorded: {(w.LastWeightDate?.ToString("MMM dd, yyyy") ?? "Never")}. Next due: {w.NextDueDate:MMM dd, yyyy}",
-                        DueDate = w.NextDueDate,
-                        Link = "/dashboard/health/weight-schedules"
-                    });
-                }
+                    AlertType = "OverdueWeightCheck",
+                    Severity = "Warning",
+                    Title = $"Weight check due: {w.AnimalTagNumber}",
+                    Message = $"Last recorded: {(w.LastWeightDate?.ToString("MMM dd, yyyy") ?? "Never")}. Next due: {w.NextDueDate:MMM dd, yyyy}",
+                    DueDate = w.NextDueDate,
+                    Link = "/dashboard/health/weight-schedules"
+                });
             }
         }
-        catch { /* InMemory DB compat */ }
 
         // ── Medicine alerts ──
         var medicineAlerts = await _medicineService.GetAlertsAsync(farmId);
@@ -242,28 +243,29 @@ public class DashboardService : IDashboardService
         }
 
         // ── Upcoming births ──
-        try
-        {
-            var gestationResult = await _breedingService.GetGestationRecordsAsync(farmId, new GestationFilter
+        var gestationItems = await TryComputeMetricAsync(
+            farmId, DashboardMetricNames.DueBirthAlerts, null, async () =>
             {
-                ActiveOnly = true, PageSize = 100
-            });
-            if (gestationResult.IsSuccess)
-            {
-                foreach (var g in gestationResult.Value!.Items.Where(g => g.DaysUntilDue <= 14 && g.DaysUntilDue >= 0))
+                var gestation = await _breedingService.GetGestationRecordsAsync(farmId, new GestationFilter
                 {
-                    alerts.Add(new DashboardAlertDto
-                    {
-                        AlertType = "DueBirth",
-                        Severity = g.DaysUntilDue <= 3 ? "Critical" : "Warning",
-                        Title = $"Birth due: {g.AnimalTagNumber}",
-                        Message = $"Expected {g.ExpectedDeliveryDate:MMM dd, yyyy} ({g.DaysUntilDue} days). Stage: {g.CurrentStage}.",
-                        DueDate = g.ExpectedDeliveryDate, Link = "/dashboard/breeding/gestation"
-                    });
-                }
+                    ActiveOnly = true, PageSize = 100
+                });
+                return EnsureSuccess(gestation, DashboardMetricNames.DueBirthAlerts, farmId, null)?.Items;
+            });
+        if (gestationItems is not null)
+        {
+            foreach (var g in gestationItems.Where(g => g.DaysUntilDue <= 14 && g.DaysUntilDue >= 0))
+            {
+                alerts.Add(new DashboardAlertDto
+                {
+                    AlertType = "DueBirth",
+                    Severity = g.DaysUntilDue <= 3 ? "Critical" : "Warning",
+                    Title = $"Birth due: {g.AnimalTagNumber}",
+                    Message = $"Expected {g.ExpectedDeliveryDate:MMM dd, yyyy} ({g.DaysUntilDue} days). Stage: {g.CurrentStage}.",
+                    DueDate = g.ExpectedDeliveryDate, Link = "/dashboard/breeding/gestation"
+                });
             }
         }
-        catch { }
 
         // ── Low inventory stock ──
         var inventoryReport = await _inventoryService.GetReportAsync(farmId);
@@ -308,5 +310,74 @@ public class DashboardService : IDashboardService
             MonthlyPL = monthlyPLResult.IsSuccess ? monthlyPLResult.Value! : new()
         };
         return Result<DashboardChartsDto>.Success(charts);
+    }
+
+    // ── Metric computation with explicit degradation signaling ──
+
+    /// <summary>
+    /// Runs a metric computation, isolating EF Core provider incompatibilities
+    /// (e.g. InMemory lacking a query translation) from unexpected failures.
+    /// Both cases are logged with structured detail (farm ID, metric name,
+    /// exception); the metric is reported as degraded (when a degradedMetrics
+    /// list is supplied) and a default value is returned instead of throwing.
+    /// </summary>
+    private async Task<T> TryComputeMetricAsync<T>(
+        Guid farmId,
+        string metricName,
+        List<string>? degradedMetrics,
+        Func<Task<T>> compute)
+    {
+        try
+        {
+            return await compute();
+        }
+        catch (NotSupportedException ex)
+        {
+            _logger.LogWarning(ex,
+                "Metric {MetricName} for farm {FarmId} is not supported by the database provider and was degraded to its default value.",
+                metricName, farmId);
+            degradedMetrics?.Add(metricName);
+        }
+        catch (NotImplementedException ex)
+        {
+            _logger.LogWarning(ex,
+                "Metric {MetricName} for farm {FarmId} is not implemented by the database provider and was degraded to its default value.",
+                metricName, farmId);
+            degradedMetrics?.Add(metricName);
+        }
+        catch (InvalidOperationException ex)
+        {
+            // EF Core query-translation failures surface as InvalidOperationException.
+            _logger.LogWarning(ex,
+                "Metric {MetricName} for farm {FarmId} could not be translated by the database provider and was degraded to its default value.",
+                metricName, farmId);
+            degradedMetrics?.Add(metricName);
+        }
+        catch (Exception ex)
+        {
+            // Unexpected failure: log at Error with full structured detail.
+            _logger.LogError(ex,
+                "Metric {MetricName} for farm {FarmId} failed unexpectedly and was degraded to its default value.",
+                metricName, farmId);
+            degradedMetrics?.Add(metricName);
+        }
+
+        return default!;
+    }
+
+    /// <summary>
+    /// Returns the value of a successful Result, or null after logging and
+    /// marking the metric degraded (when a degradedMetrics list is supplied).
+    /// </summary>
+    private T? EnsureSuccess<T>(Result<T> result, string metricName, Guid farmId, List<string>? degradedMetrics) where T : class
+    {
+        if (result.IsSuccess)
+            return result.Value;
+
+        _logger.LogWarning(
+            "Metric {MetricName} for farm {FarmId} could not be calculated: {ErrorCode}: {ErrorMessage}",
+            metricName, farmId, result.Error?.Code, result.Error?.Message);
+        degradedMetrics?.Add(metricName);
+        return null;
     }
 }

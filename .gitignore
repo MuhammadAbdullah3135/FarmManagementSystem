@@ -59,6 +59,9 @@ ehthumbs.db
 Desktop.ini
 .DS_Store
 
+## Secrets (docker-compose reads them from .env — never commit)
+.env
+
 ## Misc
 *.swp
 *.tmp

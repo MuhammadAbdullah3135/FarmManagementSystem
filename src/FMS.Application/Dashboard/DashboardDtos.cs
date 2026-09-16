@@ -18,6 +18,26 @@ public class DashboardSummaryDto
     public int UpcomingBirths { get; set; }
     public decimal TotalFeedStockValue { get; set; }
     public decimal TotalInventoryStockValue { get; set; }
+
+    /// <summary>
+    /// Metrics that could not be calculated on this request (provider
+    /// incompatibility or unexpected failure). Values for these metrics
+    /// default to zero and MUST NOT be treated as real counts.
+    /// </summary>
+    public List<string> DegradedMetrics { get; set; } = new();
+}
+
+/// <summary>
+/// Canonical metric names reported in DashboardSummaryDto.DegradedMetrics.
+/// </summary>
+public static class DashboardMetricNames
+{
+    public const string DueVaccinationCount = "DueVaccinationCount";
+    public const string DueWeightCheckCount = "DueWeightCheckCount";
+    public const string UpcomingBirths = "UpcomingBirths";
+    public const string OverdueVaccinations = "OverdueVaccinations";
+    public const string OverdueWeightChecks = "OverdueWeightChecks";
+    public const string DueBirthAlerts = "DueBirthAlerts";
 }
 
 // ── Alerts ──────────────────────────────────────────────

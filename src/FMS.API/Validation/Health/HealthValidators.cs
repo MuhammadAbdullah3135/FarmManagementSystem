@@ -63,6 +63,10 @@ public class CreateVaccinationRecordRequestValidator : AbstractValidator<CreateV
     {
         RuleFor(x => x.AnimalId).NotEmpty().WithMessage("Animal is required");
         RuleFor(x => x.VaccineTypeId).NotEmpty().WithMessage("Vaccine type is required");
+        RuleFor(x => x.QuantityUsed)
+            .GreaterThan(0)
+            .When(x => x.QuantityUsed.HasValue)
+            .WithMessage("Quantity used must be greater than zero");
         RuleFor(x => x.Notes).MaximumLength(2000);
     }
 }

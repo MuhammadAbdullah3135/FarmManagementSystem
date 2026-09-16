@@ -129,6 +129,8 @@ export const vaccinationRecordsApi = {
     dateGiven: string;
     vetName?: string;
     batchNumber?: string;
+    /** Units of the linked medicine consumed; defaults to 1 on the backend. */
+    quantityUsed?: number;
     cost?: number;
     notes?: string;
   }) => api.post<VaccinationRecord>(farmUrl('/vaccinations'), data),

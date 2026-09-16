@@ -30,22 +30,25 @@ export default function AnimalsPage() {
   const [sexOptions, setSexOptions] = useState<LookupOption[]>([]);
   const [statuses, setStatuses] = useState<LookupOption[]>([]);
   const [locations, setLocations] = useState<LookupOption[]>([]);
+  const [ageCategories, setAgeCategories] = useState<LookupOption[]>([]);
   const [allAnimals, setAllAnimals] = useState<{ id: string; tagNumber: string; name?: string }[]>([]);
   const [form] = Form.useForm();
 
   const loadLookups = useCallback(async () => {
     try {
-      const [atRes, soRes, stRes, locRes, anRes] = await Promise.all([
+      const [atRes, soRes, stRes, locRes, acRes, anRes] = await Promise.all([
         lookupsApi.animalTypes(),
         lookupsApi.sexOptions(),
         lookupsApi.statuses(),
         lookupsApi.locations(),
+        lookupsApi.ageCategories(),
         lookupsApi.animals(),
       ]);
       setAnimalTypes(atRes.data.map((t: LookupOption) => ({ id: t.id, name: t.name })));
       setSexOptions(soRes.data.map((s: { id: string; value: string }) => ({ id: s.id, name: s.value })));
       setStatuses(stRes.data.map((s: LookupOption) => ({ id: s.id, name: s.name })));
       setLocations(locRes.data.map((l: LookupOption) => ({ id: l.id, name: l.name })));
+      setAgeCategories(acRes.data.map((c: LookupOption) => ({ id: c.id, name: c.name })));
       setAllAnimals(anRes.data.items.map((a: { id: string; tagNumber: string; name?: string }) => ({ id: a.id, tagNumber: a.tagNumber, name: a.name })));
     } catch {}
   }, []);
@@ -290,7 +293,7 @@ export default function AnimalsPage() {
             </Form.Item>
             <Form.Item name="ageCategoryId" label="Age Category" style={{ flex: 1 }}>
               <Select
-                options={[]}
+                options={ageCategories.map(c => ({ value: c.id, label: c.name }))}
                 showSearch
                 optionFilterProp="label"
                 allowClear

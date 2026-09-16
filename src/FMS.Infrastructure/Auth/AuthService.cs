@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using FMS.Application.Auth;
 using FMS.Application.Common;
 using FMS.Domain.Entities;
@@ -13,15 +15,18 @@ public class AuthService : IAuthService
     private readonly FmsDbContext _context;
     private readonly IJwtTokenService _jwtTokenService;
     private readonly IConfiguration _configuration;
+    private readonly IEmailService _emailService;
 
     public AuthService(
         FmsDbContext context,
         IJwtTokenService jwtTokenService,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        IEmailService emailService)
     {
         _context = context;
         _jwtTokenService = jwtTokenService;
         _configuration = configuration;
+        _emailService = emailService;
     }
 
     public async Task<Result<AuthResponse>> RegisterAsync(RegisterRequest request)
@@ -248,16 +253,72 @@ public class AuthService : IAuthService
         });
     }
 
-    public async Task<Result<string>> ResetPasswordAsync(ResetPasswordRequest request)
+    public async Task<Result> ResetPasswordAsync(ResetPasswordRequest request)
     {
         var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == request.Email && u.IsActive);
         if (user == null)
-            return Result<string>.NotFound("User not found");
+        {
+            // Return success even for non-existent emails to prevent user enumeration.
+            return Result.Success();
+        }
 
-        // Generate reset token (in production, send via email)
-        var resetToken = _jwtTokenService.GenerateRefreshToken();
+        var rawToken = _jwtTokenService.GenerateRefreshToken();
+        var tokenHash = HashToken(rawToken);
 
-        return Result<string>.Success(resetToken);
+        _context.PasswordResetTokens.Add(new PasswordResetToken
+        {
+            Id = Guid.NewGuid(),
+            UserId = user.Id,
+            TokenHash = tokenHash,
+            ExpiresAt = DateTime.UtcNow.AddHours(1),
+            IsUsed = false,
+            CreatedAt = DateTime.UtcNow
+        });
+        await _context.SaveChangesAsync();
+
+        var frontendBaseUrl = _configuration["Frontend:BaseUrl"] ?? "http://localhost:3000";
+        var resetLink = $"{frontendBaseUrl}/confirm-reset-password?token={rawToken}";
+        await _emailService.SendPasswordResetEmailAsync(user.Email, resetLink);
+
+        return Result.Success();
+    }
+
+    public async Task<Result> ConfirmResetPasswordAsync(ConfirmResetPasswordRequest request)
+    {
+        var tokenHash = HashToken(request.Token);
+
+        var resetToken = await _context.PasswordResetTokens
+            .FirstOrDefaultAsync(prt => prt.TokenHash == tokenHash);
+
+        if (resetToken == null)
+            return Result.Validation("Invalid or expired reset token");
+
+        if (resetToken.IsUsed)
+            return Result.Validation("Reset token has already been used");
+
+        if (resetToken.ExpiresAt < DateTime.UtcNow)
+            return Result.Validation("Reset token has expired");
+
+        var user = await _context.Users.FindAsync(resetToken.UserId);
+        if (user == null)
+            return Result.Validation("Invalid or expired reset token");
+
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+        resetToken.IsUsed = true;
+        resetToken.UsedAt = DateTime.UtcNow;
+
+        // Revoke all existing refresh tokens for this user.
+        var activeTokens = await _context.RefreshTokens
+            .Where(rt => rt.UserId == user.Id && !rt.IsRevoked)
+            .ToListAsync();
+        foreach (var token in activeTokens)
+        {
+            token.IsRevoked = true;
+        }
+
+        await _context.SaveChangesAsync();
+
+        return Result.Success();
     }
 
     public async Task<Result> RevokeTokenAsync(string refreshToken)
@@ -272,5 +333,11 @@ public class AuthService : IAuthService
         await _context.SaveChangesAsync();
 
         return Result.Success();
+    }
+
+    private static string HashToken(string token)
+    {
+        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(token));
+        return Convert.ToHexString(bytes).ToLowerInvariant();
     }
 }

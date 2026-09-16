@@ -60,3 +60,15 @@ public class ChangePasswordRequestValidator : AbstractValidator<ChangePasswordRe
             .MaximumLength(100);
     }
 }
+
+public class ConfirmResetPasswordRequestValidator : AbstractValidator<ConfirmResetPasswordRequest>
+{
+    public ConfirmResetPasswordRequestValidator()
+    {
+        RuleFor(x => x.Token).NotEmpty().WithMessage("Reset token is required");
+        RuleFor(x => x.NewPassword)
+            .NotEmpty().WithMessage("New password is required")
+            .MinimumLength(8).WithMessage("Password must be at least 8 characters")
+            .MaximumLength(100);
+    }
+}

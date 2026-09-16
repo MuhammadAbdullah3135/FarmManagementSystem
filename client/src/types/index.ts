@@ -43,6 +43,11 @@ export interface ResetPasswordRequest {
   email: string;
 }
 
+export interface ConfirmResetPasswordRequest {
+  token: string;
+  newPassword: string;
+}
+
 // Shared
 export interface PagedResult<T> {
   items: T[];

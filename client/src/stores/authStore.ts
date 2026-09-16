@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import api from '../api/axios';
 import { getApiError } from '../api/farmApi';
-import type { AuthResponse, User, LoginRequest, RegisterRequest, ResetPasswordRequest } from '../types';
+import type { AuthResponse, User, LoginRequest, RegisterRequest, ResetPasswordRequest, ConfirmResetPasswordRequest } from '../types';
 
 interface AuthState {
   user: User | null;
@@ -12,6 +12,7 @@ interface AuthState {
   login: (request: LoginRequest) => Promise<boolean>;
   register: (request: RegisterRequest) => Promise<boolean>;
   resetPassword: (request: ResetPasswordRequest) => Promise<boolean>;
+  confirmResetPassword: (request: ConfirmResetPasswordRequest) => Promise<boolean>;
   logout: () => void;
   clearError: () => void;
 }
@@ -88,6 +89,19 @@ export const useAuthStore = create<AuthState>()(
           return true;
         } catch (error: any) {
           const message = getApiError(error, 'Reset failed');
+          set({ error: message, isLoading: false });
+          return false;
+        }
+      },
+
+      confirmResetPassword: async (request: ConfirmResetPasswordRequest) => {
+        set({ isLoading: true, error: null });
+        try {
+          await api.post('/auth/confirm-reset-password', request);
+          set({ isLoading: false });
+          return true;
+        } catch (error: any) {
+          const message = getApiError(error, 'Password reset failed');
           set({ error: message, isLoading: false });
           return false;
         }

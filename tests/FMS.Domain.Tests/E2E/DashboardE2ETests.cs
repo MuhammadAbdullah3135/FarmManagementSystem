@@ -52,6 +52,9 @@ public class DashboardE2ETests : IClassFixture<DashboardE2ETests.Factory>, IDisp
 
         // UpcomingBirths may be 0 on InMemory (DateDiffDay not supported)
         Assert.True(summary.UpcomingBirths >= 0);
+
+        // DueWeightCheckCount must serialize alongside DueVaccinationCount
+        Assert.True(summary.DueWeightCheckCount >= 0);
     }
 
     [Fact]
@@ -64,6 +67,32 @@ public class DashboardE2ETests : IClassFixture<DashboardE2ETests.Factory>, IDisp
         Assert.NotNull(summary);
         Assert.True(summary.TotalInventoryStockValue >= 0);
         Assert.True(summary.TotalFeedStockValue >= 0);
+    }
+
+    [Fact]
+    public async Task Summary_DegradedMetrics_UsesKnownNamesAndZeroedCounts()
+    {
+        var client = GetClient();
+        var response = await client.GetAsync($"/api/farm/{Seed.FarmId}/dashboard/summary");
+        var summary = await response.Content.ReadFromJsonAsync<DashboardSummaryResponse>();
+
+        Assert.NotNull(summary);
+
+        var known = new HashSet<string>
+        {
+            "DueVaccinationCount", "DueWeightCheckCount", "UpcomingBirths"
+        };
+
+        // Every degraded metric name must be a known metric.
+        Assert.All(summary.DegradedMetrics, name => Assert.Contains(name, known));
+
+        // A degraded metric was not computed — its value must be 0.
+        if (summary.DegradedMetrics.Contains("DueVaccinationCount"))
+            Assert.Equal(0, summary.DueVaccinationCount);
+        if (summary.DegradedMetrics.Contains("DueWeightCheckCount"))
+            Assert.Equal(0, summary.DueWeightCheckCount);
+        if (summary.DegradedMetrics.Contains("UpcomingBirths"))
+            Assert.Equal(0, summary.UpcomingBirths);
     }
 
     [Fact]
@@ -174,6 +203,8 @@ public class DashboardE2ETests : IClassFixture<DashboardE2ETests.Factory>, IDisp
         public int PregnantCount { get; set; }
         public int SickCount { get; set; }
         public int DueVaccinationCount { get; set; }
+        public int DueWeightCheckCount { get; set; }
+        public List<string> DegradedMetrics { get; set; } = new();
         public int OverdueTasks { get; set; }
         public int UpcomingBirths { get; set; }
         public decimal TotalFeedStockValue { get; set; }

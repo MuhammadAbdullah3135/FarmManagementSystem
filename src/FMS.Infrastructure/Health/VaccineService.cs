@@ -351,66 +351,142 @@ public class VaccineService : IVaccineService
 
         var userId = _currentUser.GetUserId();
 
-        var record = new VaccinationRecord
+        // Dosage for the linked-medicine deduction. Defaults to 1 so existing
+        // clients that omit the field keep their previous behavior.
+        var quantityUsed = request.QuantityUsed ?? 1;
+        if (quantityUsed <= 0)
+            return Result<VaccinationRecordDto>.Validation("Quantity used must be greater than zero");
+
+        // ── Validate-and-allocate BEFORE persisting anything ──
+        // FIFO by expiry date (nearest expiry first), matching MedicineService.RecordUsageAsync.
+        // Checking stock up front means an insufficient-stock failure can never leave an
+        // orphaned vaccination record behind.
+        List<MedicineStock>? batches = null;
+        if (vaxType.LinkedMedicineId.HasValue)
         {
-            FarmId = farmId,
-            AnimalId = request.AnimalId,
-            VaccineTypeId = request.VaccineTypeId,
-            DateGiven = request.DateGiven == default ? DateTime.UtcNow : request.DateGiven,
-            VetName = request.VetName?.Trim(),
-            BatchNumber = request.BatchNumber?.Trim(),
-            Cost = request.Cost,
-            Notes = request.Notes?.Trim(),
-            CreatedBy = userId
-        };
+            batches = await _context.MedicineStocks
+                .Where(s => s.FarmId == farmId
+                    && s.MedicineId == vaxType.LinkedMedicineId.Value
+                    && s.Quantity > 0)
+                .OrderBy(s => s.ExpiryDate)
+                .ToListAsync();
 
-        _context.VaccinationRecords.Add(record);
-
-        // Timeline event
-        var timelineEvent = new AnimalTimelineEvent
-        {
-            AnimalId = request.AnimalId,
-            FarmId = farmId,
-            EventType = TimelineEventTypes.VaccinationRecord,
-            Title = $"Vaccination: {vaxType.Name}",
-            Description = $"Given by {request.VetName ?? "Unknown"}",
-            RelatedEntityId = record.Id,
-            RelatedEntityType = nameof(VaccinationRecord),
-            OccurredAt = record.DateGiven,
-            CreatedBy = userId
-        };
-        _context.AnimalTimelineEvents.Add(timelineEvent);
-
-        await _context.SaveChangesAsync();
-
-        if (vaxType.LinkedMedicineId.HasValue && !await DeductLinkedMedicineAsync(farmId, vaxType.LinkedMedicineId.Value, userId, record.Id, record.DateGiven))
-            return Result<VaccinationRecordDto>.Validation("Insufficient linked medicine stock");
-
-        // Auto-create Expense when Cost > 0
-        if (request.Cost > 0)
-        {
-            var expense = await AutoCreateVetExpenseAsync(farmId, request.Cost, request.VetName,
-                $"Vaccination: {vaxType.Name}", record.DateGiven, userId);
-            record.ExpenseId = expense.Id;
-            await _context.SaveChangesAsync();
+            var totalAvailable = batches.Sum(b => b.Quantity);
+            if (totalAvailable < quantityUsed)
+                return Result<VaccinationRecordDto>.Validation(
+                    $"Insufficient linked medicine stock. Available: {totalAvailable}, required: {quantityUsed}");
         }
 
-        return Result<VaccinationRecordDto>.Success(new VaccinationRecordDto
+        // Everything below commits atomically. EF Core already wraps each SaveChangesAsync in an
+        // implicit transaction; on relational providers an explicit transaction additionally spans
+        // the auto-expense step so a failure there cannot leave a half-committed vaccination.
+        // InMemory does not support transactions (BeginTransaction throws), so it is excluded —
+        // there the pre-persist stock validation provides the record-vs-deduction guarantee.
+        var useExplicitTransaction = _context.Database.IsRelational();
+        await using var dbTransaction = useExplicitTransaction
+            ? await _context.Database.BeginTransactionAsync()
+            : null;
+
+        try
         {
-            Id = record.Id,
-            FarmId = record.FarmId,
-            AnimalId = record.AnimalId,
-            AnimalTagNumber = animal.TagNumber,
-            AnimalName = animal.Name,
-            VaccineTypeId = record.VaccineTypeId,
-            VaccineTypeName = vaxType.Name,
-            DateGiven = record.DateGiven,
-            VetName = record.VetName,
-            BatchNumber = record.BatchNumber,
-            Cost = record.Cost,
-            Notes = record.Notes,
-            CreatedAt = record.CreatedAt
-        });
+            var record = new VaccinationRecord
+            {
+                FarmId = farmId,
+                AnimalId = request.AnimalId,
+                VaccineTypeId = request.VaccineTypeId,
+                DateGiven = request.DateGiven == default ? DateTime.UtcNow : request.DateGiven,
+                VetName = request.VetName?.Trim(),
+                BatchNumber = request.BatchNumber?.Trim(),
+                Cost = request.Cost,
+                Notes = request.Notes?.Trim(),
+                CreatedBy = userId
+            };
+
+            _context.VaccinationRecords.Add(record);
+
+            // Timeline event
+            var timelineEvent = new AnimalTimelineEvent
+            {
+                AnimalId = request.AnimalId,
+                FarmId = farmId,
+                EventType = TimelineEventTypes.VaccinationRecord,
+                Title = $"Vaccination: {vaxType.Name}",
+                Description = $"Given by {request.VetName ?? "Unknown"}",
+                RelatedEntityId = record.Id,
+                RelatedEntityType = nameof(VaccinationRecord),
+                OccurredAt = record.DateGiven,
+                CreatedBy = userId
+            };
+            _context.AnimalTimelineEvents.Add(timelineEvent);
+
+            // FIFO deduction across batches (nearest expiry first)
+            if (vaxType.LinkedMedicineId.HasValue && batches != null)
+            {
+                var remaining = quantityUsed;
+                MedicineStock? lastDeductedBatch = null;
+
+                foreach (var batch in batches)
+                {
+                    if (remaining <= 0) break;
+
+                    var deduct = Math.Min(batch.Quantity, remaining);
+                    batch.Quantity -= deduct;
+                    remaining -= deduct;
+                    lastDeductedBatch = batch;
+                }
+
+                // Single usage row linked to the last batch deducted — same
+                // convention as MedicineService.RecordUsageAsync.
+                _context.MedicineUsages.Add(new MedicineUsage
+                {
+                    FarmId = farmId,
+                    MedicineId = vaxType.LinkedMedicineId.Value,
+                    MedicineStockId = lastDeductedBatch!.Id,
+                    QuantityUsed = quantityUsed,
+                    DateUsed = record.DateGiven,
+                    Notes = $"Vaccination {record.Id}",
+                    CreatedBy = userId
+                });
+            }
+
+            // Single save: record + timeline + batch decrements + usage row persist together.
+            await _context.SaveChangesAsync();
+
+            // Auto-create Expense when Cost > 0
+            if (request.Cost > 0)
+            {
+                var expense = await AutoCreateVetExpenseAsync(farmId, request.Cost, request.VetName,
+                    $"Vaccination: {vaxType.Name}", record.DateGiven, userId);
+                record.ExpenseId = expense.Id;
+                await _context.SaveChangesAsync();
+            }
+
+            if (dbTransaction != null)
+                await dbTransaction.CommitAsync();
+
+            return Result<VaccinationRecordDto>.Success(new VaccinationRecordDto
+            {
+                Id = record.Id,
+                FarmId = record.FarmId,
+                AnimalId = record.AnimalId,
+                AnimalTagNumber = animal.TagNumber,
+                AnimalName = animal.Name,
+                VaccineTypeId = record.VaccineTypeId,
+                VaccineTypeName = vaxType.Name,
+                DateGiven = record.DateGiven,
+                VetName = record.VetName,
+                BatchNumber = record.BatchNumber,
+                Cost = record.Cost,
+                Notes = record.Notes,
+                CreatedAt = record.CreatedAt
+            });
+        }
+        catch
+        {
+            if (dbTransaction != null)
+                await dbTransaction.RollbackAsync();
+            throw;
+        }
     }
 
     public async Task<Result<VaccinationRecordDto>> UpdateVaccinationRecordAsync(Guid farmId, Guid id, UpdateVaccinationRecordRequest request)
@@ -732,21 +808,6 @@ public class VaccineService : IVaccineService
         }
 
         return results.OrderBy(s => s.DaysUntilDue).ToList();
-    }
-
-    private async Task<bool> DeductLinkedMedicineAsync(Guid farmId, Guid medicineId, Guid? userId, Guid vaccinationId, DateTime dateUsed)
-    {
-        var batches = await _context.MedicineStocks.Where(s => s.FarmId == farmId && s.MedicineId == medicineId && s.Quantity > 0).OrderBy(s => s.ExpiryDate).ToListAsync();
-        if (batches.Count == 0) return false;
-        var batch = batches[0];
-        batch.Quantity--;
-        _context.MedicineUsages.Add(new MedicineUsage
-        {
-            FarmId = farmId, MedicineId = medicineId, MedicineStockId = batch.Id,
-            QuantityUsed = 1, DateUsed = dateUsed, Notes = $"Vaccination {vaccinationId}", CreatedBy = userId
-        });
-        await _context.SaveChangesAsync();
-        return true;
     }
 
     private async Task<Expense> AutoCreateVetExpenseAsync(Guid farmId, decimal amount, string? vetName, string description, DateTime expenseDate, Guid? userId)

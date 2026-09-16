@@ -6,8 +6,8 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
@@ -22,11 +22,22 @@ public class TestWebApplicationFactory : IDisposable
 {
     private IHost? _host;
 
+    // Generated once so every scope/request shares the same InMemory store.
+    private readonly string _inMemoryDbName = $"TestDb_{Guid.NewGuid()}";
+
     public IHost Host => _host ??= CreateHost();
 
     public IServiceProvider Services => Host.Services;
 
     public HttpClient CreateClient() => Host.GetTestClient();
+
+    /// <summary>
+    /// When true, the test host runs the real FMS.API FarmContextMiddleware
+    /// (X-Farm-Id membership validation + route/header farm enforcement)
+    /// instead of the permissive inline stub. Override in security-focused
+    /// test factories; default false keeps legacy suite behavior.
+    /// </summary>
+    protected virtual bool UsesRealFarmContextMiddleware => false;
 
     public HttpClient CreateAuthenticatedClient(Guid? farmId = null)
     {
@@ -42,6 +53,19 @@ public class TestWebApplicationFactory : IDisposable
     private IHost CreateHost()
     {
         var builder = new HostBuilder()
+            .ConfigureAppConfiguration((context, config) =>
+            {
+                config.Sources.Clear();
+                config.AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["Frontend:BaseUrl"] = "http://localhost:3000",
+                    ["Jwt:RefreshTokenExpiryDays"] = "30",
+                    ["Jwt:SecretKey"] = "TestSecretKeyThatIsAtLeast32BytesLong!!",
+                    ["Jwt:Issuer"] = "TestIssuer",
+                    ["Jwt:Audience"] = "TestAudience",
+                    ["Jwt:AccessTokenExpiryMinutes"] = "60"
+                });
+            })
             .ConfigureWebHost(webBuilder =>
             {
                 webBuilder.UseTestServer();
@@ -50,14 +74,24 @@ public class TestWebApplicationFactory : IDisposable
                     app.UseRouting();
                     app.UseAuthentication();
                     app.UseAuthorization();
-                    // Skip FarmContextMiddleware — seed a simple inline middleware that reads X-Farm-Id
-                    app.Use(async (context, next) =>
+                    if (UsesRealFarmContextMiddleware)
                     {
-                        var farmSvc = context.RequestServices.GetRequiredService<FMS.Application.Farm.IFarmContextService>();
-                        if (context.Request.Headers.TryGetValue("X-Farm-Id", out var fid) && Guid.TryParse(fid.ToString(), out var farmId))
-                            farmSvc.SetCurrentFarmId(farmId);
-                        await next();
-                    });
+                        // Exercise the REAL production middleware: membership validation
+                        // and route/header farm enforcement, exactly as in Program.cs.
+                        app.UseMiddleware<FMS.API.Middleware.FarmContextMiddleware>();
+                    }
+                    else
+                    {
+                        // Legacy permissive inline stub: reads X-Farm-Id without
+                        // membership validation so existing suites keep passing.
+                        app.Use(async (context, next) =>
+                        {
+                            var farmSvc = context.RequestServices.GetRequiredService<FMS.Application.Farm.IFarmContextService>();
+                            if (context.Request.Headers.TryGetValue("X-Farm-Id", out var fid) && Guid.TryParse(fid.ToString(), out var farmId))
+                                farmSvc.SetCurrentFarmId(farmId);
+                            await next();
+                        });
+                    }
                     app.UseEndpoints(endpoints => endpoints.MapControllers());
                 });
                 webBuilder.ConfigureServices(services =>
@@ -71,10 +105,8 @@ public class TestWebApplicationFactory : IDisposable
                         d => d.ServiceType == typeof(FmsDbContext));
                     if (dbContextDescriptor != null) services.Remove(dbContextDescriptor);
 
-                    // Add InMemory database — use a shared DB name for all scopes
-                    var dbName = $"TestDb_{Guid.NewGuid()}";
-                    services.AddDbContext<FmsDbContext>(options =>
-                        options.UseInMemoryDatabase(dbName));
+                    // Add test database — provider chosen by ConfigureDbContextOptions
+                    services.AddDbContext<FmsDbContext>(ConfigureDbContextOptions);
 
                     // Add controllers from the API assembly
                     services.AddControllers()
@@ -106,6 +138,10 @@ public class TestWebApplicationFactory : IDisposable
                     services.AddScoped<FMS.Application.Dashboard.IDashboardService, FMS.Infrastructure.Dashboard.DashboardService>();
                     services.AddScoped<FMS.Application.Reports.IReportService, FMS.Infrastructure.Reports.ReportService>();
                     services.AddScoped<FMS.Application.AuditLog.IAuditLogService, FMS.Infrastructure.AuditLog.AuditLogService>();
+                    services.AddScoped<FMS.Application.Auth.IAuthService, FMS.Infrastructure.Auth.AuthService>();
+                    services.AddScoped<FMS.Application.Auth.IJwtTokenService, FMS.Infrastructure.Auth.JwtTokenService>();
+                    // Singleton so all request scopes share the same capturing instance.
+                    services.AddSingleton<FMS.Application.Auth.IEmailService, PasswordResetE2ETests.TestEmailService>();
 
                     // Simple test auth: scheme "Test" that always authenticates with the claims from the token
                     services.AddAuthentication("Test")
@@ -121,11 +157,31 @@ public class TestWebApplicationFactory : IDisposable
         {
             var db = scope.ServiceProvider.GetRequiredService<FmsDbContext>();
             db.Database.EnsureCreated();
-            SeedData = ApiSeedData.SeedAsync(db).GetAwaiter().GetResult();
+            var baseSeed = ApiSeedData.SeedAsync(db).GetAwaiter().GetResult();
+            SeedAsync(db, baseSeed).GetAwaiter().GetResult();
+            SeedData = baseSeed;
         }
 
         return host;
     }
+
+    /// <summary>
+    /// Configures the FmsDbContext options for the test host. The default
+    /// implementation uses the EF Core InMemory provider (shared database name
+    /// across scopes). Override to target a real database provider, e.g.
+    /// UseNpgsql for PostgreSQL integration tests.
+    /// </summary>
+    protected virtual void ConfigureDbContextOptions(DbContextOptionsBuilder options)
+    {
+        // InMemory requires a shared database name so all scopes see the same data.
+        options.UseInMemoryDatabase(_inMemoryDbName);
+    }
+
+    /// <summary>
+    /// Hook for subclasses to seed additional data (e.g. extra farms/users)
+    /// after the standard ApiSeedData run. Default: no-op.
+    /// </summary>
+    protected virtual Task SeedAsync(FmsDbContext db, ApiSeedData.SeedIds seed) => Task.CompletedTask;
 
     public ApiSeedData.SeedIds SeedData { get; private set; } = null!;
 

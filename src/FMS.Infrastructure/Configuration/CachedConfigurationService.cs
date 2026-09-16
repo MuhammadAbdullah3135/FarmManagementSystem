@@ -10,6 +10,7 @@ public class CachedConfigurationService : IConfigurationService
     private readonly IMemoryCache _cache;
     private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(5);
     private string CKey(Guid farmId, string e, Guid? scope = null) => $"config:{farmId}:{e}:{scope?.ToString() ?? "all"}";
+    private string GenKey(Guid farmId, string baseEntity) => $"config-gen:{farmId}:{baseEntity}";
 
     public CachedConfigurationService(IConfigurationService inner, IMemoryCache cache)
     {
@@ -17,16 +18,43 @@ public class CachedConfigurationService : IConfigurationService
         _cache = cache;
     }
 
+    /// <summary>
+    /// Generation (cache-tag) counter for a farm + base entity (e.g. "BR").
+    /// Reads embed the current generation in the data key; invalidation bumps the
+    /// counter, which instantly orphans every cached entry for that farm + entity —
+    /// including per-scope variants like "BR:{animalTypeId}" that a key removal
+    /// could not target (IMemoryCache cannot enumerate keys for prefix deletion).
+    /// Markers never expire: they are tiny (bounded by farms × entities), and if a
+    /// marker expired while an old data entry still lived, the generation could
+    /// reset to 0 and briefly resurface stale data.
+    /// </summary>
+    private int GetGeneration(Guid farmId, string baseEntity)
+        => _cache.TryGetValue(GenKey(farmId, baseEntity), out int gen) ? gen : 0;
+
+    private void BumpGeneration(Guid farmId, string baseEntity)
+        => _cache.Set(GenKey(farmId, baseEntity), GetGeneration(farmId, baseEntity) + 1);
+
+    /// <summary>Base entity of a cache entity string: "BR:{id}" → "BR", "AT" → "AT".</summary>
+    private static string BaseEntity(string entity)
+    {
+        var idx = entity.IndexOf(':');
+        return idx < 0 ? entity : entity[..idx];
+    }
+
     private async Task<Result<T>> GetOrSet<T>(Guid farmId, string entity, Func<Task<Result<T>>> factory)
     {
-        var key = CKey(farmId, entity);
+        // Include the generation so any invalidation for this farm + base entity
+        // makes the key unreachable immediately (old entries just age out via TTL).
+        var key = CKey(farmId, $"{entity}:g{GetGeneration(farmId, BaseEntity(entity))}");
         if (_cache.TryGetValue(key, out T? cached) && cached != null) return Result<T>.Success(cached);
         var result = await factory();
         if (result.IsSuccess) _cache.Set(key, result.Value, CacheDuration);
         return result;
     }
 
-    private void Inv(Guid farmId, string entity) => _cache.Remove(CKey(farmId, entity));
+    // Invalidates every cached list (all scopes, e.g. "BR", "BR:{animalTypeId}")
+    // for this farm + entity by bumping the shared generation counter.
+    private void Inv(Guid farmId, string entity) => BumpGeneration(farmId, BaseEntity(entity));
 
     public Task<Result<List<AnimalTypeDto>>> GetAnimalTypesAsync(Guid farmId) => GetOrSet(farmId, "AT", () => _inner.GetAnimalTypesAsync(farmId));
     public Task<Result<List<BreedDto>>> GetBreedsAsync(Guid farmId, Guid? animalTypeId = null) => GetOrSet(farmId, $"BR:{animalTypeId?.ToString() ?? "all"}", () => _inner.GetBreedsAsync(farmId, animalTypeId));

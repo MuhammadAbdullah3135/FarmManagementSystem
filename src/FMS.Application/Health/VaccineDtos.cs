@@ -51,6 +51,11 @@ public class CreateVaccinationRecordRequest
     public DateTime DateGiven { get; set; }
     public string? VetName { get; set; }
     public string? BatchNumber { get; set; }
+    /// <summary>
+    /// Units of the linked medicine this vaccination consumes.
+    /// Defaults to 1 when omitted (backwards compatible with existing clients).
+    /// </summary>
+    public int? QuantityUsed { get; set; }
     public decimal Cost { get; set; }
     public string? Notes { get; set; }
 }

@@ -69,11 +69,22 @@ public class AuthController : ControllerBase
         var result = await _authService.ResetPasswordAsync(request);
 
         if (result.IsSuccess)
-            return Ok(new { resetToken = result.Value });
+            return Ok();
+
+        return StatusCode(500, result.Error?.Message);
+    }
+
+    [HttpPost("confirm-reset-password")]
+    public async Task<IActionResult> ConfirmResetPassword([FromBody] ConfirmResetPasswordRequest request)
+    {
+        var result = await _authService.ConfirmResetPasswordAsync(request);
+
+        if (result.IsSuccess)
+            return Ok();
 
         return result.Error?.Code switch
         {
-            "NotFound" => NotFound(result.Error.Message),
+            "Validation" => BadRequest(result.Error.Message),
             _ => StatusCode(500, result.Error?.Message)
         };
     }
