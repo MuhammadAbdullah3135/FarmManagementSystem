@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Card, Table, Button, Modal, Form, Input, Select, DatePicker, Space, Tag, message, Popconfirm, Row, Col } from 'antd';
+import { configurationApi, type AnimalType } from '../../api/configuration';
 import type { ColumnsType } from 'antd/es/table';
 import { PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined } from '@ant-design/icons';
 import { animalsApi, type AnimalListFilter, type CreateAnimalPayload } from '../../api/animals';
@@ -25,7 +26,7 @@ export default function AnimalsPage() {
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<AnimalListItem | null>(null);
-  const [animalTypes, setAnimalTypes] = useState<LookupOption[]>([]);
+  const [animalTypes, setAnimalTypes] = useState<AnimalType[]>([]);
   const [breeds, setBreeds] = useState<LookupOption[]>([]);
   const [sexOptions, setSexOptions] = useState<LookupOption[]>([]);
   const [statuses, setStatuses] = useState<LookupOption[]>([]);
@@ -33,6 +34,7 @@ export default function AnimalsPage() {
   const [ageCategories, setAgeCategories] = useState<LookupOption[]>([]);
   const [allAnimals, setAllAnimals] = useState<{ id: string; tagNumber: string; name?: string }[]>([]);
   const [form] = Form.useForm();
+  const [quickTypeName, setQuickTypeName] = useState<string | null>(null);
 
   const loadLookups = useCallback(async () => {
     try {
@@ -44,7 +46,7 @@ export default function AnimalsPage() {
         lookupsApi.ageCategories(),
         lookupsApi.animals(),
       ]);
-      setAnimalTypes(atRes.data.map((t: LookupOption) => ({ id: t.id, name: t.name })));
+      setAnimalTypes(atRes.data as unknown as AnimalType[]);
       setSexOptions(soRes.data.map((s: { id: string; value: string }) => ({ id: s.id, name: s.value })));
       setStatuses(stRes.data.map((s: LookupOption) => ({ id: s.id, name: s.name })));
       setLocations(locRes.data.map((l: LookupOption) => ({ id: l.id, name: l.name })));
@@ -78,6 +80,25 @@ export default function AnimalsPage() {
       const res = await lookupsApi.breeds(typeId);
       setBreeds(res.data.map((b: LookupOption) => ({ id: b.id, name: b.name })));
     } catch {}
+  };
+
+  const handleQuickAddType = async () => {
+    const name = quickTypeName?.trim();
+    if (!name) {
+      message.info('Type a name in the search box first, then click Add type');
+      return;
+    }
+    try {
+      const res = await configurationApi.createAnimalType({ name });
+      const created = res.data as AnimalType;
+      setAnimalTypes((prev) => [...prev, created]);
+      message.success(`Animal type "${name}" created`);
+      setQuickTypeName(null);
+      form.setFieldValue('animalTypeId', created.id);
+      void handleBreedsForType(created.id);
+    } catch (err) {
+      message.error(getApiError(err));
+    }
   };
 
   const openCreate = () => {
@@ -258,9 +279,25 @@ export default function AnimalsPage() {
                 <Select
                   options={animalTypes.map(t => ({ value: t.id, label: t.name }))}
                   onChange={handleBreedsForType}
+                  onSearch={(q: string) => setQuickTypeName(q)}
                   showSearch
                   optionFilterProp="label"
                   style={{ width: '100%' }}
+                  popupRender={(menu: React.ReactElement) => (
+                    <>
+                      {menu}
+                      <div style={{ padding: '4px 8px', borderTop: '1px solid #f0f0f0' }}>
+                        <Button
+                          type="link"
+                          size="small"
+                          icon={<PlusOutlined />}
+                          onClick={handleQuickAddType}
+                        >
+                          Add type
+                        </Button>
+                      </div>
+                    </>
+                  )}
                 />
               </Form.Item>
             </Col>

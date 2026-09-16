@@ -1,5 +1,6 @@
 import api from './axios';
 import { farmUrl } from './farmApi';
+import { configurationApi } from './configuration';
 import type { AttendanceRecord, PerformanceReview, PagedResult } from '../types';
 
 export const attendanceApi = {
@@ -61,29 +62,13 @@ export const performanceReviewsApi = {
   remove: (id: string) => api.delete(farmUrl(`/performance-reviews/${id}`)),
 };
 
-// Lookups used by HR/task/feed forms
+// Lookups used by HR/task/feed forms.
+// GET wrappers are shared with the Configuration page and live in ./configuration;
+// they are re-exported here so existing call sites keep working unchanged.
 export const lookupsApi = {
+  ...configurationApi,
   animals: () =>
     api.get<PagedResult<{ id: string; tagNumber: string; name?: string }>>(
       farmUrl('/animals?page=1&pageSize=100')
-    ),
-  locations: () =>
-    api.get<{ id: string; name: string }[]>(farmUrl('/configuration/locations')),
-  animalTypes: () =>
-    api.get<{ id: string; name: string }[]>(farmUrl('/configuration/animal-types')),
-  ageCategories: () =>
-    api.get<{ id: string; name: string }[]>(farmUrl('/configuration/age-categories')),
-  breeds: (animalTypeId?: string) => {
-    const params: Record<string, string> = {};
-    if (animalTypeId) params.animalTypeId = animalTypeId;
-    return api.get<{ id: string; name: string; animalTypeId: string; averageGestationDays: number }[]>(
-      farmUrl('/configuration/breeds'), { params }
-    );
-  },
-  sexOptions: () =>
-    api.get<{ id: string; value: string }[]>(farmUrl('/configuration/sex-options')),
-  statuses: () =>
-    api.get<{ id: string; name: string; isActive: boolean; category: number; isSystemDefined: boolean }[]>(
-      farmUrl('/configuration/statuses')
     ),
 };

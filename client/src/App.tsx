@@ -51,6 +51,7 @@ import MedicalReportsPage from './pages/reports/MedicalReportsPage';
 import VaccinationReportsPage from './pages/reports/VaccinationReportsPage';
 import EmployeeReportsPage from './pages/reports/EmployeeReportsPage';
 import AuditLogPage from './pages/admin/AuditLogPage';
+import ConfigurationPage from './pages/configuration/ConfigurationPage';
 
 const App: React.FC = () => {
   return (
@@ -140,6 +141,9 @@ const App: React.FC = () => {
             <Route path="breeding/births" element={<BirthRecordingPage />} />
             <Route path="breeding/lineage" element={<LineagePage />} />
             <Route path="breeding/reports" element={<BreedingReportsPage />} />
+
+            {/* Configuration */}
+            <Route path="configuration" element={<ConfigurationPage />} />
 
             {/* Admin */}
             <Route path="admin/audit-log" element={<AuditLogPage />} />

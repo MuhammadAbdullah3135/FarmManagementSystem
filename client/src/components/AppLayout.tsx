@@ -217,8 +217,16 @@ const AppLayout: React.FC = () => {
       ],
     },
     {
-      key: 'admin',
+      key: 'configuration',
       icon: <SettingOutlined />,
+      label: 'Configuration',
+      children: [
+        { key: '/dashboard/configuration', icon: <SettingOutlined />, label: 'Farm Configuration' },
+      ],
+    },
+    {
+      key: 'admin',
+      icon: <AuditOutlined />,
       label: 'Admin',
       children: [
         { key: '/dashboard/admin/audit-log', icon: <AuditOutlined />, label: 'Audit Log' },
