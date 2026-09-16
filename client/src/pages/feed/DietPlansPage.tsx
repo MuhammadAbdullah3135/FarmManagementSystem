@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  Button, Card, Drawer, Form, Input, InputNumber, Modal, Popconfirm, Select, Space, Switch, Table, Tag, message,
+  Button, Card, Col, Drawer, Form, Input, InputNumber, Modal, Popconfirm, Row, Select, Space, Switch, Table, Tag, message,
 } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
@@ -205,6 +205,7 @@ const DietPlansPage: React.FC = () => {
               allowClear
               placeholder="Any"
               options={animalTypes.map((t) => ({ value: t.id, label: t.name }))}
+              style={{ width: '100%' }}
             />
           </Form.Item>
           <Form.Item name="ageCategoryId" label="Age Category">
@@ -212,16 +213,21 @@ const DietPlansPage: React.FC = () => {
               allowClear
               placeholder="Any"
               options={ageCategories.map((c) => ({ value: c.id, label: c.name }))}
+              style={{ width: '100%' }}
             />
           </Form.Item>
-          <Space style={{ display: 'flex' }}>
-            <Form.Item name="minWeightKg" label="Min Weight (kg)">
-              <InputNumber min={0} />
-            </Form.Item>
-            <Form.Item name="maxWeightKg" label="Max Weight (kg)">
-              <InputNumber min={0} />
-            </Form.Item>
-          </Space>
+          <Row gutter={[16, 16]}>
+            <Col xs={24} sm={12}>
+              <Form.Item name="minWeightKg" label="Min Weight (kg)">
+                <InputNumber min={0} style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item name="maxWeightKg" label="Max Weight (kg)">
+                <InputNumber min={0} style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+          </Row>
           {editing && (
             <Form.Item name="isActive" label="Active" valuePropName="checked">
               <Switch />

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Card, Table, Button, Modal, Form, Input, Select, DatePicker, Space, Tag, message, Popconfirm } from 'antd';
+import { Card, Table, Button, Modal, Form, Input, Select, DatePicker, Space, Tag, message, Popconfirm, Row, Col } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined } from '@ant-design/icons';
 import { animalsApi, type AnimalListFilter, type CreateAnimalPayload } from '../../api/animals';
@@ -240,94 +240,128 @@ export default function AnimalsPage() {
         destroyOnClose
       >
         <Form form={form} layout="vertical">
-          <Space style={{ display: 'flex' }}>
-            <Form.Item name="tagNumber" label="Tag Number" rules={[{ required: true }]} style={{ flex: 1 }}>
-              <Input maxLength={50} />
-            </Form.Item>
-            <Form.Item name="name" label="Name" style={{ flex: 1 }}>
-              <Input maxLength={200} />
-            </Form.Item>
-          </Space>
-          <Space style={{ display: 'flex' }}>
-            <Form.Item name="animalTypeId" label="Animal Type" rules={[{ required: true }]} style={{ flex: 1 }}>
-              <Select
-                options={animalTypes.map(t => ({ value: t.id, label: t.name }))}
-                onChange={handleBreedsForType}
-                showSearch
-                optionFilterProp="label"
-              />
-            </Form.Item>
-            <Form.Item name="breedId" label="Breed" style={{ flex: 1 }}>
-              <Select
-                options={breeds.map(b => ({ value: b.id, label: b.name }))}
-                showSearch
-                optionFilterProp="label"
-                allowClear
-              />
-            </Form.Item>
-          </Space>
-          <Space style={{ display: 'flex' }}>
-            <Form.Item name="sexOptionId" label="Sex" rules={[{ required: true }]} style={{ flex: 1 }}>
-              <Select
-                options={sexOptions.map(s => ({ value: s.id, label: s.name }))}
-                showSearch
-                optionFilterProp="label"
-              />
-            </Form.Item>
-            <Form.Item name="animalStatusId" label="Status" rules={[{ required: true }]} style={{ flex: 1 }}>
-              <Select
-                options={statuses.map(s => ({ value: s.id, label: s.name }))}
-                showSearch
-                optionFilterProp="label"
-              />
-            </Form.Item>
-          </Space>
-          <Space style={{ display: 'flex' }}>
-            <Form.Item name="locationId" label="Location" style={{ flex: 1 }}>
-              <Select
-                options={locations.map(l => ({ value: l.id, label: l.name }))}
-                showSearch
-                optionFilterProp="label"
-                allowClear
-              />
-            </Form.Item>
-            <Form.Item name="ageCategoryId" label="Age Category" style={{ flex: 1 }}>
-              <Select
-                options={ageCategories.map(c => ({ value: c.id, label: c.name }))}
-                showSearch
-                optionFilterProp="label"
-                allowClear
-              />
-            </Form.Item>
-          </Space>
-          <Space style={{ display: 'flex' }}>
-            <Form.Item name="sireId" label="Sire (Father)" style={{ flex: 1 }}>
-              <Select
-                options={allAnimals.map(a => ({ value: a.id, label: a.name ? `${a.tagNumber} - ${a.name}` : a.tagNumber }))}
-                showSearch
-                optionFilterProp="label"
-                allowClear
-                placeholder="Select sire"
-              />
-            </Form.Item>
-            <Form.Item name="damId" label="Dam (Mother)" style={{ flex: 1 }}>
-              <Select
-                options={allAnimals.map(a => ({ value: a.id, label: a.name ? `${a.tagNumber} - ${a.name}` : a.tagNumber }))}
-                showSearch
-                optionFilterProp="label"
-                allowClear
-                placeholder="Select dam"
-              />
-            </Form.Item>
-          </Space>
-          <Space style={{ display: 'flex' }}>
-            <Form.Item name="dateOfBirth" label="Date of Birth" style={{ flex: 1 }}>
-              <DatePicker style={{ width: '100%' }} />
-            </Form.Item>
-            <Form.Item name="acquisitionDate" label="Acquisition Date" style={{ flex: 1 }}>
-              <DatePicker style={{ width: '100%' }} />
-            </Form.Item>
-          </Space>
+          <Row gutter={[16, 16]}>
+            <Col xs={24} sm={12}>
+              <Form.Item name="tagNumber" label="Tag Number" rules={[{ required: true }]}>
+                <Input maxLength={50} />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item name="name" label="Name">
+                <Input maxLength={200} />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={[16, 16]}>
+            <Col xs={24} sm={12}>
+              <Form.Item name="animalTypeId" label="Animal Type" rules={[{ required: true }]}>
+                <Select
+                  options={animalTypes.map(t => ({ value: t.id, label: t.name }))}
+                  onChange={handleBreedsForType}
+                  showSearch
+                  optionFilterProp="label"
+                  style={{ width: '100%' }}
+                />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item name="breedId" label="Breed">
+                <Select
+                  options={breeds.map(b => ({ value: b.id, label: b.name }))}
+                  showSearch
+                  optionFilterProp="label"
+                  allowClear
+                  style={{ width: '100%' }}
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={[16, 16]}>
+            <Col xs={24} sm={12}>
+              <Form.Item name="sexOptionId" label="Sex" rules={[{ required: true }]}>
+                <Select
+                  options={sexOptions.map(s => ({ value: s.id, label: s.name }))}
+                  showSearch
+                  optionFilterProp="label"
+                  style={{ width: '100%' }}
+                />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item name="animalStatusId" label="Status" rules={[{ required: true }]}>
+                <Select
+                  options={statuses.map(s => ({ value: s.id, label: s.name }))}
+                  showSearch
+                  optionFilterProp="label"
+                  style={{ width: '100%' }}
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={[16, 16]}>
+            <Col xs={24} sm={12}>
+              <Form.Item name="locationId" label="Location">
+                <Select
+                  options={locations.map(l => ({ value: l.id, label: l.name }))}
+                  showSearch
+                  optionFilterProp="label"
+                  allowClear
+                  style={{ width: '100%' }}
+                />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item name="ageCategoryId" label="Age Category">
+                <Select
+                  options={ageCategories.map(c => ({ value: c.id, label: c.name }))}
+                  showSearch
+                  optionFilterProp="label"
+                  allowClear
+                  style={{ width: '100%' }}
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={[16, 16]}>
+            <Col xs={24} sm={12}>
+              <Form.Item name="sireId" label="Sire (Father)">
+                <Select
+                  options={allAnimals.map(a => ({ value: a.id, label: a.name ? `${a.tagNumber} - ${a.name}` : a.tagNumber }))}
+                  showSearch
+                  optionFilterProp="label"
+                  allowClear
+                  placeholder="Select sire"
+                  style={{ width: '100%' }}
+                  popupMatchSelectWidth={false}
+                />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item name="damId" label="Dam (Mother)">
+                <Select
+                  options={allAnimals.map(a => ({ value: a.id, label: a.name ? `${a.tagNumber} - ${a.name}` : a.tagNumber }))}
+                  showSearch
+                  optionFilterProp="label"
+                  allowClear
+                  placeholder="Select dam"
+                  style={{ width: '100%' }}
+                  popupMatchSelectWidth={false}
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={[16, 16]}>
+            <Col xs={24} sm={12}>
+              <Form.Item name="dateOfBirth" label="Date of Birth">
+                <DatePicker style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item name="acquisitionDate" label="Acquisition Date">
+                <DatePicker style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+          </Row>
           <Form.Item name="notes" label="Notes">
             <Input.TextArea rows={2} maxLength={2000} />
           </Form.Item>

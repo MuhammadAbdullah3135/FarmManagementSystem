@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  Button, Card, DatePicker, Form, Input, InputNumber, Modal, Popconfirm, Select, Space, Table, Tag, message,
+  Button, Card, Col, DatePicker, Form, Input, InputNumber, Modal, Popconfirm, Row, Select, Space, Table, Tag, message,
 } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
@@ -275,30 +275,42 @@ const MedicalRecordsPage: React.FC = () => {
           <Form.Item name="treatment" label="Treatment">
             <Input.TextArea rows={2} maxLength={1000} placeholder="Treatment plan..." />
           </Form.Item>
-          <Space style={{ display: 'flex' }}>
-            <Form.Item name="medicineUsed" label="Medicine Used" style={{ flex: 1 }}>
-              <Input maxLength={500} placeholder="Medicine name" />
-            </Form.Item>
-            <Form.Item name="dosage" label="Dosage" style={{ flex: 1 }}>
-              <Input maxLength={200} placeholder="e.g. 10ml twice daily" />
-            </Form.Item>
-          </Space>
-          <Space style={{ display: 'flex' }}>
-            <Form.Item name="vetName" label="Veterinarian" style={{ flex: 1 }}>
-              <Input maxLength={200} placeholder="Vet name" />
-            </Form.Item>
-            <Form.Item name="cost" label="Cost ($)" style={{ flex: 1 }}>
-              <InputNumber min={0} precision={2} style={{ width: '100%' }} placeholder="0.00" />
-            </Form.Item>
-          </Space>
-          <Space style={{ display: 'flex' }}>
-            <Form.Item name="dateRecorded" label="Date Recorded" rules={[{ required: true }]} style={{ flex: 1 }}>
-              <DatePicker style={{ width: '100%' }} />
-            </Form.Item>
-            <Form.Item name="followUpDate" label="Follow-up Date" style={{ flex: 1 }}>
-              <DatePicker style={{ width: '100%' }} />
-            </Form.Item>
-          </Space>
+          <Row gutter={[16, 16]}>
+            <Col xs={24} sm={12}>
+              <Form.Item name="medicineUsed" label="Medicine Used">
+                <Input maxLength={500} placeholder="Medicine name" />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item name="dosage" label="Dosage">
+                <Input maxLength={200} placeholder="e.g. 10ml twice daily" />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={[16, 16]}>
+            <Col xs={24} sm={12}>
+              <Form.Item name="vetName" label="Veterinarian">
+                <Input maxLength={200} placeholder="Vet name" />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item name="cost" label="Cost ($)">
+                <InputNumber min={0} precision={2} style={{ width: '100%' }} placeholder="0.00" />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={[16, 16]}>
+            <Col xs={24} sm={12}>
+              <Form.Item name="dateRecorded" label="Date Recorded" rules={[{ required: true }]}>
+                <DatePicker style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item name="followUpDate" label="Follow-up Date">
+                <DatePicker style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+          </Row>
           <Form.Item name="status" label="Status" rules={[{ required: true }]}>
             <Select options={['Open', 'InProgress', 'Resolved'].map((s) => ({ value: s, label: s }))} />
           </Form.Item>

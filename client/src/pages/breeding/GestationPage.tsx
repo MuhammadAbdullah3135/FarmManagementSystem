@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Card, Table, Button, Tag, Space, Drawer, Form, DatePicker, Input, InputNumber, message, Descriptions, Empty, Tooltip, Modal } from 'antd';
+import { Card, Table, Button, Tag, Space, Col, Drawer, Form, DatePicker, Input, InputNumber, message, Descriptions, Empty, Tooltip, Modal, Row } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { PlusOutlined, CloseCircleOutlined, HeartOutlined } from '@ant-design/icons';
 import { gestationApi, breedingRecordsApi, type ConfirmPregnancyPayload, type LogHealthCheckPayload } from '../../api/breeding';
@@ -286,14 +286,18 @@ export default function GestationPage() {
                 <Form.Item name="checkDate" label="Check Date" rules={[{ required: true }]}>
                   <DatePicker style={{ width: '100%' }} />
                 </Form.Item>
-                <Space style={{ display: 'flex' }}>
-                  <Form.Item name="performedBy" label="Performed By" style={{ flex: 1 }}>
-                    <Input maxLength={200} />
-                  </Form.Item>
-                  <Form.Item name="weightKg" label="Weight (kg)" style={{ flex: 1 }}>
-                    <InputNumber min={0} precision={2} style={{ width: '100%' }} />
-                  </Form.Item>
-                </Space>
+                <Row gutter={[16, 16]}>
+                  <Col xs={24} sm={12}>
+                    <Form.Item name="performedBy" label="Performed By">
+                      <Input maxLength={200} />
+                    </Form.Item>
+                  </Col>
+                  <Col xs={24} sm={12}>
+                    <Form.Item name="weightKg" label="Weight (kg)">
+                      <InputNumber min={0} precision={2} style={{ width: '100%' }} />
+                    </Form.Item>
+                  </Col>
+                </Row>
                 <Form.Item name="notes" label="Notes">
                   <Input.TextArea rows={2} maxLength={2000} />
                 </Form.Item>

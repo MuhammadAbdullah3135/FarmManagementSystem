@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  Button, Card, DatePicker, Form, Input, InputNumber, Modal, Popconfirm, Select, Space, Table, message,
+  Button, Card, Col, DatePicker, Form, Input, InputNumber, Modal, Popconfirm, Row, Select, Space, Table, message,
 } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
@@ -219,14 +219,18 @@ const VaccinationRecordsPage: React.FC = () => {
           <Form.Item name="dateGiven" label="Date Given" rules={[{ required: true }]}>
             <DatePicker style={{ width: '100%' }} />
           </Form.Item>
-          <Space style={{ display: 'flex' }}>
-            <Form.Item name="vetName" label="Veterinarian" style={{ flex: 1 }}>
-              <Input maxLength={200} placeholder="Vet name" />
-            </Form.Item>
-            <Form.Item name="batchNumber" label="Batch Number" style={{ flex: 1 }}>
-              <Input maxLength={100} placeholder="Vaccine batch" />
-            </Form.Item>
-          </Space>
+          <Row gutter={[16, 16]}>
+            <Col xs={24} sm={12}>
+              <Form.Item name="vetName" label="Veterinarian">
+                <Input maxLength={200} placeholder="Vet name" />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item name="batchNumber" label="Batch Number">
+                <Input maxLength={100} placeholder="Vaccine batch" />
+              </Form.Item>
+            </Col>
+          </Row>
           <Form.Item name="cost" label="Cost ($)">
             <InputNumber min={0} precision={2} style={{ width: '100%' }} placeholder="0.00" />
           </Form.Item>

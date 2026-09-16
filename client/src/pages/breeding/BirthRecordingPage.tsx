@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Card, Table, Button, Tag, Space, Modal, Form, DatePicker, Input, InputNumber, Select, message, Descriptions, Empty, Popconfirm } from 'antd';
+import { Card, Table, Button, Tag, Space, Col, Modal, Form, DatePicker, Input, InputNumber, Select, message, Descriptions, Empty, Popconfirm, Row } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { PlusOutlined, DeleteOutlined, EyeOutlined } from '@ant-design/icons';
 import { birthsApi, gestationApi, breedingRecordsApi, type CreateBirthRecordPayload } from '../../api/breeding';
@@ -239,28 +239,36 @@ export default function BirthRecordingPage() {
             </div>
           )}
 
-          <Space style={{ display: 'flex' }}>
-            <Form.Item name="gestationRecordId" label="Gestation Record (optional)" style={{ flex: 1 }}>
-              <Select
-                allowClear
-                placeholder="Link to gestation record"
-                options={pendingGestations.map(g => ({
-                  value: g.id,
-                  label: `${dayjs(g.breedingDate).format('YYYY-MM-DD')} | ${g.animalTagNumber} (${g.daysUntilDue}d to due)`,
-                }))}
-              />
-            </Form.Item>
-            <Form.Item name="breedingRecordId" label="Breeding Record (optional)" style={{ flex: 1 }}>
-              <Select
-                allowClear
-                placeholder="Link to breeding record"
-                options={pendingBreedingRecords.map(r => ({
-                  value: r.id,
-                  label: `${dayjs(r.breedingDate).format('YYYY-MM-DD')} | ${r.sireTagNumber} x ${r.damTagNumber}`,
-                }))}
-              />
-            </Form.Item>
-          </Space>
+          <Row gutter={[16, 16]}>
+            <Col xs={24} sm={12}>
+              <Form.Item name="gestationRecordId" label="Gestation Record (optional)">
+                <Select
+                  allowClear
+                  placeholder="Link to gestation record"
+                  options={pendingGestations.map(g => ({
+                    value: g.id,
+                    label: `${dayjs(g.breedingDate).format('YYYY-MM-DD')} | ${g.animalTagNumber} (${g.daysUntilDue}d to due)`,
+                  }))}
+                  style={{ width: '100%' }}
+                  popupMatchSelectWidth={false}
+                />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item name="breedingRecordId" label="Breeding Record (optional)">
+                <Select
+                  allowClear
+                  placeholder="Link to breeding record"
+                  options={pendingBreedingRecords.map(r => ({
+                    value: r.id,
+                    label: `${dayjs(r.breedingDate).format('YYYY-MM-DD')} | ${r.sireTagNumber} x ${r.damTagNumber}`,
+                  }))}
+                  style={{ width: '100%' }}
+                  popupMatchSelectWidth={false}
+                />
+              </Form.Item>
+            </Col>
+          </Row>
 
           <Form.Item name="birthDate" label="Birth Date" rules={[{ required: true, message: 'Select birth date' }]}>
             <DatePicker style={{ width: '100%' }} />
@@ -306,41 +314,47 @@ export default function BirthRecordingPage() {
                   ) : null
                 }
               >
-                <Space style={{ display: 'flex', flexWrap: 'wrap' }}>
-                  <Form.Item
-                    name={[index, 'sexOptionId']}
-                    label="Sex"
-                    rules={[{ required: true, message: 'Required' }]}
-                    style={{ minWidth: 150 }}
-                  >
-                    <Select placeholder="Select sex" style={{ width: 150 }}>
-                      {sexOptions.map(s => (
-                        <Select.Option key={s.id} value={s.id}>{s.value}</Select.Option>
-                      ))}
-                    </Select>
-                  </Form.Item>
+                <Row gutter={[16, 16]}>
+                  <Col xs={24} sm={12} md={6}>
+                    <Form.Item
+                      name={[index, 'sexOptionId']}
+                      label="Sex"
+                      rules={[{ required: true, message: 'Required' }]}
+                    >
+                      <Select placeholder="Select sex" style={{ width: '100%' }}>
+                        {sexOptions.map(s => (
+                          <Select.Option key={s.id} value={s.id}>{s.value}</Select.Option>
+                        ))}
+                      </Select>
+                    </Form.Item>
+                  </Col>
 
-                  <Form.Item
-                    name={[index, 'outcome']}
-                    label="Outcome"
-                    initialValue={0}
-                    style={{ minWidth: 130 }}
-                  >
-                    <Select style={{ width: 130 }}>
-                      <Select.Option value={0}>Alive</Select.Option>
-                      <Select.Option value={1}>Stillborn</Select.Option>
-                      <Select.Option value={2}>Weak</Select.Option>
-                    </Select>
-                  </Form.Item>
+                  <Col xs={24} sm={12} md={6}>
+                    <Form.Item
+                      name={[index, 'outcome']}
+                      label="Outcome"
+                      initialValue={0}
+                    >
+                      <Select style={{ width: '100%' }}>
+                        <Select.Option value={0}>Alive</Select.Option>
+                        <Select.Option value={1}>Stillborn</Select.Option>
+                        <Select.Option value={2}>Weak</Select.Option>
+                      </Select>
+                    </Form.Item>
+                  </Col>
 
-                  <Form.Item name={[index, 'birthWeightKg']} label="Weight (kg)" style={{ minWidth: 120 }}>
-                    <InputNumber min={0} precision={2} style={{ width: 120 }} />
-                  </Form.Item>
+                  <Col xs={24} sm={12} md={6}>
+                    <Form.Item name={[index, 'birthWeightKg']} label="Weight (kg)">
+                      <InputNumber min={0} precision={2} style={{ width: '100%' }} />
+                    </Form.Item>
+                  </Col>
 
-                  <Form.Item name={[index, 'name']} label="Name" style={{ minWidth: 150 }}>
-                    <Input maxLength={200} placeholder="Optional name" />
-                  </Form.Item>
-                </Space>
+                  <Col xs={24} sm={12} md={6}>
+                    <Form.Item name={[index, 'name']} label="Name">
+                      <Input maxLength={200} placeholder="Optional name" />
+                    </Form.Item>
+                  </Col>
+                </Row>
 
                 <Form.Item name={[index, 'notes']} label="Notes">
                   <Input maxLength={500} placeholder="Optional notes" />

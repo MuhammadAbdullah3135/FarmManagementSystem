@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Button, DatePicker, Form, Input, InputNumber, Modal, Popconfirm, Select, Space, Tag, message } from 'antd';
+import { Button, Col, DatePicker, Form, Input, InputNumber, Modal, Popconfirm, Row, Select, Space, Tag, message } from 'antd';
 import { PlusOutlined, ReloadOutlined } from '@ant-design/icons';
 import { ProTable } from '@ant-design/pro-components';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
@@ -269,20 +269,25 @@ const ExpensesPage: React.FC = () => {
         width={560}
       >
         <Form form={form} layout="vertical">
-          <Space style={{ display: 'flex' }} size={16}>
-            <Form.Item name="expenseDate" label="Date" rules={[{ required: true, message: 'Date is required' }]}>
-              <DatePicker style={{ width: '100%' }} />
-            </Form.Item>
-            <Form.Item name="amount" label="Amount" rules={[{ required: true, message: 'Amount is required' }]}>
-              <InputNumber min={0.01} precision={2} prefix="$" style={{ width: 160 }} />
-            </Form.Item>
-          </Space>
+          <Row gutter={[16, 16]}>
+            <Col xs={24} sm={12}>
+              <Form.Item name="expenseDate" label="Date" rules={[{ required: true, message: 'Date is required' }]}>
+                <DatePicker style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item name="amount" label="Amount" rules={[{ required: true, message: 'Amount is required' }]}>
+                <InputNumber min={0.01} precision={2} prefix="$" style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+          </Row>
           <Form.Item name="expenseCategoryId" label="Category" rules={[{ required: true, message: 'Category is required' }]}>
             <Select
               placeholder="Select category"
               options={categories.map((c) => ({ value: c.id, label: c.name }))}
               showSearch
               optionFilterProp="label"
+              style={{ width: '100%' }}
             />
           </Form.Item>
           <Form.Item name="paymentMethodId" label="Payment Method" rules={[{ required: true, message: 'Payment method is required' }]}>
@@ -291,22 +296,29 @@ const ExpensesPage: React.FC = () => {
               options={methods.map((m) => ({ value: m.id, label: m.name }))}
               showSearch
               optionFilterProp="label"
+              style={{ width: '100%' }}
             />
           </Form.Item>
-          <Space style={{ display: 'flex' }} size={16}>
-            <Form.Item name="animalId" label="Animal (optional)" style={{ minWidth: 240 }}>
-              <Select
-                allowClear
-                placeholder="Link an animal"
-                options={animals.map((a) => ({ value: a.id, label: a.name ? `${a.tagNumber} (${a.name})` : a.tagNumber }))}
-                showSearch
-                optionFilterProp="label"
-              />
-            </Form.Item>
-            <Form.Item name="locationId" label="Location (optional)" style={{ minWidth: 240 }}>
-              <Select allowClear placeholder="Link a location" options={locations.map((l) => ({ value: l.id, label: l.name }))} />
-            </Form.Item>
-          </Space>
+          <Row gutter={[16, 16]}>
+            <Col xs={24} sm={12}>
+              <Form.Item name="animalId" label="Animal (optional)">
+                <Select
+                  allowClear
+                  placeholder="Link an animal"
+                  options={animals.map((a) => ({ value: a.id, label: a.name ? `${a.tagNumber} (${a.name})` : a.tagNumber }))}
+                  showSearch
+                  optionFilterProp="label"
+                  style={{ width: '100%' }}
+                  popupMatchSelectWidth={false}
+                />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item name="locationId" label="Location (optional)">
+                <Select allowClear placeholder="Link a location" options={locations.map((l) => ({ value: l.id, label: l.name }))} style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+          </Row>
           <Form.Item
             name="description"
             label="Description"

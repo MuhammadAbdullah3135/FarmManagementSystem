@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  Button, Card, Checkbox, DatePicker, Form, Input, Modal, Popconfirm, Select, Space, Table, Tag, message,
+  Button, Card, Checkbox, Col, DatePicker, Form, Input, Modal, Popconfirm, Row, Select, Space, Table, Tag, message,
 } from 'antd';
 import { PlusOutlined, PlayCircleOutlined, CheckOutlined, StopOutlined, UndoOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
@@ -216,17 +216,22 @@ const TasksPage: React.FC = () => {
           <Form.Item name="description" label="Description">
             <Input.TextArea rows={2} maxLength={2000} />
           </Form.Item>
-          <Space style={{ display: 'flex' }}>
-            <Form.Item name="priority" label="Priority" rules={[{ required: true }]} style={{ flex: 1 }}>
-              <Select options={['Low', 'Medium', 'High'].map((p) => ({ value: p, label: p }))} />
-            </Form.Item>
-            <Form.Item name="dueDate" label="Due Date" rules={[{ required: true }]} style={{ flex: 1 }}>
-              <DatePicker style={{ width: '100%' }} />
-            </Form.Item>
-          </Space>
+          <Row gutter={[16, 16]}>
+            <Col xs={24} sm={12}>
+              <Form.Item name="priority" label="Priority" rules={[{ required: true }]}>
+                <Select options={['Low', 'Medium', 'High'].map((p) => ({ value: p, label: p }))} style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item name="dueDate" label="Due Date" rules={[{ required: true }]}>
+                <DatePicker style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+          </Row>
           <Form.Item name="assignedEmployeeId" label="Assign to">
             <Select allowClear showSearch optionFilterProp="label"
-              options={employees.map((e) => ({ value: e.id, label: `${e.firstName} ${e.lastName}` }))} />
+              options={employees.map((e) => ({ value: e.id, label: `${e.firstName} ${e.lastName}` }))}
+              style={{ width: '100%' }} popupMatchSelectWidth={false} />
           </Form.Item>
         </Form>
       </Modal>

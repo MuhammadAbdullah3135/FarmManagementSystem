@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  Button, Card, DatePicker, Drawer, Form, Input, InputNumber, Modal, Popconfirm, Space, Table, message,
+  Button, Card, Col, DatePicker, Drawer, Form, Input, InputNumber, Modal, Popconfirm, Row, Space, Table, message,
 } from 'antd';
 import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
@@ -252,14 +252,18 @@ const MedicinesPage: React.FC = () => {
           <Form.Item name="unit" label="Unit" rules={[{ required: true, message: 'Unit is required' }]}>
             <Input maxLength={50} placeholder="e.g. doses, ml, tablets" />
           </Form.Item>
-          <Space style={{ display: 'flex' }}>
-            <Form.Item name="lowStockThreshold" label="Low Stock Threshold" style={{ flex: 1 }}>
-              <InputNumber min={0} style={{ width: '100%' }} />
-            </Form.Item>
-            <Form.Item name="expiringSoonDays" label="Expiring Soon (days)" style={{ flex: 1 }}>
-              <InputNumber min={1} style={{ width: '100%' }} />
-            </Form.Item>
-          </Space>
+          <Row gutter={[16, 16]}>
+            <Col xs={24} sm={12}>
+              <Form.Item name="lowStockThreshold" label="Low Stock Threshold">
+                <InputNumber min={0} style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item name="expiringSoonDays" label="Expiring Soon (days)">
+                <InputNumber min={1} style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+          </Row>
         </Form>
       </Modal>
 
@@ -295,14 +299,18 @@ const MedicinesPage: React.FC = () => {
           <Form.Item name="batchNumber" label="Batch Number" rules={[{ required: true }]}>
             <Input maxLength={100} />
           </Form.Item>
-          <Space style={{ display: 'flex' }}>
-            <Form.Item name="quantity" label="Quantity" rules={[{ required: true }]} style={{ flex: 1 }}>
-              <InputNumber min={1} style={{ width: '100%' }} />
-            </Form.Item>
-            <Form.Item name="unitCost" label="Unit Cost ($)" rules={[{ required: true }]} style={{ flex: 1 }}>
-              <InputNumber min={0} precision={2} style={{ width: '100%' }} />
-            </Form.Item>
-          </Space>
+          <Row gutter={[16, 16]}>
+            <Col xs={24} sm={12}>
+              <Form.Item name="quantity" label="Quantity" rules={[{ required: true }]}>
+                <InputNumber min={1} style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item name="unitCost" label="Unit Cost ($)" rules={[{ required: true }]}>
+                <InputNumber min={0} precision={2} style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+          </Row>
           <Form.Item name="expiryDate" label="Expiry Date" rules={[{ required: true }]}>
             <DatePicker style={{ width: '100%' }} />
           </Form.Item>

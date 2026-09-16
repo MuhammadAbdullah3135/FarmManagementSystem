@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  Button, Card, DatePicker, Form, Input, Modal, Select, Space, Table, Tag, message,
+  Button, Card, Col, DatePicker, Form, Input, Modal, Row, Select, Space, Table, Tag, message,
 } from 'antd';
 import { LoginOutlined, LogoutOutlined, PlusOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
@@ -200,22 +200,28 @@ const AttendancePage: React.FC = () => {
               showSearch
               optionFilterProp="label"
               options={employees.map((e) => ({ value: e.id, label: `${e.firstName} ${e.lastName}` }))}
+              style={{ width: '100%' }}
+              popupMatchSelectWidth={false}
             />
           </Form.Item>
           <Form.Item name="date" label="Date" rules={[{ required: true }]}>
             <DatePicker style={{ width: '100%' }} />
           </Form.Item>
           <Form.Item name="status" label="Status" rules={[{ required: true }]}>
-            <Select options={ATTENDANCE_STATUSES.map((s) => ({ value: s, label: s }))} />
+            <Select options={ATTENDANCE_STATUSES.map((s) => ({ value: s, label: s }))} style={{ width: '100%' }} />
           </Form.Item>
-          <Space style={{ display: 'flex' }}>
-            <Form.Item name="checkInAt" label="Check In" style={{ flex: 1 }}>
-              <DatePicker showTime style={{ width: '100%' }} />
-            </Form.Item>
-            <Form.Item name="checkOutAt" label="Check Out" style={{ flex: 1 }}>
-              <DatePicker showTime style={{ width: '100%' }} />
-            </Form.Item>
-          </Space>
+          <Row gutter={[16, 16]}>
+            <Col xs={24} sm={12}>
+              <Form.Item name="checkInAt" label="Check In">
+                <DatePicker showTime style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item name="checkOutAt" label="Check Out">
+                <DatePicker showTime style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+          </Row>
           <Form.Item name="notes" label="Notes">
             <Input.TextArea rows={2} maxLength={1000} />
           </Form.Item>

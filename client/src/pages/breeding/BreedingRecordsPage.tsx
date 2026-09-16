@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Card, Table, Button, Modal, Form, Select, DatePicker, Input, Space, Tag, message, Popconfirm } from 'antd';
+import { Card, Table, Button, Modal, Form, Select, DatePicker, Input, Space, Tag, message, Popconfirm, Row, Col } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { breedingRecordsApi, type BreedingRecordListFilter, type CreateBreedingRecordPayload, type UpdateBreedingRecordPayload } from '../../api/breeding';
@@ -219,37 +219,51 @@ export default function BreedingRecordsPage() {
         destroyOnClose
       >
         <Form form={form} layout="vertical">
-          <Space style={{ display: 'flex' }}>
-            <Form.Item name="sireId" label="Sire (Male)" rules={[{ required: true }]} style={{ flex: 1 }}>
-              <Select
-                options={males.map(a => ({ value: a.id, label: animalLabel(a) }))}
-                showSearch
-                optionFilterProp="label"
-                placeholder="Select sire"
-              />
-            </Form.Item>
-            <Form.Item name="damId" label="Dam (Female)" rules={[{ required: true }]} style={{ flex: 1 }}>
-              <Select
-                options={females.map(a => ({ value: a.id, label: animalLabel(a) }))}
-                showSearch
-                optionFilterProp="label"
-                placeholder="Select dam"
-              />
-            </Form.Item>
-          </Space>
-          <Space style={{ display: 'flex' }}>
-            <Form.Item name="breedingDate" label="Breeding Date" rules={[{ required: true }]} style={{ flex: 1 }}>
-              <DatePicker style={{ width: '100%' }} />
-            </Form.Item>
-            <Form.Item name="method" label="Method" rules={[{ required: true }]} style={{ flex: 1 }}>
-              <Select
-                options={[
-                  { value: 0, label: 'Natural' },
-                  { value: 1, label: 'Artificial Insemination' },
-                ]}
-              />
-            </Form.Item>
-          </Space>
+          <Row gutter={[16, 16]}>
+            <Col xs={24} sm={12}>
+              <Form.Item name="sireId" label="Sire (Male)" rules={[{ required: true }]}>
+                <Select
+                  options={males.map(a => ({ value: a.id, label: animalLabel(a) }))}
+                  showSearch
+                  optionFilterProp="label"
+                  placeholder="Select sire"
+                  style={{ width: '100%' }}
+                  popupMatchSelectWidth={false}
+                />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item name="damId" label="Dam (Female)" rules={[{ required: true }]}>
+                <Select
+                  options={females.map(a => ({ value: a.id, label: animalLabel(a) }))}
+                  showSearch
+                  optionFilterProp="label"
+                  placeholder="Select dam"
+                  style={{ width: '100%' }}
+                  popupMatchSelectWidth={false}
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={[16, 16]}>
+            <Col xs={24} sm={12}>
+              <Form.Item name="breedingDate" label="Breeding Date" rules={[{ required: true }]}>
+                <DatePicker style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item name="method" label="Method" rules={[{ required: true }]}>
+                <Select
+                  options={[
+                    { value: 0, label: 'Natural' },
+                    { value: 1, label: 'Artificial Insemination' },
+                  ]}
+                  style={{ width: '100%' }}
+                  popupMatchSelectWidth={false}
+                />
+              </Form.Item>
+            </Col>
+          </Row>
           {editing && (
             <Form.Item name="result" label="Result" rules={[{ required: true }]}>
               <Select

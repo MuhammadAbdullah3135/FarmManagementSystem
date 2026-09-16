@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  Button, Card, DatePicker, Form, Input, InputNumber, Modal, Popconfirm, Select, Space, Table, message,
+  Button, Card, Col, DatePicker, Form, Input, InputNumber, Modal, Popconfirm, Row, Select, Space, Table, message,
 } from 'antd';
 import { PlusOutlined, StarFilled } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
@@ -175,6 +175,8 @@ const PerformanceReviewsPage: React.FC = () => {
               showSearch
               optionFilterProp="label"
               options={employees.map((e) => ({ value: e.id, label: `${e.firstName} ${e.lastName}` }))}
+              style={{ width: '100%' }}
+              popupMatchSelectWidth={false}
             />
           </Form.Item>
           <Form.Item name="rating" label="Rating (1–5)" rules={[{ required: true }]}>
@@ -183,14 +185,18 @@ const PerformanceReviewsPage: React.FC = () => {
           <Form.Item name="reviewDate" label="Review Date" rules={[{ required: true }]}>
             <DatePicker style={{ width: '100%' }} />
           </Form.Item>
-          <Space style={{ display: 'flex' }}>
-            <Form.Item name="periodStart" label="Period Start" style={{ flex: 1 }}>
-              <DatePicker style={{ width: '100%' }} />
-            </Form.Item>
-            <Form.Item name="periodEnd" label="Period End" style={{ flex: 1 }}>
-              <DatePicker style={{ width: '100%' }} />
-            </Form.Item>
-          </Space>
+          <Row gutter={[16, 16]}>
+            <Col xs={24} sm={12}>
+              <Form.Item name="periodStart" label="Period Start">
+                <DatePicker style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item name="periodEnd" label="Period End">
+                <DatePicker style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+          </Row>
           <Form.Item name="strengths" label="Strengths">
             <Input.TextArea rows={2} maxLength={2000} />
           </Form.Item>

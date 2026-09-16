@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, Button, Card, DatePicker, Form, Input, InputNumber, Modal, Popconfirm, Select, Space, Table, Tag, message } from 'antd';
+import { Alert, Button, Card, Col, DatePicker, Form, Input, InputNumber, Modal, Popconfirm, Row, Select, Space, Table, Tag, message } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { inventoryApi } from '../../api/inventory';
@@ -137,15 +137,23 @@ const InventoryItemsPage: React.FC = () => {
     <Modal title={editing ? 'Edit inventory item' : 'Add inventory item'} open={modalOpen} onOk={() => void save()} onCancel={() => setModalOpen(false)} destroyOnClose>
       <Form form={form} layout="vertical">
         <Form.Item name="name" label="Name" rules={[{ required: true, message: 'Item name is required' }]}><Input maxLength={200} placeholder="e.g. Fencing Wire" /></Form.Item>
-        <Space style={{ display: 'flex' }}>
-          <Form.Item name="category" label="Category"><Input maxLength={100} placeholder="Supplies" /></Form.Item>
-          <Form.Item name="unit" label="Unit" rules={[{ required: true, message: 'Unit is required' }]}><Input maxLength={50} placeholder="rolls, pieces" /></Form.Item>
-        </Space>
+        <Row gutter={[16, 16]}>
+          <Col xs={24} sm={12}>
+            <Form.Item name="category" label="Category"><Input maxLength={100} placeholder="Supplies" /></Form.Item>
+          </Col>
+          <Col xs={24} sm={12}>
+            <Form.Item name="unit" label="Unit" rules={[{ required: true, message: 'Unit is required' }]}><Input maxLength={50} placeholder="rolls, pieces" /></Form.Item>
+          </Col>
+        </Row>
         {!editing && <Form.Item name="quantity" label="Opening quantity" rules={[{ required: true }]}><InputNumber min={0} precision={3} style={{ width: '100%' }} /></Form.Item>}
-        <Space style={{ display: 'flex' }}>
-          <Form.Item name="reorderLevel" label="Reorder level" rules={[{ required: true }]}><InputNumber min={0} precision={3} style={{ width: '100%' }} /></Form.Item>
-          <Form.Item name="unitCost" label="Unit cost" rules={[{ required: true }]}><InputNumber min={0} precision={2} style={{ width: '100%' }} /></Form.Item>
-        </Space>
+        <Row gutter={[16, 16]}>
+          <Col xs={24} sm={12}>
+            <Form.Item name="reorderLevel" label="Reorder level" rules={[{ required: true }]}><InputNumber min={0} precision={3} style={{ width: '100%' }} /></Form.Item>
+          </Col>
+          <Col xs={24} sm={12}>
+            <Form.Item name="unitCost" label="Unit cost" rules={[{ required: true }]}><InputNumber min={0} precision={2} style={{ width: '100%' }} /></Form.Item>
+          </Col>
+        </Row>
         <Form.Item name="location" label="Location"><Input maxLength={200} placeholder="Main store" /></Form.Item>
       </Form>
     </Modal>
@@ -153,7 +161,7 @@ const InventoryItemsPage: React.FC = () => {
     <Modal title={movementItem ? `Adjust stock — ${movementItem.name}` : 'Adjust stock'} open={movementModalOpen} onOk={() => void saveMovement()} onCancel={() => setMovementModalOpen(false)} destroyOnClose>
       <Form form={movementForm} layout="vertical">
         <Form.Item name="movementType" label="Movement type" rules={[{ required: true }]}>
-          <Select options={['Purchase', 'Consumption', 'Transfer', 'Adjustment'].map((value) => ({ value, label: value }))} />
+          <Select options={['Purchase', 'Consumption', 'Transfer', 'Adjustment'].map((value) => ({ value, label: value }))} style={{ width: '100%' }} />
         </Form.Item>
         <Form.Item name="quantity" label="Quantity" extra="Use a negative quantity for a downward adjustment or transfer." rules={[{ required: true, message: 'Quantity is required' }]}>
           <InputNumber precision={3} style={{ width: '100%' }} />

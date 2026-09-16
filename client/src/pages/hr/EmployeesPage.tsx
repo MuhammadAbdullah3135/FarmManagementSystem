@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  Button, Card, Form, Input, InputNumber, Modal, Popconfirm, Select, Space, Switch, Table, Tag, message,
+  Button, Card, Col, Form, Input, InputNumber, Modal, Popconfirm, Row, Select, Space, Switch, Table, Tag, message,
 } from 'antd';
 import { PlusOutlined, SearchOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
@@ -171,38 +171,54 @@ const EmployeesPage: React.FC = () => {
         width={640}
       >
         <Form form={form} layout="vertical">
-          <Space style={{ display: 'flex' }}>
-            <Form.Item name="firstName" label="First Name" rules={[{ required: true }]} style={{ flex: 1 }}>
-              <Input maxLength={100} />
-            </Form.Item>
-            <Form.Item name="lastName" label="Last Name" rules={[{ required: true }]} style={{ flex: 1 }}>
-              <Input maxLength={100} />
-            </Form.Item>
-          </Space>
-          <Space style={{ display: 'flex' }}>
-            <Form.Item name="phone" label="Phone" style={{ flex: 1 }}>
-              <Input maxLength={50} />
-            </Form.Item>
-            <Form.Item name="email" label="Email" style={{ flex: 1 }}>
-              <Input maxLength={200} />
-            </Form.Item>
-          </Space>
-          <Space style={{ display: 'flex' }}>
-            <Form.Item name="departmentId" label="Department" style={{ flex: 1 }}>
-              <Select allowClear options={departments.map((d) => ({ value: d.id, label: d.name }))} />
-            </Form.Item>
-            <Form.Item name="employeeRoleId" label="Role" style={{ flex: 1 }}>
-              <Select allowClear options={roles.map((r) => ({ value: r.id, label: r.name }))} />
-            </Form.Item>
-          </Space>
-          <Space style={{ display: 'flex' }}>
-            <Form.Item name="salaryType" label="Salary Type" rules={[{ required: true }]} style={{ flex: 1 }}>
-              <Select options={SALARY_TYPES.map((t) => ({ value: t, label: t }))} />
-            </Form.Item>
-            <Form.Item name="salaryRate" label="Salary Rate" rules={[{ required: true }]} style={{ flex: 1 }}>
-              <InputNumber min={0} style={{ width: '100%' }} />
-            </Form.Item>
-          </Space>
+          <Row gutter={[16, 16]}>
+            <Col xs={24} sm={12}>
+              <Form.Item name="firstName" label="First Name" rules={[{ required: true }]}>
+                <Input maxLength={100} />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item name="lastName" label="Last Name" rules={[{ required: true }]}>
+                <Input maxLength={100} />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={[16, 16]}>
+            <Col xs={24} sm={12}>
+              <Form.Item name="phone" label="Phone">
+                <Input maxLength={50} />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item name="email" label="Email">
+                <Input maxLength={200} />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={[16, 16]}>
+            <Col xs={24} sm={12}>
+              <Form.Item name="departmentId" label="Department">
+                <Select allowClear options={departments.map((d) => ({ value: d.id, label: d.name }))} style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item name="employeeRoleId" label="Role">
+                <Select allowClear options={roles.map((r) => ({ value: r.id, label: r.name }))} style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={[16, 16]}>
+            <Col xs={24} sm={12}>
+              <Form.Item name="salaryType" label="Salary Type" rules={[{ required: true }]}>
+                <Select options={SALARY_TYPES.map((t) => ({ value: t, label: t }))} style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item name="salaryRate" label="Salary Rate" rules={[{ required: true }]}>
+                <InputNumber min={0} style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+          </Row>
           {editing && (
             <Form.Item name="isActive" label="Active" valuePropName="checked">
               <Switch />
