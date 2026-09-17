@@ -1,7 +1,6 @@
 using FMS.Application.Common;
 using FMS.Application.Farm;
 using FMS.Domain.Entities;
-using FMS.Domain.Enums;
 using FMS.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -41,118 +40,9 @@ public class FarmService : IFarmService
             CreatedAt = DateTime.UtcNow
         });
 
-        // Seed system-defined animal statuses
-        var now = DateTime.UtcNow;
-        _context.AnimalStatuses.AddRange(
-            new AnimalStatus
-            {
-                Id = Guid.NewGuid(),
-                FarmId = farm.Id,
-                Name = "Active",
-                IsActive = true,
-                Category = AnimalStatusCategory.Active,
-                IsSystemDefined = true,
-                CreatedAt = now
-            },
-            new AnimalStatus
-            {
-                Id = Guid.NewGuid(),
-                FarmId = farm.Id,
-                Name = "Pregnant",
-                IsActive = true,
-                Category = AnimalStatusCategory.Active,
-                IsSystemDefined = true,
-                CreatedAt = now
-            },
-            new AnimalStatus
-            {
-                Id = Guid.NewGuid(),
-                FarmId = farm.Id,
-                Name = "Lactating",
-                IsActive = true,
-                Category = AnimalStatusCategory.Active,
-                IsSystemDefined = true,
-                CreatedAt = now
-            },
-            new AnimalStatus
-            {
-                Id = Guid.NewGuid(),
-                FarmId = farm.Id,
-                Name = "Dry",
-                IsActive = true,
-                Category = AnimalStatusCategory.Active,
-                IsSystemDefined = true,
-                CreatedAt = now
-            },
-            new AnimalStatus
-            {
-                Id = Guid.NewGuid(),
-                FarmId = farm.Id,
-                Name = "Sold",
-                IsActive = true,
-                Category = AnimalStatusCategory.Terminal,
-                IsSystemDefined = true,
-                CreatedAt = now
-            },
-            new AnimalStatus
-            {
-                Id = Guid.NewGuid(),
-                FarmId = farm.Id,
-                Name = "Deceased",
-                IsActive = true,
-                Category = AnimalStatusCategory.Terminal,
-                IsSystemDefined = true,
-                CreatedAt = now
-            }
-        );
-
-        // Seed sex options
-        var maleSex = new SexOption { Id = Guid.NewGuid(), FarmId = farm.Id, Value = "Male", CreatedAt = now };
-        var femaleSex = new SexOption { Id = Guid.NewGuid(), FarmId = farm.Id, Value = "Female", CreatedAt = now };
-        _context.SexOptions.AddRange(maleSex, femaleSex);
-
-        // Seed age categories
-        _context.AgeCategories.AddRange(
-            new AgeCategory { Id = Guid.NewGuid(), FarmId = farm.Id, Name = "Calf", MinDays = 0, MaxDays = 180, CreatedAt = now },
-            new AgeCategory { Id = Guid.NewGuid(), FarmId = farm.Id, Name = "Young", MinDays = 181, MaxDays = 365, CreatedAt = now },
-            new AgeCategory { Id = Guid.NewGuid(), FarmId = farm.Id, Name = "Adult", MinDays = 366, MaxDays = 99999, CreatedAt = now }
-        );
-
-        // Seed location types and a root location
-        var shedType = new LocationType { Id = Guid.NewGuid(), FarmId = farm.Id, Name = "Shed", CreatedAt = now };
-        var barnType = new LocationType { Id = Guid.NewGuid(), FarmId = farm.Id, Name = "Barn", CreatedAt = now };
-        var fieldType = new LocationType { Id = Guid.NewGuid(), FarmId = farm.Id, Name = "Field", CreatedAt = now };
-        var penType = new LocationType { Id = Guid.NewGuid(), FarmId = farm.Id, Name = "Pen", CreatedAt = now };
-        var paddockType = new LocationType { Id = Guid.NewGuid(), FarmId = farm.Id, Name = "Paddock", CreatedAt = now };
-        _context.LocationTypes.AddRange(shedType, barnType, fieldType, penType, paddockType);
-
-        _context.Locations.Add(new Location
-        {
-            Id = Guid.NewGuid(),
-            FarmId = farm.Id,
-            Name = "Main Farm",
-            LocationTypeId = shedType.Id,
-            ParentLocationId = null,
-            CreatedAt = now
-        });
-
-        // Seed animal types and common breeds
-        var cattleType = new AnimalType { Id = Guid.NewGuid(), FarmId = farm.Id, Name = "Cattle", CreatedAt = now };
-        var buffaloType = new AnimalType { Id = Guid.NewGuid(), FarmId = farm.Id, Name = "Buffalo", CreatedAt = now };
-        var goatType = new AnimalType { Id = Guid.NewGuid(), FarmId = farm.Id, Name = "Goat", CreatedAt = now };
-        var sheepType = new AnimalType { Id = Guid.NewGuid(), FarmId = farm.Id, Name = "Sheep", CreatedAt = now };
-        var poultryType = new AnimalType { Id = Guid.NewGuid(), FarmId = farm.Id, Name = "Poultry", CreatedAt = now };
-        _context.AnimalTypes.AddRange(cattleType, buffaloType, goatType, sheepType, poultryType);
-
-        _context.Breeds.AddRange(
-            new Breed { Id = Guid.NewGuid(), AnimalTypeId = cattleType.Id, Name = "Sahiwal", AverageGestationDays = 283, CreatedAt = now },
-            new Breed { Id = Guid.NewGuid(), AnimalTypeId = cattleType.Id, Name = "Holstein Friesian", AverageGestationDays = 283, CreatedAt = now },
-            new Breed { Id = Guid.NewGuid(), AnimalTypeId = buffaloType.Id, Name = "Murrah", AverageGestationDays = 316, CreatedAt = now },
-            new Breed { Id = Guid.NewGuid(), AnimalTypeId = goatType.Id, Name = "Beetal", AverageGestationDays = 150, CreatedAt = now },
-            new Breed { Id = Guid.NewGuid(), AnimalTypeId = goatType.Id, Name = "Boer", AverageGestationDays = 150, CreatedAt = now },
-            new Breed { Id = Guid.NewGuid(), AnimalTypeId = sheepType.Id, Name = "Kajli", AverageGestationDays = 147, CreatedAt = now },
-            new Breed { Id = Guid.NewGuid(), AnimalTypeId = poultryType.Id, Name = "Rhode Island Red", AverageGestationDays = 21, CreatedAt = now }
-        );
+        // Seed the full default lookup set (statuses, sex options, age
+        // categories, location types + root location, animal types + breeds).
+        await FarmDefaultsSeeder.EnsureFarmDefaultsAsync(_context, farm.Id);
 
         await _context.SaveChangesAsync();
 

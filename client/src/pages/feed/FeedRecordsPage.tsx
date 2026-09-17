@@ -7,6 +7,7 @@ import type { ColumnsType } from 'antd/es/table';
 import dayjs, { Dayjs } from 'dayjs';
 import { feedRecordsApi, feedTypesApi } from '../../api/feed';
 import { lookupsApi } from '../../api/attendance';
+import { flattenLocations } from '../../api/configuration';
 import { getApiError } from '../../api/farmApi';
 import type { FeedRecord, FeedType } from '../../types';
 
@@ -44,7 +45,13 @@ const FeedRecordsPage: React.FC = () => {
       ]);
       setFeedTypes(typesRes.data);
       setAnimals(animalsRes.data.items);
-      setLocations(locationsRes.data);
+      // Flatten the location tree so nested (child) locations appear too.
+      setLocations(
+        flattenLocations(locationsRes.data).map((l) => ({
+          id: l.id,
+          name: `${'\u00A0\u00A0'.repeat(l.depth)}${l.name}`,
+        })),
+      );
     } catch (err) {
       message.error(getApiError(err));
     }

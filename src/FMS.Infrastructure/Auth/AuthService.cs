@@ -3,10 +3,11 @@ using System.Text;
 using FMS.Application.Auth;
 using FMS.Application.Common;
 using FMS.Domain.Entities;
-using FMS.Domain.Enums;
+using FMS.Infrastructure.Farm;
 using FMS.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace FMS.Infrastructure.Auth;
 
@@ -16,17 +17,20 @@ public class AuthService : IAuthService
     private readonly IJwtTokenService _jwtTokenService;
     private readonly IConfiguration _configuration;
     private readonly IEmailService _emailService;
+    private readonly ILogger<AuthService> _logger;
 
     public AuthService(
         FmsDbContext context,
         IJwtTokenService jwtTokenService,
         IConfiguration configuration,
-        IEmailService emailService)
+        IEmailService emailService,
+        ILogger<AuthService> logger)
     {
         _context = context;
         _jwtTokenService = jwtTokenService;
         _configuration = configuration;
         _emailService = emailService;
+        _logger = logger;
     }
 
     public async Task<Result<AuthResponse>> RegisterAsync(RegisterRequest request)
@@ -76,15 +80,8 @@ public class AuthService : IAuthService
             CreatedAt = DateTime.UtcNow
         });
 
-        // Seed the statuses required by the initial farm.
-        var now = DateTime.UtcNow;
-        _context.AnimalStatuses.AddRange(
-            new AnimalStatus { Id = Guid.NewGuid(), FarmId = farm.Id, Name = "Active", IsActive = true, Category = AnimalStatusCategory.Active, IsSystemDefined = true, CreatedAt = now },
-            new AnimalStatus { Id = Guid.NewGuid(), FarmId = farm.Id, Name = "Pregnant", IsActive = true, Category = AnimalStatusCategory.Active, IsSystemDefined = true, CreatedAt = now },
-            new AnimalStatus { Id = Guid.NewGuid(), FarmId = farm.Id, Name = "Lactating", IsActive = true, Category = AnimalStatusCategory.Active, IsSystemDefined = true, CreatedAt = now },
-            new AnimalStatus { Id = Guid.NewGuid(), FarmId = farm.Id, Name = "Dry", IsActive = true, Category = AnimalStatusCategory.Active, IsSystemDefined = true, CreatedAt = now },
-            new AnimalStatus { Id = Guid.NewGuid(), FarmId = farm.Id, Name = "Sold", IsActive = true, Category = AnimalStatusCategory.Terminal, IsSystemDefined = true, CreatedAt = now },
-            new AnimalStatus { Id = Guid.NewGuid(), FarmId = farm.Id, Name = "Deceased", IsActive = true, Category = AnimalStatusCategory.Terminal, IsSystemDefined = true, CreatedAt = now });
+        // Seed the full default lookup set required by the initial farm.
+        await FarmDefaultsSeeder.EnsureFarmDefaultsAsync(_context, farm.Id);
 
         // Assign default "SystemOwner" role
         var systemOwnerRole = await _context.Roles.FirstOrDefaultAsync(r => r.Name == "SystemOwner");
@@ -142,6 +139,11 @@ public class AuthService : IAuthService
         // Preserve the registration invariant for accounts created before the initial-farm fix.
         await EnsureUserHasFarmAsync(user);
 
+        // Backfill default lookup data (sex options, age categories, locations,
+        // animal types, breeds) for farms created before the shared seeder
+        // existed. Idempotent per category; never allowed to fail a login.
+        await BackfillFarmDefaultsAsync(user);
+
         var roles = user.UserRoles.Select(ur => ur.Role.Name).ToList();
         var accessToken = _jwtTokenService.GenerateAccessToken(user.Id, user.AccountId, user.Email, roles);
         var refreshToken = _jwtTokenService.GenerateRefreshToken();
@@ -197,16 +199,32 @@ public class AuthService : IAuthService
             CreatedAt = DateTime.UtcNow
         });
 
-        var now = DateTime.UtcNow;
-        _context.AnimalStatuses.AddRange(
-            new AnimalStatus { Id = Guid.NewGuid(), FarmId = farm.Id, Name = "Active", IsActive = true, Category = AnimalStatusCategory.Active, IsSystemDefined = true, CreatedAt = now },
-            new AnimalStatus { Id = Guid.NewGuid(), FarmId = farm.Id, Name = "Pregnant", IsActive = true, Category = AnimalStatusCategory.Active, IsSystemDefined = true, CreatedAt = now },
-            new AnimalStatus { Id = Guid.NewGuid(), FarmId = farm.Id, Name = "Lactating", IsActive = true, Category = AnimalStatusCategory.Active, IsSystemDefined = true, CreatedAt = now },
-            new AnimalStatus { Id = Guid.NewGuid(), FarmId = farm.Id, Name = "Dry", IsActive = true, Category = AnimalStatusCategory.Active, IsSystemDefined = true, CreatedAt = now },
-            new AnimalStatus { Id = Guid.NewGuid(), FarmId = farm.Id, Name = "Sold", IsActive = true, Category = AnimalStatusCategory.Terminal, IsSystemDefined = true, CreatedAt = now },
-            new AnimalStatus { Id = Guid.NewGuid(), FarmId = farm.Id, Name = "Deceased", IsActive = true, Category = AnimalStatusCategory.Terminal, IsSystemDefined = true, CreatedAt = now });
+        // Seed the full default lookup set required by the new farm.
+        await FarmDefaultsSeeder.EnsureFarmDefaultsAsync(_context, farm.Id);
 
         await _context.SaveChangesAsync();
+    }
+
+    private async Task BackfillFarmDefaultsAsync(User user)
+    {
+        var farmIds = await _context.UserFarms
+            .Include(uf => uf.Farm)
+            .Where(uf => uf.UserId == user.Id && uf.Farm.IsActive && !uf.Farm.IsDeleted)
+            .Select(uf => uf.FarmId)
+            .ToListAsync();
+
+        foreach (var farmId in farmIds)
+        {
+            try
+            {
+                await FarmDefaultsSeeder.EnsureFarmDefaultsAsync(_context, farmId);
+            }
+            catch (Exception ex)
+            {
+                // Backfilling must never block a login; the next login retries.
+                _logger.LogError(ex, "Failed to backfill farm defaults for farm {FarmId}", farmId);
+            }
+        }
     }
 
     public async Task<Result<AuthResponse>> RefreshTokenAsync(RefreshTokenRequest request)

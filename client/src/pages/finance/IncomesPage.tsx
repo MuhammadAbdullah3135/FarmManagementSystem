@@ -7,6 +7,7 @@ import dayjs, { Dayjs } from 'dayjs';
 import { incomeCategoriesApi, incomeRecordsApi, paymentMethodsApi } from '../../api/finance';
 import type { IncomeRecordPayload } from '../../api/finance';
 import { lookupsApi } from '../../api/attendance';
+import { flattenLocations } from '../../api/configuration';
 import { getApiError } from '../../api/farmApi';
 import type { IncomeCategory, IncomeRecord, PaymentMethod } from '../../types';
 
@@ -45,7 +46,13 @@ const IncomesPage: React.FC = () => {
       setCategories(catRes.data);
       setMethods(methodRes.data);
       setAnimals(animalRes.data.items);
-      setLocations(locationRes.data);
+      // Flatten the location tree so nested (child) locations appear too.
+      setLocations(
+        flattenLocations(locationRes.data).map((l) => ({
+          id: l.id,
+          name: `${'\u00A0\u00A0'.repeat(l.depth)}${l.name}`,
+        })),
+      );
     } catch (err) {
       message.error(getApiError(err));
     }
