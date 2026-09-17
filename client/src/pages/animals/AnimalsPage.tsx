@@ -55,6 +55,10 @@ const AGE_QUICK_ADD_FIELDS: QuickAddFieldSpec[] = [
   { name: 'maxDays', label: 'Max Age (days)', widget: 'number', min: 0, initialValue: 99999 },
 ];
 
+const LOCATION_TYPE_QUICK_ADD_FIELDS: QuickAddFieldSpec[] = [
+  { name: 'name', label: 'Name', widget: 'input', required: true, maxLength: 100, placeholder: 'e.g. Shed' },
+];
+
 export default function AnimalsPage() {
   const navigate = useNavigate();
   const [data, setData] = useState<AnimalListItem[]>([]);
@@ -212,6 +216,13 @@ export default function AnimalsPage() {
     return res.data.id as string;
   };
 
+  const handleQuickAddLocationType = async (values: Record<string, unknown>) => {
+    const res = await configurationApi.createLocationType({ name: String(values.name) });
+    const created = res.data as { id: string; name: string };
+    setLocationTypes((prev) => [...prev, { id: created.id, name: created.name }]);
+    return created.id;
+  };
+
   const openCreate = () => {
     setEditing(null);
     form.resetFields();
@@ -348,23 +359,38 @@ export default function AnimalsPage() {
     },
   ];
 
+  const locationTypeField = (nesting: 'top' | 'nested'): QuickAddFieldSpec => ({
+    name: 'locationTypeId',
+    label: 'Location Type',
+    widget: 'select',
+    required: true,
+    placeholder: 'Select location type',
+    initialValue: locationTypes[0]?.id,
+    options: locationTypes.map((lt) => ({ value: lt.id, label: lt.name })),
+    // Location types are a prerequisite for creating a location — allow adding
+    // one without leaving the Add Location modal.
+    ...(nesting === 'top' ? { nestedQuickAdd: { label: 'Location Type', fields: LOCATION_TYPE_QUICK_ADD_FIELDS, onQuickAdd: handleQuickAddLocationType } } : {}),
+  });
+
   const locationQuickAddFields: QuickAddFieldSpec[] = [
     { name: 'name', label: 'Name', widget: 'input', required: true, maxLength: 200, placeholder: 'e.g. Shed A' },
-    {
-      name: 'locationTypeId',
-      label: 'Location Type',
-      widget: 'select',
-      required: true,
-      placeholder: 'Select location type',
-      initialValue: locationTypes[0]?.id,
-      options: locationTypes.map((lt) => ({ value: lt.id, label: lt.name })),
-    },
+    locationTypeField('top'),
     {
       name: 'parentLocationId',
       label: 'Parent Location (optional)',
       widget: 'select',
       placeholder: 'None (top level)',
       options: locations.map((l) => ({ value: l.id, label: l.name })),
+      // A missing parent location can be created inline as well; it only needs
+      // a name and a location type (which itself can be added inline).
+      nestedQuickAdd: {
+        label: 'Location',
+        fields: [
+          { name: 'name', label: 'Name', widget: 'input', required: true, maxLength: 200, placeholder: 'e.g. Shed B' },
+          locationTypeField('nested'),
+        ],
+        onQuickAdd: handleQuickAddLocation,
+      },
     },
   ];
 

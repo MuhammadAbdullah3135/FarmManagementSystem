@@ -14,6 +14,13 @@ export interface QuickAddFieldSpec {
   max?: number;
   options?: { value: string | number; label: string }[];
   initialValue?: unknown;
+  /** Renders the select with its own inline quick-add (e.g. add a Location
+   *  Type from inside the Add Location modal). */
+  nestedQuickAdd?: {
+    label: string;
+    fields: QuickAddFieldSpec[];
+    onQuickAdd: (values: Record<string, unknown>) => Promise<string>;
+  };
 }
 
 interface LookupQuickAddSelectProps {
@@ -141,6 +148,9 @@ const LookupQuickAddSelect = ({
         confirmLoading={creating}
         okText={`Add ${label}`}
         destroyOnClose
+        // Always mounted so the Form stays connected and openModal's prefill
+        // (setFieldsValue) reliably applies even on the first open.
+        forceRender
         width={420}
         maskClosable={false}
       >
@@ -156,7 +166,16 @@ const LookupQuickAddSelect = ({
               {f.widget === 'input' && <Input maxLength={f.maxLength ?? 100} placeholder={f.placeholder} />}
               {f.widget === 'textarea' && <Input.TextArea rows={2} maxLength={f.maxLength ?? 2000} placeholder={f.placeholder} />}
               {f.widget === 'number' && <InputNumber min={f.min} max={f.max} style={{ width: '100%' }} />}
-              {f.widget === 'select' && (
+              {f.widget === 'select' && f.nestedQuickAdd && (
+                <LookupQuickAddSelect
+                  label={f.nestedQuickAdd.label}
+                  options={(f.options ?? []).map((o) => ({ value: String(o.value), label: o.label }))}
+                  fields={f.nestedQuickAdd.fields}
+                  onQuickAdd={f.nestedQuickAdd.onQuickAdd}
+                  placeholder={f.placeholder}
+                />
+              )}
+              {f.widget === 'select' && !f.nestedQuickAdd && (
                 <Select options={f.options ?? []} placeholder={f.placeholder} style={{ width: '100%' }} />
               )}
               {f.widget === 'switch' && <Switch />}

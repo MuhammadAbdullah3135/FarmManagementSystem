@@ -41,6 +41,7 @@ vi.mock('../../api/configuration', async (importOriginal) => {
       createAgeCategory: vi.fn(),
       createStatus: vi.fn(),
       createLocation: vi.fn(),
+      createLocationType: vi.fn(),
     },
   };
 });
@@ -67,6 +68,7 @@ beforeEach(() => {
   vi.mocked(configurationApi.createAgeCategory).mockReset();
   vi.mocked(configurationApi.createStatus).mockReset();
   vi.mocked(configurationApi.createLocation).mockReset();
+  vi.mocked(configurationApi.createLocationType).mockReset();
 });
 
 const renderPage = () =>
@@ -90,11 +92,12 @@ const openSelectFooter = async (user: User, modal: HTMLElement, labelText: strin
   await user.click(within(await getFormItem(modal, labelText)).getByRole('combobox'));
 };
 
-/** Finds an option's content element across all mounted select dropdowns.
- *  In antd v6 the role=option elements are a hidden a11y mirror without click handlers,
- *  so options must be addressed by their content class. */
+/** Finds an option's content element across all mounted select dropdowns,
+ *  searching most-recently-opened first. In antd v6 the role=option elements are a
+ *  hidden a11y mirror without click handlers, so options must be addressed by
+ *  their content class. */
 const findOptionContent = (label: RegExp | string) => {
-  for (const dropdown of document.querySelectorAll('.ant-select-dropdown')) {
+  for (const dropdown of [...document.querySelectorAll('.ant-select-dropdown')].reverse()) {
     const match = within(dropdown as HTMLElement).queryAllByText(label, { selector: '.ant-select-item-option-content' });
     if (match.length > 0) return match[0];
   }
@@ -107,6 +110,38 @@ const selectOption = (label: RegExp | string) => {
   const content = findOptionContent(label);
   expect(content).not.toBeNull();
   fireEvent.click(content!.closest('.ant-select-item-option') as HTMLElement);
+};
+
+/** Clicks a footer button inside the most recently opened dropdown that shows
+ *  the given option (nested quick-add footers live in the dropdown portal). */
+const clickFooterInDropdownWith = async (user: User, optionLabel: RegExp | string, buttonName: RegExp | string) => {
+  for (const dropdown of [...document.querySelectorAll('.ant-select-dropdown')].reverse()) {
+    const hasOption = within(dropdown as HTMLElement).queryAllByText(optionLabel, { selector: '.ant-select-item-option-content' });
+    if (hasOption.length > 0) {
+      await user.click(within(dropdown as HTMLElement).getByRole('button', { name: buttonName }));
+      return;
+    }
+  }
+  throw new Error(`No open dropdown contains option ${String(optionLabel)}`);
+};
+
+const isHiddenByInlineStyle = (el: HTMLElement) => {
+  let node: HTMLElement | null = el;
+  while (node) {
+    if (node.style.display === 'none') return true;
+    node = node.parentElement;
+  }
+  return false;
+};
+
+/** Nested quick-add modals pre-render hidden with identical titles, so locate
+ *  the open one by unique content instead of by title. */
+const findVisibleModal = (predicate: (modal: HTMLElement) => boolean) => {
+  const visible = Array.from(document.querySelectorAll<HTMLElement>('.ant-modal'))
+    .filter((m) => !isHiddenByInlineStyle(m))
+    .find(predicate);
+  expect(visible).toBeDefined();
+  return visible as HTMLElement;
 };
 
 describe('AnimalsPage create form', () => {
@@ -151,7 +186,7 @@ describe('AnimalsPage create form', () => {
 
     await openSelectFooter(user, modal, 'Age Category');
     expect(await screen.findByRole('button', { name: /add age category/i })).toBeInTheDocument();
-  });
+  }, 20000);
 
   it('shows a hint instead of Add for Breed until an animal type is chosen', async () => {
     const user = userEvent.setup();
@@ -258,4 +293,71 @@ describe('AnimalsPage create form', () => {
     expect(findOptionContent(/main barn/i)).not.toBeNull();
     expect(findOptionContent(/shed a/i)).not.toBeNull();
   });
+
+  it('lists location types in the Add Location modal and supports adding one inline', async () => {
+    vi.mocked(lookupsApi.locationTypes).mockResolvedValue(res([
+      { id: 'lt1', name: 'Shed' },
+      { id: 'lt2', name: 'Barn' },
+      { id: 'lt3', name: 'Paddock' },
+    ]));
+    vi.mocked(configurationApi.createLocationType).mockResolvedValue(res({ id: 'lt-new', name: 'Aviary' }));
+    const user = userEvent.setup();
+    renderPage();
+    const modal = await openAddAnimalModal(user);
+
+    await openSelectFooter(user, modal, 'Location');
+    await user.click(await screen.findByRole('button', { name: /add location/i }));
+
+    const addLocationModal = findVisibleModal((m) => !!m.querySelector('input[placeholder="e.g. Shed A"]'));
+
+    // The Location Type field is pre-filled with the first type and lists all of them.
+    const typeItem = ((await within(addLocationModal).findByText('Location Type', { selector: 'label' })).closest('.ant-form-item')) as HTMLElement;
+    expect(within(typeItem).getByText('Shed')).toBeInTheDocument();
+    await user.click(within(typeItem).getByRole('combobox'));
+    expect(findOptionContent('Barn')).not.toBeNull();
+    expect(findOptionContent('Paddock')).not.toBeNull();
+
+    // A missing location type can be created right from inside the modal.
+    await user.click(await screen.findByRole('button', { name: /add location type/i }));
+    const addTypeModal = findVisibleModal((m) => !!m.querySelector('input[placeholder="e.g. Shed"]'));
+    await user.type(within(addTypeModal).getByPlaceholderText('e.g. Shed'), 'Aviary');
+    await user.click(within(addTypeModal).getByRole('button', { name: /add location type/i }));
+
+    expect(configurationApi.createLocationType).toHaveBeenCalledWith({ name: 'Aviary' });
+    expect(await screen.findByText('Location Type "Aviary" created')).toBeInTheDocument();
+    expect(within(typeItem).getByText('Aviary')).toBeInTheDocument();
+  }, 20000);
+
+  it('lists locations in Parent Location and supports adding one inline', async () => {
+    const locationsData = [{ id: 'l1', name: 'Main Farm', childLocations: [] as unknown[] }];
+    vi.mocked(lookupsApi.locations).mockResolvedValue(res(locationsData));
+    vi.mocked(configurationApi.createLocation).mockImplementation(async () => {
+      // The refetch inside the handler must return the created location.
+      locationsData[0].childLocations.push({ id: 'l-new', name: 'Shed B', childLocations: [] });
+      return res({ id: 'l-new', name: 'Shed B', locationTypeId: 'lt1' });
+    });
+    const user = userEvent.setup();
+    renderPage();
+    const modal = await openAddAnimalModal(user);
+
+    await openSelectFooter(user, modal, 'Location');
+    await user.click(await screen.findByRole('button', { name: /add location/i }));
+
+    const addLocationModal = findVisibleModal((m) => !!m.querySelector('input[placeholder="e.g. Shed A"]'));
+
+    // Parent Location lists existing locations.
+    const parentItem = ((await within(addLocationModal).findByText('Parent Location (optional)', { selector: 'label' })).closest('.ant-form-item')) as HTMLElement;
+    await user.click(within(parentItem).getByRole('combobox'));
+    expect(findOptionContent('Main Farm')).not.toBeNull();
+
+    // A missing parent location can be created inline (with its own inline location type).
+    await clickFooterInDropdownWith(user, 'Main Farm', /add location/i);
+    const nestedModal = findVisibleModal((m) => !!m.querySelector('input[placeholder="e.g. Shed B"]'));
+    await user.type(within(nestedModal).getByPlaceholderText('e.g. Shed B'), 'Shed B');
+    await user.click(within(nestedModal).getByRole('button', { name: 'Add Location' }));
+
+    expect(configurationApi.createLocation).toHaveBeenCalledWith({ name: 'Shed B', locationTypeId: 'lt1' });
+    expect(await screen.findByText('Location "Shed B" created')).toBeInTheDocument();
+    expect(within(parentItem).getByText(/shed b/i)).toBeInTheDocument();
+  }, 20000);
 });
