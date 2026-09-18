@@ -80,6 +80,23 @@
     max-width: 100%;
   }
 
+  /* Top-of-page filter rows (`<Row className="fms-filter-row">`): one control per line,
+     stretched to the full width. The columns are untouched above 576px, so a date-range
+     picker keeps the exact width it has on a laptop. Some of these controls carry their
+     width inline, hence `!important` — scoped to that row, nothing else in the app sees it. */
+  body .fms-filter-row > .ant-col {
+    flex: 0 0 100%;
+    max-width: 100%;
+  }
+
+  body .fms-filter-row .ant-picker,
+  body .fms-filter-row .ant-select,
+  body .fms-filter-row .ant-input,
+  body .fms-filter-row .ant-input-affix-wrapper {
+    width: 100% !important;
+    max-width: 100%;
+  }
+
   /* Contain table borders inside cards on narrow screens — without this
      border-collapse: separate + horizontal scroll makes table borders bleed
      past the card body. */

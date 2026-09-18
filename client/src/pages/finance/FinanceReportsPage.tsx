@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Card, Col, DatePicker, Row, Select, Statistic, Table, message } from 'antd';
+import { Card, Col, DatePicker, Grid, Row, Select, Statistic, Table, message } from 'antd';
 import { ArrowDownOutlined, ArrowUpOutlined, DollarOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import type { Dayjs } from 'dayjs';
@@ -15,6 +15,11 @@ const formatCurrency = (amount: number) =>
   `$${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 const FinanceReportsPage: React.FC = () => {
+  /* The two breakdown tables drop their `%` column on a phone (the pie already
+     labels each wedge with its share), so the summary row has to drop its third
+     cell with it — antd filters columns by breakpoint but never the summary. */
+  const screens = Grid.useBreakpoint();
+  const showPercentColumn = !!screens.sm;
   const [loading, setLoading] = useState(false);
   const [dateRange, setDateRange] = useState<[Dayjs | null, Dayjs | null] | null>(null);
   const [year, setYear] = useState<number>(new Date().getFullYear());
@@ -67,11 +72,15 @@ const FinanceReportsPage: React.FC = () => {
   const breakdownColumns: ColumnsType<CategoryBreakdownItem> = [
     { title: 'Category', dataIndex: 'categoryName' },
     { title: 'Amount', dataIndex: 'total', align: 'right', render: (v: number) => formatCurrency(v) },
-    { title: '%', dataIndex: 'percentage', align: 'right', width: 80, render: (v: number) => `${v}%` },
+    /* Hidden below 576px: inside a stacked full-width card the two remaining columns then fit without
+       a sideways drag, and the pie above the table already prints each category's share. */
+    { title: '%', dataIndex: 'percentage', align: 'right', width: 80, responsive: ['sm'], render: (v: number) => `${v}%` },
   ];
 
   const monthlyColumns: ColumnsType<MonthlySummaryItem> = [
-    { title: 'Month', dataIndex: 'monthName', width: 120 },
+    /* Pinned: on a phone the table is wider than its card, and the month is the
+       only thing that identifies the row (Income/Expenses/Net are bare numbers). */
+    { title: 'Month', dataIndex: 'monthName', width: 120, fixed: 'start' },
     { title: 'Income', dataIndex: 'income', align: 'right', render: (v: number) => <span style={{ color: '#52c41a' }}>{formatCurrency(v)}</span> },
     { title: 'Expenses', dataIndex: 'expenses', align: 'right', render: (v: number) => <span style={{ color: '#ff4d4f' }}>{formatCurrency(v)}</span> },
     { title: 'Net', dataIndex: 'net', align: 'right', render: (v: number) => (
@@ -86,7 +95,10 @@ const FinanceReportsPage: React.FC = () => {
 
   return (
     <div style={{ padding: 0 }}>
-      <Row gutter={16} style={{ marginBottom: 16 }}>
+      {/* `fms-filter-row` turns this into one full-width control per line on a phone
+          (see AppLayout.css). The columns are untouched above 576px, so the picker and
+          the year select keep the exact widths they have on a laptop. */}
+      <Row gutter={[16, 16]} className="fms-filter-row" style={{ marginBottom: 16 }}>
         <Col>
           <RangePicker
             value={dateRange as [Dayjs, Dayjs] | null}
@@ -106,8 +118,8 @@ const FinanceReportsPage: React.FC = () => {
       </Row>
 
       {/* P&L Summary Cards */}
-      <Row gutter={16} style={{ marginBottom: 24 }}>
-        <Col span={8}>
+      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+        <Col xs={12} sm={8}>
           <Card loading={loading}>
             <Statistic
               title="Total Income"
@@ -119,7 +131,7 @@ const FinanceReportsPage: React.FC = () => {
             />
           </Card>
         </Col>
-        <Col span={8}>
+        <Col xs={12} sm={8}>
           <Card loading={loading}>
             <Statistic
               title="Total Expenses"
@@ -131,7 +143,7 @@ const FinanceReportsPage: React.FC = () => {
             />
           </Card>
         </Col>
-        <Col span={8}>
+        <Col xs={12} sm={8}>
           <Card loading={loading}>
             <Statistic
               title="Net Profit"
@@ -146,8 +158,8 @@ const FinanceReportsPage: React.FC = () => {
       </Row>
 
       {/* Breakdown Charts */}
-      <Row gutter={16} style={{ marginBottom: 24 }}>
-        <Col span={12}>
+      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+        <Col xs={24} lg={12}>
           <Card title="Expense Breakdown" loading={loading}>
             {expenseBreakdown.length > 0 ? (
               /* The table below already lists every category with its share, so no legend here. */
@@ -168,13 +180,15 @@ const FinanceReportsPage: React.FC = () => {
                 <Table.Summary.Row>
                   <Table.Summary.Cell index={0}><strong>Total</strong></Table.Summary.Cell>
                   <Table.Summary.Cell index={1} align="right"><strong>{formatCurrency(expenseGrandTotal)}</strong></Table.Summary.Cell>
-                  <Table.Summary.Cell index={2} align="right"><strong>100%</strong></Table.Summary.Cell>
+                  {showPercentColumn && (
+                    <Table.Summary.Cell index={2} align="right"><strong>100%</strong></Table.Summary.Cell>
+                  )}
                 </Table.Summary.Row>
               ) : null}
             />
           </Card>
         </Col>
-        <Col span={12}>
+        <Col xs={24} lg={12}>
           <Card title="Income Breakdown" loading={loading}>
             {incomeBreakdown.length > 0 ? (
               <BreakdownPieChart
@@ -194,7 +208,9 @@ const FinanceReportsPage: React.FC = () => {
                 <Table.Summary.Row>
                   <Table.Summary.Cell index={0}><strong>Total</strong></Table.Summary.Cell>
                   <Table.Summary.Cell index={1} align="right"><strong>{formatCurrency(incomeGrandTotal)}</strong></Table.Summary.Cell>
-                  <Table.Summary.Cell index={2} align="right"><strong>100%</strong></Table.Summary.Cell>
+                  {showPercentColumn && (
+                    <Table.Summary.Cell index={2} align="right"><strong>100%</strong></Table.Summary.Cell>
+                  )}
                 </Table.Summary.Row>
               ) : null}
             />

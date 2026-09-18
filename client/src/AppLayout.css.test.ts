@@ -45,3 +45,19 @@ describe('AppLayout.css mobile card head', () => {
     expect(mobileBlock()).not.toMatch(/\.ant-card-head\s*\{[^}]*flex-wrap/);
   });
 });
+
+/*
+ * The same file gives top-of-page filter rows (`<Row className="fms-filter-row">`) one full-width
+ * control per line. Those rows deliberately keep auto-sized columns, because the responsive `Col`
+ * props cannot express "natural width on a laptop" — `xs={24}` renders flex: 0 0 100% at every
+ * width in this antd version, which stacked the desktop filters too.
+ */
+describe('AppLayout.css mobile filter rows', () => {
+  it('stacks the columns of an fms-filter-row', () => {
+    expect(mobileBlock()).toMatch(/\.fms-filter-row\s*>\s*\.ant-col\s*\{[^}]*flex:\s*0 0 100%/);
+  });
+
+  it('makes the controls in that row full width, past their inline width', () => {
+    expect(mobileBlock()).toMatch(/\.fms-filter-row\s+\.ant-(?:picker|select|input)[^{]*\{[^}]*width:\s*100%\s*!important/);
+  });
+});

@@ -113,8 +113,8 @@ const SalaryPaymentsPage: React.FC = () => {
 
   return (
     <div>
-      <Row gutter={16} style={{ marginBottom: 16 }}>
-        <Col span={16}>
+      <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
+        <Col xs={24} lg={16}>
           <Card title="Salary Payments" extra={
             <Space>
               <Select
@@ -149,7 +149,7 @@ const SalaryPaymentsPage: React.FC = () => {
             )}
           </Card>
         </Col>
-        <Col span={8}>
+        <Col xs={24} lg={8}>
           <Card
             title="Payroll Report"
             extra={
