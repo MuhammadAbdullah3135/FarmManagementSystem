@@ -81,9 +81,12 @@ const DepartmentsRolesPage: React.FC = () => {
     }
   };
 
+  // Description gives way on a phone (see finance/CategoriesPage): it is the widest column and
+  // the least critical, so hiding it below 768px lets Name + Employees + Delete fit a stacked
+  // full-width card without horizontal scrolling. It returns from md up.
   const deptColumns: ColumnsType<Department> = [
     { title: 'Name', dataIndex: 'name' },
-    { title: 'Description', dataIndex: 'description', render: (d?: string) => d ?? '-' },
+    { title: 'Description', dataIndex: 'description', render: (d?: string) => d ?? '-', responsive: ['md'] },
     { title: 'Employees', dataIndex: 'employeeCount', align: 'center' },
     {
       title: '',
@@ -97,7 +100,7 @@ const DepartmentsRolesPage: React.FC = () => {
 
   const roleColumns: ColumnsType<EmployeeRole> = [
     { title: 'Name', dataIndex: 'name' },
-    { title: 'Description', dataIndex: 'description', render: (d?: string) => d ?? '-' },
+    { title: 'Description', dataIndex: 'description', render: (d?: string) => d ?? '-', responsive: ['md'] },
     { title: 'Employees', dataIndex: 'employeeCount', align: 'center' },
     {
       title: '',
@@ -110,8 +113,8 @@ const DepartmentsRolesPage: React.FC = () => {
   ];
 
   return (
-    <Row gutter={16}>
-      <Col span={12}>
+    <Row gutter={[16, 16]}>
+      <Col xs={24} md={12}>
         <Card
           title="Departments"
           extra={
@@ -123,7 +126,7 @@ const DepartmentsRolesPage: React.FC = () => {
           <Table rowKey="id" columns={deptColumns} dataSource={departments} loading={loading} pagination={false} size="small" />
         </Card>
       </Col>
-      <Col span={12}>
+      <Col xs={24} md={12}>
         <Card
           title="Employee Roles"
           extra={

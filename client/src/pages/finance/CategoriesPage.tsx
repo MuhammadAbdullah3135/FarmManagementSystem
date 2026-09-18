@@ -193,11 +193,14 @@ const CategoriesPage: React.FC = () => {
     countLabel: string
   ): ColumnsType<LookupRecord> => [
     { title: 'Name', dataIndex: 'name' },
-    { title: 'Description', dataIndex: 'description', render: (d?: string) => d ?? '-' },
+    // A description is the widest column and the least critical one, so it is the one that
+    // gives way on a phone: Name + usage count + actions then fit a full-width card with
+    // no horizontal scrolling. Back from 768px up, and always visible in the Edit modal.
+    { title: 'Description', dataIndex: 'description', render: (d?: string) => d ?? '-', responsive: ['md'] },
     { title: countLabel, dataIndex: 'usageCount', align: 'center' },
     {
       title: '',
-      width: 160,
+      width: 120,
       render: (_, r) => (
         <Space>
           <Button size="small" onClick={() => onEdit(r.id)}>
@@ -214,8 +217,8 @@ const CategoriesPage: React.FC = () => {
   ];
 
   return (
-    <Row gutter={16}>
-      <Col span={8}>
+    <Row gutter={[16, 16]}>
+      <Col xs={24} md={8}>
         <Card
           title="Expense Categories"
           extra={
@@ -237,7 +240,7 @@ const CategoriesPage: React.FC = () => {
           />
         </Card>
       </Col>
-      <Col span={8}>
+      <Col xs={24} md={8}>
         <Card
           title="Income Categories"
           extra={
@@ -259,7 +262,7 @@ const CategoriesPage: React.FC = () => {
           />
         </Card>
       </Col>
-      <Col span={8}>
+      <Col xs={24} md={8}>
         <Card
           title="Payment Methods"
           extra={
