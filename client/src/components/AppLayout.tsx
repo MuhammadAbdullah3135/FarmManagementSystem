@@ -31,6 +31,22 @@ import { useFarmStore } from '../stores/farmStore';
 const { Header, Sider, Content } = Layout;
 const { Text } = Typography;
 
+// Injected at build time by the `define` block in vite.config.ts (Pages passes VITE_BUILD_SHA).
+// Declared here rather than in a new *.d.ts because the annotation is program-wide for the app
+// tsconfig, so LoginPage can read the same identifier. The `typeof` guard keeps the reference
+// safe anywhere the define is not applied (e.g. an unexpected transform).
+declare global {
+  const __BUILD_SHA__: string;
+  const __BUILD_TIME__: string;
+}
+
+const BUILD_SHA = typeof __BUILD_SHA__ === 'undefined' ? 'dev' : __BUILD_SHA__;
+const BUILD_TIME = typeof __BUILD_TIME__ === 'undefined' ? '' : __BUILD_TIME__;
+/** Shown in the UI so a stale deployed bundle is obvious at a glance. */
+export const BUILD_LABEL = `Build ${BUILD_SHA === 'dev' ? 'dev' : BUILD_SHA.slice(0, 7)}${BUILD_TIME ? ` · ${BUILD_TIME.slice(0, 10)}` : ''}`;
+
+document.documentElement.dataset.build = BUILD_SHA;
+
 const base = import.meta.env.BASE_URL.replace(/\/+$/, '');
 const stripBase = (pathname: string) =>
   base && pathname.startsWith(base) ? pathname.slice(base.length) || '/' : pathname;
@@ -95,6 +111,11 @@ const AppLayout: React.FC = () => {
     {
       key: 'profile',
       label: user?.email,
+      disabled: true,
+    },
+    {
+      key: 'build',
+      label: BUILD_LABEL,
       disabled: true,
     },
     {

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  Card, DatePicker, Row, Col, Statistic, Select, Space, Table, Tabs, Tag,
+  Card, DatePicker, Row, Col, Statistic, Select, Table, Tabs, Tag,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs, { Dayjs } from 'dayjs';
@@ -62,8 +62,12 @@ const FeedReportsPage: React.FC = () => {
     { title: 'Cost', dataIndex: 'cost', align: 'right' },
   ];
 
+  // The first column of the wide tables is pinned so the row identity stays visible while the
+  // rest scrolls sideways on a phone. Pinning needs `scroll.x`, which App.tsx sets globally.
+  // NB: antd v6 only pins on `fixed: 'start'` — the legacy 'left' still type-checks but is
+  // ignored (rc-table's isFixedStart compares strictly against 'start').
   const typeCols: ColumnsType<FeedTypeBreakdown> = [
-    { title: 'Feed Type', dataIndex: 'feedTypeName' },
+    { title: 'Feed Type', dataIndex: 'feedTypeName', fixed: 'start', width: 140 },
     { title: 'Quantity', dataIndex: 'quantity', align: 'right', render: (v, r) => `${v} ${r.unitName}` },
     { title: 'Cost', dataIndex: 'cost', align: 'right' },
     {
@@ -75,14 +79,14 @@ const FeedReportsPage: React.FC = () => {
   ];
 
   const animalCols: ColumnsType<AnimalConsumption> = [
-    { title: 'Tag', dataIndex: 'tagNumber' },
+    { title: 'Tag', dataIndex: 'tagNumber', fixed: 'start', width: 100 },
     { title: 'Name', dataIndex: 'name', render: (n?: string) => n ?? '-' },
     { title: 'Quantity', dataIndex: 'quantity', align: 'right' },
     { title: 'Cost', dataIndex: 'cost', align: 'right' },
   ];
 
   const locationCols: ColumnsType<LocationConsumption> = [
-    { title: 'Location', dataIndex: 'locationName' },
+    { title: 'Location', dataIndex: 'locationName', fixed: 'start', width: 130 },
     { title: 'Quantity', dataIndex: 'quantity', align: 'right' },
     { title: 'Cost', dataIndex: 'cost', align: 'right' },
   ];
@@ -90,29 +94,41 @@ const FeedReportsPage: React.FC = () => {
   return (
     <div>
       <Card style={{ marginBottom: 16 }}>
-        <Space>
-          <DatePicker.RangePicker value={range} onChange={(v) => v && setRange(v)} />
-          <Select
-            value={period}
-            onChange={setPeriod}
-            options={[
-              { value: 'day', label: 'Daily' },
-              { value: 'week', label: 'Weekly' },
-              { value: 'month', label: 'Monthly' },
-            ]}
-            style={{ width: 120 }}
-          />
-        </Space>
+        {/* Row/Col rather than a Space: a Space never wraps, so on a phone the period select
+            was pushed past the right edge and got clipped. */}
+        <Row gutter={[8, 8]}>
+          <Col xs={24} sm={14} md={10} lg={8}>
+            <DatePicker.RangePicker
+              value={range}
+              onChange={(v) => v && setRange(v)}
+              style={{ width: '100%' }}
+            />
+          </Col>
+          <Col xs={24} sm={10} md={6} lg={4}>
+            <Select
+              value={period}
+              onChange={setPeriod}
+              options={[
+                { value: 'day', label: 'Daily' },
+                { value: 'week', label: 'Weekly' },
+                { value: 'month', label: 'Monthly' },
+              ]}
+              style={{ width: '100%' }}
+            />
+          </Col>
+        </Row>
       </Card>
 
+      {/* Two cards per row on phones, three on small tablets, all six on desktop. The
+          two-value gutter keeps a gap between the cards once they wrap. */}
       {summary && (
-        <Row gutter={16} style={{ marginBottom: 16 }}>
-          <Col span={4}><Card><Statistic title="Consumed" value={summary.totalConsumedQuantity} precision={2} suffix="kg" /></Card></Col>
-          <Col span={4}><Card><Statistic title="Consumed Cost" value={summary.totalConsumedCost} precision={2} prefix="$" /></Card></Col>
-          <Col span={4}><Card><Statistic title="Purchased" value={summary.totalPurchasedQuantity} precision={2} suffix="kg" /></Card></Col>
-          <Col span={4}><Card><Statistic title="Purchased Cost" value={summary.totalPurchasedCost} precision={2} prefix="$" /></Card></Col>
-          <Col span={4}><Card><Statistic title="Inventory Value" value={summary.currentInventoryValue} precision={2} prefix="$" /></Card></Col>
-          <Col span={4}><Card><Statistic title="Period" value={`${dayjs(summary.from).format('MMM D')} – ${dayjs(summary.to).format('MMM D')}`} /></Card></Col>
+        <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
+          <Col xs={12} sm={8} lg={4}><Card><Statistic title="Consumed" value={summary.totalConsumedQuantity} precision={2} suffix="kg" /></Card></Col>
+          <Col xs={12} sm={8} lg={4}><Card><Statistic title="Consumed Cost" value={summary.totalConsumedCost} precision={2} prefix="$" /></Card></Col>
+          <Col xs={12} sm={8} lg={4}><Card><Statistic title="Purchased" value={summary.totalPurchasedQuantity} precision={2} suffix="kg" /></Card></Col>
+          <Col xs={12} sm={8} lg={4}><Card><Statistic title="Purchased Cost" value={summary.totalPurchasedCost} precision={2} prefix="$" /></Card></Col>
+          <Col xs={12} sm={8} lg={4}><Card><Statistic title="Inventory Value" value={summary.currentInventoryValue} precision={2} prefix="$" /></Card></Col>
+          <Col xs={12} sm={8} lg={4}><Card><Statistic title="Period" value={`${dayjs(summary.from).format('MMM D')} – ${dayjs(summary.to).format('MMM D')}`} /></Card></Col>
         </Row>
       )}
 
@@ -122,7 +138,8 @@ const FeedReportsPage: React.FC = () => {
           items={[
             {
               key: 'trend',
-              label: 'Consumption Trend',
+              // Short label: five full-length names cannot fit a phone-width tab bar.
+              label: 'Trend',
               children: (
                 <>
                   {trend.length > 0 ? (
@@ -144,7 +161,7 @@ const FeedReportsPage: React.FC = () => {
             },
             {
               key: 'byType',
-              label: 'By Feed Type',
+              label: 'By Type',
               children: (
                 <>
                   {byType.length > 0 ? (
@@ -174,10 +191,10 @@ const FeedReportsPage: React.FC = () => {
               label: 'Cost Summary',
               children: summary ? (
                 <Row gutter={[16, 16]}>
-                  <Col span={6}><Card><Statistic title="Consumed Qty" value={summary.totalConsumedQuantity} precision={2} /></Card></Col>
-                  <Col span={6}><Card><Statistic title="Consumed Cost" value={summary.totalConsumedCost} precision={2} prefix="$" /></Card></Col>
-                  <Col span={6}><Card><Statistic title="Purchased Qty" value={summary.totalPurchasedQuantity} precision={2} /></Card></Col>
-                  <Col span={6}><Card><Statistic title="Purchased Cost" value={summary.totalPurchasedCost} precision={2} prefix="$" /></Card></Col>
+                  <Col xs={12} md={6}><Card><Statistic title="Consumed Qty" value={summary.totalConsumedQuantity} precision={2} /></Card></Col>
+                  <Col xs={12} md={6}><Card><Statistic title="Consumed Cost" value={summary.totalConsumedCost} precision={2} prefix="$" /></Card></Col>
+                  <Col xs={12} md={6}><Card><Statistic title="Purchased Qty" value={summary.totalPurchasedQuantity} precision={2} /></Card></Col>
+                  <Col xs={12} md={6}><Card><Statistic title="Purchased Cost" value={summary.totalPurchasedCost} precision={2} prefix="$" /></Card></Col>
                 </Row>
               ) : loading ? <Table loading columns={[]} dataSource={[]} pagination={false} /> : <p>Select a date range and click this tab to load.</p>,
             },

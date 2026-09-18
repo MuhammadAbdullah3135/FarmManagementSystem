@@ -222,7 +222,9 @@ describe('AnimalsPage create form', () => {
     await openSelectFooter(user, modal, 'Sex');
     expect(findOptionContent('Female')).not.toBeNull();
     expect(findOptionContent('Unknown')).not.toBeNull();
-  });
+    // Drives several antd overlays through userEvent, which takes ~3s on an idle machine and
+    // exceeded vitest's 5s default under parallel load (it blocked the Pages deploy job).
+  }, 20000);
 
   it('keeps the quick-add modal open and shows the error when creation fails', async () => {
     vi.mocked(configurationApi.createSexOption).mockRejectedValue({

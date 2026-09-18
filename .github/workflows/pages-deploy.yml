@@ -39,6 +39,10 @@ jobs:
         run: npm run lint
 
       - name: Build
+        env:
+          # Stamped into the bundle by client/vite.config.ts, so the build running on a device can be
+          # identified from the UI instead of guessed at.
+          VITE_BUILD_SHA: ${{ github.sha }}
         run: npm run build
 
       - name: Test

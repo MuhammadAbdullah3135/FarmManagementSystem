@@ -3,8 +3,9 @@ import { Form, Input, Button, Typography, Alert, Card } from 'antd';
 import { MailOutlined, LockOutlined } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
+import { BUILD_LABEL } from '../components/AppLayout';
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 
 const LoginPage: React.FC = () => {
   const [form] = Form.useForm();
@@ -48,6 +49,11 @@ const LoginPage: React.FC = () => {
           <Link to="/register">Create an account</Link>
           <br />
           <Link to="/reset-password">Forgot password?</Link>
+        </div>
+
+        {/* Visible before signing in, so a stale deployed bundle is obvious on the APK's first screen. */}
+        <div style={{ textAlign: 'center', marginTop: 12 }}>
+          <Text type="secondary" style={{ fontSize: 12 }}>{BUILD_LABEL}</Text>
         </div>
       </Card>
     </div>
