@@ -66,7 +66,17 @@ public class ConfigurationCacheTests
         }
 
         #region Not-under-test (no-op)
-        public Task<Result<List<AnimalTypeDto>>> GetAnimalTypesAsync(Guid farmId) => Task.FromResult(Result<List<AnimalTypeDto>>.Success(new()));
+        // Animal types are a real store here so breed mutations can be shown to invalidate the
+        // cached animal-type list (whose DTO embeds its breeds).
+        public List<AnimalTypeDto> AnimalTypes { get; } = new();
+        public int AnimalTypeCallCount;
+
+        public Task<Result<List<AnimalTypeDto>>> GetAnimalTypesAsync(Guid farmId)
+        {
+            AnimalTypeCallCount++;
+            return Task.FromResult(Result<List<AnimalTypeDto>>.Success(AnimalTypes.ToList()));
+        }
+
         public Task<Result<List<SexOptionDto>>> GetSexOptionsAsync(Guid farmId) => Task.FromResult(Result<List<SexOptionDto>>.Success(new()));
         public Task<Result<List<AgeCategoryDto>>> GetAgeCategoriesAsync(Guid farmId) => Task.FromResult(Result<List<AgeCategoryDto>>.Success(new()));
         public Task<Result<List<AnimalStatusDto>>> GetAnimalStatusesAsync(Guid farmId) => Task.FromResult(Result<List<AnimalStatusDto>>.Success(new()));
@@ -155,5 +165,69 @@ public class ConfigurationCacheTests
 
         // Prove the data came from the inner service, not a surviving cache entry.
         Assert.True(inner.CallCount > callsAfterWarm, "reads must bypass invalidated cache entries");
+    }
+
+    /// <summary>
+    /// Deleting an animal type cascades its breeds away in the database, so the cached breed lists
+    /// must be dropped with it. Otherwise the Breeds tab keeps listing rows that no longer exist,
+    /// and every later delete aimed at one of them answers "not found" — a deleted animal type
+    /// looks like it did nothing.
+    /// </summary>
+    [Fact]
+    public async Task DeleteAnimalType_InvalidatesCachedBreedLists_Immediately()
+    {
+        var inner = new FakeInner();
+        var cache = new MemoryCache(new MemoryCacheOptions());
+        var svc = new CachedConfigurationService(inner, cache);
+        var farmId = Guid.NewGuid();
+
+        inner.Breeds.Add(new BreedDto { Id = Guid.NewGuid(), Name = "Holstein", AnimalTypeId = inner.TypeA });
+
+        var warm = await svc.GetBreedsAsync(farmId, null);
+        Assert.True(warm.IsSuccess);
+        Assert.Single(warm.Value!);
+
+        var callsAfterWarm = inner.CallCount;
+
+        var deleted = await svc.DeleteAnimalTypeAsync(farmId, inner.TypeA);
+        Assert.True(deleted.IsSuccess);
+
+        var afterDelete = await svc.GetBreedsAsync(farmId, null);
+
+        Assert.True(afterDelete.IsSuccess);
+        Assert.True(inner.CallCount > callsAfterWarm,
+            "deleting an animal type must invalidate the cached breed lists, not only the animal-type list");
+    }
+
+    /// <summary>
+    /// The animal-type DTO embeds its breeds and their count, so a breed create/delete has to drop
+    /// that cached list too — otherwise the count on the Animal Types tab stays wrong for 5 minutes.
+    /// </summary>
+    [Fact]
+    public async Task BreedMutations_InvalidateCachedAnimalTypeList_Immediately()
+    {
+        var inner = new FakeInner();
+        var cache = new MemoryCache(new MemoryCacheOptions());
+        var svc = new CachedConfigurationService(inner, cache);
+        var farmId = Guid.NewGuid();
+
+        await svc.GetAnimalTypesAsync(farmId);
+        var callsAfterWarm = inner.AnimalTypeCallCount;
+
+        var created = await svc.CreateBreedAsync(farmId, new CreateBreedRequest { Name = "Jersey", AnimalTypeId = inner.TypeA });
+        Assert.True(created.IsSuccess);
+
+        await svc.GetAnimalTypesAsync(farmId);
+        Assert.True(inner.AnimalTypeCallCount > callsAfterWarm,
+            "creating a breed must invalidate the cached animal-type list");
+
+        var callsAfterCreate = inner.AnimalTypeCallCount;
+
+        var removed = await svc.DeleteBreedAsync(farmId, inner.Breeds[^1].Id);
+        Assert.True(removed.IsSuccess);
+
+        await svc.GetAnimalTypesAsync(farmId);
+        Assert.True(inner.AnimalTypeCallCount > callsAfterCreate,
+            "deleting a breed must invalidate the cached animal-type list");
     }
 }

@@ -22,7 +22,10 @@ jobs:
           dotnet-version: 8.0.x
 
       - name: Run backend tests
-        run: dotnet test FarmManagementSystem.slnx --nologo
+        # Target the test project, not FarmManagementSystem.slnx: the solution also contains
+        # src/FMS.Mobile (MAUI), which needs the maui-android workload on the runner and failed
+        # this job with NETSDK1147, blocking the Heroku release that `deploy` waits on.
+        run: dotnet test tests/FMS.Domain.Tests/FMS.Domain.Tests.csproj --nologo
 
   test-client:
     runs-on: ubuntu-latest

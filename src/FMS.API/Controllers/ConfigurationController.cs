@@ -1,3 +1,4 @@
+using FMS.Application.Common;
 using FMS.Application.Configuration;
 using FMS.Application.Farm;
 using Microsoft.AspNetCore.Authorization;
@@ -28,23 +29,21 @@ public class ConfigurationController : ControllerBase
     public async Task<IActionResult> GetAnimalTypes(Guid farmId)
     {
         var result = await _configurationService.GetAnimalTypesAsync(farmId);
-        return result.IsSuccess ? Ok(result.Value) : StatusCode(500, result.Error?.Message);
+        return MapResult(result);
     }
 
     [HttpPost("animal-types")]
     public async Task<IActionResult> CreateAnimalType(Guid farmId, [FromBody] CreateAnimalTypeRequest request)
     {
         var result = await _configurationService.CreateAnimalTypeAsync(farmId, request);
-        return result.IsSuccess
-            ? CreatedAtAction(nameof(GetAnimalTypes), new { farmId }, result.Value)
-            : StatusCode(500, result.Error?.Message);
+        return MapCreated(result);
     }
 
     [HttpDelete("animal-types/{id:guid}")]
     public async Task<IActionResult> DeleteAnimalType(Guid farmId, Guid id)
     {
         var result = await _configurationService.DeleteAnimalTypeAsync(farmId, id);
-        return result.IsSuccess ? NoContent() : NotFound(result.Error?.Message);
+        return MapDeleted(result);
     }
 
     // Breeds
@@ -52,23 +51,21 @@ public class ConfigurationController : ControllerBase
     public async Task<IActionResult> GetBreeds(Guid farmId, [FromQuery] Guid? animalTypeId = null)
     {
         var result = await _configurationService.GetBreedsAsync(farmId, animalTypeId);
-        return result.IsSuccess ? Ok(result.Value) : StatusCode(500, result.Error?.Message);
+        return MapResult(result);
     }
 
     [HttpPost("breeds")]
     public async Task<IActionResult> CreateBreed(Guid farmId, [FromBody] CreateBreedRequest request)
     {
         var result = await _configurationService.CreateBreedAsync(farmId, request);
-        return result.IsSuccess
-            ? Created("", result.Value)
-            : result.Error?.Code == "NotFound" ? NotFound(result.Error.Message) : StatusCode(500, result.Error?.Message);
+        return MapCreated(result);
     }
 
     [HttpDelete("breeds/{id:guid}")]
     public async Task<IActionResult> DeleteBreed(Guid farmId, Guid id)
     {
         var result = await _configurationService.DeleteBreedAsync(farmId, id);
-        return result.IsSuccess ? NoContent() : NotFound(result.Error?.Message);
+        return MapDeleted(result);
     }
 
     // Sex Options
@@ -76,21 +73,21 @@ public class ConfigurationController : ControllerBase
     public async Task<IActionResult> GetSexOptions(Guid farmId)
     {
         var result = await _configurationService.GetSexOptionsAsync(farmId);
-        return result.IsSuccess ? Ok(result.Value) : StatusCode(500, result.Error?.Message);
+        return MapResult(result);
     }
 
     [HttpPost("sex-options")]
     public async Task<IActionResult> CreateSexOption(Guid farmId, [FromBody] CreateSexOptionRequest request)
     {
         var result = await _configurationService.CreateSexOptionAsync(farmId, request);
-        return result.IsSuccess ? Created("", result.Value) : StatusCode(500, result.Error?.Message);
+        return MapCreated(result);
     }
 
     [HttpDelete("sex-options/{id:guid}")]
     public async Task<IActionResult> DeleteSexOption(Guid farmId, Guid id)
     {
         var result = await _configurationService.DeleteSexOptionAsync(farmId, id);
-        return result.IsSuccess ? NoContent() : NotFound(result.Error?.Message);
+        return MapDeleted(result);
     }
 
     // Age Categories
@@ -98,21 +95,21 @@ public class ConfigurationController : ControllerBase
     public async Task<IActionResult> GetAgeCategories(Guid farmId)
     {
         var result = await _configurationService.GetAgeCategoriesAsync(farmId);
-        return result.IsSuccess ? Ok(result.Value) : StatusCode(500, result.Error?.Message);
+        return MapResult(result);
     }
 
     [HttpPost("age-categories")]
     public async Task<IActionResult> CreateAgeCategory(Guid farmId, [FromBody] CreateAgeCategoryRequest request)
     {
         var result = await _configurationService.CreateAgeCategoryAsync(farmId, request);
-        return result.IsSuccess ? Created("", result.Value) : StatusCode(500, result.Error?.Message);
+        return MapCreated(result);
     }
 
     [HttpDelete("age-categories/{id:guid}")]
     public async Task<IActionResult> DeleteAgeCategory(Guid farmId, Guid id)
     {
         var result = await _configurationService.DeleteAgeCategoryAsync(farmId, id);
-        return result.IsSuccess ? NoContent() : NotFound(result.Error?.Message);
+        return MapDeleted(result);
     }
 
     // Animal Statuses
@@ -120,21 +117,21 @@ public class ConfigurationController : ControllerBase
     public async Task<IActionResult> GetAnimalStatuses(Guid farmId)
     {
         var result = await _configurationService.GetAnimalStatusesAsync(farmId);
-        return result.IsSuccess ? Ok(result.Value) : StatusCode(500, result.Error?.Message);
+        return MapResult(result);
     }
 
     [HttpPost("statuses")]
     public async Task<IActionResult> CreateAnimalStatus(Guid farmId, [FromBody] CreateAnimalStatusRequest request)
     {
         var result = await _configurationService.CreateAnimalStatusAsync(farmId, request);
-        return result.IsSuccess ? Created("", result.Value) : StatusCode(500, result.Error?.Message);
+        return MapCreated(result);
     }
 
     [HttpDelete("statuses/{id:guid}")]
     public async Task<IActionResult> DeleteAnimalStatus(Guid farmId, Guid id)
     {
         var result = await _configurationService.DeleteAnimalStatusAsync(farmId, id);
-        return result.IsSuccess ? NoContent() : NotFound(result.Error?.Message);
+        return MapDeleted(result);
     }
 
     // Identification Types
@@ -142,21 +139,21 @@ public class ConfigurationController : ControllerBase
     public async Task<IActionResult> GetIdentificationTypes(Guid farmId)
     {
         var result = await _configurationService.GetIdentificationTypesAsync(farmId);
-        return result.IsSuccess ? Ok(result.Value) : StatusCode(500, result.Error?.Message);
+        return MapResult(result);
     }
 
     [HttpPost("identification-types")]
     public async Task<IActionResult> CreateIdentificationType(Guid farmId, [FromBody] CreateIdentificationTypeRequest request)
     {
         var result = await _configurationService.CreateIdentificationTypeAsync(farmId, request);
-        return result.IsSuccess ? Created("", result.Value) : StatusCode(500, result.Error?.Message);
+        return MapCreated(result);
     }
 
     [HttpDelete("identification-types/{id:guid}")]
     public async Task<IActionResult> DeleteIdentificationType(Guid farmId, Guid id)
     {
         var result = await _configurationService.DeleteIdentificationTypeAsync(farmId, id);
-        return result.IsSuccess ? NoContent() : NotFound(result.Error?.Message);
+        return MapDeleted(result);
     }
 
     // Location Types
@@ -164,21 +161,21 @@ public class ConfigurationController : ControllerBase
     public async Task<IActionResult> GetLocationTypes(Guid farmId)
     {
         var result = await _configurationService.GetLocationTypesAsync(farmId);
-        return result.IsSuccess ? Ok(result.Value) : StatusCode(500, result.Error?.Message);
+        return MapResult(result);
     }
 
     [HttpPost("location-types")]
     public async Task<IActionResult> CreateLocationType(Guid farmId, [FromBody] CreateLocationTypeRequest request)
     {
         var result = await _configurationService.CreateLocationTypeAsync(farmId, request);
-        return result.IsSuccess ? Created("", result.Value) : StatusCode(500, result.Error?.Message);
+        return MapCreated(result);
     }
 
     [HttpDelete("location-types/{id:guid}")]
     public async Task<IActionResult> DeleteLocationType(Guid farmId, Guid id)
     {
         var result = await _configurationService.DeleteLocationTypeAsync(farmId, id);
-        return result.IsSuccess ? NoContent() : NotFound(result.Error?.Message);
+        return MapDeleted(result);
     }
 
     // Locations
@@ -186,35 +183,21 @@ public class ConfigurationController : ControllerBase
     public async Task<IActionResult> GetLocations(Guid farmId)
     {
         var result = await _configurationService.GetLocationsAsync(farmId);
-        return result.IsSuccess ? Ok(result.Value) : StatusCode(500, result.Error?.Message);
+        return MapResult(result);
     }
 
     [HttpPost("locations")]
     public async Task<IActionResult> CreateLocation(Guid farmId, [FromBody] CreateLocationRequest request)
     {
         var result = await _configurationService.CreateLocationAsync(farmId, request);
-        return result.IsSuccess
-            ? Created("", result.Value)
-            : result.Error?.Code switch
-            {
-                "NotFound" => NotFound(result.Error.Message),
-                "Conflict" => Conflict(result.Error.Message),
-                _ => StatusCode(500, result.Error?.Message)
-            };
+        return MapCreated(result);
     }
 
     [HttpDelete("locations/{id:guid}")]
     public async Task<IActionResult> DeleteLocation(Guid farmId, Guid id)
     {
         var result = await _configurationService.DeleteLocationAsync(farmId, id);
-        return result.IsSuccess
-            ? NoContent()
-            : result.Error?.Code switch
-            {
-                "NotFound" => NotFound(result.Error.Message),
-                "Conflict" => Conflict(result.Error.Message),
-                _ => StatusCode(500, result.Error?.Message)
-            };
+        return MapDeleted(result);
     }
 
     // Custom Fields
@@ -222,21 +205,21 @@ public class ConfigurationController : ControllerBase
     public async Task<IActionResult> GetCustomFieldDefinitions(Guid farmId)
     {
         var result = await _configurationService.GetCustomFieldDefinitionsAsync(farmId);
-        return result.IsSuccess ? Ok(result.Value) : StatusCode(500, result.Error?.Message);
+        return MapResult(result);
     }
 
     [HttpPost("custom-fields")]
     public async Task<IActionResult> CreateCustomFieldDefinition(Guid farmId, [FromBody] CreateCustomFieldDefinitionRequest request)
     {
         var result = await _configurationService.CreateCustomFieldDefinitionAsync(farmId, request);
-        return result.IsSuccess ? Created("", result.Value) : StatusCode(500, result.Error?.Message);
+        return MapCreated(result);
     }
 
     [HttpDelete("custom-fields/{id:guid}")]
     public async Task<IActionResult> DeleteCustomFieldDefinition(Guid farmId, Guid id)
     {
         var result = await _configurationService.DeleteCustomFieldDefinitionAsync(farmId, id);
-        return result.IsSuccess ? NoContent() : NotFound(result.Error?.Message);
+        return MapDeleted(result);
     }
 
     // Farm Configurations
@@ -244,20 +227,42 @@ public class ConfigurationController : ControllerBase
     public async Task<IActionResult> GetFarmConfigurations(Guid farmId)
     {
         var result = await _configurationService.GetFarmConfigurationsAsync(farmId);
-        return result.IsSuccess ? Ok(result.Value) : StatusCode(500, result.Error?.Message);
+        return MapResult(result);
     }
 
     [HttpPut("farm-config")]
     public async Task<IActionResult> UpsertFarmConfiguration(Guid farmId, [FromBody] UpdateFarmConfigurationRequest request)
     {
         var result = await _configurationService.UpsertFarmConfigurationAsync(farmId, request);
-        return result.IsSuccess ? Ok(result.Value) : StatusCode(500, result.Error?.Message);
+        return MapResult(result);
     }
 
     [HttpDelete("farm-config/{key}")]
     public async Task<IActionResult> DeleteFarmConfiguration(Guid farmId, string key)
     {
         var result = await _configurationService.DeleteFarmConfigurationAsync(farmId, key);
-        return result.IsSuccess ? NoContent() : NotFound(result.Error?.Message);
+        return MapDeleted(result);
     }
+
+    private IActionResult MapResult<T>(Result<T> result) => result.IsSuccess
+        ? Ok(result.Value)
+        : MapError(result.Error!);
+
+    private IActionResult MapCreated<T>(Result<T> result) => result.IsSuccess
+        ? Created("", result.Value)
+        : MapError(result.Error!);
+
+    /// <summary>Deletes answer 204 with no body, so only the failure path needs mapping.</summary>
+    private IActionResult MapDeleted(Result result) => result.IsSuccess
+        ? NoContent()
+        : MapError(result.Error!);
+
+    private IActionResult MapError(Error error) => error.Code switch
+    {
+        "NotFound" => NotFound(error.Message),
+        "Validation" => BadRequest(error.Message),
+        "Conflict" => Conflict(error.Message),
+        "Unauthorized" => Unauthorized(error.Message),
+        _ => StatusCode(500, error.Message)
+    };
 }

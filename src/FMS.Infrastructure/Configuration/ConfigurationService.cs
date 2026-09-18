@@ -16,6 +16,25 @@ public class ConfigurationService : IConfigurationService
         _context = context;
     }
 
+    /// <summary>
+    /// Refuses to delete a lookup that other rows still reference.
+    ///
+    /// Every referencing foreign key is Restrict, so deleting an in-use row only fails inside the
+    /// database (Postgres 23503) and reaches the client as an opaque 500 with the row still present.
+    /// Checking the references here turns that into a clear 409 naming what is in the way.
+    /// Counts include soft-deleted rows on purpose: those rows still hold the foreign key.
+    /// </summary>
+    private static Result InUse(string entityLabel, string name, string remedy, params (int Count, string Label)[] references)
+    {
+        var usedBy = string.Join(" and ", references
+            .Where(r => r.Count > 0)
+            .Select(r => $"{r.Count} {r.Label}{(r.Count == 1 ? string.Empty : "s")}"));
+
+        return usedBy.Length == 0
+            ? Result.Success()
+            : Result.Conflict($"Cannot delete {entityLabel} '{name}': still used by {usedBy}. {remedy}");
+    }
+
     // Animal Types
     public async Task<Result<List<AnimalTypeDto>>> GetAnimalTypesAsync(Guid farmId)
     {
@@ -66,6 +85,27 @@ public class ConfigurationService : IConfigurationService
 
         if (animalType == null)
             return Result.NotFound("Animal type not found");
+
+        // The type's breeds are cascade-deleted with it, so the guard must also cover rows that
+        // reference one of those breeds.
+        var breedIds = await _context.Breeds
+            .Where(b => b.AnimalTypeId == id)
+            .Select(b => b.Id)
+            .ToListAsync();
+
+        var animals = await _context.Animals.CountAsync(a =>
+            a.AnimalTypeId == id || (a.BreedId != null && breedIds.Contains(a.BreedId.Value)));
+        var dietPlans = await _context.DietPlans.CountAsync(p =>
+            p.AnimalTypeId == id || (p.BreedId != null && breedIds.Contains(p.BreedId.Value)));
+        var vaccinationSchedules = await _context.VaccinationSchedules.CountAsync(s =>
+            s.AnimalTypeId == id || (s.BreedId != null && breedIds.Contains(s.BreedId.Value)));
+        var weightCheckSchedules = await _context.WeightCheckSchedules.CountAsync(s =>
+            s.AnimalTypeId == id || (s.BreedId != null && breedIds.Contains(s.BreedId.Value)));
+
+        var guard = InUse("animal type", animalType.Name, "Reassign or delete those records first.",
+            (animals, "animal"), (dietPlans, "diet plan"),
+            (vaccinationSchedules, "vaccination schedule"), (weightCheckSchedules, "weight check schedule"));
+        if (!guard.IsSuccess) return guard;
 
         _context.AnimalTypes.Remove(animalType);
         await _context.SaveChangesAsync();
@@ -133,6 +173,16 @@ public class ConfigurationService : IConfigurationService
         if (breed == null)
             return Result.NotFound("Breed not found");
 
+        var animals = await _context.Animals.CountAsync(a => a.BreedId == id);
+        var dietPlans = await _context.DietPlans.CountAsync(p => p.BreedId == id);
+        var vaccinationSchedules = await _context.VaccinationSchedules.CountAsync(s => s.BreedId == id);
+        var weightCheckSchedules = await _context.WeightCheckSchedules.CountAsync(s => s.BreedId == id);
+
+        var guard = InUse("breed", breed.Name, "Reassign or delete those records first.",
+            (animals, "animal"), (dietPlans, "diet plan"),
+            (vaccinationSchedules, "vaccination schedule"), (weightCheckSchedules, "weight check schedule"));
+        if (!guard.IsSuccess) return guard;
+
         _context.Breeds.Remove(breed);
         await _context.SaveChangesAsync();
 
@@ -173,6 +223,13 @@ public class ConfigurationService : IConfigurationService
 
         if (sexOption == null)
             return Result.NotFound("Sex option not found");
+
+        var animals = await _context.Animals.CountAsync(a => a.SexOptionId == id);
+        var offspring = await _context.BirthOffspring.CountAsync(o => o.SexOptionId == id);
+
+        var guard = InUse("sex option", sexOption.Value, "Reassign or delete those records first.",
+            (animals, "animal"), (offspring, "birth record"));
+        if (!guard.IsSuccess) return guard;
 
         _context.SexOptions.Remove(sexOption);
         await _context.SaveChangesAsync();
@@ -229,6 +286,14 @@ public class ConfigurationService : IConfigurationService
         if (category == null)
             return Result.NotFound("Age category not found");
 
+        var animals = await _context.Animals.CountAsync(a => a.AgeCategoryId == id);
+        var dietPlans = await _context.DietPlans.CountAsync(p => p.AgeCategoryId == id);
+        var weightCheckSchedules = await _context.WeightCheckSchedules.CountAsync(s => s.AgeCategoryId == id);
+
+        var guard = InUse("age category", category.Name, "Reassign or delete those records first.",
+            (animals, "animal"), (dietPlans, "diet plan"), (weightCheckSchedules, "weight check schedule"));
+        if (!guard.IsSuccess) return guard;
+
         _context.AgeCategories.Remove(category);
         await _context.SaveChangesAsync();
 
@@ -277,6 +342,16 @@ public class ConfigurationService : IConfigurationService
 
         if (status == null)
             return Result.NotFound("Animal status not found");
+
+        // The UI hides Delete for seeded statuses, but the API is the only layer that can enforce it.
+        if (status.IsSystemDefined)
+            return Result.Conflict($"Cannot delete '{status.Name}': it is a system status. Deactivate it instead.");
+
+        var animals = await _context.Animals.CountAsync(a => a.AnimalStatusId == id);
+
+        var guard = InUse("animal status", status.Name, "Move those animals to another status first.",
+            (animals, "animal"));
+        if (!guard.IsSuccess) return guard;
 
         _context.AnimalStatuses.Remove(status);
         await _context.SaveChangesAsync();
@@ -359,6 +434,12 @@ public class ConfigurationService : IConfigurationService
 
         if (type == null)
             return Result.NotFound("Location type not found");
+
+        var locations = await _context.Locations.CountAsync(l => l.LocationTypeId == id);
+
+        var guard = InUse("location type", type.Name, "Change those locations to another type first.",
+            (locations, "location"));
+        if (!guard.IsSuccess) return guard;
 
         _context.LocationTypes.Remove(type);
         await _context.SaveChangesAsync();
@@ -458,6 +539,19 @@ public class ConfigurationService : IConfigurationService
         var hasChildren = await _context.Locations.AnyAsync(l => l.ParentLocationId == id);
         if (hasChildren)
             return Result.Conflict("Cannot delete location with children");
+
+        var animals = await _context.Animals.CountAsync(a => a.LocationId == id);
+        var transfers = await _context.AnimalTransfers.CountAsync(t =>
+            t.FromLocationId == id || t.ToLocationId == id);
+        var expenses = await _context.Expenses.CountAsync(e => e.LocationId == id);
+        var tasks = await _context.FarmTasks.CountAsync(t => t.LocationId == id);
+        var feedRecords = await _context.FeedRecords.CountAsync(r => r.LocationId == id);
+        var incomeRecords = await _context.IncomeRecords.CountAsync(r => r.LocationId == id);
+
+        var guard = InUse("location", location.Name, "Reassign those records to another location first.",
+            (animals, "animal"), (transfers, "transfer"), (expenses, "expense"),
+            (tasks, "task"), (feedRecords, "feed record"), (incomeRecords, "income record"));
+        if (!guard.IsSuccess) return guard;
 
         _context.Locations.Remove(location);
         await _context.SaveChangesAsync();

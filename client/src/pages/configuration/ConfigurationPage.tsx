@@ -53,7 +53,9 @@ const ConfigurationPage: React.FC = () => {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [at, br, so, ac, st, lt, loc] = await Promise.all([
+      // Each lookup settles independently: one failing list must not discard the six that loaded,
+      // otherwise a failed refresh leaves the page stale and looks like a failed delete.
+      const [at, br, so, ac, st, lt, loc] = await Promise.allSettled([
         configurationApi.animalTypes(),
         configurationApi.breeds(),
         configurationApi.sexOptions(),
@@ -62,14 +64,24 @@ const ConfigurationPage: React.FC = () => {
         configurationApi.locationTypes(),
         configurationApi.locations(),
       ]);
-      setAnimalTypes(at.data);
-      setBreeds(br.data);
-      setSexOptions(so.data);
-      setAgeCategories(ac.data);
-      setStatuses(st.data);
-      setLocationTypes(lt.data);
-      setLocations(loc.data);
+
+      if (at.status === 'fulfilled') setAnimalTypes(at.value.data);
+      if (br.status === 'fulfilled') setBreeds(br.value.data);
+      if (so.status === 'fulfilled') setSexOptions(so.value.data);
+      if (ac.status === 'fulfilled') setAgeCategories(ac.value.data);
+      if (st.status === 'fulfilled') setStatuses(st.value.data);
+      if (lt.status === 'fulfilled') setLocationTypes(lt.value.data);
+      if (loc.status === 'fulfilled') setLocations(loc.value.data);
+
+      const failures = [at, br, so, ac, st, lt, loc].filter(r => r.status === 'rejected');
+      if (failures.length > 0) {
+        const reason = getApiError((failures[0] as PromiseRejectedResult).reason);
+        message.error(
+          failures.length === 1 ? reason : `${reason} (${failures.length} lists failed to load)`,
+        );
+      }
     } catch (err) {
+      // Building the request list throws when no farm is selected yet.
       message.error(getApiError(err));
     } finally {
       setLoading(false);

@@ -138,6 +138,13 @@ public class TestWebApplicationFactory : IDisposable
                     services.AddScoped<FMS.Application.Dashboard.IDashboardService, FMS.Infrastructure.Dashboard.DashboardService>();
                     services.AddScoped<FMS.Application.Reports.IReportService, FMS.Infrastructure.Reports.ReportService>();
                     services.AddScoped<FMS.Application.AuditLog.IAuditLogService, FMS.Infrastructure.AuditLog.AuditLogService>();
+                    // Configuration lookups (same registration shape as Program.cs).
+                    services.AddMemoryCache();
+                    services.AddScoped<FMS.Infrastructure.Configuration.ConfigurationService>();
+                    services.AddScoped<FMS.Application.Configuration.IConfigurationService>(sp =>
+                        new FMS.Infrastructure.Configuration.CachedConfigurationService(
+                            sp.GetRequiredService<FMS.Infrastructure.Configuration.ConfigurationService>(),
+                            sp.GetRequiredService<Microsoft.Extensions.Caching.Memory.IMemoryCache>()));
                     services.AddScoped<FMS.Application.Auth.IAuthService, FMS.Infrastructure.Auth.AuthService>();
                     services.AddScoped<FMS.Application.Auth.IJwtTokenService, FMS.Infrastructure.Auth.JwtTokenService>();
                     // Singleton so all request scopes share the same capturing instance.

@@ -56,6 +56,13 @@ public class CachedConfigurationService : IConfigurationService
     // for this farm + entity by bumping the shared generation counter.
     private void Inv(Guid farmId, string entity) => BumpGeneration(farmId, BaseEntity(entity));
 
+    // For mutations that reach beyond the entity that was touched (e.g. deleting an animal type
+    // cascades its breeds away, and the animal-type list embeds its breeds).
+    private void Inv(Guid farmId, params string[] entities)
+    {
+        foreach (var entity in entities) BumpGeneration(farmId, BaseEntity(entity));
+    }
+
     public Task<Result<List<AnimalTypeDto>>> GetAnimalTypesAsync(Guid farmId) => GetOrSet(farmId, "AT", () => _inner.GetAnimalTypesAsync(farmId));
     public Task<Result<List<BreedDto>>> GetBreedsAsync(Guid farmId, Guid? animalTypeId = null) => GetOrSet(farmId, $"BR:{animalTypeId?.ToString() ?? "all"}", () => _inner.GetBreedsAsync(farmId, animalTypeId));
     public Task<Result<List<SexOptionDto>>> GetSexOptionsAsync(Guid farmId) => GetOrSet(farmId, "SX", () => _inner.GetSexOptionsAsync(farmId));
@@ -68,9 +75,12 @@ public class CachedConfigurationService : IConfigurationService
     public Task<Result<List<FarmConfigurationDto>>> GetFarmConfigurationsAsync(Guid farmId) => GetOrSet(farmId, "FC", () => _inner.GetFarmConfigurationsAsync(farmId));
 
     public async Task<Result<AnimalTypeDto>> CreateAnimalTypeAsync(Guid farmId, CreateAnimalTypeRequest r) { var res = await _inner.CreateAnimalTypeAsync(farmId, r); if (res.IsSuccess) Inv(farmId, "AT"); return res; }
-    public async Task<Result> DeleteAnimalTypeAsync(Guid farmId, Guid id) { var res = await _inner.DeleteAnimalTypeAsync(farmId, id); Inv(farmId, "AT"); return res; }
-    public async Task<Result<BreedDto>> CreateBreedAsync(Guid farmId, CreateBreedRequest r) { var res = await _inner.CreateBreedAsync(farmId, r); if (res.IsSuccess) Inv(farmId, "BR"); return res; }
-    public async Task<Result> DeleteBreedAsync(Guid farmId, Guid id) { var res = await _inner.DeleteBreedAsync(farmId, id); Inv(farmId, "BR"); return res; }
+    // Deleting an animal type cascades its breeds away, so the cached breed lists must be dropped
+    // with the animal-type list — otherwise the Breeds tab keeps listing rows that no longer exist.
+    public async Task<Result> DeleteAnimalTypeAsync(Guid farmId, Guid id) { var res = await _inner.DeleteAnimalTypeAsync(farmId, id); Inv(farmId, "AT", "BR"); return res; }
+    // Breed mutations refresh the animal-type list too: its DTO embeds the breeds and their count.
+    public async Task<Result<BreedDto>> CreateBreedAsync(Guid farmId, CreateBreedRequest r) { var res = await _inner.CreateBreedAsync(farmId, r); if (res.IsSuccess) Inv(farmId, "BR", "AT"); return res; }
+    public async Task<Result> DeleteBreedAsync(Guid farmId, Guid id) { var res = await _inner.DeleteBreedAsync(farmId, id); Inv(farmId, "BR", "AT"); return res; }
     public async Task<Result<SexOptionDto>> CreateSexOptionAsync(Guid farmId, CreateSexOptionRequest r) { var res = await _inner.CreateSexOptionAsync(farmId, r); if (res.IsSuccess) Inv(farmId, "SX"); return res; }
     public async Task<Result> DeleteSexOptionAsync(Guid farmId, Guid id) { var res = await _inner.DeleteSexOptionAsync(farmId, id); Inv(farmId, "SX"); return res; }
     public async Task<Result<AgeCategoryDto>> CreateAgeCategoryAsync(Guid farmId, CreateAgeCategoryRequest r) { var res = await _inner.CreateAgeCategoryAsync(farmId, r); if (res.IsSuccess) Inv(farmId, "AC"); return res; }
