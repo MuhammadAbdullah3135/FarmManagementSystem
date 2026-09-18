@@ -2,16 +2,16 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Card, Col, Row, Statistic, Table, Spin, Empty, Typography, message } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
-  BarChart, Bar, PieChart, Pie, Cell,
+  BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts';
+import BreakdownPieChart from '../../components/BreakdownPieChart';
 import DateRangeFilter from '../../components/DateRangeFilter';
 import ExportButton from '../../components/ExportButton';
 import { reportsApi, type MedicalReport, type MedicalByVet } from '../../api/reports';
 import { getApiError } from '../../api/farmApi';
 
 const { Text } = Typography;
-const PIE_COLORS = ['#1677ff', '#52c41a', '#faad14', '#ff4d4f', '#722ed1', '#13c2c2'];
 
 const formatCurrency = (v: number) =>
   `$${v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -84,19 +84,7 @@ const MedicalReportsPage: React.FC = () => {
           <Col xs={24} lg={12}>
             <Card title="Cost by Veterinarian" size="small">
               {vetData.length > 0 ? (
-                <ResponsiveContainer width="100%" height={260}>
-                  <PieChart>
-                    <Pie
-                      data={vetData}
-                      cx="50%" cy="50%" outerRadius={90}
-                      label={({ name, percent }) => `${name} (${((percent ?? 0) * 100).toFixed(0)}%)`}
-                      dataKey="value"
-                    >
-                      {vetData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
-                    </Pie>
-                    <Tooltip formatter={(value) => formatCurrency(Number(value ?? 0))} />
-                  </PieChart>
-                </ResponsiveContainer>
+                <BreakdownPieChart data={vetData} valueFormatter={formatCurrency} />
               ) : <Empty description="No data" />}
             </Card>
           </Col>

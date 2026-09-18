@@ -7,11 +7,12 @@ import {
   NodeIndexOutlined, InboxOutlined, CoffeeOutlined, WarningOutlined,
 } from '@ant-design/icons';
 import {
-  BarChart, Bar, LineChart, Line, AreaChart, Area, PieChart, Pie, Cell,
+  BarChart, Bar, LineChart, Line, AreaChart, Area,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts';
 import { useAuthStore } from '../stores/authStore';
 import { useFarmStore } from '../stores/farmStore';
+import BreakdownPieChart from '../components/BreakdownPieChart';
 import DateRangeFilter from '../components/DateRangeFilter';
 import {
   dashboardApi,
@@ -23,8 +24,6 @@ import { getApiError } from '../api/farmApi';
 import { message } from 'antd';
 
 const { Title, Text } = Typography;
-
-const PIE_COLORS = ['#1677ff', '#52c41a', '#faad14', '#ff4d4f', '#722ed1', '#13c2c2', '#eb2f96', '#fa8c16'];
 
 const formatCurrency = (v: number) =>
   `$${v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -237,23 +236,10 @@ const DashboardPage: React.FC = () => {
             <Col xs={24} lg={12}>
               <Card title="Expense Breakdown" size="small">
                 {charts?.expenseBreakdown && charts.expenseBreakdown.items.length > 0 ? (
-                  <ResponsiveContainer width="100%" height={260}>
-                    <PieChart>
-                      <Pie
-                        data={charts.expenseBreakdown.items.map(i => ({ name: i.categoryName, value: i.total }))}
-                        cx="50%"
-                        cy="50%"
-                        outerRadius={90}
-                        label={({ name, percent }) => `${name} (${((percent ?? 0) * 100).toFixed(0)}%)`}
-                        dataKey="value"
-                      >
-                        {charts.expenseBreakdown.items.map((_, index) => (
-                          <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip formatter={(value) => formatCurrency(Number(value ?? 0))} />
-                    </PieChart>
-                  </ResponsiveContainer>
+                  <BreakdownPieChart
+                    data={charts.expenseBreakdown.items.map(i => ({ name: i.categoryName, value: i.total }))}
+                    valueFormatter={formatCurrency}
+                  />
                 ) : (
                   <Empty description="No data" />
                 )}

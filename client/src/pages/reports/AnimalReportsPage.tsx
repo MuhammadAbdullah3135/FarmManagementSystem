@@ -2,16 +2,16 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Card, Col, Row, Statistic, Table, Spin, Empty, Typography, message } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
-  LineChart, Line, PieChart, Pie, Cell,
+  LineChart, Line,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts';
+import BreakdownPieChart from '../../components/BreakdownPieChart';
 import DateRangeFilter from '../../components/DateRangeFilter';
 import ExportButton from '../../components/ExportButton';
 import { reportsApi, type AnimalReport, type AnimalCountByCategory } from '../../api/reports';
 import { getApiError } from '../../api/farmApi';
 
 const { Text } = Typography;
-const PIE_COLORS = ['#1677ff', '#52c41a', '#faad14', '#ff4d4f', '#722ed1', '#13c2c2'];
 
 const AnimalReportsPage: React.FC = () => {
   const [report, setReport] = useState<AnimalReport | null>(null);
@@ -64,19 +64,7 @@ const AnimalReportsPage: React.FC = () => {
           <Col xs={24} lg={12}>
             <Card title="Animals by Type" size="small">
               {report?.byType && report.byType.length > 0 ? (
-                <ResponsiveContainer width="100%" height={260}>
-                  <PieChart>
-                    <Pie
-                      data={report.byType.map(i => ({ name: i.name, value: i.count }))}
-                      cx="50%" cy="50%" outerRadius={90}
-                      label={({ name, percent }) => `${name} (${((percent ?? 0) * 100).toFixed(0)}%)`}
-                      dataKey="value"
-                    >
-                      {report.byType.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
+                <BreakdownPieChart data={report.byType.map(i => ({ name: i.name, value: i.count }))} />
               ) : <Empty description="No data" />}
             </Card>
           </Col>
@@ -85,19 +73,7 @@ const AnimalReportsPage: React.FC = () => {
           <Col xs={24} lg={12}>
             <Card title="Animals by Status" size="small">
               {report?.byStatus && report.byStatus.length > 0 ? (
-                <ResponsiveContainer width="100%" height={260}>
-                  <PieChart>
-                    <Pie
-                      data={report.byStatus.map(i => ({ name: i.name, value: i.count }))}
-                      cx="50%" cy="50%" innerRadius={50} outerRadius={90}
-                      label={({ name, percent }) => `${name} (${((percent ?? 0) * 100).toFixed(0)}%)`}
-                      dataKey="value"
-                    >
-                      {report.byStatus.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
+                <BreakdownPieChart data={report.byStatus.map(i => ({ name: i.name, value: i.count }))} innerRadius={50} />
               ) : <Empty description="No data" />}
             </Card>
           </Col>

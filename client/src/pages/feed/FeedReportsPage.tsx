@@ -4,12 +4,11 @@ import {
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs, { Dayjs } from 'dayjs';
-import { PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import BreakdownPieChart from '../../components/BreakdownPieChart';
 import { feedReportsApi } from '../../api/feed';
 import { getApiError } from '../../api/farmApi';
 import { message } from 'antd';
-
-const PIE_COLORS = ['#1677ff', '#52c41a', '#faad14', '#ff4d4f', '#722ed1', '#13c2c2'];
 import type {
   ConsumptionTrendPoint,
   FeedTypeBreakdown,
@@ -149,19 +148,12 @@ const FeedReportsPage: React.FC = () => {
               children: (
                 <>
                   {byType.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={260}>
-                      <PieChart>
-                        <Pie
-                          data={byType.map(i => ({ name: i.feedTypeName, value: i.cost }))}
-                          cx="50%" cy="50%" outerRadius={90}
-                          label={({ name, percent }) => `${name} (${((percent ?? 0) * 100).toFixed(0)}%)`}
-                          dataKey="value"
-                        >
-                          {byType.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
-                        </Pie>
-                        <Tooltip formatter={(v) => `$${Number(v ?? 0).toFixed(2)}`} />
-                      </PieChart>
-                    </ResponsiveContainer>
+                    /* The table below already lists every feed type with its share, so no legend here. */
+                    <BreakdownPieChart
+                      data={byType.map(i => ({ name: i.feedTypeName, value: i.cost }))}
+                      valueFormatter={(v) => `$${v.toFixed(2)}`}
+                      showLegend={false}
+                    />
                   ) : null}
                   <Table rowKey="feedTypeId" columns={typeCols} dataSource={byType} loading={loading} pagination={false} style={{ marginTop: 16 }} />
                 </>
