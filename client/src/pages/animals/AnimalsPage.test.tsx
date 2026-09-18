@@ -245,7 +245,9 @@ describe('AnimalsPage create form', () => {
     expect(await screen.findByText('Sex option already exists')).toBeInTheDocument();
     expect(within(addSexModal).getByLabelText('Value')).toHaveValue('Unknown');
     expect(configurationApi.createSexOption).toHaveBeenCalledTimes(1);
-  });
+    // Same 5s-default flake as the tests above: the modal walk plus the rejected request
+    // exceeded the default under parallel load, which fails the Pages deploy job.
+  }, 20000);
 
   it('creates a breed via quick-add for the selected animal type', async () => {
     vi.mocked(configurationApi.createBreed).mockResolvedValue(res({
@@ -276,7 +278,8 @@ describe('AnimalsPage create form', () => {
     expect(await screen.findByText('Breed "Test Breed" created')).toBeInTheDocument();
     const breedForm = await getFormItem(modal, 'Breed');
     expect(within(breedForm).getByText('Test Breed')).toBeInTheDocument();
-  });
+    // Heaviest quick-add walk in the file (two nested select footers); 5s was not enough.
+  }, 20000);
 
   it('renders nested child locations in the Location select', async () => {
     vi.mocked(lookupsApi.locations).mockResolvedValue(res([

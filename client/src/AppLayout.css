@@ -28,12 +28,56 @@
 }
 
 @media (max-width: 576px) {
-  .ant-card-head {
-    flex-wrap: wrap;
+  /* antd's card head is two levels: `.ant-card-head` is a plain block and the
+     flex row is `.ant-card-head-wrapper` inside it. The title is `flex: 1` with
+     an ellipsis while the action area cannot shrink, so a 200px filter plus a
+     button (≈348px) ate the whole row and antd ellipsised the title down to
+     "P…". (The old rule here set `flex-wrap` on `.ant-card-head`, which is
+     inert — that element is not the flex container.) On a phone the head is
+     two rows: title, then actions. */
+  body .ant-card-head > .ant-card-head-wrapper {
+    flex-direction: column;
+    align-items: stretch;
     row-gap: 8px;
   }
-  .ant-card-head .ant-card-extra {
+
+  body .ant-card-head .ant-card-head-title {
+    flex: 1 1 auto;
+    overflow: visible;
+    white-space: normal;
+    text-overflow: clip;
+  }
+
+  body .ant-card-head .ant-card-extra {
+    width: 100%;
+    min-width: 0;
     margin-inline-start: 0;
+  }
+
+  /* Filter controls stack full width in the head and the action button drops
+     below them — the same look the feed reports page has. */
+  body .ant-card-head .ant-card-extra > .ant-space {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+  }
+
+  body .ant-card-head .ant-card-extra .ant-space-item {
+    min-width: 0;
+  }
+
+  /* The controls carry their width inline (`style={{ width: 200 }}`), and a
+     filter before a primary action is the pattern on a dozen pages, so 200px
+     of select plus a button is wider than the phone. `!important` is the only
+     way past an inline width; it is scoped to card heads at phone width, so
+     nothing else in the app can see it. */
+  body .ant-card-head .ant-card-extra .ant-select,
+  body .ant-card-head .ant-card-extra .ant-picker,
+  body .ant-card-head .ant-card-extra .ant-input,
+  body .ant-card-head .ant-card-extra .ant-input-affix-wrapper {
+    width: 100% !important;
+    max-width: 100%;
   }
 
   /* Contain table borders inside cards on narrow screens — without this
