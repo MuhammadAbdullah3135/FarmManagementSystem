@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Card, Row, Col, Statistic, Table, Tag, DatePicker, Space, Empty, Spin, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import type { PieLabelRenderProps } from 'recharts';
 import { breedingReportsApi, type BreedingReportFilter } from '../../api/breeding';
 import { getApiError } from '../../api/farmApi';
 import { message } from 'antd';
@@ -109,6 +110,34 @@ export default function BreedingReportsPage() {
   ];
 
   const pieData = methods.map(m => ({ name: m.method, value: m.count }));
+
+  // Result distribution for the donut: colour lives on the datum so dropping a zero slice cannot shift the palette.
+  const resultData = useMemo(() => [
+    { name: 'Confirmed', value: summary?.confirmedCount ?? 0, fill: '#52c41a' },
+    { name: 'Pending', value: summary?.pendingCount ?? 0, fill: '#faad14' },
+    { name: 'Failed', value: summary?.failedCount ?? 0, fill: '#ff4d4f' },
+  ], [summary]);
+
+  const resultTotal = resultData.reduce((sum, d) => sum + d.value, 0);
+  // Zero-value slices must be dropped: recharts hides their arc but still draws a label at the collapsed
+  // mid-angle, which printed "Confirmed 0%" and "Failed 0%" on top of each other.
+  const resultSlices = resultData.filter(d => d.value > 0);
+
+  const resultPercent = (value: number) => resultTotal === 0 ? 0 : Math.round((value / resultTotal) * 100);
+
+  // Flat text at the middle of the ring band. The built-in 'inside*' label positions render along a
+  // textPath arc, which smears the text across a wide slice, so the point is computed here instead.
+  const renderResultLabel = (props: PieLabelRenderProps) => {
+    const radius = (props.innerRadius + props.outerRadius) / 2;
+    const angle = (-(props.midAngle ?? 0) * Math.PI) / 180;
+    const x = props.cx + radius * Math.cos(angle);
+    const y = props.cy + radius * Math.sin(angle);
+    return (
+      <text x={x} y={y} fill="#fff" fontSize={11} textAnchor="middle" dominantBaseline="central">
+        {`${resultPercent(props.value)}%`}
+      </text>
+    );
+  };
 
   return (
     <Spin spinning={loading}>
@@ -219,34 +248,43 @@ export default function BreedingReportsPage() {
           </Card>
         </Col>
 
-        {/* Confirmation Rate Donut */}
+        {/* Result Distribution Donut */}
         <Col xs={24} lg={10}>
           <Card title="Result Distribution" size="small">
-            {summary ? (
-              <ResponsiveContainer width="100%" height={250}>
-                <PieChart>
-                  <Pie
-                    data={[
-                      { name: 'Confirmed', value: summary.confirmedCount },
-                      { name: 'Pending', value: summary.pendingCount },
-                      { name: 'Failed', value: summary.failedCount },
-                    ]}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={90}
-                    label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
-                    dataKey="value"
-                  >
-                    <Cell fill="#52c41a" />
-                    <Cell fill="#faad14" />
-                    <Cell fill="#ff4d4f" />
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
-            ) : (
+            {resultTotal === 0 ? (
               <Empty description="No data" />
+            ) : (
+              <>
+                <ResponsiveContainer width="100%" height={220}>
+                  <PieChart>
+                    <Pie
+                      data={resultSlices}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={90}
+                      labelLine={false}
+                      label={renderResultLabel}
+                      dataKey="value"
+                      nameKey="name"
+                    >
+                      {resultSlices.map(d => (
+                        <Cell key={d.name} fill={d.fill} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+                {/* Names and counts live in HTML so they can never clip or overlap inside the narrow card. */}
+                <Space size="large" wrap style={{ width: '100%', justifyContent: 'center', marginTop: 8 }}>
+                  {resultData.map(d => (
+                    <Text key={d.name} style={{ fontSize: 12, whiteSpace: 'nowrap' }}>
+                      <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: d.fill, marginRight: 6 }} />
+                      {`${d.name} ${d.value} (${resultPercent(d.value)}%)`}
+                    </Text>
+                  ))}
+                </Space>
+              </>
             )}
           </Card>
         </Col>
