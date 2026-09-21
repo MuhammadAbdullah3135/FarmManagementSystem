@@ -142,6 +142,7 @@ public class TestWebApplicationFactory : IDisposable
                     services.AddScoped<FMS.Application.Employees.IEmployeeService, FMS.Infrastructure.Employees.EmployeeService>();
                     services.AddScoped<FMS.Application.Dashboard.IDashboardService, FMS.Infrastructure.Dashboard.DashboardService>();
                     services.AddScoped<FMS.Application.Reports.IReportService, FMS.Infrastructure.Reports.ReportService>();
+                    services.AddScoped<FMS.Application.Reports.ICostAttributionService, FMS.Infrastructure.Reports.CostAttributionService>();
                     services.AddScoped<FMS.Application.AuditLog.IAuditLogService, FMS.Infrastructure.AuditLog.AuditLogService>();
                     // Configuration lookups (same registration shape as Program.cs).
                     services.AddMemoryCache();
@@ -185,11 +186,15 @@ public class TestWebApplicationFactory : IDisposable
                     // scanning the assembly: the test host has never enabled FluentValidation's
                     // MVC integration, and scanning here would silently start validating
                     // every existing E2E request body.
-                    services.Configure<FMS.Application.Animal.Import.AnimalImportOptions>(_ => { });
-                    services.AddScoped<FMS.Application.Animal.Import.ISpreadsheetReader,
+                    services.Configure<FMS.Application.Import.ImportOptions>(_ => { });
+                    services.AddScoped<FMS.Application.Import.ISpreadsheetReader,
                         FMS.Infrastructure.Import.SpreadsheetReader>();
                     services.AddScoped<FMS.Application.Animal.Import.IAnimalImportService,
                         FMS.Infrastructure.Import.AnimalImportService>();
+                    services.AddScoped<FMS.Application.Inventory.Import.IInventoryImportService,
+                        FMS.Infrastructure.Import.InventoryImportService>();
+                    services.AddScoped<FMS.Application.Employees.Import.IEmployeeImportService,
+                        FMS.Infrastructure.Import.EmployeeImportService>();
                     services.AddScoped<FluentValidation.IValidator<FMS.Application.Animal.CreateAnimalRequest>,
                         FMS.API.Validation.Animals.CreateAnimalRequestValidator>();
 

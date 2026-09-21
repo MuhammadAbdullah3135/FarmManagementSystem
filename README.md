@@ -68,7 +68,7 @@ All features below are implemented and verified against the source code. If some
 - Animal images and documents (upload/download, 5MB image / 20MB document limits)
 - Animal transfers between locations
 - Bulk status changes and bulk transfers
-- Bulk import from CSV or Excel: column mapping (including a fixed value for every row), a per-row validation preview that writes nothing, and an all-or-nothing commit — rows are checked with the same rules the single-animal create endpoint uses, duplicate tags are reported rather than skipped or overwritten, and sire/dam may reference another row of the same file
+- Bulk import from CSV or Excel: column mapping (including a fixed value for every row), a per-row validation preview that writes nothing, and an all-or-nothing commit — rows are checked with the same rules the single-animal create endpoint uses, duplicate tags are reported rather than skipped or overwritten, and sire/dam may reference another row of the same file. The same import (same wizard, same pipeline, same semantics) also serves **employees** — departments and roles resolved by name, the email as the identifier — and **inventory items**, where the item name is the identifier
 
 ### Breeding
 - Breeding records (sire, dam, date, method, vet, result)
@@ -130,6 +130,7 @@ All features below are implemented and verified against the source code. If some
 
 ### Reports
 - Cross-domain report pages: animal, medical, vaccination, employee, breeding, feed, finance
+- **Cost per animal / per herd**: what each animal cost and earned over a date range, with shared costs allocated by animal-days — every allocated figure shows the days, the pool and the fraction it came from, unallocated money is reported as unallocated, and the arithmetic that ties the totals back to the finance, feed and health reports is shown alongside the numbers
 - Export to PDF, Excel, or CSV from any report table
 
 ### Configuration
@@ -149,6 +150,13 @@ All features below are implemented and verified against the source code. If some
 - Farm-scoped data isolation via `X-Farm-Id` header + middleware validation
 - Rate limiting (300 requests/minute per user/IP)
 - Security headers (CSP, X-Frame-Options, X-Content-Type-Options, etc.)
+
+### Offline (in progress)
+
+- The frontend registers a service worker that precaches its own built shell, so the Android wrapper opens the app without a connection instead of a blank screen. It is scoped to the app's base path and skipped in dev.
+- A per-account, per-farm IndexedDB store keeps what the device has fetched, with the last-synced time reported in an offline banner that says plainly what the device can and cannot do.
+- Signing out empties the store, and losing access to a farm drops that farm's data — the device never keeps serving rows it can no longer authorise.
+- Cached reads and the write queue are **not built yet**, so an offline session is currently the shell, the cache and honest messaging rather than usable data. The approved design, its increments and their order are in [docs/OFFLINE.md](docs/OFFLINE.md).
 
 ## Screenshots
 
@@ -177,18 +185,26 @@ dotnet test
 | Finance | `FinanceServiceTests` | Expense/income CRUD, P&L reports, breakdowns, soft-delete exclusion |
 | Tasks | `FarmTaskTests` | CRUD, state machine, filters, overdue detection |
 | Dashboard | `DashboardE2ETests` | Summary stats, alerts, charts, cross-farm isolation, auth |
-| Reports | `ReportsE2ETests` | Animal/medical/vaccination/employee reports, date filtering, cross-farm isolation |
+| Reports | `ReportsE2ETests`, `CostReportE2ETests` | Animal/medical/vaccination/employee reports, date filtering, cross-farm isolation |
+| Cost attribution | `CostAttributionServiceTests` | Hand-computed animal-day allocation, location pools, mid-range transfers, departures, pool rounding adds up exactly, health cost counted once, reconciliation identities, incomplete-data caveats, farm isolation |
 | Audit | `AuditLogInterceptorTests` | Create/update logging, old/new values, multi-entity save |
 | Auth | `RoleAndIsolationE2ETests`, `FarmContextAuthorizationE2ETests` | Farm-role authorization matrix (real middleware), cross-farm header/route isolation |
 | Cache | `ConfigurationCacheTests` | Breed caching per animal type |
 | Configuration | `ConfigurationDeleteGuardTests`, `ConfigurationDeleteE2ETests`, `FarmDefaultsSeederTests` | In-use lookup delete guards, default data seeding |
 | Middleware | `GlobalExceptionMiddlewareTests` | RFC 7807 ProblemDetails mapping |
 | Password reset | `PasswordResetE2ETests` | Request/confirm reset flow |
-| Bulk import | `SpreadsheetReaderTests`, `AnimalImportServiceTests`, `AnimalImportControllerTests`, `AnimalImportE2ETests` | CSV (including this app's own export shape) and `.xlsx` parsing, header auto-detection and explicit/constant mappings, ambiguous-date refusal, lookup and parent-tag resolution inside and across farms, duplicate-tag and soft-delete parity with the create endpoint, all-or-nothing commit, file/row-size limits, and farm-context enforcement over HTTP |
+| Bulk import | `SpreadsheetReaderTests`, `AnimalImportServiceTests`, `InventoryImportServiceTests`, `EmployeeImportServiceTests`, `AnimalImportControllerTests`, `ImportControllerTests`, `ImportOptionsBindingTests`, `AnimalImportE2ETests`, `ImportE2ETests` | CSV (including this app's own export shape) and `.xlsx` parsing, header auto-detection and explicit/constant mappings, ambiguous-date refusal, lookup and parent-tag resolution inside and across farms (including a name matching two records), duplicate-identifier and soft-delete parity with each entity's create endpoint in every variant, named-field parity with the endpoint's own messages, the column caps that used to surface as 500s, employee email uniqueness case/padding-insensitively, all-or-nothing commit with a revalidation from the file, file/row-size limits, the legacy `AnimalImport` keys still applying, and farm-context enforcement over HTTP for all three routes |
 | Scheduled jobs | `FeedingTaskGenerationJobTests`, `HealthStatusRecalculationJobTests`, `FarmJobSchedulerTests`, `FarmDirectoryTests`, `BackgroundJobsSetupTests`, `JobsE2ETests` | Job output equals the manual endpoint, idempotency, per-farm isolation, failure logging and rethrow, snapshot freshness/fallback, job-status endpoint authorization |
 | Notifications | `NotificationDispatcherTests`, `NotificationPreferenceTests`, `NotificationDispatchJobTests`, `NotificationApiE2ETests` | Exactly one notification per condition and recipient across repeated runs, refresh-in-place when a condition changes, resolve-then-re-notify when it recurs, audience filtering by farm role, a disabled channel meaning no work at all, delivery failures recorded rather than thrown, skipped alert types when a metric fails, recipient isolation and farm-context enforcement over HTTP |
+| Email delivery | `SendGridEmailTransportTests`, `EmailServiceRenderingTests`, `EmailConfigurationGuardTests`, `EmailCallerContinuationTests`, `EmailConfigurationDriftTests`, `RealEmailDeliveryTests` | Retry-with-backoff on 429/408/5xx honouring a capped `Retry-After`, no retry on 400/401/403, the API key never appearing in a log or exception on any path, relative digest links absolutised against `Frontend:BaseUrl`, HTML escaping of farm names and alert text, the guard refusing a provider it cannot use outside Development and downgrading to the log transport inside it, and reset/invitation still succeeding when every send throws. Live delivery to a real inbox is gated — see below |
 
 Tests use EF Core InMemory for isolation. E2E tests use `TestWebApplicationFactory` with a full HTTP pipeline, seeded test data, and JWT authentication.
+
+The client has its own Vitest suite (`cd client && npm test`), alongside `tsc`, `oxlint` and
+`vite build`. It covers the offline shell in particular — the IndexedDB store, its schema
+migration step and its clearing policy against a real IndexedDB implementation, the
+connectivity store, the service-worker template and the build-time precache guard, and the
+banner and layout wiring that uses them.
 
 A handful of tests need a real PostgreSQL server, because InMemory cannot stand in
 for it: the dashboard metric calculations, and the Hangfire job-storage schema and
@@ -204,6 +220,19 @@ dotnet test tests/FMS.Domain.Tests/FMS.Domain.Tests.csproj --nologo
 The role needs `CREATEDB`: these tests create and drop throwaway databases. See
 [docs/VERIFICATION.md](docs/VERIFICATION.md) for this and the other
 environment-dependent checks, with their status and runbooks.
+
+Live email delivery is gated the same way — three tests send one message each
+(password reset, invitation, alert digest) and skip unless a recipient and
+credentials are supplied, because an automated run should not send mail by itself:
+
+```bash
+export FMS_TEST_EMAIL="you@example.com"
+export FMS_TEST_EMAIL_PROVIDER=SendGrid
+export FMS_TEST_EMAIL_FROM="noreply@your-verified-sender.com"
+export FMS_TEST_SENDGRID_API_KEY="SG.…"
+export FMS_TEST_FRONTEND_URL="https://your-frontend.example.com"
+dotnet test tests/FMS.Domain.Tests/FMS.Domain.Tests.csproj --filter FullyQualifiedName~RealEmailDeliveryTests
+```
 
 ## Local Development
 
@@ -249,6 +278,51 @@ Notification centre (farm-scoped, always your own notifications):
 - `POST /api/farm/{farmId}/notifications/{id}/read`, `POST …/read-all`, `POST …/{id}/dismiss`;
 - `GET`/`PUT /api/farm/{farmId}/notifications/preferences` — per alert type, in-app and email.
 
+### Email delivery
+
+The API sends three emails — password reset, farm invitation, and one alert digest per
+recipient — through the `IEmailService` contract, whose shape has not changed. Which
+transport delivers them is configuration:
+
+| `Email:Provider` | Behaviour |
+|---|---|
+| `Log` (default) | The message is rendered and written to the application log. Nothing is delivered. This is what a fresh clone, the test suite and Development use: no credentials needed, and a reset link can be copied out of the log. |
+| `SendGrid` | Delivered through SendGrid's v3 HTTP API (a single JSON POST, no SDK). |
+
+To turn delivery on (see `.env.example` for the full annotated list):
+
+```bash
+export Email__Provider=SendGrid
+export Email__FromAddress="noreply@your-verified-sender.com"   # must be verified with the provider
+export Email__SendGrid__ApiKey="SG.…"                          # "Mail Send" permission is enough
+export Frontend__BaseUrl="https://your-frontend.example.com"    # every email links back here
+docker compose up --build   # or: dotnet run --project src/FMS.API
+```
+
+With no domain, verify a single sender address (SendGrid → Settings → Sender
+Authentication → Single Sender Verification); verifying a whole domain with SPF/DKIM is
+better for deliverability once you have one. Then run the gated live tests under
+**Testing** above to confirm a real inbox receives all three flows.
+
+Two guards make a misconfiguration loud rather than silent:
+
+- `EmailConfigurationGuard` **refuses to start** outside Development when a provider is
+  selected but its key, sender or sender format is unusable. Without it, every password
+  reset and invitation would be accepted, logged as sent, and never delivered — and
+  because those flows deliberately keep working when a send fails, nothing else would
+  reveal it. In Development the same problem downgrades to the `Log` transport with a
+  warning instead of failing.
+- It **warns** when `Frontend:BaseUrl` is missing or still the shipped `yourdomain.com`
+  template, because every email contains a link back into the frontend and a template URL
+  produces real emails whose links go nowhere.
+
+Delivery failures do not fail the request. The reset token and the invitation row are
+persisted before the send, so a provider outage means "nobody got the mail" — visible in
+structured logs, recoverable by asking again — rather than a lost token or a 500 on the
+login page. This is deliberately the same asymmetry the notification dispatcher already
+used for the alert digest. The transport throws; the caller decides, and the two callers
+log and continue.
+
 ### React Frontend
 
 ```bash
@@ -270,7 +344,12 @@ dotnet build src/FMS.Mobile/FMS.Mobile.csproj -f net10.0-android
 # src/FMS.Mobile/bin/Debug/net10.0-android/android-arm64/com.fms.mobile-Signed.apk
 ```
 
-See [src/FMS.Mobile/README.md](src/FMS.Mobile/) for full build details, Firebase setup, and known limitations.
+Once the app has loaded on the device at least once, it opens without a connection: the
+web app precaches itself, so the wrapper's native overlay now exists only for a first
+launch that could not fetch the shell at all. See
+[src/FMS.Mobile/README.md](src/FMS.Mobile/README.md) for full build details, Firebase setup
+and known limitations, and [docs/VERIFICATION.md](docs/VERIFICATION.md) for the device
+checks on offline behaviour that this environment cannot run.
 
 ## Project Structure
 

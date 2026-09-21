@@ -1,23 +1,14 @@
+using FMS.Application.Import;
+
 namespace FMS.Application.Animal.Import;
 
 /// <summary>
-/// One column the animal importer understands, in the order the template and the
-/// mapping table present them.
-/// </summary>
-/// <param name="Key">Stable key the client maps against; never shown to the user.</param>
-/// <param name="Label">Human label, also the header written into the CSV template.</param>
-/// <param name="Required">True when a row cannot be created without it.</param>
-/// <param name="Hint">Short guidance shown beside the mapping row.</param>
-public record AnimalImportFieldDescriptor(string Key, string Label, bool Required, string Hint);
-
-/// <summary>
-/// The import's field vocabulary.
+/// The animal importer's field vocabulary.
 ///
 /// This is deliberately a fixed, entity-specific list rather than a discovered
 /// schema: the column-mapping model, the reader and the row-result DTOs are all
-/// entity-agnostic, but the fields an animal has are not. A future employee or
-/// inventory import supplies its own field list and its own resolver instead of
-/// sharing this one.
+/// entity-agnostic, but the fields an animal has are not. Employees and inventory
+/// supply their own lists in the same shape.
 /// </summary>
 public static class AnimalImportFields
 {
@@ -44,33 +35,33 @@ public static class AnimalImportFields
     /// <summary>Fields carrying a date, parsed with the ambiguous-format guard.</summary>
     public static readonly IReadOnlyList<string> DateFields = new[] { DateOfBirth, AcquisitionDate };
 
-    public static readonly IReadOnlyList<AnimalImportFieldDescriptor> All = new[]
+    public static readonly IReadOnlyList<ImportFieldDescriptor> All = new[]
     {
-        new AnimalImportFieldDescriptor(TagNumber, "Tag number", true,
+        new ImportFieldDescriptor(TagNumber, "Tag number", true,
             "Unique within the farm, e.g. TAG-0001"),
-        new AnimalImportFieldDescriptor(Name, "Name", false,
+        new ImportFieldDescriptor(Name, "Name", false,
             "Optional, e.g. Bella"),
-        new AnimalImportFieldDescriptor(AnimalType, "Animal type", true,
+        new ImportFieldDescriptor(AnimalType, "Animal type", true,
             "Must match an animal type in this farm, e.g. Cattle"),
-        new AnimalImportFieldDescriptor(Breed, "Breed", false,
+        new ImportFieldDescriptor(Breed, "Breed", false,
             "Must belong to the animal type"),
-        new AnimalImportFieldDescriptor(Sex, "Sex", true,
+        new ImportFieldDescriptor(Sex, "Sex", true,
             "Must match a sex option in this farm, e.g. Female"),
-        new AnimalImportFieldDescriptor(AgeCategory, "Age category", false,
+        new ImportFieldDescriptor(AgeCategory, "Age category", false,
             "Must match an age category in this farm"),
-        new AnimalImportFieldDescriptor(Status, "Status", true,
+        new ImportFieldDescriptor(Status, "Status", true,
             "Must match an animal status in this farm, e.g. Active"),
-        new AnimalImportFieldDescriptor(Location, "Location", false,
+        new ImportFieldDescriptor(Location, "Location", false,
             "Must match a location in this farm"),
-        new AnimalImportFieldDescriptor(DateOfBirth, "Date of birth", false,
+        new ImportFieldDescriptor(DateOfBirth, "Date of birth", false,
             "yyyy-MM-dd, or a real Excel date cell"),
-        new AnimalImportFieldDescriptor(AcquisitionDate, "Acquisition date", false,
+        new ImportFieldDescriptor(AcquisitionDate, "Acquisition date", false,
             "yyyy-MM-dd, or a real Excel date cell"),
-        new AnimalImportFieldDescriptor(SireTag, "Sire tag", false,
+        new ImportFieldDescriptor(SireTag, "Sire tag", false,
             "Tag of the father: an existing animal, or another row in this file"),
-        new AnimalImportFieldDescriptor(DamTag, "Dam tag", false,
+        new ImportFieldDescriptor(DamTag, "Dam tag", false,
             "Tag of the mother: an existing animal, or another row in this file"),
-        new AnimalImportFieldDescriptor(Notes, "Notes", false,
+        new ImportFieldDescriptor(Notes, "Notes", false,
             "Free text"),
     };
 
@@ -96,44 +87,30 @@ public static class AnimalImportFields
         [Notes] = new[] { "notes", "note", "comments", "remarks" },
     };
 
-    public static AnimalImportFieldDescriptor? Describe(string key) =>
-        All.FirstOrDefault(f => f.Key == key);
+    /// <summary>
+    /// The shared implementation of header matching, so every importer's detection
+    /// behaves identically instead of each one growing its own spelling rules.
+    ///
+    /// Declared last on purpose: static fields initialize in textual order, and this
+    /// one is built from <see cref="All"/> and <see cref="Aliases"/> above.
+    /// </summary>
+    private static readonly ImportFieldCatalog Catalog = new(All, Aliases);
+
+    /// <summary>This vocabulary as the shared pipeline consumes it.</summary>
+    public static IImportFieldCatalog FieldCatalog => Catalog;
+
+    public static ImportFieldDescriptor? Describe(string key) => Catalog.Describe(key);
 
     /// <summary>
     /// Lower-cases and strips everything but letters and digits, so a header's
     /// spacing, case and punctuation cannot stop it from matching.
     /// </summary>
-    public static string Normalize(string? value)
-    {
-        if (string.IsNullOrWhiteSpace(value)) return string.Empty;
-
-        return new string(value.Where(char.IsLetterOrDigit)
-            .Select(char.ToLowerInvariant)
-            .ToArray());
-    }
+    public static string Normalize(string? value) => ImportFieldCatalog.Normalize(value);
 
     /// <summary>
     /// The field a header maps to, or null. The label and the field key are always
     /// accepted, so a file exported with this app's own template round-trips, and
     /// the aliases cover the spellings farms actually use.
     /// </summary>
-    public static string? MatchHeader(string header)
-    {
-        var normalized = Normalize(header);
-        if (normalized.Length == 0) return null;
-
-        foreach (var field in All)
-        {
-            if (Normalize(field.Key) == normalized || Normalize(field.Label) == normalized)
-                return field.Key;
-        }
-
-        foreach (var (key, aliases) in Aliases)
-        {
-            if (aliases.Any(alias => Normalize(alias) == normalized))
-                return key;
-        }
-
-        return null;
-    }
+    public static string? MatchHeader(string header) => Catalog.MatchHeader(header);
 }

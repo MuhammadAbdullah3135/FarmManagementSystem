@@ -234,6 +234,10 @@ public class EmployeeServiceTests
         {
             r.FirstName = "Sara";
             r.LastName = "Ali";
+            // Distinct from the first two on purpose: the email is the employee's
+            // identifier and a duplicate is now refused, so two of these three sharing
+            // the fixture's default address would be a conflict rather than a third row.
+            r.Email = "sara@farm.com";
             r.DepartmentId = seed.FieldDeptId;
         }));
 

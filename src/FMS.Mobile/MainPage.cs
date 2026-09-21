@@ -1,6 +1,5 @@
 using FMS.Mobile.Services;
 using Microsoft.Maui.Controls;
-using Microsoft.Maui.Networking;
 
 #if FIREBASE
 using Plugin.Firebase.Crashlytics;
@@ -8,6 +7,20 @@ using Plugin.Firebase.Crashlytics;
 
 namespace FMS.Mobile;
 
+/// <summary>
+/// Hosts the web app in a WebView.
+///
+/// Connectivity is deliberately <b>not</b> this layer's business any more. The web app
+/// registers a service worker that precaches its own shell, so losing the network no
+/// longer stops it from loading, and once loaded it reports its own offline state with
+/// what the device has actually stored. A native listener that hid the WebView whenever
+/// connectivity dropped would contradict both: it would blank a perfectly usable offline
+/// app, and it could not know what the worker had cached.
+///
+/// The overlay below therefore has exactly one remaining job: a failure to load the app
+/// shell itself (first launch with no network, DNS failure), where there is nothing to
+/// show and a Retry is the only useful action.
+/// </summary>
 public class MainPage : ContentPage
 {
     private const string SiteUrl = "https://muhammadabdullah3135.github.io/FarmManagementSystem/";
@@ -64,16 +77,18 @@ public class MainPage : ContentPage
                     {
                         new Label
                         {
-                            Text = "No internet connection",
+                            Text = "Couldn't load the app",
                             FontSize = 18,
                             HorizontalOptions = LayoutOptions.Center,
                             TextColor = Colors.DarkSlateGray
                         },
                         new Label
                         {
-                            Text = "Please check your network and try again.",
+                            Text = "Check your connection and try again. Once the app has loaded here "
+                                 + "at least once, it opens without a connection.",
                             FontSize = 14,
                             HorizontalOptions = LayoutOptions.Center,
+                            HorizontalTextAlignment = TextAlignment.Center,
                             TextColor = Colors.Gray
                         },
                         retryButton
@@ -125,41 +140,24 @@ public class MainPage : ContentPage
         {
             Children = { _webView, overlayLayer }
         };
-
-        Connectivity.Current.ConnectivityChanged += OnConnectivityChanged;
     }
 
-    private void OnConnectivityChanged(object? sender, ConnectivityChangedEventArgs e)
-    {
-        MainThread.BeginInvokeOnMainThread(() =>
-        {
-            if (e.NetworkAccess == NetworkAccess.Internet)
-            {
-                _offlineOverlay.IsVisible = false;
-                _webView.IsVisible = true;
-                _webView.Source = new UrlWebViewSource { Url = SiteUrl };
-            }
-            else
-            {
-                _offlineOverlay.IsVisible = true;
-                _webView.IsVisible = false;
-            }
-        });
-    }
-
+    /// <summary>
+    /// A main-frame load failure (see <c>FmsWebViewClient</c>), which is the one case the
+    /// overlay exists for. The WebView stays visible underneath so a retry does not have to
+    /// rebuild it, and a page that failed for a subresource never reaches here at all.
+    /// </summary>
     private void OnWebViewReceivedError(object? sender, WebErrorEventArgs e)
     {
         MainThread.BeginInvokeOnMainThread(() =>
         {
             _offlineOverlay.IsVisible = true;
-            _webView.IsVisible = false;
         });
     }
 
     private void OnRetryClicked(object? sender, EventArgs e)
     {
         _offlineOverlay.IsVisible = false;
-        _webView.IsVisible = true;
         _webView.Source = new UrlWebViewSource { Url = SiteUrl };
     }
 
@@ -199,7 +197,6 @@ public class MainPage : ContentPage
     protected override void OnDisappearing()
     {
         base.OnDisappearing();
-        Connectivity.Current.ConnectivityChanged -= OnConnectivityChanged;
         _webView.ReceivedError -= OnWebViewReceivedError;
     }
 }

@@ -32,7 +32,15 @@
 ## Notifications
 - Every notification endpoint is farm-scoped (`/api/farm/{farmId}/notifications…`) and needs no exemption from the farm-context gate, so it inherits the same header/route enforcement as the rest of the farm surface.
 - The recipient is always the authenticated user: the service filters every read and write by the token's `NameIdentifier`, and a notification belonging to another member answers 404 rather than confirming it exists.
-- Alert delivery is scoped to the farm's members whose role can act on the alert type (mirroring the controller role attributes for inventory, and excluding the read-only Viewer role elsewhere). An email digest is the only out-of-app channel; its transport is still a logging placeholder, so no message leaves the process until a provider is configured.
+- Alert delivery is scoped to the farm's members whose role can act on the alert type (mirroring the controller role attributes for inventory, and excluding the read-only Viewer role elsewhere). Email is the only out-of-app channel; whether it leaves the process depends on `Email:Provider` (see **Email Delivery** below).
+
+## Email Delivery
+- **The provider API key is a bearer credential for sending as the configured sender.** It is read from `Email__SendGrid__ApiKey`, never from a committed file: `appsettings.json` ships `Email:Provider = Log` with an empty key and sender, so the transport sends nothing until credentials are supplied explicitly. `EmailConfigurationDriftTests` asserts that, and scans every tracked config file for anything shaped like a sendable key.
+- **The key never reaches a log line or an exception.** The transport logs the recipient, the provider's status and its message id, and nothing else; the request body and the `Authorization` header are excluded. `SendGridEmailTransportTests` runs every path — success, rate-limited-then-success, a rejected key, exhausted retries, an unreachable host and a timeout — with a capturing logger and scans every entry and every exception for the key, rather than relying on code review.
+- **A provider that cannot work is a startup failure outside Development** (`EmailConfigurationGuard`), so a deployment cannot quietly deliver no password reset while reporting success. Inside Development it downgrades to the log transport with a warning, so a half-configured checkout still runs.
+- Messages carry links back into the frontend, so `Frontend:BaseUrl` must be the deployed URL; the guard warns while it is unset or still the template. The same value backs the reset and invitation links.
+- A failed send never fails its request, and never loses durable state: the reset token and invitation row are written before the send, the transport throws, and the caller logs and continues — the same asymmetry the alert digest already used. Failing the request instead would also turn `POST /auth/forgot-password` into an account-existence oracle, since a send is only attempted for addresses that exist.
+- **Deliverability is delegated to the provider's sender verification.** `Email:FromAddress` must be a verified address (or on a verified domain); an unverified sender is rejected at send time, which the retry policy deliberately does *not* retry.
 
 ## Rate Limiting
 - Global: 300 requests/minute per authenticated user (sliding window)
@@ -56,3 +64,11 @@
 ## Input Validation
 - FluentValidation validators on all Create/Update DTOs
 - Server-side validation rejects invalid payloads with clear error messages
+
+## Bulk import
+- **The import adds no authorization surface.** Each import controller carries exactly the authorization of its single-record counterpart (`[Authorize]` for animals and employees, the inventory roles for inventory items), asserted by a test that compares the attributes rather than a comment that promises it. Importing is therefore never a way around a role that creating one row is subject to.
+- **Row validation is the create endpoint's own rule function**, not a parallel copy: animals, employees and inventory items each have one rule set shared by the single-record path and the batch path, so the two cannot drift into "the endpoint refuses what the import accepts".
+- **An identifier is unique in both paths.** A tag number, an item name or an employee email already present — or repeated inside the same file — is a row error: never skipped silently, never overwritten. Soft-deleted employees are excluded, so re-adding someone who left is allowed.
+- **The commit re-reads and re-validates the uploaded bytes** rather than trusting the preview, and writes the batch in one `SaveChanges`. A record created between the two calls therefore blocks the import instead of being duplicated.
+- **Uploads are bounded**: file size, row count and header/column bounds are checked before anything is written, and no file content is interpolated into SQL or into a response body — the report carries the values back as data.
+- Known gap, deliberate and bounded: the employee email uniqueness rule is enforced by both code paths but has **no database unique index** behind it, unlike inventory's `(FarmId, Name)`. Two concurrent creates could in principle both pass the check. Adding that index is a migration, deliberately left out of this subphase.

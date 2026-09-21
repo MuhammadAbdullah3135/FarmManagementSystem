@@ -198,39 +198,174 @@ public class EmployeeService : IEmployeeService
 
     public async Task<Result<EmployeeDto>> CreateEmployeeAsync(Guid farmId, CreateEmployeeRequest request)
     {
-        var validationError = ValidateEmployeeDetails(request.FirstName, request.LastName, request.Email, request.SalaryRate, request.HireDate);
-        if (validationError != null)
-            return Result<EmployeeDto>.Validation(validationError);
+        // One employee, the endpoint's own path: the rules come from EmployeeRules,
+        // shared with the bulk import, and the answer is still the first message.
+        var errors = EmployeeRules.ValidateDetails(
+            request.FirstName, request.LastName, request.Email, request.Phone,
+            request.Address, request.SalaryRate, request.HireDate, request.Notes);
+        if (errors.Count > 0)
+            return Result<EmployeeDto>.Validation(errors[0].Message);
 
         var referenceError = await ValidateReferencesAsync(farmId, request.DepartmentId, request.EmployeeRoleId);
         if (referenceError != null)
             return Result<EmployeeDto>.Failure(referenceError);
 
-        var now = DateTime.UtcNow;
-        var employee = new Employee
+        // The email is the employee's identifier, so a duplicate is refused here exactly
+        // as the import refuses it. Without this the import would be the stricter path,
+        // and a duplicate could be created by hand that a file cannot create.
+        if (EmployeeRules.EmailKey(request.Email) is { } emailKey &&
+            await _context.Employees.AnyAsync(employee =>
+                employee.FarmId == farmId
+                && !employee.IsDeleted
+                && employee.Email != null
+                && employee.Email.ToLower() == emailKey))
         {
-            Id = Guid.NewGuid(),
-            FarmId = farmId,
-            FirstName = request.FirstName.Trim(),
-            LastName = request.LastName.Trim(),
-            Phone = request.Phone?.Trim(),
-            Email = request.Email?.Trim(),
-            Address = request.Address?.Trim(),
-            DepartmentId = request.DepartmentId,
-            EmployeeRoleId = request.EmployeeRoleId,
-            SalaryType = request.SalaryType,
-            SalaryRate = Math.Round(request.SalaryRate, 2),
-            HireDate = request.HireDate,
-            IsActive = true,
-            Notes = request.Notes,
-            CreatedAt = now,
-            CreatedBy = _currentUser.GetUserId()
-        };
+            return Result<EmployeeDto>.Conflict(EmployeeRules.DuplicateEmailMessage);
+        }
 
+        var employee = EmployeeRules.Build(farmId, request, _currentUser.GetUserId(), DateTime.UtcNow);
         _context.Employees.Add(employee);
         await _context.SaveChangesAsync();
 
         return await GetEmployeeByIdAsync(farmId, employee.Id);
+    }
+
+    /// <summary>
+    /// Validates a batch without writing it, using the same rules, the same reference
+    /// checks and the same duplicate check as <see cref="CreateEmployeeAsync"/>, so what
+    /// this predicts is what <see cref="CreateEmployeesAsync"/> does.
+    /// </summary>
+    public Task<Result<BulkCreateResultDto>> ValidateEmployeesAsync(
+        Guid farmId, IReadOnlyList<CreateEmployeeRequest> requests) =>
+        CheckBatchAsync(farmId, requests);
+
+    /// <summary>
+    /// Creates every employee in a single SaveChanges, which EF wraps in one
+    /// transaction — so a batch is atomic: either every employee is written or none is.
+    /// That is what the import's all-or-nothing promise rests on, on PostgreSQL and on
+    /// the InMemory test provider alike.
+    /// </summary>
+    public async Task<Result<BulkCreateResultDto>> CreateEmployeesAsync(
+        Guid farmId, IReadOnlyList<CreateEmployeeRequest> requests)
+    {
+        var checkedBatch = await CheckBatchAsync(farmId, requests);
+        if (!checkedBatch.IsSuccess)
+            return checkedBatch;
+
+        if (checkedBatch.Value!.Failures.Count > 0)
+            return checkedBatch;
+
+        var userId = _currentUser.GetUserId();
+        var now = DateTime.UtcNow;
+
+        foreach (var request in requests)
+            _context.Employees.Add(EmployeeRules.Build(farmId, request, userId, now));
+
+        await _context.SaveChangesAsync();
+
+        return Result<BulkCreateResultDto>.Success(new BulkCreateResultDto
+        {
+            RequestedCount = requests.Count,
+            SuccessCount = requests.Count,
+            Failures = new List<BulkCreateFailureDto>()
+        });
+    }
+
+    /// <summary>
+    /// The batch's own checks: every field rule per row, the department and role the row
+    /// names, then the email uniqueness the identifier rule requires.
+    ///
+    /// Existing addresses and the farm's departments and roles are loaded in one query
+    /// each rather than one per row, and the batch's own addresses are compared against
+    /// each other too — without that second check a file naming the same person twice
+    /// would create two employees, since both rows pass individually.
+    /// </summary>
+    private async Task<Result<BulkCreateResultDto>> CheckBatchAsync(
+        Guid farmId, IReadOnlyList<CreateEmployeeRequest> requests)
+    {
+        var failures = new List<BulkCreateFailureDto>();
+
+        var emailKeys = requests
+            .Select(request => EmployeeRules.EmailKey(request.Email))
+            .Where(key => key is not null)
+            .Select(key => key!)
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+
+        var existingEmails = emailKeys.Count == 0
+            ? new HashSet<string>(StringComparer.Ordinal)
+            : (await _context.Employees
+                .Where(employee => employee.FarmId == farmId
+                    && !employee.IsDeleted
+                    && employee.Email != null
+                    && emailKeys.Contains(employee.Email.ToLower()))
+                .Select(employee => employee.Email!)
+                .ToListAsync())
+                .Select(EmployeeRules.EmailKey)
+                .Where(key => key is not null)
+                .Select(key => key!)
+                .ToHashSet(StringComparer.Ordinal);
+
+        var departmentIds = (await _context.Departments
+            .Where(department => department.FarmId == farmId)
+            .Select(department => department.Id)
+            .ToListAsync()).ToHashSet();
+
+        var roleIds = (await _context.EmployeeRoles
+            .Where(role => role.FarmId == farmId)
+            .Select(role => role.Id)
+            .ToListAsync()).ToHashSet();
+
+        var seenInBatch = new HashSet<string>(StringComparer.Ordinal);
+
+        for (var index = 0; index < requests.Count; index++)
+        {
+            var request = requests[index];
+            var errors = EmployeeRules.ValidateDetails(
+                request.FirstName, request.LastName, request.Email, request.Phone,
+                request.Address, request.SalaryRate, request.HireDate, request.Notes);
+
+            if (errors.Count > 0)
+            {
+                failures.Add(new BulkCreateFailureDto { Index = index, Message = errors[0].Message });
+                continue;
+            }
+
+            // The same messages the endpoint answers with for these two references.
+            if (request.DepartmentId.HasValue && !departmentIds.Contains(request.DepartmentId.Value))
+            {
+                failures.Add(new BulkCreateFailureDto { Index = index, Message = "Department not found" });
+                continue;
+            }
+
+            if (request.EmployeeRoleId.HasValue && !roleIds.Contains(request.EmployeeRoleId.Value))
+            {
+                failures.Add(new BulkCreateFailureDto { Index = index, Message = "Role not found" });
+                continue;
+            }
+
+            if (EmployeeRules.EmailKey(request.Email) is not { } key)
+                continue;
+
+            if (existingEmails.Contains(key))
+            {
+                failures.Add(new BulkCreateFailureDto { Index = index, Message = EmployeeRules.DuplicateEmailMessage });
+                continue;
+            }
+
+            if (!seenInBatch.Add(key))
+            {
+                failures.Add(new BulkCreateFailureDto
+                    { Index = index, Message = $"The batch contains the same email '{request.Email!.Trim()}' twice" });
+            }
+        }
+
+        return Result<BulkCreateResultDto>.Success(new BulkCreateResultDto
+        {
+            RequestedCount = requests.Count,
+            SuccessCount = requests.Count - failures.Count,
+            Failures = failures
+        });
     }
 
     public async Task<Result<EmployeeDto>> UpdateEmployeeAsync(Guid farmId, Guid id, UpdateEmployeeRequest request)
@@ -240,13 +375,30 @@ public class EmployeeService : IEmployeeService
         if (employee == null)
             return Result<EmployeeDto>.NotFound("Employee not found");
 
-        var validationError = ValidateEmployeeDetails(request.FirstName, request.LastName, request.Email, request.SalaryRate, request.HireDate);
-        if (validationError != null)
-            return Result<EmployeeDto>.Validation(validationError);
+        var validation = EmployeeRules.ValidateDetails(
+            request.FirstName, request.LastName, request.Email, request.Phone,
+            request.Address, request.SalaryRate, request.HireDate, request.Notes);
+
+        if (validation.Count > 0)
+            return Result<EmployeeDto>.Validation(validation[0].Message);
 
         var referenceError = await ValidateReferencesAsync(farmId, request.DepartmentId, request.EmployeeRoleId);
         if (referenceError != null)
             return Result<EmployeeDto>.Failure(referenceError);
+
+        // The identifier rule applies to an edit as well: without this, the uniqueness the
+        // create path and the import both enforce could be undone by renaming a second
+        // employee onto the first one's address.
+        if (EmployeeRules.EmailKey(request.Email) is { } emailKey &&
+            await _context.Employees.AnyAsync(other =>
+                other.FarmId == farmId
+                && other.Id != id
+                && !other.IsDeleted
+                && other.Email != null
+                && other.Email.ToLower() == emailKey))
+        {
+            return Result<EmployeeDto>.Conflict(EmployeeRules.DuplicateEmailMessage);
+        }
 
         employee.FirstName = request.FirstName.Trim();
         employee.LastName = request.LastName.Trim();
@@ -434,35 +586,16 @@ public class EmployeeService : IEmployeeService
         _ => 0m
     };
 
+    /// <summary>
+    /// Retained for the department and role create paths below. The employee's own field
+    /// rules moved to <see cref="EmployeeRules"/>, which the bulk import shares.
+    /// </summary>
     private static string? ValidateName(string name, string fieldLabel)
     {
         if (string.IsNullOrWhiteSpace(name))
             return $"{fieldLabel} is required";
         if (name.Length > 100)
             return $"{fieldLabel} cannot exceed 100 characters";
-        return null;
-    }
-
-    private static string? ValidateEmployeeDetails(string firstName, string lastName, string? email, decimal salaryRate, DateTime? hireDate)
-    {
-        if (string.IsNullOrWhiteSpace(firstName))
-            return "First name is required";
-        if (firstName.Length > 100)
-            return "First name cannot exceed 100 characters";
-        if (string.IsNullOrWhiteSpace(lastName))
-            return "Last name is required";
-        if (lastName.Length > 100)
-            return "Last name cannot exceed 100 characters";
-        if (!string.IsNullOrWhiteSpace(email))
-        {
-            var trimmed = email.Trim();
-            if (!trimmed.Contains('@') || trimmed.StartsWith("@") || trimmed.EndsWith("@"))
-                return "Email address is not valid";
-        }
-        if (salaryRate < 0)
-            return "Salary rate cannot be negative";
-        if (hireDate.HasValue && hireDate.Value.Date > DateTime.UtcNow.Date)
-            return "Hire date cannot be in the future";
         return null;
     }
 

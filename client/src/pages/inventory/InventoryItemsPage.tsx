@@ -1,12 +1,14 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, Button, Card, Col, DatePicker, Form, Input, InputNumber, Modal, Popconfirm, Row, Select, Space, Table, Tag, message } from 'antd';
-import { PlusOutlined } from '@ant-design/icons';
+import { PlusOutlined, UploadOutlined } from '@ant-design/icons';
+import { useNavigate } from 'react-router-dom';
 import type { ColumnsType } from 'antd/es/table';
 import { inventoryApi } from '../../api/inventory';
 import { getApiError } from '../../api/farmApi';
 import type { InventoryItem } from '../../types';
 
 const InventoryItemsPage: React.FC = () => {
+  const navigate = useNavigate();
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -129,7 +131,7 @@ const InventoryItemsPage: React.FC = () => {
   ];
 
   return <>
-    <Card title="Inventory Items" extra={<Space><Input.Search placeholder="Search items..." allowClear onSearch={setSearch} style={{ width: 220 }} /><Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>Add item</Button></Space>}>
+    <Card title="Inventory Items" extra={<Space><Input.Search placeholder="Search items..." allowClear onSearch={setSearch} style={{ width: 220 }} /><Button icon={<UploadOutlined />} onClick={() => navigate('/dashboard/inventory/items/import')}>Import</Button><Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>Add item</Button></Space>}>
       {error && <Alert type="error" showIcon message={error} closable onClose={() => setError(null)} style={{ marginBottom: 16 }} />}
       <Table rowKey="id" columns={columns} dataSource={items} loading={loading} rowClassName={(item) => item.isLowStock ? 'inventory-low-stock' : ''} pagination={{ current: page, total, pageSize: 10, onChange: (nextPage) => void load(nextPage), showSizeChanger: false }} locale={{ emptyText: 'No inventory items yet. Add equipment, supplies, or consumables to get started.' }} />
     </Card>

@@ -1,6 +1,6 @@
 using FMS.Application.Common;
 
-namespace FMS.Application.Animal.Import;
+namespace FMS.Application.Import;
 
 /// <summary>
 /// A spreadsheet row with its original row number, so a reported problem points at
@@ -30,9 +30,9 @@ public class SpreadsheetSheet
 /// Reads an uploaded CSV or Excel file.
 ///
 /// Format-agnostic so the import pipeline above it (mapping, validation, commit)
-/// is written once. A later employee or inventory import supplies its own fields
-/// and resolver and reuses this reader and that pipeline, rather than a new
-/// framework.
+/// is written once. Each importer — animals, employees, inventory — supplies its own
+/// field vocabulary and row resolver and reuses this reader and that pipeline,
+/// rather than a new framework per entity.
 /// </summary>
 public interface ISpreadsheetReader
 {

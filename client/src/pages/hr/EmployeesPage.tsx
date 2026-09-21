@@ -2,7 +2,8 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   Button, Card, Col, Form, Input, InputNumber, Modal, Popconfirm, Row, Select, Space, Switch, Table, Tag, message,
 } from 'antd';
-import { PlusOutlined, SearchOutlined } from '@ant-design/icons';
+import { PlusOutlined, SearchOutlined, UploadOutlined } from '@ant-design/icons';
+import { useNavigate } from 'react-router-dom';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import { employeesApi, departmentsApi, employeeRolesApi } from '../../api/hr';
@@ -12,6 +13,7 @@ import type { Department, Employee, EmployeeRole } from '../../types';
 const SALARY_TYPES = ['Monthly', 'Weekly', 'Daily', 'Hourly'];
 
 const EmployeesPage: React.FC = () => {
+  const navigate = useNavigate();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [roles, setRoles] = useState<EmployeeRole[]>([]);
@@ -148,6 +150,9 @@ const EmployeesPage: React.FC = () => {
             onPressEnter={() => load(1)}
             style={{ width: 200 }}
           />
+          <Button icon={<UploadOutlined />} onClick={() => navigate('/dashboard/hr/employees/import')}>
+            Import
+          </Button>
           <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
             Add Employee
           </Button>

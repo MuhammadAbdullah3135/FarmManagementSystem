@@ -105,8 +105,12 @@ public class HealthCostService : IHealthCostService
             .Select(g => new HealthCostByAnimalDto
             {
                 AnimalId = g.Key,
-                TagNumber = g.First(x => x.TagNumber != null).TagNumber ?? "",
-                AnimalName = g.First(x => x.Name != null).Name,
+                // TagNumber and Name are both nullable on the animal — Name is optional at
+                // creation — so "the first one that has it" can legitimately be nothing.
+                // FirstOrDefault keeps the report working for an unnamed animal instead of
+                // throwing a 500 for data the app explicitly allows.
+                TagNumber = g.Select(x => x.TagNumber).FirstOrDefault(value => value != null) ?? "",
+                AnimalName = g.Select(x => x.Name).FirstOrDefault(value => value != null),
                 TotalCost = g.Sum(x => x.Total),
                 RecordCount = g.Sum(x => x.Count)
             })

@@ -54,32 +54,128 @@ public class InventoryService : IInventoryService
 
     public async Task<Result<InventoryItemDto>> CreateItemAsync(Guid farmId, CreateInventoryItemRequest request)
     {
-        var validation = Validate(request.Name, request.Unit, request.Quantity, request.ReorderLevel, request.UnitCost);
-        if (validation != null) return Result<InventoryItemDto>.Validation(validation);
+        // One item, the endpoint's own path: the rules come from InventoryItemRules,
+        // shared with the bulk import, and the answer is still the first message.
+        var errors = InventoryItemRules.Validate(
+            request.Name, request.Category, request.Unit, request.Quantity,
+            request.ReorderLevel, request.UnitCost, request.Location);
+        if (errors.Count > 0) return Result<InventoryItemDto>.Validation(errors[0].Message);
 
         var name = request.Name.Trim();
         if (await _context.InventoryItems.AnyAsync(i => i.FarmId == farmId && i.Name == name))
-            return Result<InventoryItemDto>.Conflict("An inventory item with this name already exists");
+            return Result<InventoryItemDto>.Conflict(InventoryItemRules.DuplicateNameMessage);
 
-        var userId = _currentUser.GetUserId();
-        var item = new InventoryItem
-        {
-            FarmId = farmId, Name = name, Category = Clean(request.Category), Unit = request.Unit.Trim(),
-            Quantity = 0, ReorderLevel = request.ReorderLevel, UnitCost = request.UnitCost,
-            Location = Clean(request.Location), CreatedBy = userId
-        };
+        var item = InventoryItemRules.Build(farmId, request, _currentUser.GetUserId());
         _context.InventoryItems.Add(item);
-        if (request.Quantity > 0)
-        {
-            item.StockMovements.Add(new StockMovement
-            {
-                FarmId = farmId, MovementType = InventoryMovementType.Purchase, Quantity = request.Quantity,
-                MovementDate = DateTime.UtcNow, Reason = "Opening stock", PerformedBy = userId, CreatedBy = userId
-            });
-            item.Quantity = request.Quantity;
-        }
         await _context.SaveChangesAsync();
         return Result<InventoryItemDto>.Success(ToDto(item));
+    }
+
+    /// <summary>
+    /// Validates a batch without writing it, using the same rules and the same
+    /// duplicate check as <see cref="CreateItemAsync"/>, so what this predicts is what
+    /// <see cref="CreateItemsAsync"/> does.
+    /// </summary>
+    public Task<Result<BulkCreateResultDto>> ValidateItemsAsync(
+        Guid farmId, IReadOnlyList<CreateInventoryItemRequest> requests) =>
+        CheckBatchAsync(farmId, requests);
+
+    /// <summary>
+    /// Creates every item in a single SaveChanges, which EF wraps in one transaction —
+    /// so a batch is atomic: either every item is written or none is. That is what the
+    /// import's all-or-nothing promise rests on, on PostgreSQL and on the InMemory test
+    /// provider alike.
+    /// </summary>
+    public async Task<Result<BulkCreateResultDto>> CreateItemsAsync(
+        Guid farmId, IReadOnlyList<CreateInventoryItemRequest> requests)
+    {
+        var checkedBatch = await CheckBatchAsync(farmId, requests);
+        if (!checkedBatch.IsSuccess)
+            return checkedBatch;
+
+        if (checkedBatch.Value!.Failures.Count > 0)
+            return checkedBatch;
+
+        var userId = _currentUser.GetUserId();
+        var now = DateTime.UtcNow;
+
+        foreach (var request in requests)
+            _context.InventoryItems.Add(InventoryItemRules.Build(farmId, request, userId, now));
+
+        await _context.SaveChangesAsync();
+
+        return Result<BulkCreateResultDto>.Success(new BulkCreateResultDto
+        {
+            RequestedCount = requests.Count,
+            SuccessCount = requests.Count,
+            Failures = new List<BulkCreateFailureDto>()
+        });
+    }
+
+    /// <summary>
+    /// The batch's own checks: every field rule per row, then the name uniqueness the
+    /// unique index on (FarmId, Name) would otherwise enforce with an exception.
+    ///
+    /// Names already in the farm are loaded in one query rather than one per row, and
+    /// the batch's own names are compared against each other too — without that second
+    /// check a file naming the same item twice would reach SaveChanges and fail the
+    /// whole batch with a database error instead of two row-level messages.
+    /// </summary>
+    private async Task<Result<BulkCreateResultDto>> CheckBatchAsync(
+        Guid farmId, IReadOnlyList<CreateInventoryItemRequest> requests)
+    {
+        var failures = new List<BulkCreateFailureDto>();
+        var names = requests
+            .Where(request => !string.IsNullOrWhiteSpace(request.Name))
+            .Select(request => request.Name.Trim())
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+
+        // Case-sensitive, matching the endpoint's `i.Name == name` and the index itself.
+        var existing = names.Count == 0
+            ? new HashSet<string>(StringComparer.Ordinal)
+            : (await _context.InventoryItems
+                .Where(item => item.FarmId == farmId && names.Contains(item.Name))
+                .Select(item => item.Name)
+                .ToListAsync())
+                .ToHashSet(StringComparer.Ordinal);
+
+        var seenInBatch = new HashSet<string>(StringComparer.Ordinal);
+
+        for (var index = 0; index < requests.Count; index++)
+        {
+            var request = requests[index];
+            var errors = InventoryItemRules.Validate(
+                request.Name, request.Category, request.Unit, request.Quantity,
+                request.ReorderLevel, request.UnitCost, request.Location);
+
+            if (errors.Count > 0)
+            {
+                failures.Add(new BulkCreateFailureDto { Index = index, Message = errors[0].Message });
+                continue;
+            }
+
+            var name = request.Name.Trim();
+
+            if (existing.Contains(name))
+            {
+                failures.Add(new BulkCreateFailureDto { Index = index, Message = InventoryItemRules.DuplicateNameMessage });
+                continue;
+            }
+
+            if (!seenInBatch.Add(name))
+            {
+                failures.Add(new BulkCreateFailureDto
+                    { Index = index, Message = $"The batch contains the same item name '{name}' twice" });
+            }
+        }
+
+        return Result<BulkCreateResultDto>.Success(new BulkCreateResultDto
+        {
+            RequestedCount = requests.Count,
+            SuccessCount = requests.Count - failures.Count,
+            Failures = failures
+        });
     }
 
     public async Task<Result<InventoryItemDto>> UpdateItemAsync(Guid farmId, Guid id, UpdateInventoryItemRequest request)
@@ -87,11 +183,13 @@ public class InventoryService : IInventoryService
         var item = await _context.InventoryItems.FirstOrDefaultAsync(i => i.FarmId == farmId && i.Id == id);
         if (item == null) return Result<InventoryItemDto>.NotFound("Inventory item not found");
 
-        var validation = Validate(request.Name, request.Unit, 0, request.ReorderLevel, request.UnitCost, false);
-        if (validation != null) return Result<InventoryItemDto>.Validation(validation);
+        var error = InventoryItemRules.Validate(
+            request.Name, request.Category, request.Unit, 0,
+            request.ReorderLevel, request.UnitCost, request.Location, validateQuantity: false);
+        if (error.Count > 0) return Result<InventoryItemDto>.Validation(error[0].Message);
         var name = request.Name.Trim();
         if (await _context.InventoryItems.AnyAsync(i => i.FarmId == farmId && i.Id != id && i.Name == name))
-            return Result<InventoryItemDto>.Conflict("An inventory item with this name already exists");
+            return Result<InventoryItemDto>.Conflict(InventoryItemRules.DuplicateNameMessage);
 
         item.Name = name;
         item.Category = Clean(request.Category);
@@ -114,18 +212,6 @@ public class InventoryService : IInventoryService
         _context.InventoryItems.Remove(item);
         await _context.SaveChangesAsync();
         return Result.Success();
-    }
-
-    private static string? Validate(string name, string unit, decimal quantity, decimal reorderLevel, decimal unitCost, bool validateQuantity = true)
-    {
-        if (string.IsNullOrWhiteSpace(name)) return "Item name is required";
-        if (name.Trim().Length > 200) return "Item name cannot exceed 200 characters";
-        if (string.IsNullOrWhiteSpace(unit)) return "Unit is required";
-        if (unit.Trim().Length > 50) return "Unit cannot exceed 50 characters";
-        if (validateQuantity && quantity < 0) return "Quantity cannot be negative";
-        if (reorderLevel < 0) return "Reorder level cannot be negative";
-        if (unitCost < 0) return "Unit cost cannot be negative";
-        return null;
     }
 
     public async Task<Result<StockMovementDto>> RecordMovementAsync(Guid farmId, RecordStockMovementRequest request)

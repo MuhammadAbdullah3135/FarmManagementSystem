@@ -1,5 +1,16 @@
 namespace FMS.Domain.Common;
 
+/// <summary>
+/// Values written to <c>AnimalTimelineEvent.RelatedEntityType</c>. Read the pair with
+/// <c>RelatedEntityId</c>: on a <see cref="TimelineEventTypes.StatusChanged"/> event the id
+/// is the status moved to, which is how a consumer tells a departure from any other status
+/// change without parsing the event title.
+/// </summary>
+public static class TimelineRelatedEntityTypes
+{
+    public const string AnimalStatus = "AnimalStatus";
+}
+
 public static class TimelineEventTypes
 {
     public const string Created = "Created";

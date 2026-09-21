@@ -3,7 +3,7 @@ using System.Text;
 using ClosedXML.Excel;
 using CsvHelper;
 using CsvHelper.Configuration;
-using FMS.Application.Animal.Import;
+using FMS.Application.Import;
 using FMS.Application.Common;
 
 namespace FMS.Infrastructure.Import;

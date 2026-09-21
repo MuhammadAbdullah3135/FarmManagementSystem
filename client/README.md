@@ -159,6 +159,8 @@ All routes are defined in `src/App.tsx`. Features verified against source code:
 - **Charts** — Recharts area/line/pie/bar on dashboard and report pages
 - **Error boundary** — catches render errors and shows a reload button (built for Android WebView crash resilience)
 - **Auto-refresh** — on 401, silently refreshes the JWT and replays the failed request
+- **Offline app shell** — a service worker precaches the built app, so the Android wrapper opens without a connection instead of showing a blank screen. A banner states what the device has stored and how stale it is. Reads and writes still need the connection: see the first limitation below.
+- **Role-filtered menu** — sidebar items are filtered per farm role (`usePermissions` reads the active farm's `userFarmRole`), so switching farms recomputes what is shown
 
 ## Authentication
 
@@ -168,11 +170,9 @@ All routes are defined in `src/App.tsx`. Features verified against source code:
 
 ## Known Limitations
 
-- **No role-based menu filtering:** All authenticated users see all sidebar menu items regardless of their role. The backend enforces role restrictions at the API level, so users may see menus they cannot access (resulting in 403 errors when clicked). Roles are not returned from the login endpoint.
-- **Dashboard alerts not clickable:** Alert objects from the API include a `link` field pointing to the relevant page, but the UI renders them as static text without navigation.
 - **No i18n:** English only. Ant Design locale is hardcoded to `en_US`.
 - **No farm management UI:** The header can switch between farms, and `farmStore` exposes a `createFarm` action, but no page lets users create, rename, or delete a farm. The backend `FarmsController` supports full farm CRUD.
-- **No offline support:** Requires an active internet connection. The mobile wrapper shows an offline overlay but provides no cached data.
+- **Offline is provisional:** the app shell loads offline and the device keeps a per-account, per-farm IndexedDB store (`src/offline/`), but nothing reads from it yet and no writes are queued — pages still fetch, and an offline session cannot record a weight, an attendance or a task completion. Cached reads, the write queue and the sync endpoint are the next increments; see [docs/OFFLINE.md](../docs/OFFLINE.md) for the approved design and what each one adds.
 - **Single types file:** All domain types are defined in a single `src/types/index.ts` file (1000+ lines).
 
 ## Environment Variables

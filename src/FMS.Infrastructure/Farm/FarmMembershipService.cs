@@ -7,6 +7,7 @@ using FMS.Infrastructure.Auth;
 using FMS.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace FMS.Infrastructure.Farm;
 
@@ -16,17 +17,20 @@ public class FarmMembershipService : IFarmMembershipService
     private readonly IEmailService _emailService;
     private readonly IJwtTokenService _jwtTokenService;
     private readonly IConfiguration _configuration;
+    private readonly ILogger<FarmMembershipService> _logger;
 
     public FarmMembershipService(
         FmsDbContext context,
         IEmailService emailService,
         IJwtTokenService jwtTokenService,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        ILogger<FarmMembershipService> logger)
     {
         _context = context;
         _emailService = emailService;
         _jwtTokenService = jwtTokenService;
         _configuration = configuration;
+        _logger = logger;
     }
 
     // ── Members ─────────────────────────────────────────────
@@ -182,7 +186,22 @@ public class FarmMembershipService : IFarmMembershipService
 
         var frontendBaseUrl = _configuration["Frontend:BaseUrl"] ?? "http://localhost:3000";
         var inviteLink = $"{frontendBaseUrl}/accept-invitation?token={rawToken}";
-        await _emailService.SendFarmInvitationEmailAsync(invitation.Email, farm.Name, inviteLink);
+
+        try
+        {
+            await _emailService.SendFarmInvitationEmailAsync(invitation.Email, farm.Name, inviteLink);
+        }
+        catch (Exception ex)
+        {
+            // The invitation row is already persisted, so it exists and can be revoked or
+            // re-sent; only the notification of it failed. Matches the dispatcher's
+            // handling of the digest rather than inventing a stricter rule here.
+            _logger.LogError(ex,
+                "Could not send the invitation email for farm {FarmId} to {Email}. The "
+                + "invitation is stored and can be revoked or re-sent.",
+                farmId,
+                invitation.Email);
+        }
 
         return Result<FarmInvitationDto>.Success(MapInvitation(invitation));
     }

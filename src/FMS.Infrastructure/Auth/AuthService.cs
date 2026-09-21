@@ -298,7 +298,24 @@ public class AuthService : IAuthService
 
         var frontendBaseUrl = _configuration["Frontend:BaseUrl"] ?? "http://localhost:3000";
         var resetLink = $"{frontendBaseUrl}/confirm-reset-password?token={rawToken}";
-        await _emailService.SendPasswordResetEmailAsync(user.Email, resetLink);
+
+        try
+        {
+            await _emailService.SendPasswordResetEmailAsync(user.Email, resetLink);
+        }
+        catch (Exception ex)
+        {
+            // Same asymmetry the notification dispatcher uses for the alert digest: the
+            // durable part (here the reset token, already persisted above) survives, and
+            // a delivery failure does not fail the request. Failing it would be worse
+            // than it looks - the send only happens for addresses that exist, so a 500
+            // here would also tell an attacker which accounts are real. The user can
+            // simply ask again.
+            _logger.LogError(ex,
+                "Could not send the password reset email for user {UserId}. The reset token is "
+                + "already stored, so a retry will work.",
+                user.Id);
+        }
 
         return Result.Success();
     }

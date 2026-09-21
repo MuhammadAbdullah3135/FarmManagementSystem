@@ -1,6 +1,7 @@
 using System.Text;
 using FMS.Application.Animal;
 using FMS.Application.Animal.Import;
+using FMS.Application.Import;
 using FMS.Application.Common;
 using FMS.Domain.Common;
 using FMS.Domain.Entities;
@@ -123,9 +124,9 @@ public class AnimalImportServiceTests
     {
         using var harness = await CreateHarnessAsync();
 
-        var mapping = new AnimalImportMapping
+        var mapping = new ImportMapping
         {
-            Fields = new Dictionary<string, AnimalImportFieldMap>
+            Fields = new Dictionary<string, ImportFieldMap>
             {
                 [AnimalImportFields.TagNumber] = new() { Column = 0 },
                 [AnimalImportFields.AnimalType] = new() { Column = 1 },
@@ -331,7 +332,7 @@ public class AnimalImportServiceTests
 
         // And the caller resolves it explicitly instead of the import picking one.
         var resolved = await harness.Service.PreviewAsync(
-            harness.Seed.FarmId, Utf8(csv), "animals.csv", new AnimalImportMapping { DateFormat = "dd/MM/yyyy" });
+            harness.Seed.FarmId, Utf8(csv), "animals.csv", new ImportMapping { DateFormat = "dd/MM/yyyy" });
 
         Assert.Equal(0, resolved.Value!.InvalidRowCount);
     }
@@ -370,9 +371,9 @@ public class AnimalImportServiceTests
     {
         using var harness = await CreateHarnessAsync();
 
-        var mapping = new AnimalImportMapping
+        var mapping = new ImportMapping
         {
-            Fields = new Dictionary<string, AnimalImportFieldMap>
+            Fields = new Dictionary<string, ImportFieldMap>
             {
                 [AnimalImportFields.TagNumber] = new() { Column = 9 },
                 [AnimalImportFields.AnimalType] = new() { Constant = "Cattle" },
@@ -485,9 +486,9 @@ public class AnimalImportServiceTests
     {
         using var harness = await CreateHarnessAsync();
 
-        var mapping = new AnimalImportMapping
+        var mapping = new ImportMapping
         {
-            Fields = new Dictionary<string, AnimalImportFieldMap>
+            Fields = new Dictionary<string, ImportFieldMap>
             {
                 [AnimalImportFields.TagNumber] = new() { Column = 0 },
                 [AnimalImportFields.AnimalType] = new() { Column = 1 },
@@ -531,7 +532,7 @@ public class AnimalImportServiceTests
 
     private static Stream Utf8(string content) => new MemoryStream(Encoding.UTF8.GetBytes(content));
 
-    private static async Task<Harness> CreateHarnessAsync(Action<AnimalImportOptions>? configure = null)
+    private static async Task<Harness> CreateHarnessAsync(Action<ImportOptions>? configure = null)
     {
         var context = new FmsDbContext(new DbContextOptionsBuilder<FmsDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
@@ -543,7 +544,7 @@ public class AnimalImportServiceTests
         var animals = new AnimalService(
             context, currentUser, new FileStorageService(Path.Combine(Path.GetTempPath(), "fms-import-tests")));
 
-        var options = new AnimalImportOptions();
+        var options = new ImportOptions();
         configure?.Invoke(options);
 
         var service = new AnimalImportService(

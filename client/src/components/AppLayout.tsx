@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import '../AppLayout.css';
-import { Layout, Menu, Typography, Dropdown, Avatar, Badge, Button, Drawer, Result, Space, Spin, message } from 'antd';
+import { Layout, Menu, Typography, Dropdown, Avatar, Badge, Button, Drawer, Result, Space, Spin, message, Modal } from 'antd';
 import {
   DashboardOutlined,
   SwapOutlined,
@@ -28,6 +28,9 @@ import {
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import { useFarmStore } from '../stores/farmStore';
+import { useOfflineStore } from '../offline/connectivity';
+import { clearAllOfflineData, clearOfflineDataForFarm } from '../offline/offlineData';
+import OfflineBanner from './OfflineBanner';
 import { filterMenuByRole } from '../utils/permissions';
 import type { AppMenuItem } from '../utils/permissions';
 import { usePermissions } from '../hooks/usePermissions';
@@ -177,6 +180,7 @@ export const appMenuItems: AppMenuItem[] = [
       { key: '/dashboard/reports/vaccination', label: 'Vaccination Reports' },
       { key: '/dashboard/reports/breeding', label: 'Breeding Reports' },
       { key: '/dashboard/reports/employees', label: 'Employee Reports' },
+      { key: '/dashboard/reports/cost-per-animal', label: 'Cost per Animal' },
     ],
   },
   {
@@ -230,6 +234,11 @@ const AppLayout: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
 
+  // What this device has stored, for the "clear offline data" confirmation. Subscribed
+  // as a single field (not a derived object) so the reference stays stable between
+  // updates, which is what zustand v5 compares.
+  const offlineStats = useOfflineStore((store) => store.stats);
+
   useEffect(() => {
     fetchFarms();
   }, [fetchFarms]);
@@ -272,6 +281,16 @@ const AppLayout: React.FC = () => {
   // ordinary role-based 403 never lands here.
   useEffect(() => {
     setFarmAccessDeniedHandler(() => {
+      const accountId = useAuthStore.getState().user?.accountId;
+      const lostFarmId = useFarmStore.getState().activeFarm?.id ?? localStorage.getItem('activeFarmId');
+
+      // Drop that farm's cached data too. Keeping rows the API has just refused to
+      // serve would mean the device keeps showing a farm its user can no longer open,
+      // and there is no offline path left that legitimately needs them.
+      if (accountId && lostFarmId) {
+        void clearOfflineDataForFarm(accountId, lostFarmId);
+      }
+
       clearActiveFarm();
       void fetchFarms();
       message.warning('Your access to that farm was removed.');
@@ -315,6 +334,35 @@ const AppLayout: React.FC = () => {
     navigate('/login');
   };
 
+  /**
+   * The user-facing "clear offline data" action.
+   *
+   * Confirmed rather than one-click: it is the only way to remove farm data from the
+   * device short of signing out, and a misplaced tap should not quietly do that.
+   */
+  const handleClearOfflineData = () => {
+    const { recordCount, collectionCount } = offlineStats;
+    Modal.confirm({
+      title: 'Clear offline data?',
+      // No write queue exists yet, so nothing here can be unsaved work and this copy must
+      // not imply otherwise. When 4.5.4 lands, this is the line that has to start warning
+      // about queued items.
+      content: recordCount > 0
+        ? `This device has ${recordCount} cached record${recordCount === 1 ? '' : 's'} across ${collectionCount} collection${collectionCount === 1 ? '' : 's'}. Clearing removes them; the app fetches them again next time you are online.`
+        : 'This device has no cached records. Nothing will change.',
+      okText: 'Clear',
+      okButtonProps: { danger: true },
+      onOk: async () => {
+        const cleared = await clearAllOfflineData();
+        message.success(
+          cleared.recordCount > 0
+            ? `Cleared ${cleared.recordCount} cached record${cleared.recordCount === 1 ? '' : 's'}.`
+            : 'Nothing to clear.',
+        );
+      },
+    });
+  };
+
   const farmMenuItems = farms.map((farm) => ({
     key: farm.id,
     label: farm.name,
@@ -331,6 +379,11 @@ const AppLayout: React.FC = () => {
       key: 'build',
       label: BUILD_LABEL,
       disabled: true,
+    },
+    {
+      key: 'offline-data',
+      label: 'Clear offline data',
+      onClick: handleClearOfflineData,
     },
     {
       type: 'divider' as const,
@@ -436,6 +489,10 @@ const AppLayout: React.FC = () => {
         </Header>
 
         <Content style={{ flex: 1, overflowY: 'auto', margin: isMobile ? 8 : 24, padding: isMobile ? 8 : 24, background: '#fff', minHeight: 280 }}>
+          {/* Outside the farm/pages branch on purpose: connectivity is a property of the
+              device, so the banner is present even while no farm is selected. */}
+          <OfflineBanner />
+
           {activeFarm || isFarmIndependent(stripBase(location.pathname)) ? (
             <Outlet />
           ) : isLoadingFarms ? (

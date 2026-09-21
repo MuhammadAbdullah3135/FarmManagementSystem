@@ -18,6 +18,7 @@ vi.mock('../api/axios', () => ({
 }));
 
 import AppLayout, { appMenuItems } from './AppLayout';
+import { useOfflineStore } from '../offline/connectivity';
 import { filterMenuByRole } from '../utils/permissions';
 
 const userWithRoles = (roles: string[]): User => ({
@@ -327,5 +328,59 @@ describe('AppLayout scheduled jobs entry', () => {
 
     expect(await screen.findByText('job status table')).toBeInTheDocument();
     expect(screen.queryByText('No farm access')).not.toBeInTheDocument();
+  });
+});
+
+describe('AppLayout offline awareness', () => {
+  beforeEach(() => {
+    vi.mocked(api.get).mockResolvedValue({ data: [] } as never);
+    localStorage.clear();
+    useOfflineStore.setState({
+      isOnline: true,
+      storageAvailable: true,
+      stats: { recordCount: 0, collectionCount: 0, lastSyncedAt: null },
+    });
+  });
+
+  it('tells the user the app is offline, and says saving needs a connection', async () => {
+    useOfflineStore.setState({
+      isOnline: false,
+      stats: {
+        recordCount: 4,
+        collectionCount: 2,
+        lastSyncedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+      },
+    });
+
+    renderLayout(['SystemOwner']);
+
+    expect(await screen.findByText('Offline')).toBeInTheDocument();
+    expect(screen.getByText(/Saving changes needs a connection/)).toBeInTheDocument();
+    expect(screen.getByText(/4 records stored · last synced 3 days ago/)).toBeInTheDocument();
+  });
+
+  it('shows no offline banner while online', async () => {
+    renderLayout(['SystemOwner']);
+
+    expect(await screen.findByText('Dashboard')).toBeInTheDocument();
+    expect(screen.queryByText('Offline')).not.toBeInTheDocument();
+  });
+
+  it('offers the user a way to clear what this device has stored', async () => {
+    useOfflineStore.setState({
+      stats: { recordCount: 7, collectionCount: 3, lastSyncedAt: new Date().toISOString() },
+    });
+
+    renderLayout(['SystemOwner']);
+
+    await userEvent.click(await screen.findByText('Owner Person'));
+    const clearItem = await screen.findByText('Clear offline data');
+
+    // The confirmation states what will be lost before anything is removed.
+    // (antd renders the confirm title twice — as the modal title and as the
+    // confirm body's own title — so the assertion is on the count, not on one node.)
+    await userEvent.click(clearItem);
+    expect(await screen.findAllByText('Clear offline data?')).not.toHaveLength(0);
+    expect(screen.getByText(/7 cached records across 3 collections/)).toBeInTheDocument();
   });
 });

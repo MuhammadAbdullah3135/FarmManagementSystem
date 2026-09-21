@@ -11,6 +11,7 @@ using FMS.API.Middleware;
 using FMS.API.Security;
 using FMS.Application.Animal;
 using FMS.Application.Animal.Import;
+using FMS.Application.Import;
 using FMS.Application.Auth;
 using FMS.Application.Breeding;
 using FMS.Application.Common;
@@ -18,12 +19,15 @@ using FMS.Application.Configuration;
 using FMS.Application.Attendance;
 using FMS.Application.Performance;
 using FMS.Application.Employees;
+using FMS.Application.Employees.Import;
 using FMS.Application.Farm;
 using FMS.Application.Feed;
 using FMS.Application.Finance;
 using FMS.Application.Health;
 using FMS.Application.Inventory;
+using FMS.Application.Inventory.Import;
 using FMS.Application.Dashboard;
+using FMS.Application.Email;
 using FMS.Application.Jobs;
 using FMS.Application.Notifications;
 using FMS.Application.Reports;
@@ -45,6 +49,7 @@ using FMS.Infrastructure.Health;
 using FMS.Infrastructure.Import;
 using FMS.Infrastructure.Inventory;
 using FMS.Infrastructure.Dashboard;
+using FMS.Infrastructure.Email;
 using FMS.Infrastructure.Jobs;
 using FMS.Infrastructure.Notifications;
 using FMS.Infrastructure.Reports;
@@ -66,6 +71,18 @@ var builder = WebApplication.CreateBuilder(args);
 // registration so this is the message an operator sees, not a downstream error.
 JwtSigningKeyGuard.EnsureUsable(
     builder.Configuration["Jwt:SecretKey"],
+    builder.Environment.EnvironmentName,
+    builder.Environment.IsDevelopment());
+
+// Email delivery is validated here too, for the same reason: a provider that is
+// selected but unusable would accept every password reset and invitation and deliver
+// none of them, and those two flows deliberately keep working when a send fails. The
+// returned warning is logged once the host is built (see below).
+var emailOptions = builder.Configuration.GetSection(EmailOptions.SectionName).Get<EmailOptions>()
+    ?? new EmailOptions();
+var emailConfigurationWarning = EmailConfigurationGuard.EnsureUsable(
+    emailOptions,
+    builder.Configuration,
     builder.Environment.EnvironmentName,
     builder.Environment.IsDevelopment());
 builder.Host.UseSerilog();
@@ -163,6 +180,26 @@ builder.Services.AddHealthChecks()
     .AddNpgSql(builder.Configuration.GetConnectionString("DefaultConnection")!, name: "postgresql", tags: new[] { "ready" });
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+// Email transport: Log is the default and keeps the previous behaviour (messages are
+// rendered and logged, not sent); SendGrid delivers them. The IEmailService contract
+// and its registration below are unchanged either way.
+builder.Services.Configure<EmailOptions>(builder.Configuration.GetSection(EmailOptions.SectionName));
+
+if (emailOptions.Provider == EmailProviderKind.SendGrid)
+{
+    builder.Services.AddHttpClient<SendGridEmailTransport>(client =>
+    {
+        client.BaseAddress = new Uri(emailOptions.SendGrid.BaseUrl);
+        client.Timeout = TimeSpan.FromSeconds(Math.Max(1, emailOptions.RequestTimeoutSeconds));
+    });
+
+    builder.Services.AddScoped<IEmailTransport>(sp => sp.GetRequiredService<SendGridEmailTransport>());
+}
+else
+{
+    builder.Services.AddSingleton<IEmailTransport, LoggingEmailTransport>();
+}
+
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IFarmService, FarmService>();
 builder.Services.AddScoped<IFarmMembershipService, FarmMembershipService>();
@@ -176,14 +213,20 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddScoped<IAnimalService, AnimalService>();
 
-// ── Bulk animal import ─────────────────────────────────────────────────
+// ── Bulk import: animals, employees, inventory ─────────────────────────
 // CSV and .xlsx are parsed server-side behind ISpreadsheetReader, so every client
 // (web, mobile, script) imports through one pipeline, and each row is validated with
-// the same FluentValidation rules the single-animal create endpoint uses.
-builder.Services.Configure<AnimalImportOptions>(
-    builder.Configuration.GetSection(AnimalImportOptions.SectionName));
+// the rules the single-record create endpoint already uses. The limits live in the
+// Import section; the pre-4.3 AnimalImport keys still apply when the new ones are
+// absent, so a configured deployment cannot silently fall back to a default.
+builder.Services.Configure<ImportOptions>(
+    builder.Configuration.GetSection(ImportOptions.SectionName));
+builder.Services.PostConfigure<ImportOptions>(options =>
+    ImportOptionsBinding.ApplyLegacyFallback(options, builder.Configuration));
 builder.Services.AddScoped<ISpreadsheetReader, SpreadsheetReader>();
 builder.Services.AddScoped<IAnimalImportService, AnimalImportService>();
+builder.Services.AddScoped<IInventoryImportService, InventoryImportService>();
+builder.Services.AddScoped<IEmployeeImportService, EmployeeImportService>();
 builder.Services.AddScoped<IBreedingService, BreedingService>();
 builder.Services.AddScoped<IFeedService, FeedService>();
 builder.Services.AddScoped<IFinanceService, FinanceService>();
@@ -201,6 +244,7 @@ builder.Services.AddScoped<ISupplierService, SupplierService>();
 builder.Services.AddScoped<ICustomerService, CustomerService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddScoped<IReportService, ReportService>();
+builder.Services.AddScoped<ICostAttributionService, CostAttributionService>();
 builder.Services.AddScoped<IAuditLogService, AuditLogService>();
 
 // ── Notifications ──────────────────────────────────────────────────────
@@ -260,6 +304,11 @@ if (usingLocalStorage && !app.Environment.IsDevelopment())
         "(for example Heroku) are ephemeral, so uploaded files are lost on the next release or dyno cycle. " +
         "Set Storage__Provider=S3 to use object storage.",
         app.Environment.EnvironmentName);
+}
+
+if (emailConfigurationWarning is not null)
+{
+    app.Logger.LogWarning("Email configuration: {EmailWarning}", emailConfigurationWarning);
 }
 
 using (var scope = app.Services.CreateScope())

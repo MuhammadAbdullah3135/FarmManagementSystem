@@ -1,5 +1,6 @@
 using FMS.API.Controllers;
 using FMS.Application.Animal.Import;
+using FMS.Application.Import;
 using FMS.Application.Common;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -39,7 +40,7 @@ public class AnimalImportControllerTests
     {
         var service = new RecordingImportService();
         var controller = new AnimalImportController(
-            service, Options.Create(new AnimalImportOptions { MaxFileBytes = 10 }));
+            service, Options.Create(new ImportOptions { MaxFileBytes = 10 }));
 
         var result = await controller.Preview(Guid.NewGuid(), FormFile(new byte[50]), null, default);
 
@@ -70,7 +71,7 @@ public class AnimalImportControllerTests
     }
 
     private static AnimalImportController CreateController() =>
-        new(new RecordingImportService(), Options.Create(new AnimalImportOptions()));
+        new(new RecordingImportService(), Options.Create(new ImportOptions()));
 
     private static IFormFile FormFile(byte[] bytes) =>
         new FormFile(new MemoryStream(bytes), 0, bytes.Length, "file", "animals.csv");
@@ -80,18 +81,18 @@ public class AnimalImportControllerTests
     {
         public bool WasCalled { get; private set; }
 
-        public Task<Result<AnimalImportPreviewDto>> PreviewAsync(
-            Guid farmId, Stream content, string fileName, AnimalImportMapping? mapping, CancellationToken cancellationToken = default)
+        public Task<Result<ImportPreviewDto>> PreviewAsync(
+            Guid farmId, Stream content, string fileName, ImportMapping? mapping, CancellationToken cancellationToken = default)
         {
             WasCalled = true;
-            return Task.FromResult(Result<AnimalImportPreviewDto>.Success(new AnimalImportPreviewDto()));
+            return Task.FromResult(Result<ImportPreviewDto>.Success(new ImportPreviewDto()));
         }
 
-        public Task<Result<AnimalImportCommitDto>> CommitAsync(
-            Guid farmId, Stream content, string fileName, AnimalImportMapping? mapping, CancellationToken cancellationToken = default)
+        public Task<Result<ImportCommitDto>> CommitAsync(
+            Guid farmId, Stream content, string fileName, ImportMapping? mapping, CancellationToken cancellationToken = default)
         {
             WasCalled = true;
-            return Task.FromResult(Result<AnimalImportCommitDto>.Success(new AnimalImportCommitDto()));
+            return Task.FromResult(Result<ImportCommitDto>.Success(new ImportCommitDto()));
         }
     }
 }

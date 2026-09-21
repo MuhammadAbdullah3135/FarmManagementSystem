@@ -7,13 +7,13 @@ A lightweight .NET MAUI Android app that wraps the [FMS web frontend](https://mu
 - Loads the FMS web app in a full-screen WebView (URL: `https://muhammadabdullah3135.github.io/FarmManagementSystem/`)
 - The web app communicates with the backend API at `https://fms-api-3ba95327d590.herokuapp.com/api`
 - **Back button handling:** traverses web history first; only exits the app when there's no history left
-- **Offline detection:** shows a "No internet connection" overlay with a Retry button when network drops (via both `Connectivity` listener and native WebView error handling)
+- **Offline detection:** Microsoft removed deliberately. The web app registers a service worker that precaches its own shell, so the app keeps working when the network drops, and it reports its own offline state (with what the device has actually stored) in a banner. A native listener that hid the WebView on connectivity loss contradicted both. What remains is a "Couldn't load the app" overlay with a Retry button, shown only when the **app shell itself** fails to load — a first launch with no network, or a DNS failure — where there is nothing to show and Retry is the only useful action. A page that fails for a subresource never triggers it.
 - **Firebase Crashlytics:** unhandled exceptions are reported to the Firebase console (project: `fms-mobile-798f5`)
 - **Local crash logging:** appends crash details to `crashlog.txt` and `latest-crash.txt` in the app's data directory
 
 ## Known Limitations
 
-- **Requires internet connection** — no offline data caching or native data storage
+- **Requires a connection for data (not for the app shell):** the shell loads offline once it has been loaded on the device at least once, but reads and writes still go to the API. Cached reads and the offline write queue are designed but not built — see [../../docs/OFFLINE.md](../../docs/OFFLINE.md).
 - **Android only** — iOS, MacCatalyst, and Windows platform targets have been removed
 - **arm64-only Debug build** — the Debug configuration forces the `android-arm64` ABI, so the APK produced by the build command below will not run on arm32 or x86 devices
 - **Debug build** — current APK includes test-only buttons (Test Crash, Share Report) compiled out of Release builds
@@ -62,11 +62,11 @@ Without `google-services.json`, the app still builds and works — Firebase is g
 |---|---|
 | `App.cs` | DI entry point, creates `MainPage` |
 | `MauiProgram.cs` | MAUI builder, handler registration, Firebase lifecycle init |
-| `MainPage.cs` | WebView + offline overlay + debug chips |
+| `MainPage.cs` | WebView + first-load-failure overlay + debug chips |
 | `FmsWebView.cs` | Partial WebView with `ReceivedError` event + static `Current` |
 | `Services/CrashReporter.cs` | Local crash logging (AppDomain + TaskScheduler hooks) |
 | `Platforms/Android/MainActivity.cs` | Back-press callback (AndroidX OnBackPressedCallback) |
-| `Platforms/Android/FmsWebViewHandler.cs` | WebView config (JS, DOM storage, cookies) |
+| `Platforms/Android/FmsWebViewHandler.cs` | WebView config (JS, DOM storage, cookies) — DOM storage is what makes IndexedDB, and therefore the offline shell, available |
 | `Platforms/Android/FmsWebViewClient.cs` | Main-frame error interception |
 
 ## Project Structure

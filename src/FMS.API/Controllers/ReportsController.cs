@@ -11,10 +11,12 @@ namespace FMS.API.Controllers;
 public class ReportsController : ControllerBase
 {
     private readonly IReportService _reportService;
+    private readonly ICostAttributionService _costAttribution;
 
-    public ReportsController(IReportService reportService)
+    public ReportsController(IReportService reportService, ICostAttributionService costAttribution)
     {
         _reportService = reportService;
+        _costAttribution = costAttribution;
     }
 
     [HttpGet("animals")]
@@ -54,6 +56,27 @@ public class ReportsController : ControllerBase
         [FromQuery] DateTime? to = null)
     {
         var result = await _reportService.GetEmployeeReportAsync(farmId, from, to);
+        return MapResult(result);
+    }
+
+    /// <summary>
+    /// Cost and revenue per animal, and per herd (by current location), for a range.
+    ///
+    /// One response carries both tables and the arithmetic behind them: each figure is
+    /// either a record that names the animal or a stated fraction of a pool, the pool
+    /// allocations travel with their numerator and denominator, and money that reached no
+    /// animal is reported as unallocated rather than spread. See
+    /// <see cref="ICostAttributionService"/> for the rules.
+    /// </summary>
+    [HttpGet("cost-per-animal")]
+    public async Task<IActionResult> GetCostPerAnimalReport(
+        Guid farmId,
+        [FromQuery] DateTime? from = null,
+        [FromQuery] DateTime? to = null)
+    {
+        var result = await _costAttribution.GetCostPerAnimalReportAsync(
+            farmId, new CostReportFilter { From = from, To = to });
+
         return MapResult(result);
     }
 

@@ -18,6 +18,16 @@ public interface IEmployeeService
     Task<Result<EmployeeDto>> GetEmployeeByIdAsync(Guid farmId, Guid id);
     Task<Result<PagedResult<EmployeeDto>>> GetEmployeesAsync(Guid farmId, EmployeeListFilter filter);
     Task<Result<EmployeeDto>> CreateEmployeeAsync(Guid farmId, CreateEmployeeRequest request);
+
+    /// <summary>
+    /// Validates a batch without writing it. Same rules, same reference checks and same
+    /// identifier check as <see cref="CreateEmployeeAsync"/>, reported per row, so a bulk
+    /// caller can preview a file and get exactly the answer a commit would give.
+    /// </summary>
+    Task<Result<BulkCreateResultDto>> ValidateEmployeesAsync(Guid farmId, IReadOnlyList<CreateEmployeeRequest> requests);
+
+    /// <summary>Creates the whole batch in one SaveChanges, so it is atomic.</summary>
+    Task<Result<BulkCreateResultDto>> CreateEmployeesAsync(Guid farmId, IReadOnlyList<CreateEmployeeRequest> requests);
     Task<Result<EmployeeDto>> UpdateEmployeeAsync(Guid farmId, Guid id, UpdateEmployeeRequest request);
     Task<Result> DeleteEmployeeAsync(Guid farmId, Guid id);
 

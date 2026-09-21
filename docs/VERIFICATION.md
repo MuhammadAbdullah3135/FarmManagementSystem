@@ -16,6 +16,8 @@ item could be verified for real.
 | 2 | CI gate: a failing suite blocks the deploy job | **DONE** | Five real GitHub Actions runs, URLs below |
 | 3 | `docker compose` stack + its fail-fast guards | **HANDED OFF** | Docker not installed; compose corrected first so the runbook can pass |
 | 4 | Rotate the two leaked secrets | **HANDED OFF (account owner)** | Requires production credentials; guard + tripwires landed here |
+| 5 | Live email delivery (reset, invitation, digest) | **HANDED OFF** | No provider credentials or mailbox in this environment |
+| 6 | Offline shell inside a real Android WebView | **HANDED OFF** | No device or emulator here; jsdom cannot exercise the WebView's cache or a service worker's install |
 
 ---
 
@@ -299,6 +301,180 @@ Consequences, stated so they are not a surprise:
 
 ---
 
+## 5. Live email delivery — HANDED OFF
+
+### What is verified here, and what is not
+
+The transport, the rendering, the retry policy, the guard and the caller behaviour are
+all covered by tests that run in this environment (89 in total: 86 pass, 3 skip — the
+`tests/FMS.Domain.Tests/Email/**` files plus `EmailConfigurationDriftTests`). What no amount
+of those can prove is **deliverability**: that a real
+provider accepts these messages and a real mailbox receives them. That needs sender
+verification and a mailbox, neither of which exists here, so three tests **SKIP** with a
+runbook as their skip message rather than pretending to pass:
+
+| Test | Flow |
+|---|---|
+| `RealEmailDeliveryTests.PasswordReset_IsDeliveredToARealInbox` | password reset |
+| `RealEmailDeliveryTests.FarmInvitation_IsDeliveredToARealInbox` | farm invitation |
+| `RealEmailDeliveryTests.AlertDigest_IsDeliveredToARealInbox` | alert digest (two alerts, one Critical, one Warning) |
+
+### Preconditions — these block a live send, not optional
+
+Both are owner actions. Enabling `Email:Provider=SendGrid` with either still in place sends
+**real** emails to **real** inboxes.
+
+1. **`Frontend:BaseUrl` must be the deployed frontend URL.**
+   `appsettings.Production.json` still ships the template value `https://yourdomain.com`.
+   Every email contains a link built from this setting, so with it in place the recipient
+   gets a dead link in a message that looks legitimate. The guard warns about exactly this
+   at startup (`Email configuration: Frontend:BaseUrl is still the template value…`), and
+   `EmailConfigurationDriftTests` asserts the warning and the value stay consistent.
+   Set `Frontend__BaseUrl` (Heroku config var) to the real URL, **including any base path**
+   — the Pages deployment is served from a repo subpath, so the trailing path matters.
+2. **`Cors:AllowedOrigins` must match that URL.** Not an email setting, but the same
+   consequence: `appsettings.Production.json` still lists `https://yourdomain.com`, so the
+   deployed site's own API calls would be rejected until it matches. Set
+   `Cors__AllowedOrigins__0` to the deployed frontend origin.
+
+Both are asserted as still-unfixed today by `EmailConfigurationDriftTests`
+(`AppSettings_Production_StillNeedsItsFrontendUrlSetBeforeDeliveryIsEnabled`,
+`AppSettings_Production_CorsOriginIsStillTheTemplateValue`), so they cannot be forgotten
+silently — those two tests start failing the moment the values are corrected, at which
+point delete them.
+
+### Runbook
+
+```bash
+# 1. Verify a sender (no domain needed): SendGrid -> Settings -> Sender Authentication
+#    -> Single Sender Verification. Then create an API key with the "Mail Send"
+#    permission only. Neither value belongs in a file that is committed.
+export FMS_TEST_EMAIL="a-mailbox-you-can-open@example.com"
+export FMS_TEST_EMAIL_PROVIDER=SendGrid
+export FMS_TEST_EMAIL_FROM="the-address-you-verified@example.com"
+export FMS_TEST_SENDGRID_API_KEY="SG.…"
+# Optional: what the links should point at. Defaults to https://example.com.
+export FMS_TEST_FRONTEND_URL="https://your-frontend.example.com"
+
+# 2. Send all three flows (one message each) and print what was sent.
+cd tests/FMS.Domain.Tests
+dotnet test FMS.Domain.Tests.csproj \
+  --filter FullyQualifiedName~RealEmailDeliveryTests --logger "console;verbosity=detailed"
+```
+
+Each test prints a `[real-email]` line with the recipient, subject and the extracted links
+before it asserts, so the run's own output is the evidence. `Skipped: 0` and `Passed: 3`
+is the pass condition — anything else means the properties above were not supplied.
+
+### What to report back
+
+- The three subjects that arrived (or, for each one: `Passed` with the message in the
+  inbox, or the exact provider rejection text).
+- Whether the **reset** and **invitation** links opened the frontend (not just resolved) —
+  that is what proves `Frontend:BaseUrl` is production-ready.
+- Whether the digest rendered in a real mail client: both alert rows, their severity
+  colours, and its two links (notification centre and preferences).
+- Whether the message reached the **inbox** rather than the spam folder, and the spam
+  score if the client shows one. A first message from an unverified-domain sender often
+  does land in spam; that is a sending-domain problem, not a code problem, and it is worth
+  knowing before delivery is switched on for real users.
+- Confirmation that the API key was **not** written to the application log during the run.
+
+### Then, to enable it for real
+
+```bash
+heroku config:set Email__Provider=SendGrid \
+  Email__FromAddress="the-address-you-verified@example.com" \
+  Email__SendGrid__ApiKey="SG.…" \
+  Frontend__BaseUrl="https://your-frontend.example.com" \
+  Cors__AllowedOrigins__0="https://your-frontend.example.com" --app <app>
+# Failure modes are now loud rather than silent: a missing key refuses to start rather
+# than dropping every reset, and a missing/template frontend URL logs a warning at boot.
+```
+
+---
+
+## 6. Offline shell in a real Android WebView — HANDED OFF
+
+### What is verified here, and what is not
+
+Verified in this repository, by the client suite (`cd client && npm test`):
+
+- `vite build` emits `sw.js` with a precache manifest read from the **written output
+directory**, so the worker can only ever ask for files that build produced — and the build
+fails loudly when the app shell is missing or the manifest would be empty (this guard caught
+its own first implementation, which read the in-memory bundle and found no `index.html`).
+- Registration is production-only, silent when it fails, and never interrupts the user with a
+reload.
+- The store's schema, its per-version migration step, its `(accountId, farmId, …)` scoping and
+  every clearing path behave correctly against a real IndexedDB implementation
+  (`fake-indexeddb` supplied to jsdom, which has none).
+- Transaction scope is correct: a store not listed on the transaction throws, which is how a
+  silent cross-store write failure was found in this increment.
+
+**Not verified, and therefore not claimed:** anything that depends on the Android WebView
+itself. jsdom has no service worker and no HTTP cache, so the three checks below can only be
+run on a device or emulator. They are the reason this item is handed off rather than marked
+done.
+
+### Runbook
+
+```bash
+# 1. Build and install the wrapper (net10.0-android Debug → android-arm64 APK)
+dotnet build src/FMS.Mobile/FMS.Mobile.csproj -f net10.0-android -c Debug
+# install the APK from
+# src/FMS.Mobile/bin/Debug/net10.0-android/android-arm64/com.fms.mobile-Signed.apk
+
+# 2. Check what the WebView actually stored, over USB:
+#    desktop Chrome → chrome://inspect → the device → inspect the FMS page
+#      Application → Cache Storage  → expect a cache named fms-shell-<hash>
+#      Application → IndexedDB      → expect fms-offline → cache / syncMeta
+#      Network → reload with the network on: the navigation should read "(ServiceWorker)"
+```
+
+**6a. Does the shell load with no connection, and does `CacheModes.NoCache` interfere?**
+
+1. Launch with the network on and let the app finish loading.
+2. Turn on airplane mode (or disable Wi-Fi and mobile data).
+3. Swipe the app away from recents (a cold kill, not just backgrounding) and relaunch it.
+4. **Pass:** the app loads, the header shows the offline banner with a record count and a
+   "last synced" age, and no blank WebView or "Couldn't load the app" overlay appears.
+5. **If it fails:** the prime suspect is `CacheModes.NoCache` in
+   `FmsWebViewHandler.cs` (`LOAD_NO_CACHE` bypasses the WebView's HTTP cache, and the comment
+   beside it describes `LOAD_DEFAULT` instead). Change it to the default, rebuild, and repeat.
+   If it then passes, keep the change **and** note that a stale bundle becomes possible after a
+   deploy — check 6c is what covers that.
+
+**6b. Does the online-only messaging stay honest?**
+
+With airplane mode on and the shell loaded, open a data page (animals, tasks, dashboard).
+**Pass:** the page fails or shows empty as it does today, the banner still says saving needs a
+connection, and nothing anywhere promises that the attempt was queued. This is the check that
+keeps 4.5.1 from overstating itself; it will change when 4.5.2/4.5.4 land, and should be
+re-run then.
+
+**6c. Does a deploy reach the device within one online launch?**
+
+GitHub Pages serves `index.html` with `Cache-Control: max-age=600`, and a service worker is
+only re-fetched on navigation, so a stale shell is the plausible failure mode.
+
+1. Note the build hash of the deployed bundle (the precache cache name from step 2).
+2. Deploy any frontend change to Pages, wait for the workflow to finish, then wait out the
+   600 seconds.
+3. Launch the app with the network on, then relaunch it.
+4. **Pass:** the cache name changes and the visible change appears. **Fail:** the old cache
+   name persists across relaunches, which means the worker is not being refreshed and the
+   update path needs work before offline writes are built on top of it.
+
+### What to report back
+
+- For each of 6a/6b/6c: pass or fail, the device or emulator used, the Android version, and the
+  cache name before and after where applicable.
+- Whether `CacheModes.NoCache` had to be changed, and the observation that justified it.
+- Anything the banner showed that was not true (a count, an age, or a promise about saving).
+
+---
+
 ## Results log
 
 Fill in as each item is executed. Do not mark an item verified on inspection alone.
@@ -309,3 +485,5 @@ Fill in as each item is executed. Do not mark an item verified on inspection alo
 | 2. CI gate | 2026-09-21 | agent | **DONE** | 5 runs; gate proven red→green; client-suite flake found |
 | 3. compose stack | | | | |
 | 4. Secret rotation | | | | |
+| 5. Live email delivery | | | | reset/invitation/digest to a real inbox; blocked on the two preconditions above |
+| 6. Offline shell (device) | | | | three checks: shell loads offline × `CacheModes.NoCache`, messaging stays honest, a deploy reaches the device |

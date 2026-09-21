@@ -1,57 +1,29 @@
-import axios from './axios';
-import { farmUrl } from './farmApi';
+import { createImportApi } from './importApi';
+import type {
+  ImportCommit,
+  ImportFieldDescriptor,
+  ImportFieldMap,
+  ImportMapping,
+  ImportPreview,
+  ImportRow,
+  ImportRowError,
+} from './importApi';
 
-/** One column the importer understands, in the order the mapping table shows them. */
-export interface AnimalImportFieldDescriptor {
-  key: string;
-  label: string;
-  required: boolean;
-  hint: string;
-}
-
-/** Where a canonical field's value comes from: a column, or a value for every row. */
-export interface AnimalImportFieldMap {
-  column?: number | null;
-  constant?: string | null;
-}
-
-export interface AnimalImportMapping {
-  fields: Record<string, AnimalImportFieldMap>;
-  dateFormat?: string | null;
-}
-
-export interface AnimalImportRowError {
-  field: string;
-  message: string;
-}
-
-export interface AnimalImportRow {
-  rowNumber: number;
-  isValid: boolean;
-  errors: AnimalImportRowError[];
-  values: Record<string, string>;
-}
-
-export interface AnimalImportPreview {
-  fields: AnimalImportFieldDescriptor[];
-  headers: string[];
-  mapping: AnimalImportMapping;
-  suggestedMapping: AnimalImportMapping;
-  lookups: Record<string, string[]>;
-  totalRows: number;
-  validRowCount: number;
-  invalidRowCount: number;
-  truncated: boolean;
-  invalidRows: AnimalImportRow[];
-  sampleValidRows: AnimalImportRow[];
-}
-
-export interface AnimalImportCommit {
-  totalRows: number;
-  importedCount: number;
-  truncated: boolean;
-  invalidRows: AnimalImportRow[];
-}
+/**
+ * The animal importer, on the shared import contract.
+ *
+ * The wire types and the two calls are the generic ones — the animal-specific part is
+ * only the endpoint's base path and the template file's headers. The `Animal*` aliases
+ * below are kept so callers (and their tests) that name the animal import explicitly
+ * keep compiling against the same shapes they always did.
+ */
+export type AnimalImportFieldDescriptor = ImportFieldDescriptor;
+export type AnimalImportFieldMap = ImportFieldMap;
+export type AnimalImportMapping = ImportMapping;
+export type AnimalImportRowError = ImportRowError;
+export type AnimalImportRow = ImportRow;
+export type AnimalImportPreview = ImportPreview;
+export type AnimalImportCommit = ImportCommit;
 
 /**
  * The headers written into the downloadable template.
@@ -93,31 +65,4 @@ export const TEMPLATE_EXAMPLE_ROW = [
   'Imported from the herd register',
 ];
 
-const buildForm = (file: File, mapping?: AnimalImportMapping): FormData => {
-  const data = new FormData();
-  data.append('file', file);
-  if (mapping) data.append('mapping', JSON.stringify(mapping));
-  return data;
-};
-
-// The explicit multipart content type matters: the shared axios instance defaults to
-// application/json, which would serialise a FormData body instead of sending it.
-const MULTIPART = { headers: { 'Content-Type': 'multipart/form-data' } } as const;
-
-export const animalImportApi = {
-  /** Validates the file and writes nothing. Called with no mapping, it answers with the headers and its own guess. */
-  preview: (file: File, mapping?: AnimalImportMapping) =>
-    axios.post<AnimalImportPreview>(
-      farmUrl('/animals/import/preview'),
-      buildForm(file, mapping),
-      MULTIPART,
-    ),
-
-  /** Imports the file. All-or-nothing: any invalid row means nothing is written. */
-  commit: (file: File, mapping?: AnimalImportMapping) =>
-    axios.post<AnimalImportCommit>(
-      farmUrl('/animals/import/commit'),
-      buildForm(file, mapping),
-      MULTIPART,
-    ),
-};
+export const animalImportApi = createImportApi('/animals/import');

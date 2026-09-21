@@ -28,6 +28,17 @@ services:
       - Jwt__Issuer=FarmManagementSystem
       - Jwt__Audience=FarmManagementSystem
       - Cors__AllowedOrigins__0=http://localhost:3000
+      # Email delivery. Listed explicitly because compose only forwards what is
+      # named here: without these, values in .env would be silently ignored and
+      # the container would always run with the Log transport (messages written to
+      # the container log, never sent). Provider defaults to Log, so this stack
+      # needs no credentials; set Email__Provider=SendGrid in .env to send for
+      # real, and EmailConfigurationGuard will refuse to start if the key or sender
+      # is then missing rather than dropping every reset and invitation.
+      - Email__Provider=${Email__Provider:-Log}
+      - Email__FromAddress=${Email__FromAddress:-}
+      - Email__SendGrid__ApiKey=${Email__SendGrid__ApiKey:-}
+      - Frontend__BaseUrl=${Frontend__BaseUrl:-http://localhost:3000}
     entrypoint:
       - /bin/sh
       - -c

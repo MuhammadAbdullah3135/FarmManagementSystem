@@ -1,0 +1,231 @@
+/**
+ * Builds the offline shell's service worker.
+ *
+ * Kept as pure functions with no Vite and no Node dependency so the two things that
+ * can silently ruin an offline build — an empty precache list and a missing app
+ * shell — are unit-testable, instead of only discoverable by clearing a cache on a
+ * device. `vite-plugin-offline.ts` is the thin adapter that feeds it a bundle.
+ *
+ * Why a hand-written worker rather than a workbox plugin: the whole job is "precache
+ * the hashed bundle, serve the shell when the network is gone, never touch the API",
+ * which is ~60 lines. Adding a build-time dependency to do that would be a second
+ * thing to keep working, and this codebase already prefers a small auditable
+ * mechanism (see the hand-written polyfills in index.html).
+ */
+
+/** Cache names all start with this, so activation can find and delete its own predecessors. */
+export const SHELL_CACHE_PREFIX = 'fms-shell-';
+
+export const SERVICE_WORKER_FILE_NAME = 'sw.js';
+
+/** The app shell: what a navigation request falls back to when there is no network. */
+export const SHELL_FILE_NAME = 'index.html';
+
+export interface PrecacheInput {
+  /** File names relative to the build output root, e.g. `assets/index-a1b2.js`. */
+  assets: string[];
+  /** Vite's `base`, e.g. `/FarmManagementSystem/`. */
+  base: string;
+}
+
+export interface ServiceWorkerInput {
+  version: string;
+  precache: string[];
+  shellUrl: string;
+}
+
+/** `''` and `'/'` both mean "served from the domain root"; anything else keeps a trailing slash. */
+export function normalizeBase(base: string): string {
+  if (!base || base === '/') return '/';
+  return base.endsWith('/') ? base : `${base}/`;
+}
+
+/**
+ * Turns the emitted file names into the URLs the worker precaches.
+ *
+ * Throws when the app shell is missing: a build whose worker cannot serve the shell
+ * would install "successfully" and then be useless offline, which is worse than a
+ * failed build. The plugin surfaces this through `this.error`, so it stops the build.
+ */
+export function buildPrecacheManifest({ assets, base }: PrecacheInput): string[] {
+  const normalizedBase = normalizeBase(base);
+
+  const files = assets
+    .filter((asset) => asset !== SERVICE_WORKER_FILE_NAME)
+    // Source maps are for debugging a deployed bundle, not for serving offline.
+    .filter((asset) => !asset.endsWith('.map'));
+
+  if (!files.includes(SHELL_FILE_NAME)) {
+    throw new Error(
+      `Offline shell build failed: '${SHELL_FILE_NAME}' is not in the build output, so the `
+        + 'service worker would have nothing to serve when the network is unavailable.',
+    );
+  }
+
+  const urls = files.map((file) => `${normalizedBase}${file.replace(/^\//, '')}`);
+  return Array.from(new Set(urls));
+}
+
+/**
+ * A deterministic FNV-1a hash of the manifest.
+ *
+ * Deterministic matters: the same manifest must produce the same cache name, or every
+ * build would invalidate every device's cache even when nothing it holds changed.
+ */
+export function hashManifest(entries: string[]): string {
+  let hash = 0x811c9dc5;
+  for (const entry of [...entries].sort()) {
+    for (let index = 0; index < entry.length; index++) {
+      hash ^= entry.charCodeAt(index);
+      hash = Math.imul(hash, 0x01000193) >>> 0;
+    }
+    hash ^= 0x2c; // separator, so ['ab'] and ['a','b'] cannot collide
+    hash = Math.imul(hash, 0x01000193) >>> 0;
+  }
+  return hash.toString(16).padStart(8, '0');
+}
+
+/**
+ * The deployment's git sha when the build has one (Pages passes `VITE_BUILD_SHA`),
+ * otherwise a hash of the manifest. Either way, identical inputs give identical cache
+ * names and a real change gives a new one.
+ */
+export function selectServiceWorkerVersion({
+  buildSha,
+  manifest,
+}: {
+  buildSha?: string;
+  manifest: string[];
+}): string {
+  const sha = buildSha?.trim();
+  if (sha && sha !== 'dev' && sha !== 'undefined' && sha !== 'null') return sha;
+  return `manifest-${hashManifest(manifest)}`;
+}
+
+/**
+ * The worker's source.
+ *
+ * Design notes worth keeping:
+ * - **Navigations are network-first**, matching the deliberate choice already made in
+ *   the Android WebView handler (`CacheModes.NoCache`): a relaunch after a deploy must
+ *   not keep loading an old bundle. Offline is the fallback, not the default.
+ * - **Hashed assets are cache-first**: their names change when their content does, so
+ *   revalidating them would only cost a round trip.
+ * - **Cross-origin requests are never handled.** The API runs on its own host and its
+ *   responses are per-user; caching them here would leak one session's data into
+ *   another's. That check is asserted by a test rather than left to review.
+ */
+export function buildServiceWorker({ version, precache, shellUrl }: ServiceWorkerInput): string {
+  if (precache.length === 0) {
+    throw new Error('Offline shell build failed: the precache list is empty.');
+  }
+
+  return `/* Generated by tools/offline/vite-plugin-offline.ts — do not edit by hand. */
+'use strict';
+
+var CACHE_PREFIX = ${JSON.stringify(SHELL_CACHE_PREFIX)};
+var VERSION = ${JSON.stringify(version)};
+var SHELL_URL = ${JSON.stringify(shellUrl)};
+var PRECACHE = ${JSON.stringify(precache, null, 2)};
+var CACHE_NAME = CACHE_PREFIX + VERSION;
+
+self.addEventListener('install', function (event) {
+  event.waitUntil(
+    (async function () {
+      var cache = await caches.open(CACHE_NAME);
+      // reload: bypass the HTTP cache, so what gets stored is the deploy's own bytes
+      // rather than a previous deploy's response sitting in the browser cache.
+      var requests = PRECACHE.map(function (url) {
+        return new Request(url, { cache: 'reload' });
+      });
+      await cache.addAll(requests);
+      if (self.skipWaiting) await self.skipWaiting();
+    })()
+  );
+});
+
+self.addEventListener('activate', function (event) {
+  event.waitUntil(
+    (async function () {
+      var names = await caches.keys();
+      await Promise.all(
+        names
+          .filter(function (name) {
+            return name.indexOf(CACHE_PREFIX) === 0 && name !== CACHE_NAME;
+          })
+          .map(function (name) {
+            return caches.delete(name);
+          })
+      );
+      if (self.clients && self.clients.claim) await self.clients.claim();
+    })()
+  );
+});
+
+self.addEventListener('fetch', function (event) {
+  var request = event.request;
+
+  // Writes and non-GET requests are the network's business, never the cache's.
+  if (request.method !== 'GET') return;
+
+  var url;
+  try {
+    url = new URL(request.url);
+  } catch (error) {
+    return;
+  }
+
+  // Another origin means the API (or an asset host): leave it to the browser.
+  if (url.origin !== self.location.origin) return;
+
+  if (request.mode === 'navigate') {
+    event.respondWith(networkFirstShell(request));
+    return;
+  }
+
+  // Range requests (media seeking) would be stored as partial bodies; skip them.
+  if (request.headers.get('range')) return;
+
+  event.respondWith(cacheFirstAsset(request));
+});
+
+async function networkFirstShell(request) {
+  var cache = await caches.open(CACHE_NAME);
+  try {
+    var response = await fetch(request);
+    if (response && response.ok) {
+      // Keep the stored shell current, so the next offline launch is this deploy.
+      await cache.put(SHELL_URL, response.clone());
+      return response;
+    }
+    return (await cache.match(SHELL_URL)) || response;
+  } catch (error) {
+    var cached = await cache.match(SHELL_URL);
+    if (cached) return cached;
+    return new Response(
+      '<!doctype html><meta charset="utf-8"><title>Offline</title>'
+        + '<body style="font-family:system-ui;padding:2rem">'
+        + '<h1>Offline</h1><p>This device has not stored the app yet. '
+        + 'Reconnect once to enable offline use.</p>',
+      { status: 503, headers: { 'Content-Type': 'text/html; charset=utf-8' } }
+    );
+  }
+}
+
+async function cacheFirstAsset(request) {
+  var cache = await caches.open(CACHE_NAME);
+  var cached = await cache.match(request);
+  if (cached) return cached;
+
+  try {
+    var response = await fetch(request);
+    if (response && response.ok && response.type === 'basic') {
+      await cache.put(request, response.clone());
+    }
+    return response;
+  } catch (error) {
+    return Response.error();
+  }
+}
+`;
+}

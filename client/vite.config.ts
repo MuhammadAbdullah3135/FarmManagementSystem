@@ -1,9 +1,16 @@
 import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
+import { offlineShell } from './tools/offline/vite-plugin-offline.ts'
 
 export default defineConfig({
   base: '/FarmManagementSystem/',
-  plugins: [react()],
+  plugins: [
+    react(),
+    // Emits sw.js precaching this build, so the APK shell (and the web app) can boot
+    // with no network. The same VITE_BUILD_SHA that stamps the UI also versions the
+    // offline cache, so a deploy replaces the stored shell instead of accumulating.
+    offlineShell({ buildSha: process.env.VITE_BUILD_SHA }),
+  ],
   // Stamped into the bundle so the running build is identifiable from the UI: the APK loads a
   // deployed bundle, and "which build is my phone actually on?" has been pure guesswork. The Pages
   // workflow passes VITE_BUILD_SHA; local runs fall back to 'dev'.

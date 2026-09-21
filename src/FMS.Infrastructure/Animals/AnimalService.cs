@@ -398,6 +398,11 @@ public class AnimalService : IAnimalService
             EventType = TimelineEventTypes.StatusChanged,
             Title = $"{oldStatusName} → {newStatus.Name}",
             Description = request.Reason,
+            // The id of the status moved to, so a consumer can tell a departure from any
+            // other status change without parsing the title. Rows written before this
+            // property was populated fall back to the title (see CostAttributionService).
+            RelatedEntityId = newStatus.Id,
+            RelatedEntityType = TimelineRelatedEntityTypes.AnimalStatus,
             OccurredAt = now,
             CreatedAt = now,
             CreatedBy = userId
@@ -1089,6 +1094,8 @@ public class AnimalService : IAnimalService
                 EventType = TimelineEventTypes.StatusChanged,
                 Title = $"{oldStatusName} → {status.Name}",
                 Description = request.Reason,
+                RelatedEntityId = status.Id,
+                RelatedEntityType = TimelineRelatedEntityTypes.AnimalStatus,
                 OccurredAt = now,
                 CreatedAt = now,
                 CreatedBy = userId

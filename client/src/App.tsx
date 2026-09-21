@@ -39,6 +39,8 @@ import VetCostsPage from './pages/health/VetCostsPage';
 import AnimalsPage from './pages/animals/AnimalsPage';
 import AnimalDetailPage from './pages/animals/AnimalDetailPage';
 import AnimalImportPage from './pages/animals/AnimalImportPage';
+import EmployeeImportPage from './pages/hr/EmployeeImportPage';
+import InventoryImportPage from './pages/inventory/InventoryImportPage';
 import BreedingRecordsPage from './pages/breeding/BreedingRecordsPage';
 import GestationPage from './pages/breeding/GestationPage';
 import BirthRecordingPage from './pages/breeding/BirthRecordingPage';
@@ -52,7 +54,8 @@ import InventoryReportsPage from './pages/inventory/InventoryReportsPage';
 import AnimalReportsPage from './pages/reports/AnimalReportsPage';
 import MedicalReportsPage from './pages/reports/MedicalReportsPage';
 import VaccinationReportsPage from './pages/reports/VaccinationReportsPage';
-import EmployeeReportsPage from './pages/reports/EmployeeReportsPage';
+import EmployeeReportsPage from './pages/reports/EmployeeReportsPage'
+import CostPerAnimalPage from './pages/reports/CostPerAnimalPage';
 import AuditLogPage from './pages/admin/AuditLogPage';
 import JobsPage from './pages/admin/JobsPage';
 import NotificationsPage from './pages/NotificationsPage';
@@ -105,6 +108,7 @@ const App: React.FC = () => {
 
             {/* HR */}
             <Route path="hr/employees" element={<EmployeesPage />} />
+            <Route path="hr/employees/import" element={<EmployeeImportPage />} />
             <Route path="hr/departments-roles" element={<DepartmentsRolesPage />} />
             <Route path="hr/salary-payments" element={<SalaryPaymentsPage />} />
             <Route path="hr/attendance" element={<AttendancePage />} />
@@ -133,6 +137,7 @@ const App: React.FC = () => {
 
             {/* Inventory */}
             <Route path="inventory/items" element={<InventoryItemsPage />} />
+            <Route path="inventory/items/import" element={<InventoryImportPage />} />
             <Route path="inventory/movements" element={<InventoryMovementsPage />} />
             <Route path="inventory/suppliers" element={<SuppliersPage />} />
             <Route path="inventory/customers" element={<CustomersPage />} />
@@ -146,6 +151,7 @@ const App: React.FC = () => {
             <Route path="reports/medical" element={<MedicalReportsPage />} />
             <Route path="reports/vaccination" element={<VaccinationReportsPage />} />
             <Route path="reports/employees" element={<EmployeeReportsPage />} />
+            <Route path="reports/cost-per-animal" element={<CostPerAnimalPage />} />
 
             {/* Breeding */}
             <Route path="breeding/records" element={<BreedingRecordsPage />} />

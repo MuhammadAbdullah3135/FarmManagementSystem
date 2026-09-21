@@ -1,4 +1,5 @@
 using FMS.Application.Common;
+using FMS.Application.Import;
 
 namespace FMS.Application.Animal.Import;
 
@@ -11,17 +12,17 @@ namespace FMS.Application.Animal.Import;
 /// </summary>
 public interface IAnimalImportService
 {
-    Task<Result<AnimalImportPreviewDto>> PreviewAsync(
+    Task<Result<ImportPreviewDto>> PreviewAsync(
         Guid farmId,
         Stream content,
         string fileName,
-        AnimalImportMapping? mapping,
+        ImportMapping? mapping,
         CancellationToken cancellationToken = default);
 
-    Task<Result<AnimalImportCommitDto>> CommitAsync(
+    Task<Result<ImportCommitDto>> CommitAsync(
         Guid farmId,
         Stream content,
         string fileName,
-        AnimalImportMapping? mapping,
+        ImportMapping? mapping,
         CancellationToken cancellationToken = default);
 }

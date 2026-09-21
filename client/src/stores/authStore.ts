@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import api from '../api/axios';
 import { getApiError } from '../api/farmApi';
+import { clearOfflineDataOnSignOut } from '../offline/offlineData';
 import type { AuthResponse, User, LoginRequest, RegisterRequest, ResetPasswordRequest, ConfirmResetPasswordRequest } from '../types';
 
 interface AuthState {
@@ -112,6 +113,13 @@ export const useAuthStore = create<AuthState>()(
         localStorage.removeItem('refreshToken');
         localStorage.removeItem('user');
         localStorage.removeItem('activeFarmId');
+
+        // The device must not keep farm data for a user who has signed out: the next
+        // person to pick it up would otherwise be able to read it out of the cache with
+        // no session at all. Deliberately not awaited — sign-out is a UI action and must
+        // complete regardless of whether storage cooperates.
+        void clearOfflineDataOnSignOut();
+
         set({ user: null, isAuthenticated: false });
       },
 
