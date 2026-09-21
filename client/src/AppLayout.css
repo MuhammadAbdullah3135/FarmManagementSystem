@@ -27,18 +27,36 @@
   max-width: calc(100vw - 32px);
 }
 
+/* antd's card head row does not wrap, and its title only ever receives the *leftover* width:
+   `.ant-card-head-title` is `flex: 1`, so its base size is 0, while `.ant-card-extra` shrinks no
+   further than its min-content. An `extra` wider than that leftover therefore ellipsises the title
+   down to a single character ("P…" on hr/salary-payments, where a ~340px range picker sat beside
+   a third-width card) and spills past the card's border. Letting the row wrap gives the controls a
+   line of their own instead — right-aligned, which is where antd's `margin-inline-start: auto`
+   already puts them.
+
+   This is inert for a head that fits: a flex line is formed from the items' base sizes, so a short
+   extra stays beside the title (which keeps its ellipsis and truncates a long title exactly as
+   before) and no head grows taller unless it was already broken. `min-width: 0` keeps a wrapped
+   extra inside the card instead of letting it hang past the border. */
+body .ant-card-head > .ant-card-head-wrapper {
+  flex-wrap: wrap;
+  row-gap: 8px;
+}
+
+body .ant-card-head .ant-card-extra {
+  min-width: 0;
+  max-width: 100%;
+}
+
 @media (max-width: 576px) {
-  /* antd's card head is two levels: `.ant-card-head` is a plain block and the
-     flex row is `.ant-card-head-wrapper` inside it. The title is `flex: 1` with
-     an ellipsis while the action area cannot shrink, so a 200px filter plus a
-     button (≈348px) ate the whole row and antd ellipsised the title down to
-     "P…". (The old rule here set `flex-wrap` on `.ant-card-head`, which is
-     inert — that element is not the flex container.) On a phone the head is
-     two rows: title, then actions. */
+  /* On a phone the head stacks: title on one row, then the actions, instead of ellipsising the
+     title into the same row. (The wrap rule above explains why the title needs rescuing at all;
+     the old rule here set `flex-wrap` on `.ant-card-head`, which is inert — that element is not
+     the flex container.) */
   body .ant-card-head > .ant-card-head-wrapper {
     flex-direction: column;
     align-items: stretch;
-    row-gap: 8px;
   }
 
   body .ant-card-head .ant-card-head-title {
@@ -50,7 +68,6 @@
 
   body .ant-card-head .ant-card-extra {
     width: 100%;
-    min-width: 0;
     margin-inline-start: 0;
   }
 

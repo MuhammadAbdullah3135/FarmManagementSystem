@@ -16,6 +16,10 @@ const css = readFileSync(path.resolve(process.cwd(), 'src/AppLayout.css'), 'utf8
  * `.ant-card-head { flex-wrap: wrap }` never wrapped anything and the title
  * stayed ellipsised to "P…" on a phone.
  *
+ * That fix is split across two blocks: an all-width guard (the head row wraps, so actions that
+ * cannot share the line drop below it) and the phone block (the head stacks and its controls go
+ * full width). They are asserted separately because they fix different ranges of window widths.
+ *
  * Comments are stripped so that prose in the file can never satisfy a check.
  */
 const mobileBlock = (): string => {
@@ -23,6 +27,38 @@ const mobileBlock = (): string => {
   if (start < 0) throw new Error('AppLayout.css no longer has a @media (max-width: 576px) block');
   return css.slice(start).replace(/\/\*[\s\S]*?\*\//g, '');
 };
+
+/** Everything that applies at every width: the part of the file before the phone media query. */
+const baseBlock = (): string => {
+  const end = css.indexOf('@media (max-width: 576px)');
+  if (end < 0) throw new Error('AppLayout.css no longer has a @media (max-width: 576px) block');
+  return css.slice(0, end).replace(/\/\*[\s\S]*?\*\//g, '');
+};
+
+/*
+ * The phone block cannot be the whole fix: antd's head row does not wrap and its title is `flex: 1`
+ * (a base size of 0), so an `extra` wider than the leftover space ellipsises the title at *any*
+ * width. hr/salary-payments lost its "Payroll Report" title on every window under ~1800px, which
+ * the 576px query never reached. The guard is a wrap on the row plus a shrink floor on the actions,
+ * deliberately leaving the title's own rules alone: a flex line forms from base sizes, so a short
+ * extra still shares the row, a long title still truncates with an ellipsis, and only a wide action
+ * area wraps.
+ */
+describe('AppLayout.css card head at every width', () => {
+  it('lets the head row wrap, so wide actions drop onto a line of their own', () => {
+    expect(baseBlock()).toMatch(
+      /\.ant-card-head\s*>\s*\.ant-card-head-wrapper\s*\{[^}]*flex-wrap:\s*wrap/,
+    );
+  });
+
+  it('keeps a wrapped action area inside the card instead of past its border', () => {
+    expect(baseBlock()).toMatch(/\.ant-card-extra\s*\{[^}]*min-width:\s*0[^}]*max-width:\s*100%/);
+  });
+
+  it('leaves the title rules alone, so a long title still truncates rather than wrapping', () => {
+    expect(baseBlock()).not.toMatch(/\.ant-card-head-title\s*\{/);
+  });
+});
 
 describe('AppLayout.css mobile card head', () => {
   it('stacks the head on the element that is actually the flex container', () => {

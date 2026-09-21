@@ -113,6 +113,16 @@ const SalaryPaymentsPage: React.FC = () => {
 
   return (
     <div>
+      {/* The payroll range lives above the cards rather than in the report card head. antd's card
+          head is a single non-wrapping flex row whose title only ever receives the leftover width,
+          so a ~340px range picker beside a third-width (lg={8}) card drove the title down to "P…".
+          `fms-filter-row` gives the picker one full-width line on a phone (see AppLayout.css). */}
+      <Row gutter={[16, 16]} className="fms-filter-row" style={{ marginBottom: 16 }}>
+        <Col>
+          <DatePicker.RangePicker value={payRange} onChange={(v) => v && setPayRange(v)} />
+        </Col>
+      </Row>
+
       <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
         <Col xs={24} lg={16}>
           <Card title="Salary Payments" extra={
@@ -152,12 +162,7 @@ const SalaryPaymentsPage: React.FC = () => {
         <Col xs={24} lg={8}>
           <Card
             title="Payroll Report"
-            extra={
-              <Space>
-                <DatePicker.RangePicker value={payRange} onChange={(v) => v && setPayRange(v)} />
-                <Button size="small" onClick={loadReport}>Refresh</Button>
-              </Space>
-            }
+            extra={<Button size="small" onClick={loadReport}>Refresh</Button>}
           >
             {report ? (
               <>

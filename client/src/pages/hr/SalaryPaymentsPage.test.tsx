@@ -22,7 +22,15 @@ beforeEach(() => {
   vi.mocked(salaryPaymentsApi.list).mockResolvedValue({ data: { items: [], totalCount: 0, page: 1, pageSize: 10 } } as never);
 });
 
-const outerColumns = (root: HTMLElement) => [...([...root.querySelectorAll('.ant-row')][0].children as unknown as HTMLElement[])];
+/**
+ * The grid column holding the card with this title. Addressed by title rather than by `.ant-row`
+ * index, so the filter row above the cards cannot shift what this test is looking at.
+ */
+const columnOf = (title: string) => {
+  const col = screen.getByText(title).closest('.ant-col');
+  if (!col) throw new Error(`the "${title}" card is not inside a Column`);
+  return col as HTMLElement;
+};
 
 /** Columns sized by a fixed `span={n}` keep their desktop width at every viewport. */
 const fixedSpanColumns = (cols: HTMLElement[]) =>
@@ -34,15 +42,38 @@ describe('SalaryPaymentsPage mobile layout', () => {
   // the 2:1 split they have on a laptop. (The stats inside the payroll card stay half/half at every
   // width by design, so they are not part of this assertion.)
   it('sizes the two cards through breakpoints instead of a fixed span', async () => {
-    const { container } = render(<SalaryPaymentsPage />);
+    render(<SalaryPaymentsPage />);
     await waitFor(() => expect(screen.getByText('Payroll Report')).toBeInTheDocument());
 
-    const cols = outerColumns(container);
+    const cols = [columnOf('Salary Payments'), columnOf('Payroll Report')];
     expect(fixedSpanColumns(cols)).toHaveLength(0);
-    expect(cols).toHaveLength(2);
     expect(cols[0].classList.contains('ant-col-xs-24')).toBe(true);
     expect(cols[0].classList.contains('ant-col-lg-16')).toBe(true);
     expect(cols[1].classList.contains('ant-col-xs-24')).toBe(true);
     expect(cols[1].classList.contains('ant-col-lg-8')).toBe(true);
+  });
+});
+
+/*
+ * The payroll range picker is ~340px wide and the report card is a third of the row (lg={8}), so a
+ * picker in the card's `extra` squeezed antd's `flex: 1` title down to "P…" — and hung past the
+ * card's border — on every window narrower than about 1800px. The range belongs in the page's
+ * filter row (which already stacks full width on a phone); only the small Refresh button stays in
+ * the head. Encoded as "no wide control is in the head", which is the property that broke.
+ */
+describe('SalaryPaymentsPage card heads', () => {
+  it('keeps the wide date range out of the Payroll Report card head', async () => {
+    const { container } = render(<SalaryPaymentsPage />);
+    await waitFor(() => expect(screen.getByText('Payroll Report')).toBeInTheDocument());
+
+    const filterRow = container.querySelector('.fms-filter-row');
+    expect(filterRow).not.toBeNull();
+    expect(filterRow!.querySelectorAll('.ant-picker-range')).toHaveLength(1);
+
+    const head = screen.getByText('Payroll Report').closest('.ant-card-head');
+    expect(head).not.toBeNull();
+    expect(head!.querySelectorAll('.ant-picker-range')).toHaveLength(0);
+    expect([...head!.querySelectorAll('.ant-card-extra button')].map((btn) => btn.textContent))
+      .toEqual(['Refresh']);
   });
 });
