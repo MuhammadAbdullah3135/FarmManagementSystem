@@ -9,6 +9,7 @@ import type {
   AnimalType, Breed, SexOption, AgeCategory, AnimalStatus, LocationType, Location,
 } from '../../api/configuration';
 import { getApiError } from '../../api/farmApi';
+import LookupQuickAddSelect from '../../components/LookupQuickAddSelect';
 
 type ModalType =
   | 'animalType'
@@ -393,10 +394,11 @@ const ConfigurationPage: React.FC = () => {
                 <Input maxLength={100} placeholder="e.g. Sahiwal" />
               </Form.Item>
               <Form.Item name="animalTypeId" label="Animal Type" rules={[{ required: true, message: 'Animal type is required' }]}>
-                <Select
+                <LookupQuickAddSelect
+                  kind="animalType"
                   options={animalTypes.map((t) => ({ value: t.id, label: t.name }))}
                   placeholder="Select animal type"
-                  style={{ width: '100%' }}
+                  onCreated={() => load()}
                 />
               </Form.Item>
               <Form.Item name="averageGestationDays" label="Average Gestation (days)">
@@ -463,21 +465,30 @@ const ConfigurationPage: React.FC = () => {
                 <Input maxLength={200} placeholder="e.g. Shed A" />
               </Form.Item>
               <Form.Item name="locationTypeId" label="Location Type" rules={[{ required: true, message: 'Location type is required' }]}>
-                <Select
+                <LookupQuickAddSelect
+                  kind="locationType"
                   options={locationTypes.map((lt) => ({ value: lt.id, label: lt.name }))}
                   placeholder="Select location type"
-                  style={{ width: '100%' }}
+                  onCreated={() => load()}
                 />
               </Form.Item>
               <Form.Item name="parentLocationId" label="Parent Location (optional)">
-                <Select
+                <LookupQuickAddSelect
+                  kind="location"
+                  ctx={{
+                    locationTypes: locationTypes.map((lt) => ({ value: lt.id, label: lt.name })),
+                    locations: flatLocations.map((l) => ({
+                      value: l.id,
+                      label: `${'\u00A0\u00A0'.repeat(l.depth)}${l.name}`,
+                    })),
+                  }}
                   allowClear
                   options={flatLocations.map((l) => ({
                     value: l.id,
                     label: `${'\u00A0\u00A0'.repeat(l.depth)}${l.name}`,
                   }))}
                   placeholder="None (top level)"
-                  style={{ width: '100%' }}
+                  onCreated={() => load()}
                 />
               </Form.Item>
             </>

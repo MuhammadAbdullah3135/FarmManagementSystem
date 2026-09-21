@@ -1,12 +1,13 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  Button, Card, Form, Input, InputNumber, Modal, Popconfirm, Select, Space, Switch, Table, Tag, message,
+  Button, Card, Form, Input, InputNumber, Modal, Popconfirm, Space, Switch, Table, Tag, message,
 } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { vaccinationSchedulesApi, vaccineTypesApi } from '../../api/health';
 import { lookupsApi } from '../../api/attendance';
 import { getApiError } from '../../api/farmApi';
+import LookupQuickAddSelect from '../../components/LookupQuickAddSelect';
 import type { VaccinationSchedule, VaccineTypeListItem } from '../../types';
 
 interface AnimalTypeOption {
@@ -49,6 +50,20 @@ const VaccinationSchedulePage: React.FC = () => {
     const timer = window.setTimeout(() => { load(1); }, 0);
     return () => window.clearTimeout(timer);
   }, [load]);
+
+  /** Options-only refresh: keeps the table page untouched. */
+  const loadOptions = useCallback(async () => {
+    try {
+      const [vaxRes, atRes] = await Promise.all([
+        vaccineTypesApi.list({ page: 1, pageSize: 100 }),
+        lookupsApi.animalTypes(),
+      ]);
+      setVaccineTypes(vaxRes.data.items);
+      setAnimalTypes(atRes.data);
+    } catch (err) {
+      message.error(getApiError(err));
+    }
+  }, []);
 
   const openCreate = () => {
     setEditing(null);
@@ -167,20 +182,20 @@ const VaccinationSchedulePage: React.FC = () => {
       >
         <Form form={form} layout="vertical">
           <Form.Item name="vaccineTypeId" label="Vaccine Type" rules={[{ required: true, message: 'Select vaccine type' }]}>
-            <Select
-              showSearch
-              optionFilterProp="label"
+            <LookupQuickAddSelect
+              kind="vaccineType"
               placeholder="Select vaccine"
               options={vaccineTypes.map((v) => ({ value: v.id, label: v.name }))}
+              onCreated={() => loadOptions()}
             />
           </Form.Item>
           <Form.Item name="animalTypeId" label="Animal Type (optional — blank = all)">
-            <Select
+            <LookupQuickAddSelect
+              kind="animalType"
               allowClear
-              showSearch
-              optionFilterProp="label"
               placeholder="All animal types"
               options={animalTypes.map((a) => ({ value: a.id, label: a.name }))}
+              onCreated={() => loadOptions()}
             />
           </Form.Item>
           <Form.Item name="recurrenceDays" label="Repeat Every (days)" rules={[{ required: true }]}>

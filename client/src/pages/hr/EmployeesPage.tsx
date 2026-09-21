@@ -8,6 +8,7 @@ import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import { employeesApi, departmentsApi, employeeRolesApi } from '../../api/hr';
 import { getApiError } from '../../api/farmApi';
+import LookupQuickAddSelect from '../../components/LookupQuickAddSelect';
 import type { Department, Employee, EmployeeRole } from '../../types';
 
 const SALARY_TYPES = ['Monthly', 'Weekly', 'Daily', 'Hourly'];
@@ -49,6 +50,20 @@ const EmployeesPage: React.FC = () => {
     const timer = window.setTimeout(() => { load(1); }, 0);
     return () => window.clearTimeout(timer);
   }, [load]);
+
+  /** Options-only refresh: keeps the table page and search untouched. */
+  const loadOptions = useCallback(async () => {
+    try {
+      const [deptRes, roleRes] = await Promise.all([
+        departmentsApi.list(),
+        employeeRolesApi.list(),
+      ]);
+      setDepartments(deptRes.data);
+      setRoles(roleRes.data);
+    } catch (err) {
+      message.error(getApiError(err));
+    }
+  }, []);
 
   const openCreate = () => {
     setEditing(null);
@@ -203,12 +218,22 @@ const EmployeesPage: React.FC = () => {
           <Row gutter={[16, 16]}>
             <Col xs={24} sm={12}>
               <Form.Item name="departmentId" label="Department">
-                <Select allowClear options={departments.map((d) => ({ value: d.id, label: d.name }))} style={{ width: '100%' }} />
+                <LookupQuickAddSelect
+                  kind="department"
+                  allowClear
+                  options={departments.map((d) => ({ value: d.id, label: d.name }))}
+                  onCreated={() => loadOptions()}
+                />
               </Form.Item>
             </Col>
             <Col xs={24} sm={12}>
               <Form.Item name="employeeRoleId" label="Role">
-                <Select allowClear options={roles.map((r) => ({ value: r.id, label: r.name }))} style={{ width: '100%' }} />
+                <LookupQuickAddSelect
+                  kind="employeeRole"
+                  allowClear
+                  options={roles.map((r) => ({ value: r.id, label: r.name }))}
+                  onCreated={() => loadOptions()}
+                />
               </Form.Item>
             </Col>
           </Row>

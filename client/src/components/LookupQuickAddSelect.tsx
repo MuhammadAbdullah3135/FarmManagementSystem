@@ -1,43 +1,56 @@
-import { useState, type CSSProperties, type ReactElement } from 'react';
+import { useId, useState, type CSSProperties, type ReactElement } from 'react';
 import { Button, Divider, Form, Input, InputNumber, Modal, Select, Switch, message } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import { getApiError } from '../api/farmApi';
+import {
+  getQuickAddSpec,
+  type LookupKind,
+  type QuickAddContext,
+  type QuickAddFieldSpec,
+  type QuickAddVariant,
+} from './lookupQuickAdd';
 
-export interface QuickAddFieldSpec {
-  name: string;
+export type { QuickAddFieldSpec } from './lookupQuickAdd';
+
+/** The created lookup, normalised so every consumer sees one shape. */
+export interface CreatedLookup {
+  id: string;
   label: string;
-  widget: 'input' | 'textarea' | 'number' | 'select' | 'switch';
-  required?: boolean;
-  maxLength?: number;
-  placeholder?: string;
-  min?: number;
-  max?: number;
-  options?: { value: string | number; label: string }[];
-  initialValue?: unknown;
-  /** Renders the select with its own inline quick-add (e.g. add a Location
-   *  Type from inside the Add Location modal). */
-  nestedQuickAdd?: {
-    label: string;
-    fields: QuickAddFieldSpec[];
-    onQuickAdd: (values: Record<string, unknown>) => Promise<string>;
-  };
 }
 
 interface LookupQuickAddSelectProps {
+  /**
+   * Registry-backed creation (preferred). When set, the modal fields, the
+   * create call and any gating hint come from `lookupQuickAdd`, and `label`
+   * is only a fallback.
+   */
+  kind?: LookupKind;
+  /** Values the create depends on (see `QuickAddContext`). */
+  ctx?: QuickAddContext;
+  /** Only the location chain varies; defaults to the top-level form. */
+  variant?: QuickAddVariant;
   /** Shown on the footer button ("Add Breed") and as the modal title. */
-  label: string;
+  label?: string;
   options: { value: string; label: string }[];
   /** Injected by Form.Item. */
   value?: string;
   onChange?: (value?: string) => void;
-  /** Modal form fields (with initial values). */
-  fields: QuickAddFieldSpec[];
+  /** Modal form fields (with initial values). Required without `kind`. */
+  fields?: QuickAddFieldSpec[];
   /**
-   * Create the lookup on the server. Must return the new option id.
-   * The parent is responsible for adding the created option to `options`.
-   * Throwing keeps the modal open and surfaces the error as a toast.
+   * Create the lookup on the server, returning the new option id. Required
+   * without `kind`. The parent is responsible for adding the created option
+   * to `options`. Throwing keeps the modal open and surfaces the error.
    */
-  onQuickAdd: (values: Record<string, unknown>) => Promise<string>;
+  onQuickAdd?: (values: Record<string, unknown>) => Promise<string>;
+  /**
+   * Called with the normalised created lookup *before* it is selected, so the
+   * parent can append it or refetch its options. Awaited, so a refetch has
+   * landed by the time the value is set. `kind` is the lookup the caller's
+   * switch should act on, which also lets nested quick-adds (a Location Type
+   * created inside Add Location) reach the same handler.
+   */
+  onCreated?: (created: CreatedLookup, kind?: LookupKind) => void | Promise<void>;
   /** Called when the select value changes (user pick or quick-add). */
   onValueSelected?: (value?: string) => void;
   disabled?: boolean;
@@ -52,12 +65,16 @@ interface LookupQuickAddSelectProps {
 }
 
 const LookupQuickAddSelect = ({
+  kind,
+  ctx,
+  variant,
   label,
   options,
   value,
   onChange,
   fields,
   onQuickAdd,
+  onCreated,
   onValueSelected,
   disabled = false,
   addDisabled = false,
@@ -70,10 +87,25 @@ const LookupQuickAddSelect = ({
   const [modalOpen, setModalOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [form] = Form.useForm();
+  // Forms are always mounted (see `forceRender` below), so a page with several
+  // quick-adds would otherwise ship duplicate ids: antd derives each field's id
+  // from its name, and every one of these forms has a field called `name`.
+  const formId = useId();
 
-  const canAdd = !disabled && !addDisabled;
+  const quickAddCtx = ctx ?? {};
+  const spec = kind ? getQuickAddSpec(kind, quickAddCtx, variant) : undefined;
+  const resolvedLabel = spec?.label ?? label ?? '';
+  const resolvedFields = spec?.fields ?? fields ?? [];
+  // A dependent lookup (a breed without its animal type) cannot be created yet:
+  // the select stays openable, only the Add affordance is replaced by a hint.
+  const specReason = spec?.disabledReason?.(quickAddCtx);
+  const canAdd = !disabled && !addDisabled && !specReason;
+  const hint = addDisabled ? disabledHint : specReason;
+
   const initialValues = Object.fromEntries(
-    fields.filter((f) => f.initialValue !== undefined).map((f) => [f.name, f.initialValue]),
+    resolvedFields
+      .filter((f) => f.initialValue !== undefined)
+      .map((f) => [f.name, f.initialValue]),
   );
 
   const openModal = () => {
@@ -86,11 +118,22 @@ const LookupQuickAddSelect = ({
     try {
       const values = await form.validateFields();
       setCreating(true);
-      // Throws on API failure — the modal stays open with the input intact.
-      const createdId = await onQuickAdd(values as Record<string, unknown>);
-      onChange?.(createdId);
-      onValueSelected?.(createdId);
-      message.success(`${label} "${values[fields[0].name]}" created`);
+      let created: CreatedLookup;
+      if (spec) {
+        // Throws on API failure — the modal stays open with the input intact.
+        created = await spec.create(values as Record<string, unknown>, quickAddCtx);
+      } else if (onQuickAdd) {
+        const id = await onQuickAdd(values as Record<string, unknown>);
+        created = { id, label: String(values[resolvedFields[0]?.name] ?? '') };
+      } else {
+        throw new Error(`No quick-add handler configured for ${resolvedLabel}`);
+      }
+      // Awaited before selecting: a parent that refetches its options (the
+      // location tree, say) must have the new option in hand first.
+      await onCreated?.(created, kind);
+      onChange?.(created.id);
+      onValueSelected?.(created.id);
+      message.success(`${resolvedLabel} "${values[resolvedFields[0]?.name]}" created`);
       setModalOpen(false);
       form.resetFields();
     } catch (err) {
@@ -114,7 +157,7 @@ const LookupQuickAddSelect = ({
         optionFilterProp="label"
         allowClear={allowClear}
         disabled={disabled}
-        placeholder={placeholder ?? `Select ${label.toLowerCase()}`}
+        placeholder={placeholder ?? `Select ${resolvedLabel.toLowerCase()}`}
         popupMatchSelectWidth={popupMatchSelectWidth}
         style={{ width: '100%', ...style }}
         popupRender={(menu: ReactElement) => (
@@ -128,12 +171,12 @@ const LookupQuickAddSelect = ({
                   size="small"
                   icon={<PlusOutlined />}
                   onClick={openModal}
-                  data-testid={`quick-add-${label}`}
+                  data-testid={`quick-add-${resolvedLabel}`}
                 >
-                  Add {label}
+                  Add {resolvedLabel}
                 </Button>
               ) : (
-                <span style={{ color: '#999', fontSize: 12 }}>{disabledHint}</span>
+                <span style={{ color: '#999', fontSize: 12 }}>{hint}</span>
               )}
             </div>
           </>
@@ -141,12 +184,12 @@ const LookupQuickAddSelect = ({
       />
 
       <Modal
-        title={`Add ${label}`}
+        title={`Add ${resolvedLabel}`}
         open={modalOpen}
         onOk={handleCreate}
         onCancel={() => setModalOpen(false)}
         confirmLoading={creating}
-        okText={`Add ${label}`}
+        okText={`Add ${resolvedLabel}`}
         destroyOnClose
         // Always mounted so the Form stays connected and openModal's prefill
         // (setFieldsValue) reliably applies even on the first open.
@@ -154,8 +197,8 @@ const LookupQuickAddSelect = ({
         width={420}
         maskClosable={false}
       >
-        <Form form={form} layout="vertical">
-          {fields.map((f) => (
+        <Form form={form} name={formId} layout="vertical">
+          {resolvedFields.map((f) => (
             <Form.Item
               key={f.name}
               name={f.name}
@@ -168,10 +211,14 @@ const LookupQuickAddSelect = ({
               {f.widget === 'number' && <InputNumber min={f.min} max={f.max} style={{ width: '100%' }} />}
               {f.widget === 'select' && f.nestedQuickAdd && (
                 <LookupQuickAddSelect
+                  kind={'kind' in f.nestedQuickAdd ? f.nestedQuickAdd.kind : undefined}
+                  ctx={'kind' in f.nestedQuickAdd ? f.nestedQuickAdd.ctx : undefined}
+                  variant={'kind' in f.nestedQuickAdd ? f.nestedQuickAdd.variant : undefined}
                   label={f.nestedQuickAdd.label}
+                  fields={'kind' in f.nestedQuickAdd ? undefined : f.nestedQuickAdd.fields}
+                  onQuickAdd={'kind' in f.nestedQuickAdd ? undefined : f.nestedQuickAdd.onQuickAdd}
+                  onCreated={onCreated}
                   options={(f.options ?? []).map((o) => ({ value: String(o.value), label: o.label }))}
-                  fields={f.nestedQuickAdd.fields}
-                  onQuickAdd={f.nestedQuickAdd.onQuickAdd}
                   placeholder={f.placeholder}
                 />
               )}

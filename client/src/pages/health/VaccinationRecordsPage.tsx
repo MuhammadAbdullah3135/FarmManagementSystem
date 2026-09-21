@@ -8,6 +8,7 @@ import dayjs from 'dayjs';
 import { vaccinationRecordsApi, vaccineTypesApi } from '../../api/health';
 import { lookupsApi } from '../../api/attendance';
 import { getApiError } from '../../api/farmApi';
+import LookupQuickAddSelect from '../../components/LookupQuickAddSelect';
 import type { VaccinationRecordListItem, VaccineTypeListItem } from '../../types';
 
 interface AnimalOption {
@@ -55,6 +56,16 @@ const VaccinationRecordsPage: React.FC = () => {
     const timer = window.setTimeout(() => { load(1); }, 0);
     return () => window.clearTimeout(timer);
   }, [load]);
+
+  /** Options-only refresh: keeps the table page and filters untouched. */
+  const loadVaccineTypes = useCallback(async () => {
+    try {
+      const res = await vaccineTypesApi.list({ page: 1, pageSize: 100 });
+      setVaccineTypes(res.data.items);
+    } catch (err) {
+      message.error(getApiError(err));
+    }
+  }, []);
 
   const openCreate = () => {
     setEditing(null);
@@ -209,11 +220,11 @@ const VaccinationRecordsPage: React.FC = () => {
             />
           </Form.Item>
           <Form.Item name="vaccineTypeId" label="Vaccine Type" rules={[{ required: true, message: 'Select vaccine type' }]}>
-            <Select
-              showSearch
-              optionFilterProp="label"
+            <LookupQuickAddSelect
+              kind="vaccineType"
               placeholder="Select vaccine"
               options={vaccineTypes.map((v) => ({ value: v.id, label: v.name }))}
+              onCreated={() => loadVaccineTypes()}
             />
           </Form.Item>
           <Form.Item name="dateGiven" label="Date Given" rules={[{ required: true }]}>

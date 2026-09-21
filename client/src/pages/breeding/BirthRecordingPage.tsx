@@ -5,6 +5,7 @@ import { PlusOutlined, DeleteOutlined, EyeOutlined } from '@ant-design/icons';
 import { birthsApi, gestationApi, breedingRecordsApi, type CreateBirthRecordPayload } from '../../api/breeding';
 import { lookupsApi } from '../../api/attendance';
 import { getApiError } from '../../api/farmApi';
+import LookupQuickAddSelect from '../../components/LookupQuickAddSelect';
 import dayjs from 'dayjs';
 import type { BirthRecord, GestationRecord, BreedingRecord } from '../../types';
 
@@ -48,6 +49,16 @@ export default function BirthRecordingPage() {
     const timer = window.setTimeout(() => { void load(1); }, 0);
     return () => window.clearTimeout(timer);
   }, [load]);
+
+  /** Options-only refresh for the offspring rows' Sex select. */
+  const loadSexOptions = useCallback(async () => {
+    try {
+      const res = await lookupsApi.sexOptions();
+      setSexOptions(res.data);
+    } catch (err) {
+      message.error(getApiError(err));
+    }
+  }, []);
 
   const openCreateModal = async () => {
     setModalOpen(true);
@@ -321,11 +332,12 @@ export default function BirthRecordingPage() {
                       label="Sex"
                       rules={[{ required: true, message: 'Required' }]}
                     >
-                      <Select placeholder="Select sex" style={{ width: '100%' }}>
-                        {sexOptions.map(s => (
-                          <Select.Option key={s.id} value={s.id}>{s.value}</Select.Option>
-                        ))}
-                      </Select>
+                      <LookupQuickAddSelect
+                        kind="sexOption"
+                        placeholder="Select sex"
+                        options={sexOptions.map(s => ({ value: s.id, label: s.value }))}
+                        onCreated={() => loadSexOptions()}
+                      />
                     </Form.Item>
                   </Col>
 

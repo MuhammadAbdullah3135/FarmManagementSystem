@@ -158,7 +158,10 @@ describe('AnimalsPage create form', () => {
     // The lookup options must render in the dropdown.
     expect(await screen.findByRole('option', { name: 'Calf' })).toBeInTheDocument();
     expect(screen.getByRole('option', { name: 'Adult' })).toBeInTheDocument();
-  });
+    // Same 5s-default flake as the quick-add walks below: mounting this page's
+    // seven always-mounted quick-add modals under full-suite parallel load
+    // exceeded the default and failed the Pages deploy job.
+  }, 20000);
 
   it('offers an inline Add footer for every lookup dropdown', async () => {
     const user = userEvent.setup();

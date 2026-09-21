@@ -9,6 +9,7 @@ import { feedRecordsApi, feedTypesApi } from '../../api/feed';
 import { lookupsApi } from '../../api/attendance';
 import { flattenLocations } from '../../api/configuration';
 import { getApiError } from '../../api/farmApi';
+import LookupQuickAddSelect from '../../components/LookupQuickAddSelect';
 import type { FeedRecord, FeedType } from '../../types';
 
 interface AnimalOption {
@@ -30,6 +31,7 @@ const FeedRecordsPage: React.FC = () => {
   const [feedTypes, setFeedTypes] = useState<FeedType[]>([]);
   const [animals, setAnimals] = useState<AnimalOption[]>([]);
   const [locations, setLocations] = useState<LocationOption[]>([]);
+  const [locationTypes, setLocationTypes] = useState<LocationOption[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<FeedRecord | null>(null);
   const [targetMode, setTargetMode] = useState<'animal' | 'location'>('animal');
@@ -38,13 +40,16 @@ const FeedRecordsPage: React.FC = () => {
 
   const loadLookups = useCallback(async () => {
     try {
-      const [typesRes, animalsRes, locationsRes] = await Promise.all([
+      const [typesRes, animalsRes, locationsRes, locationTypesRes] = await Promise.all([
         feedTypesApi.list(),
         lookupsApi.animals(),
         lookupsApi.locations(),
+        // Needed by the inline Add Location quick-add.
+        lookupsApi.locationTypes(),
       ]);
       setFeedTypes(typesRes.data);
       setAnimals(animalsRes.data.items);
+      setLocationTypes(locationTypesRes.data);
       // Flatten the location tree so nested (child) locations appear too.
       setLocations(
         flattenLocations(locationsRes.data).map((l) => ({
@@ -227,7 +232,11 @@ const FeedRecordsPage: React.FC = () => {
                 />
               </Form.Item>
               <Form.Item name="feedTypeId" label="Feed Type" rules={[{ required: true }]}>
-                <Select options={feedTypes.map((t) => ({ value: t.id, label: `${t.name} (${t.unitName})` }))} />
+                <LookupQuickAddSelect
+                  kind="feedType"
+                  options={feedTypes.map((t) => ({ value: t.id, label: `${t.name} (${t.unitName})` }))}
+                  onCreated={() => loadLookups()}
+                />
               </Form.Item>
               {targetMode === 'animal' ? (
                 <Form.Item name="animalId" label="Animal" rules={[{ required: true }]}>
@@ -242,7 +251,15 @@ const FeedRecordsPage: React.FC = () => {
                 </Form.Item>
               ) : (
                 <Form.Item name="locationId" label="Location" rules={[{ required: true }]}>
-                  <Select options={locations.map((l) => ({ value: l.id, label: l.name }))} />
+                  <LookupQuickAddSelect
+                    kind="location"
+                    ctx={{
+                      locationTypes: locationTypes.map((lt) => ({ value: lt.id, label: lt.name })),
+                      locations: locations.map((l) => ({ value: l.id, label: l.name })),
+                    }}
+                    options={locations.map((l) => ({ value: l.id, label: l.name }))}
+                    onCreated={() => loadLookups()}
+                  />
                 </Form.Item>
               )}
             </>

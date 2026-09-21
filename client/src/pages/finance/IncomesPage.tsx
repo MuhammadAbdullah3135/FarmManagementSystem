@@ -9,6 +9,7 @@ import type { IncomeRecordPayload } from '../../api/finance';
 import { lookupsApi } from '../../api/attendance';
 import { flattenLocations } from '../../api/configuration';
 import { getApiError } from '../../api/farmApi';
+import LookupQuickAddSelect from '../../components/LookupQuickAddSelect';
 import type { IncomeCategory, IncomeRecord, PaymentMethod } from '../../types';
 
 interface FormValues {
@@ -33,19 +34,23 @@ const IncomesPage: React.FC = () => {
   const [methods, setMethods] = useState<PaymentMethod[]>([]);
   const [animals, setAnimals] = useState<{ id: string; tagNumber: string; name?: string }[]>([]);
   const [locations, setLocations] = useState<{ id: string; name: string }[]>([]);
+  const [locationTypes, setLocationTypes] = useState<{ id: string; name: string }[]>([]);
   const [form] = Form.useForm();
 
   const loadOptions = useCallback(async () => {
     try {
-      const [catRes, methodRes, animalRes, locationRes] = await Promise.all([
+      const [catRes, methodRes, animalRes, locationRes, locationTypeRes] = await Promise.all([
         incomeCategoriesApi.list(),
         paymentMethodsApi.list(),
         lookupsApi.animals(),
         lookupsApi.locations(),
+        // Needed by the inline Add Location quick-add.
+        lookupsApi.locationTypes(),
       ]);
       setCategories(catRes.data);
       setMethods(methodRes.data);
       setAnimals(animalRes.data.items);
+      setLocationTypes(locationTypeRes.data);
       // Flatten the location tree so nested (child) locations appear too.
       setLocations(
         flattenLocations(locationRes.data).map((l) => ({
@@ -289,21 +294,19 @@ const IncomesPage: React.FC = () => {
             </Col>
           </Row>
           <Form.Item name="incomeCategoryId" label="Category" rules={[{ required: true, message: 'Category is required' }]}>
-            <Select
+            <LookupQuickAddSelect
+              kind="incomeCategory"
               placeholder="Select category"
               options={categories.map((c) => ({ value: c.id, label: c.name }))}
-              showSearch
-              optionFilterProp="label"
-              style={{ width: '100%' }}
+              onCreated={() => loadOptions()}
             />
           </Form.Item>
           <Form.Item name="paymentMethodId" label="Payment Method" rules={[{ required: true, message: 'Payment method is required' }]}>
-            <Select
+            <LookupQuickAddSelect
+              kind="paymentMethod"
               placeholder="Select payment method"
               options={methods.map((m) => ({ value: m.id, label: m.name }))}
-              showSearch
-              optionFilterProp="label"
-              style={{ width: '100%' }}
+              onCreated={() => loadOptions()}
             />
           </Form.Item>
           <Row gutter={[16, 16]}>
@@ -322,7 +325,17 @@ const IncomesPage: React.FC = () => {
             </Col>
             <Col xs={24} sm={12}>
               <Form.Item name="locationId" label="Location (optional)">
-                <Select allowClear placeholder="Link a location" options={locations.map((l) => ({ value: l.id, label: l.name }))} style={{ width: '100%' }} />
+                <LookupQuickAddSelect
+                  kind="location"
+                  ctx={{
+                    locationTypes: locationTypes.map((lt) => ({ value: lt.id, label: lt.name })),
+                    locations: locations.map((l) => ({ value: l.id, label: l.name })),
+                  }}
+                  allowClear
+                  placeholder="Link a location"
+                  options={locations.map((l) => ({ value: l.id, label: l.name }))}
+                  onCreated={() => loadOptions()}
+                />
               </Form.Item>
             </Col>
           </Row>

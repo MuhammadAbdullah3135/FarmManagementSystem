@@ -1,12 +1,13 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  Button, Card, Col, Drawer, Form, Input, InputNumber, Modal, Popconfirm, Row, Select, Space, Switch, Table, Tag, message,
+  Button, Card, Col, Drawer, Form, Input, InputNumber, Modal, Popconfirm, Row, Space, Switch, Table, Tag, message,
 } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { dietPlansApi, feedTypesApi } from '../../api/feed';
 import { lookupsApi } from '../../api/attendance';
 import { getApiError } from '../../api/farmApi';
+import LookupQuickAddSelect from '../../components/LookupQuickAddSelect';
 import type { DietPlan, DietPlanItem, FeedType } from '../../types';
 
 interface LookupOption {
@@ -20,7 +21,7 @@ const DietPlansPage: React.FC = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<DietPlan | null>(null);
   const [itemsTarget, setItemsTarget] = useState<DietPlan | null>(null);
-  const [, setFeedTypeOptions] = useState<FeedType[]>([]);
+  const [feedTypes, setFeedTypeOptions] = useState<FeedType[]>([]);
   const [animalTypes, setAnimalTypes] = useState<LookupOption[]>([]);
   const [ageCategories, setAgeCategories] = useState<LookupOption[]>([]);
   const [itemForm] = Form.useForm();
@@ -38,12 +39,21 @@ const DietPlansPage: React.FC = () => {
     }
   }, []);
 
+  /** Each lookup settles independently: one failing list must not blank the others. */
+  const loadOptions = useCallback(async () => {
+    const [ft, at, ac] = await Promise.all([
+      feedTypesApi.list().catch(() => undefined),
+      lookupsApi.animalTypes().catch(() => undefined),
+      lookupsApi.ageCategories().catch(() => undefined),
+    ]);
+    if (ft) setFeedTypeOptions(ft.data);
+    if (at) setAnimalTypes(at.data);
+    if (ac) setAgeCategories(ac.data);
+  }, []);
+
   useEffect(() => {
-    window.setTimeout(() => { loadPlans(); }, 0);
-    feedTypesApi.list().then((r) => setFeedTypeOptions(r.data)).catch(() => undefined);
-    lookupsApi.animalTypes().then((r) => setAnimalTypes(r.data)).catch(() => undefined);
-    lookupsApi.ageCategories().then((r) => setAgeCategories(r.data)).catch(() => undefined);
-  }, [loadPlans]);
+    window.setTimeout(() => { loadPlans(); void loadOptions(); }, 0);
+  }, [loadPlans, loadOptions]);
 
   const openCreate = () => {
     setEditing(null);
@@ -201,19 +211,21 @@ const DietPlansPage: React.FC = () => {
             <Input maxLength={100} />
           </Form.Item>
           <Form.Item name="animalTypeId" label="Animal Type">
-            <Select
+            <LookupQuickAddSelect
+              kind="animalType"
               allowClear
               placeholder="Any"
               options={animalTypes.map((t) => ({ value: t.id, label: t.name }))}
-              style={{ width: '100%' }}
+              onCreated={() => loadOptions()}
             />
           </Form.Item>
           <Form.Item name="ageCategoryId" label="Age Category">
-            <Select
+            <LookupQuickAddSelect
+              kind="ageCategory"
               allowClear
               placeholder="Any"
               options={ageCategories.map((c) => ({ value: c.id, label: c.name }))}
-              style={{ width: '100%' }}
+              onCreated={() => loadOptions()}
             />
           </Form.Item>
           <Row gutter={[16, 16]}>
@@ -248,10 +260,12 @@ const DietPlansPage: React.FC = () => {
         <Table rowKey="id" columns={itemColumns} dataSource={itemsTarget?.items ?? []} pagination={false} size="small" />
         <Form form={itemForm} layout="inline" style={{ marginTop: 16 }}>
           <Form.Item name="feedTypeId" rules={[{ required: true, message: 'Required' }]}>
-            <Select
+            <LookupQuickAddSelect
+              kind="feedType"
               placeholder="Feed type"
               style={{ width: 180 }}
-              options={[]}
+              options={feedTypes.map((t) => ({ value: t.id, label: `${t.name} (${t.unitName})` }))}
+              onCreated={() => loadOptions()}
             />
           </Form.Item>
           <Form.Item name="quantityPerFeeding" rules={[{ required: true, message: 'Required' }]}>

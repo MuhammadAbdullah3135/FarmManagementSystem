@@ -1,12 +1,13 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  Button, Card, Form, Input, InputNumber, Modal, Popconfirm, Select, Space, Switch, Table, Tag, message,
+  Button, Card, Form, Input, InputNumber, Modal, Popconfirm, Space, Switch, Table, Tag, message,
 } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { weightCheckSchedulesApi } from '../../api/health';
 import { lookupsApi } from '../../api/attendance';
 import { getApiError } from '../../api/farmApi';
+import LookupQuickAddSelect from '../../components/LookupQuickAddSelect';
 import type { WeightCheckSchedule } from '../../types';
 
 interface AnimalTypeOption { id: string; name: string; }
@@ -52,6 +53,22 @@ const WeightCheckSchedulePage: React.FC = () => {
     const timer = window.setTimeout(() => { load(1); }, 0);
     return () => window.clearTimeout(timer);
   }, [load]);
+
+  /** Options-only refresh: keeps the table page untouched. */
+  const loadOptions = useCallback(async () => {
+    try {
+      const [atRes, breedRes, ageRes] = await Promise.all([
+        lookupsApi.animalTypes(),
+        lookupsApi.breeds(),
+        lookupsApi.ageCategories(),
+      ]);
+      setAnimalTypes(atRes.data);
+      setBreeds(breedRes.data);
+      setAgeCategories(ageRes.data);
+    } catch (err) {
+      message.error(getApiError(err));
+    }
+  }, []);
 
   const openCreate = () => {
     setEditing(null);
@@ -172,25 +189,32 @@ const WeightCheckSchedulePage: React.FC = () => {
       >
         <Form form={form} layout="vertical">
           <Form.Item name="animalTypeId" label="Animal Type (optional)">
-            <Select
-              allowClear showSearch optionFilterProp="label"
+            <LookupQuickAddSelect
+              kind="animalType"
+              allowClear
               placeholder="All animal types"
-              onChange={(val) => { setSelectedAnimalType(val); form.setFieldsValue({ breedId: undefined }); }}
               options={animalTypes.map(a => ({ value: a.id, label: a.name }))}
+              onValueSelected={(val) => { setSelectedAnimalType(val); form.setFieldsValue({ breedId: undefined }); }}
+              onCreated={() => loadOptions()}
             />
           </Form.Item>
           <Form.Item name="breedId" label="Breed (optional)">
-            <Select
-              allowClear showSearch optionFilterProp="label"
+            <LookupQuickAddSelect
+              kind="breed"
+              ctx={{ animalTypeId: selectedAnimalType }}
+              allowClear
               placeholder="All breeds"
               options={filteredBreeds.map(b => ({ value: b.id, label: b.name }))}
+              onCreated={() => loadOptions()}
             />
           </Form.Item>
           <Form.Item name="ageCategoryId" label="Age Category (optional)">
-            <Select
-              allowClear showSearch optionFilterProp="label"
+            <LookupQuickAddSelect
+              kind="ageCategory"
+              allowClear
               placeholder="All age categories"
               options={ageCategories.map(a => ({ value: a.id, label: a.name }))}
+              onCreated={() => loadOptions()}
             />
           </Form.Item>
           <Form.Item name="recurrenceDays" label="Remind every ___ days" rules={[{ required: true }]}>

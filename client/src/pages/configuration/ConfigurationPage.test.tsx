@@ -115,3 +115,58 @@ describe('ConfigurationPage delete feedback', () => {
     expect(await screen.findByText('Location service unavailable')).toBeInTheDocument();
   }, 20000);
 });
+
+/**
+ * The configuration page must not need a detour into itself: a breed needs an
+ * animal type, and a location needs a type (and optionally a parent), so both
+ * of those selects offer the inline add. Searched inside the open dropdown
+ * portals because the page's own toolbar buttons carry similar names.
+ */
+const footerButton = (name: RegExp) =>
+  waitFor(() => {
+    for (const dropdown of document.querySelectorAll('.ant-select-dropdown')) {
+      const button = within(dropdown as HTMLElement).queryByRole('button', { name });
+      if (button) return button;
+    }
+    throw new Error(`no dropdown footer button matching ${String(name)} yet`);
+  });
+
+const fieldInModal = (title: string, label: string) => {
+  const modal = (
+    screen.getByText(title, { selector: '.ant-modal-title' }).closest('.ant-modal') as HTMLElement
+  );
+  for (const candidate of modal.querySelectorAll('.ant-form-item-label label')) {
+    if (candidate.textContent === label) return candidate.closest('.ant-form-item') as HTMLElement;
+  }
+  throw new Error(`no ${label} field in the ${title} modal`);
+};
+
+describe('ConfigurationPage inline quick-add', () => {
+  it('lets a breed be created before its animal type exists', async () => {
+    vi.mocked(configurationApi.animalTypes).mockResolvedValue(res([]));
+    const user = userEvent.setup();
+    renderPage();
+
+    await openTab(user, 'Breeds');
+    await user.click(within(activePane()).getByRole('button', { name: /Add Breed/i }));
+    await user.click(within(fieldInModal('New Breed', 'Animal Type')).getByRole('combobox'));
+
+    expect(await footerButton(/Add Animal Type/i)).toBeInTheDocument();
+  }, 20000);
+
+  it('lets a location be created with a new type, or under a new parent', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await openTab(user, 'Locations');
+    await user.click(within(activePane()).getByRole('button', { name: /Add Location/i }));
+
+    await user.click(within(fieldInModal('New Location', 'Location Type')).getByRole('combobox'));
+    expect(await footerButton(/Add Location Type/i)).toBeInTheDocument();
+
+    await user.click(
+      within(fieldInModal('New Location', 'Parent Location (optional)')).getByRole('combobox'),
+    );
+    expect(await footerButton(/Add Location/i)).toBeInTheDocument();
+  }, 20000);
+});

@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  Button, Card, Form, Input, Modal, Popconfirm, Select, Space, Table, message,
+  Button, Card, Form, Input, Modal, Popconfirm, Space, Table, message,
 } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { vaccineTypesApi, medicinesApi } from '../../api/health';
 import { getApiError } from '../../api/farmApi';
+import LookupQuickAddSelect from '../../components/LookupQuickAddSelect';
 import type { VaccineTypeListItem, MedicineListItem } from '../../types';
 
 const VaccineTypesPage: React.FC = () => {
@@ -41,6 +42,16 @@ const VaccineTypesPage: React.FC = () => {
     const timer = window.setTimeout(() => { load(1); }, 0);
     return () => window.clearTimeout(timer);
   }, [load]);
+
+  /** Options-only refresh: keeps the table page and search untouched. */
+  const loadMedicines = useCallback(async () => {
+    try {
+      const res = await medicinesApi.list({ page: 1, pageSize: 100 });
+      setMedicines(res.data.items);
+    } catch (err) {
+      message.error(getApiError(err));
+    }
+  }, []);
 
   const openCreate = () => {
     setEditing(null);
@@ -162,12 +173,12 @@ const VaccineTypesPage: React.FC = () => {
             <Input maxLength={200} placeholder="e.g. 5ml" />
           </Form.Item>
           <Form.Item name="linkedMedicineId" label="Linked Medicine (optional)">
-            <Select
+            <LookupQuickAddSelect
+              kind="medicine"
               allowClear
-              showSearch
-              optionFilterProp="label"
               placeholder="Select medicine for stock tracking"
               options={medicines.map((m) => ({ value: m.id, label: m.name }))}
+              onCreated={() => loadMedicines()}
             />
           </Form.Item>
           <Form.Item name="notes" label="Notes">

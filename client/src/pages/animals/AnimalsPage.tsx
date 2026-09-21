@@ -1,12 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Card, Table, Button, Modal, Form, Input, Select, DatePicker, Space, Tag, message, Popconfirm, Row, Col } from 'antd';
-import { configurationApi, flattenLocations, type AnimalType, type Breed } from '../../api/configuration';
+import { flattenLocations, type AnimalType } from '../../api/configuration';
 import type { ColumnsType } from 'antd/es/table';
 import { PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined, UploadOutlined } from '@ant-design/icons';
 import { animalsApi, type AnimalListFilter, type CreateAnimalPayload } from '../../api/animals';
 import { lookupsApi } from '../../api/attendance';
 import { getApiError } from '../../api/farmApi';
-import LookupQuickAddSelect, { type QuickAddFieldSpec } from '../../components/LookupQuickAddSelect';
+import LookupQuickAddSelect, { type CreatedLookup } from '../../components/LookupQuickAddSelect';
+import type { LookupKind } from '../../components/lookupQuickAdd';
 import dayjs from 'dayjs';
 import { useNavigate } from 'react-router-dom';
 import type { AnimalListItem } from '../../types';
@@ -19,45 +20,8 @@ interface LookupOption {
 
 const STATUS_COLORS: Record<number, string> = { 0: 'green', 1: 'orange', 2: 'red' };
 
-const STATUS_CATEGORY_LABELS: Record<number, string> = { 0: 'Active', 1: 'Inactive', 2: 'Terminal' };
-
 /** Indents nested location labels so the tree structure is visible in the select. */
 const indentLocationLabel = (name: string, depth: number) => `${'\u00A0\u00A0'.repeat(depth)}${name}`;
-
-const ANIMAL_TYPE_QUICK_ADD_FIELDS: QuickAddFieldSpec[] = [
-  { name: 'name', label: 'Name', widget: 'input', required: true, maxLength: 100, placeholder: 'e.g. Cattle' },
-];
-
-const BREED_QUICK_ADD_FIELDS: QuickAddFieldSpec[] = [
-  { name: 'name', label: 'Name', widget: 'input', required: true, maxLength: 100, placeholder: 'e.g. Sahiwal' },
-  { name: 'averageGestationDays', label: 'Average Gestation (days)', widget: 'number', min: 1, max: 999, initialValue: 283 },
-];
-
-const SEX_QUICK_ADD_FIELDS: QuickAddFieldSpec[] = [
-  { name: 'value', label: 'Value', widget: 'input', required: true, maxLength: 50, placeholder: 'e.g. Female' },
-];
-
-const STATUS_QUICK_ADD_FIELDS: QuickAddFieldSpec[] = [
-  { name: 'name', label: 'Name', widget: 'input', required: true, maxLength: 100, placeholder: 'e.g. Quarantined' },
-  {
-    name: 'category',
-    label: 'Category',
-    widget: 'select',
-    initialValue: 0,
-    options: Object.keys(STATUS_CATEGORY_LABELS).map((k) => ({ value: Number(k), label: STATUS_CATEGORY_LABELS[Number(k)] })),
-  },
-  { name: 'isActive', label: 'Active', widget: 'switch', initialValue: true },
-];
-
-const AGE_QUICK_ADD_FIELDS: QuickAddFieldSpec[] = [
-  { name: 'name', label: 'Name', widget: 'input', required: true, maxLength: 100, placeholder: 'e.g. Calf' },
-  { name: 'minDays', label: 'Min Age (days)', widget: 'number', min: 0, initialValue: 0 },
-  { name: 'maxDays', label: 'Max Age (days)', widget: 'number', min: 0, initialValue: 99999 },
-];
-
-const LOCATION_TYPE_QUICK_ADD_FIELDS: QuickAddFieldSpec[] = [
-  { name: 'name', label: 'Name', widget: 'input', required: true, maxLength: 100, placeholder: 'e.g. Shed' },
-];
 
 export default function AnimalsPage() {
   const navigate = useNavigate();
@@ -153,74 +117,50 @@ export default function AnimalsPage() {
     } catch {}
   };
 
-  // ─── Inline quick-add handlers (each returns the created option id) ────
+  // ─── Inline quick-add ──────────────────────────────────────────────────
+  // The modal fields and create payloads live in the shared registry
+  // (components/lookupQuickAdd.ts); this only keeps the option lists in step.
 
-  const handleQuickAddAnimalType = async (values: Record<string, unknown>) => {
-    const res = await configurationApi.createAnimalType({ name: String(values.name) });
-    const created = res.data as AnimalType;
-    setAnimalTypes((prev) => [...prev, created]);
-    return created.id;
-  };
-
-  const handleQuickAddBreed = async (values: Record<string, unknown>) => {
-    const animalTypeId = form.getFieldValue('animalTypeId') as string | undefined;
-    if (!animalTypeId) throw new Error('Select an animal type first');
-    const res = await configurationApi.createBreed({
-      name: String(values.name),
-      animalTypeId,
-      averageGestationDays: Number(values.averageGestationDays ?? 283),
-    });
-    const created = res.data as Breed;
-    setBreeds((prev) => [...prev, { id: created.id, name: created.name }]);
-    return created.id;
-  };
-
-  const handleQuickAddSexOption = async (values: Record<string, unknown>) => {
-    const res = await configurationApi.createSexOption({ value: String(values.value) });
-    const created = res.data as { id: string; value: string };
-    setSexOptions((prev) => [...prev, { id: created.id, name: created.value }]);
-    return created.id;
-  };
-
-  const handleQuickAddStatus = async (values: Record<string, unknown>) => {
-    const res = await configurationApi.createStatus({
-      name: String(values.name),
-      isActive: Boolean(values.isActive ?? true),
-      category: Number(values.category ?? 0),
-    });
-    const created = res.data as { id: string; name: string };
-    setStatuses((prev) => [...prev, { id: created.id, name: created.name }]);
-    return created.id;
-  };
-
-  const handleQuickAddAgeCategory = async (values: Record<string, unknown>) => {
-    const res = await configurationApi.createAgeCategory({
-      name: String(values.name),
-      minDays: Number(values.minDays ?? 0),
-      maxDays: Number(values.maxDays ?? 99999),
-    });
-    const created = res.data as { id: string; name: string };
-    setAgeCategories((prev) => [...prev, { id: created.id, name: created.name }]);
-    return created.id;
-  };
-
-  const handleQuickAddLocation = async (values: Record<string, unknown>) => {
-    const res = await configurationApi.createLocation({
-      name: String(values.name),
-      locationTypeId: String(values.locationTypeId),
-      parentLocationId: values.parentLocationId ? String(values.parentLocationId) : undefined,
-    });
-    // Re-fetch so nested locations (including the new one) appear correctly.
-    const refreshed = await lookupsApi.locations();
-    setLocations(flattenLocations(refreshed.data).map((l) => ({ id: l.id, name: indentLocationLabel(l.name, l.depth) })));
-    return res.data.id as string;
-  };
-
-  const handleQuickAddLocationType = async (values: Record<string, unknown>) => {
-    const res = await configurationApi.createLocationType({ name: String(values.name) });
-    const created = res.data as { id: string; name: string };
-    setLocationTypes((prev) => [...prev, { id: created.id, name: created.name }]);
-    return created.id;
+  /**
+   * Mirrors a lookup created from inside the form into its option list. A
+   * location refetches its tree rather than appending, so nesting and depth
+   * indentation stay correct — including inside the still-open Add Location
+   * modal, whose parent and location-type selects read these lists.
+   */
+  const handleLookupCreated = async (created: CreatedLookup, kind?: LookupKind) => {
+    switch (kind) {
+      case 'animalType':
+        setAnimalTypes((prev) => [...prev, { id: created.id, name: created.label, breeds: [] }]);
+        break;
+      case 'breed':
+        setBreeds((prev) => [...prev, { id: created.id, name: created.label }]);
+        break;
+      case 'sexOption':
+        setSexOptions((prev) => [...prev, { id: created.id, name: created.label }]);
+        break;
+      case 'animalStatus':
+        setStatuses((prev) => [...prev, { id: created.id, name: created.label }]);
+        break;
+      case 'ageCategory':
+        setAgeCategories((prev) => [...prev, { id: created.id, name: created.label }]);
+        break;
+      case 'locationType':
+        setLocationTypes((prev) => [...prev, { id: created.id, name: created.label }]);
+        break;
+      case 'location': {
+        // Re-fetch so nested locations (including the new one) appear correctly.
+        const refreshed = await lookupsApi.locations();
+        setLocations(
+          flattenLocations(refreshed.data).map((l) => ({
+            id: l.id,
+            name: indentLocationLabel(l.name, l.depth),
+          })),
+        );
+        break;
+      }
+      default:
+        break;
+    }
   };
 
   const openCreate = () => {
@@ -359,41 +299,6 @@ export default function AnimalsPage() {
     },
   ];
 
-  const locationTypeField = (nesting: 'top' | 'nested'): QuickAddFieldSpec => ({
-    name: 'locationTypeId',
-    label: 'Location Type',
-    widget: 'select',
-    required: true,
-    placeholder: 'Select location type',
-    initialValue: locationTypes[0]?.id,
-    options: locationTypes.map((lt) => ({ value: lt.id, label: lt.name })),
-    // Location types are a prerequisite for creating a location — allow adding
-    // one without leaving the Add Location modal.
-    ...(nesting === 'top' ? { nestedQuickAdd: { label: 'Location Type', fields: LOCATION_TYPE_QUICK_ADD_FIELDS, onQuickAdd: handleQuickAddLocationType } } : {}),
-  });
-
-  const locationQuickAddFields: QuickAddFieldSpec[] = [
-    { name: 'name', label: 'Name', widget: 'input', required: true, maxLength: 200, placeholder: 'e.g. Shed A' },
-    locationTypeField('top'),
-    {
-      name: 'parentLocationId',
-      label: 'Parent Location (optional)',
-      widget: 'select',
-      placeholder: 'None (top level)',
-      options: locations.map((l) => ({ value: l.id, label: l.name })),
-      // A missing parent location can be created inline as well; it only needs
-      // a name and a location type (which itself can be added inline).
-      nestedQuickAdd: {
-        label: 'Location',
-        fields: [
-          { name: 'name', label: 'Name', widget: 'input', required: true, maxLength: 200, placeholder: 'e.g. Shed B' },
-          locationTypeField('nested'),
-        ],
-        onQuickAdd: handleQuickAddLocation,
-      },
-    },
-  ];
-
   return (
     <>
       <Card
@@ -441,10 +346,9 @@ export default function AnimalsPage() {
             <Col xs={24} sm={12}>
               <Form.Item name="animalTypeId" label="Animal Type" rules={[{ required: true }]}>
                 <LookupQuickAddSelect
-                  label="Animal Type"
+                  kind="animalType"
                   options={animalTypes.map((t) => ({ value: t.id, label: t.name }))}
-                  fields={ANIMAL_TYPE_QUICK_ADD_FIELDS}
-                  onQuickAdd={handleQuickAddAnimalType}
+                  onCreated={handleLookupCreated}
                   onValueSelected={(v) => void handleAnimalTypeChange(v)}
                   placeholder="Select animal type"
                 />
@@ -453,13 +357,11 @@ export default function AnimalsPage() {
             <Col xs={24} sm={12}>
               <Form.Item name="breedId" label="Breed">
                 <LookupQuickAddSelect
-                  label="Breed"
+                  kind="breed"
+                  ctx={{ animalTypeId: selectedAnimalTypeId }}
                   options={breeds.map((b) => ({ value: b.id, label: b.name }))}
-                  fields={BREED_QUICK_ADD_FIELDS}
-                  onQuickAdd={handleQuickAddBreed}
+                  onCreated={handleLookupCreated}
                   allowClear
-                  addDisabled={!selectedAnimalTypeId}
-                  disabledHint="Select an Animal Type first, then add breeds for it"
                   placeholder={selectedAnimalTypeId ? 'Select breed' : 'Select an Animal Type first'}
                 />
               </Form.Item>
@@ -469,10 +371,9 @@ export default function AnimalsPage() {
             <Col xs={24} sm={12}>
               <Form.Item name="sexOptionId" label="Sex" rules={[{ required: true }]}>
                 <LookupQuickAddSelect
-                  label="Sex"
+                  kind="sexOption"
                   options={sexOptions.map((s) => ({ value: s.id, label: s.name }))}
-                  fields={SEX_QUICK_ADD_FIELDS}
-                  onQuickAdd={handleQuickAddSexOption}
+                  onCreated={handleLookupCreated}
                   placeholder="Select sex"
                 />
               </Form.Item>
@@ -480,10 +381,9 @@ export default function AnimalsPage() {
             <Col xs={24} sm={12}>
               <Form.Item name="animalStatusId" label="Status" rules={[{ required: true }]}>
                 <LookupQuickAddSelect
-                  label="Status"
+                  kind="animalStatus"
                   options={statuses.map((s) => ({ value: s.id, label: s.name }))}
-                  fields={STATUS_QUICK_ADD_FIELDS}
-                  onQuickAdd={handleQuickAddStatus}
+                  onCreated={handleLookupCreated}
                   placeholder="Select status"
                 />
               </Form.Item>
@@ -493,10 +393,13 @@ export default function AnimalsPage() {
             <Col xs={24} sm={12}>
               <Form.Item name="locationId" label="Location">
                 <LookupQuickAddSelect
-                  label="Location"
+                  kind="location"
+                  ctx={{
+                    locationTypes: locationTypes.map((lt) => ({ value: lt.id, label: lt.name })),
+                    locations: locations.map((l) => ({ value: l.id, label: l.name })),
+                  }}
                   options={locations.map((l) => ({ value: l.id, label: l.name }))}
-                  fields={locationQuickAddFields}
-                  onQuickAdd={handleQuickAddLocation}
+                  onCreated={handleLookupCreated}
                   allowClear
                   placeholder="Select location"
                 />
@@ -505,10 +408,9 @@ export default function AnimalsPage() {
             <Col xs={24} sm={12}>
               <Form.Item name="ageCategoryId" label="Age Category">
                 <LookupQuickAddSelect
-                  label="Age Category"
+                  kind="ageCategory"
                   options={ageCategories.map((c) => ({ value: c.id, label: c.name }))}
-                  fields={AGE_QUICK_ADD_FIELDS}
-                  onQuickAdd={handleQuickAddAgeCategory}
+                  onCreated={handleLookupCreated}
                   allowClear
                   placeholder="Select age category"
                 />

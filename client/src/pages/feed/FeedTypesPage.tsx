@@ -7,10 +7,9 @@ import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import { feedInventoryApi, feedTypesApi } from '../../api/feed';
 import { getApiError } from '../../api/farmApi';
-import type { FeedCategory, FeedStock, FeedType, FeedUnit, FeedStockMovement } from '../../types';
+import type { FeedStock, FeedType, FeedStockMovement } from '../../types';
+import { FEED_CATEGORIES, FEED_UNITS } from '../../utils/feedOptions';
 
-const FEED_CATEGORIES: FeedCategory[] = ['Forage', 'Concentrate', 'Mineral', 'Supplement', 'Additive', 'Other'];
-const FEED_UNITS: FeedUnit[] = ['Kilogram', 'Gram', 'Ton', 'Liter', 'Bale', 'Bag', 'Other'];
 const MOVEMENT_TYPES = ['Purchase', 'Adjustment'];
 
 const categoryColor: Record<string, string> = {
