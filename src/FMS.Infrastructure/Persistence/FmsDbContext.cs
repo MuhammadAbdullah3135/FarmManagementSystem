@@ -19,6 +19,7 @@ public class FmsDbContext : DbContext
     public DbSet<Domain.Entities.Farm> Farms => Set<Domain.Entities.Farm>();
     public DbSet<FarmConfiguration> FarmConfigurations => Set<FarmConfiguration>();
     public DbSet<UserFarm> UserFarms => Set<UserFarm>();
+    public DbSet<FarmInvitation> FarmInvitations => Set<FarmInvitation>();
     public DbSet<AnimalType> AnimalTypes => Set<AnimalType>();
     public DbSet<Breed> Breeds => Set<Breed>();
     public DbSet<SexOption> SexOptions => Set<SexOption>();
@@ -62,6 +63,9 @@ public class FmsDbContext : DbContext
     public DbSet<VaccinationRecord> VaccinationRecords => Set<VaccinationRecord>();
     public DbSet<VaccinationSchedule> VaccinationSchedules => Set<VaccinationSchedule>();
     public DbSet<WeightCheckSchedule> WeightCheckSchedules => Set<WeightCheckSchedule>();
+    public DbSet<FarmHealthStatusSnapshot> FarmHealthStatusSnapshots => Set<FarmHealthStatusSnapshot>();
+    public DbSet<Notification> Notifications => Set<Notification>();
+    public DbSet<NotificationPreference> NotificationPreferences => Set<NotificationPreference>();
     public DbSet<BreedingRecord> BreedingRecords => Set<BreedingRecord>();
     public DbSet<GestationRecord> GestationRecords => Set<GestationRecord>();
     public DbSet<GestationHealthCheck> GestationHealthChecks => Set<GestationHealthCheck>();

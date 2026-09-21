@@ -27,7 +27,32 @@ public interface IAnimalService
     Task<Result<AnimalDocumentDto>> AddDocumentAsync(Guid farmId, Guid animalId, Stream content, string originalFileName, string contentType, long contentLength, string category, string? description);
     Task<Result<List<AnimalDocumentDto>>> GetDocumentsAsync(Guid farmId, Guid animalId, string? category);
     Task<Result> DeleteDocumentAsync(Guid farmId, Guid animalId, Guid documentId);
-    Task<Result<AnimalDocumentDto>> GetDocumentForDownloadAsync(Guid farmId, Guid animalId, Guid documentId);
+
+    /// <summary>
+    /// Resolves a document for download. Callers MUST authorize before using the result:
+    /// it is the gate that decides who may read the stored bytes.
+    /// </summary>
+    Task<Result<AnimalFileDownload>> GetDocumentForDownloadAsync(Guid farmId, Guid animalId, Guid documentId);
+
+    /// <summary>Resolves an image for download. Authorization is the caller's responsibility.</summary>
+    Task<Result<AnimalFileDownload>> GetImageForDownloadAsync(Guid farmId, Guid animalId, Guid imageId);
+
+    /// <summary>
+    /// Validates a batch of animal creations against exactly the rules a single
+    /// create uses and writes nothing, reporting failures by batch index.
+    ///
+    /// The preview half of a bulk import: identical rules to
+    /// <see cref="CreateAnimalsAsync"/>, so what it predicts is what a commit does.
+    /// </summary>
+    Task<Result<BulkAnimalCreateResultDto>> ValidateAnimalsAsync(Guid farmId, IReadOnlyList<BulkAnimalCreateItem> items);
+
+    /// <summary>
+    /// Validates then creates the whole batch in a single SaveChanges, which EF
+    /// wraps in one transaction — so the batch is atomic: either every animal is
+    /// written or none is. Callers supply the ids (see <see cref="BulkAnimalCreateItem.Id"/>),
+    /// which is what allows rows in the batch to reference one another.
+    /// </summary>
+    Task<Result<BulkAnimalCreateResultDto>> CreateAnimalsAsync(Guid farmId, IReadOnlyList<BulkAnimalCreateItem> items);
 
     Task<Result<AnimalTransferDto>> TransferAnimalAsync(Guid farmId, Guid animalId, TransferAnimalRequest request);
     Task<Result<BulkOperationResultDto>> BulkChangeStatusAsync(Guid farmId, BulkStatusChangeRequest request);

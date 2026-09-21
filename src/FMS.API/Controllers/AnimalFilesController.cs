@@ -90,16 +90,40 @@ public class AnimalFilesController : ControllerBase
         return result.IsSuccess ? NoContent() : MapError(result.Error!);
     }
 
+    [HttpGet("{animalId:guid}/images/{imageId:guid}/download")]
+    public async Task<IActionResult> DownloadImage(Guid farmId, Guid animalId, Guid imageId)
+    {
+        var result = await _animalService.GetImageForDownloadAsync(farmId, animalId, imageId);
+        return await ServeStoredFileAsync(result);
+    }
+
     [HttpGet("{animalId:guid}/documents/{documentId:guid}/download")]
     public async Task<IActionResult> DownloadDocument(Guid farmId, Guid animalId, Guid documentId)
     {
         var result = await _animalService.GetDocumentForDownloadAsync(farmId, animalId, documentId);
+        return await ServeStoredFileAsync(result);
+    }
+
+    /// <summary>
+    /// Serves a stored file to a caller already authorized to read this farm's animal.
+    ///
+    /// The authorization above is what gates access: on object storage we hand back a
+    /// short-lived presigned URL so the bytes come straight from the bucket, and on local
+    /// disk we stream them instead. Either way the file is never publicly addressable.
+    /// </summary>
+    private async Task<IActionResult> ServeStoredFileAsync(Result<AnimalFileDownload> result)
+    {
         if (!result.IsSuccess)
             return MapError(result.Error!);
 
-        var document = result.Value!;
-        var stream = _fileStorage.OpenRead(document.StoragePath);
-        return File(stream, document.ContentType, document.OriginalFileName);
+        var file = result.Value!;
+
+        var presigned = await _fileStorage.GetPresignedDownloadUrlAsync(file.StoragePath, file.OriginalFileName);
+        if (presigned.IsSuccess)
+            return Redirect(presigned.Value!.Url);
+
+        var stream = await _fileStorage.OpenReadAsync(file.StoragePath);
+        return File(stream, file.ContentType, file.OriginalFileName);
     }
 
     [HttpPost("{animalId:guid}/transfer")]

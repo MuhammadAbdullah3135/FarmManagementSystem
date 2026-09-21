@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using System.Text.Json;
+using FMS.Domain.Common;
 using FMS.Domain.Enums;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
@@ -60,6 +61,11 @@ public class AuditLogInterceptor : SaveChangesInterceptor
         foreach (var entry in dbContext.ChangeTracker.Entries())
         {
             if (entry.Entity is Domain.Entities.AuditLog)
+                continue;
+
+            // Internal telemetry (background-job bookkeeping) is not business
+            // data, and a job has no principal to attribute the change to.
+            if (entry.Entity is IAuditLogExcluded)
                 continue;
 
             if (entry.State == EntityState.Detached || entry.State == EntityState.Unchanged)

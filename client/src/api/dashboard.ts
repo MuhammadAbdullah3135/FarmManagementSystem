@@ -24,6 +24,12 @@ export interface DashboardAlert {
   message: string;
   dueDate?: string;
   link?: string;
+  /**
+   * Stable identity of the underlying condition (entity ids only, no dates).
+   * The notification dispatcher dedupes on it; the dashboard does not need it,
+   * so treat it as optional here.
+   */
+  sourceKey?: string;
 }
 
 export interface AnimalTrendPoint {

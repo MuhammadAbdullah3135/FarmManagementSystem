@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Card, Table, Button, Modal, Form, Input, Select, DatePicker, Space, Tag, message, Popconfirm, Row, Col } from 'antd';
 import { configurationApi, flattenLocations, type AnimalType, type Breed } from '../../api/configuration';
 import type { ColumnsType } from 'antd/es/table';
-import { PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined, UploadOutlined } from '@ant-design/icons';
 import { animalsApi, type AnimalListFilter, type CreateAnimalPayload } from '../../api/animals';
 import { lookupsApi } from '../../api/attendance';
 import { getApiError } from '../../api/farmApi';
@@ -398,7 +398,14 @@ export default function AnimalsPage() {
     <>
       <Card
         title="Animals"
-        extra={<Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>Add Animal</Button>}
+        extra={
+          <Space>
+            <Button icon={<UploadOutlined />} onClick={() => navigate('/dashboard/animals/import')}>
+              Import
+            </Button>
+            <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>Add Animal</Button>
+          </Space>
+        }
       >
         <Table
           rowKey="id"

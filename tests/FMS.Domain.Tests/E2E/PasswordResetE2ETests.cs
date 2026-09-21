@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Security.Cryptography;
 using System.Text;
 using FMS.Application.Auth;
+using FMS.Application.Notifications;
 using FMS.Domain.Entities;
 using FMS.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -23,7 +24,24 @@ public class PasswordResetE2ETests : IClassFixture<PasswordResetE2ETests.Factory
     public class TestEmailService : IEmailService
     {
         private readonly ILogger<TestEmailService> _logger;
+        private readonly List<CapturedAlertDigest> _alertDigests = new();
+
         public string? LastToken { get; private set; }
+
+        /// <summary>
+        /// Alert digests this service has been asked to send. The notification
+        /// tests assert on it to prove a channel is gated by preferences: a
+        /// disabled channel must mean no call at all, not a call that is ignored.
+        /// </summary>
+        public IReadOnlyList<CapturedAlertDigest> AlertDigests
+        {
+            get { lock (_alertDigests) { return _alertDigests.ToList(); } }
+        }
+
+        public void ClearAlertDigests()
+        {
+            lock (_alertDigests) { _alertDigests.Clear(); }
+        }
 
         public TestEmailService(ILogger<TestEmailService> logger) => _logger = logger;
 
@@ -38,7 +56,50 @@ public class PasswordResetE2ETests : IClassFixture<PasswordResetE2ETests.Factory
             _logger.LogInformation("TestEmailService captured reset token for {Email}: {Token}", email, LastToken);
             return Task.CompletedTask;
         }
+
+        /// <summary>
+        /// Captures invitation tokens the same way, so farm-invitation tests can
+        /// accept an invitation without reverse-engineering the SHA-256 hash.
+        /// </summary>
+        public Task SendFarmInvitationEmailAsync(string email, string farmName, string inviteLink)
+        {
+            var tokenStart = inviteLink.IndexOf("token=", StringComparison.Ordinal);
+            if (tokenStart >= 0)
+            {
+                LastToken = inviteLink[(tokenStart + "token=".Length)..];
+            }
+            _logger.LogInformation(
+                "TestEmailService captured invitation token for {Email} to join {FarmName}: {Token}",
+                email, farmName, LastToken);
+            return Task.CompletedTask;
+        }
+
+        public Task SendAlertNotificationsEmailAsync(
+            string email,
+            string farmName,
+            IReadOnlyList<NotificationEmailItem> notifications)
+        {
+            lock (_alertDigests)
+            {
+                _alertDigests.Add(new CapturedAlertDigest(
+                    email,
+                    farmName,
+                    notifications.ToList()));
+            }
+
+            _logger.LogInformation(
+                "TestEmailService captured {AlertCount} alert(s) for {Email} on {FarmName}",
+                notifications.Count, email, farmName);
+
+            return Task.CompletedTask;
+        }
     }
+
+    /// <summary>One alert digest handed to the test email service.</summary>
+    public sealed record CapturedAlertDigest(
+        string Email,
+        string FarmName,
+        IReadOnlyList<NotificationEmailItem> Notifications);
 
     public class Factory : TestWebApplicationFactory
     {

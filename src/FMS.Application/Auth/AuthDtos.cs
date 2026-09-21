@@ -26,6 +26,12 @@ public class AuthResponse
     public string Email { get; set; } = string.Empty;
     public string FirstName { get; set; } = string.Empty;
     public string LastName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// The same role claims embedded in the access token. The client uses these to
+    /// filter the navigation menu; the API remains the enforcement point.
+    /// </summary>
+    public List<string> Roles { get; set; } = new();
 }
 
 public class RefreshTokenRequest

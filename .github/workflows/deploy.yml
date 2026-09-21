@@ -3,6 +3,12 @@ name: Deploy to Heroku
 on:
   push:
     branches: [main]
+  # Pull requests are gated too. Before this trigger existed, a PR ran no CI at
+  # all -- the only way to reach a test run was to push to main, i.e. straight
+  # into the release path. The deploy job below is guarded so a PR can never
+  # reach Heroku, no matter how green its tests are.
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 concurrency:
@@ -57,6 +63,11 @@ jobs:
 
   deploy:
     needs: [test-backend, test-client]
+    # Only from main, and never from a pull request: a green PR must prove the
+    # suite passes, not release the branch to production. This also makes a
+    # manual dispatch on a scratch ref safe (`gh workflow run deploy.yml --ref …`),
+    # which is how the gate itself was verified.
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       contents: read

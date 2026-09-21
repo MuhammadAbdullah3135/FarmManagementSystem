@@ -10,6 +10,7 @@ import {
   BarChart, Bar, LineChart, Line, AreaChart, Area,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts';
+import { Link } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import { useFarmStore } from '../stores/farmStore';
 import BreakdownPieChart from '../components/BreakdownPieChart';
@@ -27,6 +28,13 @@ const { Title, Text } = Typography;
 
 const formatCurrency = (v: number) =>
   `$${v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+/**
+ * Renders an alert's `link` as a navigable action. Alerts without a link keep
+ * the plain layout (no dead control), so this returns `undefined` for them.
+ */
+const alertAction = (alert: DashboardAlert) =>
+  alert.link ? <Link to={alert.link}>View</Link> : undefined;
 
 const DashboardPage: React.FC = () => {
   const { user } = useAuthStore();
@@ -178,6 +186,7 @@ const DashboardPage: React.FC = () => {
                 icon={<WarningOutlined />}
                 message={alert.title}
                 description={alert.message}
+                action={alertAction(alert)}
                 closable
               />
             ))}
@@ -188,6 +197,7 @@ const DashboardPage: React.FC = () => {
                 showIcon
                 message={alert.title}
                 description={alert.message}
+                action={alertAction(alert)}
                 closable
               />
             ))}
@@ -198,6 +208,7 @@ const DashboardPage: React.FC = () => {
                 showIcon
                 message={alert.title}
                 description={alert.message}
+                action={alertAction(alert)}
                 closable
               />
             ))}

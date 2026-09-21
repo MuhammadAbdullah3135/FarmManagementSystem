@@ -53,6 +53,9 @@ client/node_modules/
 client/dist/
 client/.vite/
 
+## Runtime file storage (local provider — never commit uploaded files)
+**/uploads/
+
 ## OS
 Thumbs.db
 ehthumbs.db
@@ -78,14 +81,6 @@ temp-*.csx
 ## Error artifacts
 Microsoft.AspNetCore.*
 System.Net.Sockets.*
-
-# Rewrite monorepo
-rewrite/node_modules/
-rewrite/**/node_modules/
-rewrite/**/.next/
-rewrite/**/.turbo/
-rewrite/apps/web/.next/
-rewrite/apps/web/.env.local
 
 ## Firebase config (contains API keys — never commit)
 **/google-services.json

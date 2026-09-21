@@ -1,7 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { MemoryRouter, Routes, Route, useLocation } from 'react-router-dom';
 import DashboardPage from './DashboardPage';
-import { dashboardApi, type DashboardSummary } from '../api/dashboard';
+import { dashboardApi, type DashboardAlert, type DashboardSummary } from '../api/dashboard';
 
 vi.mock('../api/dashboard', () => ({
   dashboardApi: {
@@ -35,6 +37,33 @@ const summaryFixture: DashboardSummary = {
   degradedMetrics: [],
 };
 
+const alertFixture = (overrides: Partial<DashboardAlert> = {}): DashboardAlert => ({
+  alertType: 'OverdueTask',
+  severity: 'Warning',
+  title: 'Overdue: Clean barn',
+  message: 'Task was due Sep 01, 2026',
+  dueDate: '2026-09-01T00:00:00Z',
+  link: '/dashboard/tasks',
+  ...overrides,
+});
+
+/** Renders the current path so a click can be proven to navigate, not just look clickable. */
+const LocationProbe = () => {
+  const location = useLocation();
+  return <div data-testid="location">{location.pathname}</div>;
+};
+
+const renderDashboard = () =>
+  render(
+    <MemoryRouter initialEntries={['/dashboard']}>
+      <LocationProbe />
+      <Routes>
+        <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="*" element={<div>navigated</div>} />
+      </Routes>
+    </MemoryRouter>,
+  );
+
 beforeEach(() => {
   vi.mocked(dashboardApi.summary).mockResolvedValue({ data: summaryFixture } as never);
   vi.mocked(dashboardApi.alerts).mockResolvedValue({ data: [] } as never);
@@ -45,7 +74,7 @@ beforeEach(() => {
 
 describe('DashboardPage summary cards', () => {
   it('renders dueWeightCheckCount (not dueVaccinationCount) in the Due Weight Checks card', async () => {
-    render(<DashboardPage />);
+    renderDashboard();
 
     // Weight check value appears once the summary request resolves.
     expect(await screen.findByText('3')).toBeInTheDocument();
@@ -55,10 +84,39 @@ describe('DashboardPage summary cards', () => {
   });
 
   it('renders the other summary metrics as labeled', async () => {
-    render(<DashboardPage />);
+    renderDashboard();
 
     expect(await screen.findByText('8')).toBeInTheDocument(); // totalAnimals
     expect(screen.getByText('2')).toBeInTheDocument(); // sickCount
     expect(screen.getByText('Due Weight Checks')).toBeInTheDocument();
+  });
+});
+
+describe('DashboardPage alerts', () => {
+  it('renders a navigable action for an alert that carries a link', async () => {
+    vi.mocked(dashboardApi.alerts).mockResolvedValue({ data: [alertFixture()] } as never);
+
+    renderDashboard();
+
+    expect(await screen.findByText('Overdue: Clean barn')).toBeInTheDocument();
+
+    const link = screen.getByRole('link', { name: 'View' });
+    expect(link).toHaveAttribute('href', '/dashboard/tasks');
+
+    await userEvent.click(link);
+
+    // Proves the action actually routes, rather than merely looking clickable.
+    expect(screen.getByTestId('location')).toHaveTextContent('/dashboard/tasks');
+  });
+
+  it('renders safely with no dead action when an alert has no link', async () => {
+    vi.mocked(dashboardApi.alerts).mockResolvedValue({
+      data: [alertFixture({ link: undefined, title: 'Low stock: Hay Bales' })],
+    } as never);
+
+    renderDashboard();
+
+    expect(await screen.findByText('Low stock: Hay Bales')).toBeInTheDocument();
+    expect(screen.queryAllByRole('link', { name: 'View' })).toHaveLength(0);
   });
 });

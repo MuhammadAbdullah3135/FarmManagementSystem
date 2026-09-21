@@ -4,11 +4,15 @@ using FMS.Application.Feed;
 using FMS.Application.Finance;
 using FMS.Application.Health;
 using FMS.Application.Inventory;
+using FMS.Application.Jobs;
+using FMS.Application.Notifications;
 using FMS.Application.Tasks;
+using FMS.Domain.Entities;
 using FMS.Domain.Enums;
 using FMS.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using IBreedingSvc = FMS.Application.Breeding.IBreedingService;
 using GestationFilter = FMS.Application.Breeding.GestationRecordListFilter;
 
@@ -26,6 +30,7 @@ public class DashboardService : IDashboardService
     private readonly IFinanceService _financeService;
     private readonly IWeightCheckScheduleService _weightCheckService;
     private readonly ILogger<DashboardService> _logger;
+    private readonly IOptions<JobOptions> _jobOptions;
 
     public DashboardService(
         FmsDbContext db,
@@ -37,7 +42,8 @@ public class DashboardService : IDashboardService
         IFeedService feedService,
         IFinanceService financeService,
         IWeightCheckScheduleService weightCheckService,
-        ILogger<DashboardService> logger)
+        ILogger<DashboardService> logger,
+        IOptions<JobOptions> jobOptions)
     {
         _db = db;
         _vaccineService = vaccineService;
@@ -49,6 +55,7 @@ public class DashboardService : IDashboardService
         _financeService = financeService;
         _weightCheckService = weightCheckService;
         _logger = logger;
+        _jobOptions = jobOptions;
     }
 
     public async Task<Result<DashboardSummaryDto>> GetSummaryAsync(Guid farmId)
@@ -82,23 +89,51 @@ public class DashboardService : IDashboardService
 
         var degradedMetrics = new List<string>();
 
-        // Due vaccination count
-        var dueVaccinationCount = await TryComputeMetricAsync(
-            farmId, DashboardMetricNames.DueVaccinationCount, degradedMetrics, async () =>
-            {
-                var status = await _vaccineService.GetVaccinationStatusAsync(farmId);
-                return EnsureSuccess(status, DashboardMetricNames.DueVaccinationCount, farmId, degradedMetrics)
-                    ?.Count(v => v.Status == VaccinationStatusType.Due || v.Status == VaccinationStatusType.Overdue) ?? 0;
-            });
+        // Due/overdue health counts. The background health-status job keeps a
+        // per-farm snapshot, read here as a fast path over the per-animal status
+        // calculation below (the most expensive part of this method).
+        //
+        // A missing or stale snapshot falls back to that live calculation, so a
+        // stopped job degrades *freshness*, never correctness — which is why
+        // neither case is reported as a degraded metric here. (DegradedMetrics
+        // means "this value is a default, do not trust it"; the fallback value
+        // is a real count.) Staleness is logged, and surfaced to operators by
+        // the job-status view.
+        var healthSnapshot = await TryGetFreshHealthSnapshotAsync(farmId);
 
-        // Due weight check count
-        var dueWeightCheckCount = await TryComputeMetricAsync(
-            farmId, DashboardMetricNames.DueWeightCheckCount, degradedMetrics, async () =>
-            {
-                var status = await _weightCheckService.GetWeightCheckStatusAsync(farmId);
-                return EnsureSuccess(status, DashboardMetricNames.DueWeightCheckCount, farmId, degradedMetrics)
-                    ?.Count(w => w.Status == WeightCheckStatusType.Due || w.Status == WeightCheckStatusType.Overdue) ?? 0;
-            });
+        DateTime? healthSnapshotComputedAtUtc = null;
+        int dueVaccinationCount;
+        int dueWeightCheckCount;
+
+        if (healthSnapshot is not null)
+        {
+            // The snapshot stores Due and Overdue separately, so both the
+            // dashboard count (due + overdue) and an overdue-only view can be
+            // served from it.
+            dueVaccinationCount = healthSnapshot.DueVaccinationCount + healthSnapshot.OverdueVaccinationCount;
+            dueWeightCheckCount = healthSnapshot.DueWeightCheckCount + healthSnapshot.OverdueWeightCheckCount;
+            healthSnapshotComputedAtUtc = healthSnapshot.ComputedAtUtc;
+        }
+        else
+        {
+            // Due vaccination count
+            dueVaccinationCount = await TryComputeMetricAsync(
+                farmId, DashboardMetricNames.DueVaccinationCount, degradedMetrics, async () =>
+                {
+                    var status = await _vaccineService.GetVaccinationStatusAsync(farmId);
+                    return EnsureSuccess(status, DashboardMetricNames.DueVaccinationCount, farmId, degradedMetrics)
+                        ?.Count(v => v.Status == VaccinationStatusType.Due || v.Status == VaccinationStatusType.Overdue) ?? 0;
+                });
+
+            // Due weight check count
+            dueWeightCheckCount = await TryComputeMetricAsync(
+                farmId, DashboardMetricNames.DueWeightCheckCount, degradedMetrics, async () =>
+                {
+                    var status = await _weightCheckService.GetWeightCheckStatusAsync(farmId);
+                    return EnsureSuccess(status, DashboardMetricNames.DueWeightCheckCount, farmId, degradedMetrics)
+                        ?.Count(w => w.Status == WeightCheckStatusType.Due || w.Status == WeightCheckStatusType.Overdue) ?? 0;
+                });
+        }
 
         // Overdue tasks
         var overdueTasksResult = await _taskService.GetTasksAsync(farmId, new Application.Tasks.FarmTaskListFilter
@@ -146,6 +181,7 @@ public class DashboardService : IDashboardService
             UpcomingBirths = upcomingBirths,
             TotalFeedStockValue = totalFeedStockValue,
             TotalInventoryStockValue = totalInventoryStockValue,
+            HealthSnapshotComputedAtUtc = healthSnapshotComputedAtUtc,
             DegradedMetrics = degradedMetrics
         };
 
@@ -154,14 +190,29 @@ public class DashboardService : IDashboardService
 
     public async Task<Result<List<DashboardAlertDto>>> GetAlertsAsync(Guid farmId)
     {
+        var result = await ComputeAlertSetAsync(farmId);
+
+        return result.IsSuccess
+            ? Result<List<DashboardAlertDto>>.Success(result.Value!.Alerts)
+            : Result<List<DashboardAlertDto>>.Failure(result.Error!);
+    }
+
+    /// <inheritdoc />
+    public async Task<Result<DashboardAlertSetDto>> ComputeAlertSetAsync(Guid farmId)
+    {
         var alerts = new List<DashboardAlertDto>();
+
+        // Alert types whose inputs failed to compute. Only the notification
+        // dispatcher consumes this (the dashboard endpoint drops it), and it is
+        // the difference between "no overdue vaccines" and "we could not tell".
+        var unavailableAlertTypes = new List<string>();
 
         // ── Overdue vaccinations ──
         var overdueVaccinations = await TryComputeMetricAsync(
-            farmId, DashboardMetricNames.OverdueVaccinations, null, async () =>
+            farmId, DashboardMetricNames.OverdueVaccinations, unavailableAlertTypes, async () =>
             {
                 var result = await _vaccineService.GetOverdueVaccinationsAsync(farmId);
-                return EnsureSuccess(result, DashboardMetricNames.OverdueVaccinations, farmId, null);
+                return EnsureSuccess(result, DashboardMetricNames.OverdueVaccinations, farmId, unavailableAlertTypes);
             });
         if (overdueVaccinations is not null)
         {
@@ -169,22 +220,23 @@ public class DashboardService : IDashboardService
             {
                 alerts.Add(new DashboardAlertDto
                 {
-                    AlertType = "OverdueVaccination",
-                    Severity = "Critical",
+                    AlertType = NotificationAlertTypes.OverdueVaccination,
+                    Severity = NotificationSeverity.Critical,
                     Title = $"Overdue: {v.VaccineTypeName}",
                     Message = $"Animal {v.AnimalTagNumber} is overdue for {v.VaccineTypeName} (due {v.NextDueDate:MMM dd, yyyy})",
                     DueDate = v.NextDueDate,
-                    Link = "/dashboard/health/vaccinations"
+                    Link = "/dashboard/health/vaccinations",
+                    SourceKey = NotificationAlertTypes.SourceKeys.ForOverdueVaccination(v.AnimalId, v.VaccineTypeId)
                 });
             }
         }
 
         // ── Overdue weight checks ──
         var overdueWeightChecks = await TryComputeMetricAsync(
-            farmId, DashboardMetricNames.OverdueWeightChecks, null, async () =>
+            farmId, DashboardMetricNames.OverdueWeightChecks, unavailableAlertTypes, async () =>
             {
                 var result = await _weightCheckService.GetOverdueWeightChecksAsync(farmId);
-                return EnsureSuccess(result, DashboardMetricNames.OverdueWeightChecks, farmId, null);
+                return EnsureSuccess(result, DashboardMetricNames.OverdueWeightChecks, farmId, unavailableAlertTypes);
             });
         if (overdueWeightChecks is not null)
         {
@@ -192,65 +244,74 @@ public class DashboardService : IDashboardService
             {
                 alerts.Add(new DashboardAlertDto
                 {
-                    AlertType = "OverdueWeightCheck",
-                    Severity = "Warning",
+                    AlertType = NotificationAlertTypes.OverdueWeightCheck,
+                    Severity = NotificationSeverity.Warning,
                     Title = $"Weight check due: {w.AnimalTagNumber}",
                     Message = $"Last recorded: {(w.LastWeightDate?.ToString("MMM dd, yyyy") ?? "Never")}. Next due: {w.NextDueDate:MMM dd, yyyy}",
                     DueDate = w.NextDueDate,
-                    Link = "/dashboard/health/weight-schedules"
+                    Link = "/dashboard/health/weight-schedules",
+                    SourceKey = NotificationAlertTypes.SourceKeys.ForOverdueWeightCheck(w.AnimalId)
                 });
             }
         }
 
         // ── Medicine alerts ──
-        var medicineAlerts = await _medicineService.GetAlertsAsync(farmId);
-        if (medicineAlerts.IsSuccess)
+        // Routed through EnsureSuccess so a failed lookup is recorded against the
+        // alert type instead of reading as "no medicine alerts at all".
+        var medicineAlerts = EnsureSuccess(
+            await _medicineService.GetAlertsAsync(farmId),
+            DashboardMetricNames.MedicineAlerts, farmId, unavailableAlertTypes);
+        if (medicineAlerts is not null)
         {
-            foreach (var a in medicineAlerts.Value!)
+            foreach (var a in medicineAlerts)
             {
-                var severity = a.AlertType == MedicineAlertType.Expired ? "Critical"
-                    : a.AlertType == MedicineAlertType.ExpiringSoon ? "Warning"
-                    : "Info";
+                var severity = a.AlertType == MedicineAlertType.Expired ? NotificationSeverity.Critical
+                    : a.AlertType == MedicineAlertType.ExpiringSoon ? NotificationSeverity.Warning
+                    : NotificationSeverity.Info;
                 alerts.Add(new DashboardAlertDto
                 {
-                    AlertType = "Medicine", Severity = severity,
+                    AlertType = NotificationAlertTypes.Medicine, Severity = severity,
                     Title = $"{a.AlertTypeName}: {a.MedicineName}",
                     Message = $"Batch {a.BatchNumber} — {a.CurrentQuantity} {a.Unit} remaining (threshold: {a.LowStockThreshold}). Expires {a.ExpiryDate:MMM dd, yyyy}.",
-                    DueDate = a.ExpiryDate, Link = "/dashboard/health/medicines/alerts"
+                    DueDate = a.ExpiryDate, Link = "/dashboard/health/medicines/alerts",
+                    SourceKey = NotificationAlertTypes.SourceKeys.ForMedicine(a.MedicineId, a.StockId, a.AlertType.ToString())
                 });
             }
         }
 
         // ── Overdue tasks ──
-        var overdueTasks = await _taskService.GetTasksAsync(farmId, new Application.Tasks.FarmTaskListFilter
+        var overdueTasks = EnsureSuccess(
+            await _taskService.GetTasksAsync(farmId, new Application.Tasks.FarmTaskListFilter
+            {
+                IncludeOverdueOnly = true, PageSize = 50
+            }),
+            DashboardMetricNames.OverdueTasks, farmId, unavailableAlertTypes);
+        if (overdueTasks is not null)
         {
-            IncludeOverdueOnly = true, PageSize = 50
-        });
-        if (overdueTasks.IsSuccess)
-        {
-            foreach (var t in overdueTasks.Value!.Items)
+            foreach (var t in overdueTasks.Items)
             {
                 alerts.Add(new DashboardAlertDto
                 {
-                    AlertType = "OverdueTask",
-                    Severity = t.Priority == FarmTaskPriority.High ? "Critical" : "Warning",
+                    AlertType = NotificationAlertTypes.OverdueTask,
+                    Severity = t.Priority == FarmTaskPriority.High ? NotificationSeverity.Critical : NotificationSeverity.Warning,
                     Title = $"Overdue: {t.Title}",
                     Message = $"Task was due {t.DueDate:MMM dd, yyyy}" +
                               (t.AssignedEmployeeName != null ? $" — assigned to {t.AssignedEmployeeName}" : ""),
-                    DueDate = t.DueDate, Link = "/dashboard/tasks"
+                    DueDate = t.DueDate, Link = "/dashboard/tasks",
+                    SourceKey = NotificationAlertTypes.SourceKeys.ForOverdueTask(t.Id)
                 });
             }
         }
 
         // ── Upcoming births ──
         var gestationItems = await TryComputeMetricAsync(
-            farmId, DashboardMetricNames.DueBirthAlerts, null, async () =>
+            farmId, DashboardMetricNames.DueBirthAlerts, unavailableAlertTypes, async () =>
             {
                 var gestation = await _breedingService.GetGestationRecordsAsync(farmId, new GestationFilter
                 {
                     ActiveOnly = true, PageSize = 100
                 });
-                return EnsureSuccess(gestation, DashboardMetricNames.DueBirthAlerts, farmId, null)?.Items;
+                return EnsureSuccess(gestation, DashboardMetricNames.DueBirthAlerts, farmId, unavailableAlertTypes)?.Items;
             });
         if (gestationItems is not null)
         {
@@ -258,34 +319,47 @@ public class DashboardService : IDashboardService
             {
                 alerts.Add(new DashboardAlertDto
                 {
-                    AlertType = "DueBirth",
-                    Severity = g.DaysUntilDue <= 3 ? "Critical" : "Warning",
+                    AlertType = NotificationAlertTypes.DueBirth,
+                    Severity = g.DaysUntilDue <= 3 ? NotificationSeverity.Critical : NotificationSeverity.Warning,
                     Title = $"Birth due: {g.AnimalTagNumber}",
                     Message = $"Expected {g.ExpectedDeliveryDate:MMM dd, yyyy} ({g.DaysUntilDue} days). Stage: {g.CurrentStage}.",
-                    DueDate = g.ExpectedDeliveryDate, Link = "/dashboard/breeding/gestation"
+                    DueDate = g.ExpectedDeliveryDate, Link = "/dashboard/breeding/gestation",
+                    SourceKey = NotificationAlertTypes.SourceKeys.ForDueBirth(g.Id)
                 });
             }
         }
 
         // ── Low inventory stock ──
-        var inventoryReport = await _inventoryService.GetReportAsync(farmId);
-        if (inventoryReport.IsSuccess)
+        var inventoryReport = EnsureSuccess(
+            await _inventoryService.GetReportAsync(farmId),
+            DashboardMetricNames.LowInventory, farmId, unavailableAlertTypes);
+        if (inventoryReport is not null)
         {
-            foreach (var item in inventoryReport.Value!.LowStockAlerts)
+            foreach (var item in inventoryReport.LowStockAlerts)
             {
                 alerts.Add(new DashboardAlertDto
                 {
-                    AlertType = "LowInventory", Severity = "Warning",
+                    AlertType = NotificationAlertTypes.LowInventory, Severity = NotificationSeverity.Warning,
                     Title = $"Low stock: {item.ItemName}",
                     Message = $"{item.Quantity} {item.Unit} remaining (reorder level: {item.ReorderLevel}). Shortfall: {item.Shortfall} {item.Unit}.",
-                    Link = "/dashboard/inventory/reports"
+                    Link = "/dashboard/inventory/reports",
+                    SourceKey = NotificationAlertTypes.SourceKeys.ForLowInventory(item.InventoryItemId)
                 });
             }
         }
 
-        var severityOrder = new Dictionary<string, int> { ["Critical"] = 0, ["Warning"] = 1, ["Info"] = 2 };
-        alerts = alerts.OrderBy(a => severityOrder.GetValueOrDefault(a.Severity, 3)).ToList();
-        return Result<List<DashboardAlertDto>>.Success(alerts);
+        alerts = alerts.OrderBy(a => NotificationSeverity.Rank(a.Severity)).ToList();
+
+        var unavailableAlertTypeNames = unavailableAlertTypes
+            .SelectMany(NotificationAlertTypes.AlertTypesGatedByMetric)
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+
+        return Result<DashboardAlertSetDto>.Success(new DashboardAlertSetDto
+        {
+            Alerts = alerts,
+            UnavailableAlertTypes = unavailableAlertTypeNames
+        });
     }
 
     public async Task<Result<DashboardChartsDto>> GetChartsAsync(Guid farmId, DateTime? from, DateTime? to)
@@ -378,6 +452,44 @@ public class DashboardService : IDashboardService
             "Metric {MetricName} for farm {FarmId} could not be calculated: {ErrorCode}: {ErrorMessage}",
             metricName, farmId, result.Error?.Code, result.Error?.Message);
         degradedMetrics?.Add(metricName);
+        return null;
+    }
+
+    /// <summary>
+    /// Reads the farm's health-status snapshot (written by the
+    /// <c>health-status-recalculation</c> job) when it exists and is within the
+    /// configured staleness window. Returns null when it is missing, stale, or
+    /// unreadable — the caller must then fall back to a live calculation.
+    /// </summary>
+    private async Task<FarmHealthStatusSnapshot?> TryGetFreshHealthSnapshotAsync(Guid farmId)
+    {
+        var stalenessMinutes = Math.Max(1, _jobOptions.Value.HealthSnapshot.StalenessMinutes);
+
+        // A read failure here must never break the summary: it just means "no
+        // fast path available", which is exactly what null means.
+        var snapshot = await TryComputeMetricAsync<FarmHealthStatusSnapshot?>(
+            farmId,
+            "HealthStatusSnapshot",
+            null,
+            () => _db.FarmHealthStatusSnapshots
+                .AsNoTracking()
+                .FirstOrDefaultAsync(s => s.FarmId == farmId));
+
+        if (snapshot is null)
+            return null;
+
+        var age = DateTime.UtcNow - snapshot.ComputedAtUtc;
+        if (age <= TimeSpan.FromMinutes(stalenessMinutes))
+            return snapshot;
+
+        _logger.LogWarning(
+            "Health status snapshot for farm {FarmId} is stale (computed {AgeMinutes} minutes ago, staleness limit {StalenessMinutes} minutes); "
+            + "falling back to live calculation. Job {JobName} may not be running.",
+            farmId,
+            Math.Round(age.TotalMinutes, 1),
+            stalenessMinutes,
+            JobNames.HealthStatusRecalculation);
+
         return null;
     }
 }

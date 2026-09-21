@@ -1,10 +1,16 @@
 using FluentValidation;
+using Hangfire;
+using Hangfire.Dashboard;
+using Hangfire.PostgreSql;
 
 
 using System.Threading.RateLimiting;
 using System.Text;
+using FMS.API.Jobs;
 using FMS.API.Middleware;
+using FMS.API.Security;
 using FMS.Application.Animal;
+using FMS.Application.Animal.Import;
 using FMS.Application.Auth;
 using FMS.Application.Breeding;
 using FMS.Application.Common;
@@ -18,6 +24,8 @@ using FMS.Application.Finance;
 using FMS.Application.Health;
 using FMS.Application.Inventory;
 using FMS.Application.Dashboard;
+using FMS.Application.Jobs;
+using FMS.Application.Notifications;
 using FMS.Application.Reports;
 using FMS.Application.Tasks;
 using FMS.Application.AuditLog;
@@ -31,11 +39,14 @@ using FMS.Infrastructure.Employees;
 using FMS.Infrastructure.Tasks;
 using FMS.Infrastructure.Farm;
 using FMS.Infrastructure.Feed;
-using FMS.Infrastructure.Finance;
 using FMS.Infrastructure.Files;
+using FMS.Infrastructure.Finance;
 using FMS.Infrastructure.Health;
+using FMS.Infrastructure.Import;
 using FMS.Infrastructure.Inventory;
 using FMS.Infrastructure.Dashboard;
+using FMS.Infrastructure.Jobs;
+using FMS.Infrastructure.Notifications;
 using FMS.Infrastructure.Reports;
 using FMS.Infrastructure.AuditLog;
 using FMS.Infrastructure.Persistence;
@@ -48,6 +59,15 @@ using Microsoft.OpenApi.Models;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Before anything else: refuse to run outside Development on a signing key that
+// cannot be trusted. See JwtSigningKeyGuard for why a committed placeholder key
+// is worse than no authentication at all. Deliberately ahead of every service
+// registration so this is the message an operator sees, not a downstream error.
+JwtSigningKeyGuard.EnsureUsable(
+    builder.Configuration["Jwt:SecretKey"],
+    builder.Environment.EnvironmentName,
+    builder.Environment.IsDevelopment());
 builder.Host.UseSerilog();
 
 builder.Services.AddControllers().AddJsonOptions(o =>
@@ -145,6 +165,7 @@ builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IFarmService, FarmService>();
+builder.Services.AddScoped<IFarmMembershipService, FarmMembershipService>();
 builder.Services.AddScoped<IFarmContextService, FarmContext>();
 builder.Services.AddScoped<ConfigurationService>();
 builder.Services.AddScoped<IConfigurationService>(sp =>
@@ -154,6 +175,15 @@ builder.Services.AddMemoryCache();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddScoped<IAnimalService, AnimalService>();
+
+// ── Bulk animal import ─────────────────────────────────────────────────
+// CSV and .xlsx are parsed server-side behind ISpreadsheetReader, so every client
+// (web, mobile, script) imports through one pipeline, and each row is validated with
+// the same FluentValidation rules the single-animal create endpoint uses.
+builder.Services.Configure<AnimalImportOptions>(
+    builder.Configuration.GetSection(AnimalImportOptions.SectionName));
+builder.Services.AddScoped<ISpreadsheetReader, SpreadsheetReader>();
+builder.Services.AddScoped<IAnimalImportService, AnimalImportService>();
 builder.Services.AddScoped<IBreedingService, BreedingService>();
 builder.Services.AddScoped<IFeedService, FeedService>();
 builder.Services.AddScoped<IFinanceService, FinanceService>();
@@ -173,9 +203,43 @@ builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddScoped<IReportService, ReportService>();
 builder.Services.AddScoped<IAuditLogService, AuditLogService>();
 
-var uploadsRoot = Path.Combine(builder.Environment.ContentRootPath, builder.Configuration["Storage:UploadsRoot"] ?? "uploads");
-Directory.CreateDirectory(uploadsRoot);
-builder.Services.AddSingleton<IFileStorageService>(new FileStorageService(uploadsRoot));
+// ── Notifications ──────────────────────────────────────────────────────
+// The recipient's own alert history: persisted notifications, per-user channel
+// preferences, and the dispatch that keeps them in step with the dashboard's
+// alert conditions. Email is the one out-of-app channel; push and SMS are not
+// implemented, and the preference model already has a slot for them.
+builder.Services.Configure<NotificationOptions>(
+    builder.Configuration.GetSection(NotificationOptions.SectionName));
+builder.Services.AddScoped<INotificationService, NotificationService>();
+
+// ── Background jobs ────────────────────────────────────────────────────
+// Hangfire schedules the recurring work (daily feeding-task generation, hourly
+// health-status snapshots) against the same PostgreSQL database the app already
+// uses, so no extra infrastructure is introduced. Job storage is configured
+// here but created below, after EF migrations have run.
+var jobOptions = BackgroundJobsSetup.ResolveOptions(builder.Configuration);
+builder.Services.AddFmsBackgroundJobs(builder.Configuration, jobOptions);
+
+// ── File storage ───────────────────────────────────────────────────────
+// Local disk is the default so development and CI need no credentials. Any
+// S3-compatible endpoint (Cloudflare R2 recommended, or AWS S3 / MinIO) is
+// selected with Storage__Provider=S3 plus the Storage__S3__* settings.
+var storageOptions = builder.Configuration.GetSection(StorageOptions.SectionName).Get<StorageOptions>()
+    ?? new StorageOptions();
+
+var usingLocalStorage = !storageOptions.IsS3;
+if (storageOptions.IsS3)
+{
+    // Misconfiguration is refused outright rather than silently falling back to a
+    // disk that disappears on restart.
+    builder.Services.AddSingleton<IFileStorageService>(_ => S3FileStorageService.Create(storageOptions));
+}
+else
+{
+    var uploadsRoot = Path.Combine(builder.Environment.ContentRootPath, storageOptions.UploadsRoot);
+    Directory.CreateDirectory(uploadsRoot);
+    builder.Services.AddSingleton<IFileStorageService>(new FileStorageService(uploadsRoot));
+}
 
 builder.Services.AddCors(options =>
 {
@@ -189,11 +253,33 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+if (usingLocalStorage && !app.Environment.IsDevelopment())
+{
+    app.Logger.LogWarning(
+        "File storage is using local disk in the '{Environment}' environment. Container filesystems " +
+        "(for example Heroku) are ephemeral, so uploaded files are lost on the next release or dyno cycle. " +
+        "Set Storage__Provider=S3 to use object storage.",
+        app.Environment.EnvironmentName);
+}
+
 using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<FmsDbContext>();
     await dbContext.Database.MigrateAsync();
     await RoleSeeder.SeedRolesAsync(dbContext);
+}
+
+if (jobOptions.Enabled)
+{
+    // Hangfire's own job-storage schema is installed here — deliberately AFTER
+    // EF migrations above — and the recurring jobs are registered on every start.
+    BackgroundJobsSetup.Initialize(app.Services, jobOptions, app.Logger);
+}
+else
+{
+    app.Logger.LogWarning(
+        "Background jobs are disabled (Jobs:Enabled = false): no scheduled feed-task generation or health-status " +
+        "recalculation will run in this process. The job status view reports this.");
 }
 
 app.UseMiddleware<GlobalExceptionMiddleware>();
@@ -206,14 +292,35 @@ if (!app.Environment.IsDevelopment()) { app.UseHsts(); }
 app.UseHttpsRedirection();
 app.UseCors("ReactApp");
 app.UseAuthentication();
-app.UseAuthorization();
-app.UseMiddleware<FarmContextMiddleware>();
 
-app.UseStaticFiles(new StaticFileOptions
+// Farm context must be resolved BEFORE authorization on farm-scoped routes.
+// Their [Authorize(Roles = "…")] checks must enforce the caller's farm role
+// (UserFarm.Role for the resolved farm), so FarmContextMiddleware swaps the
+// principal's role claim — derived from the account JWT — before UseAuthorization
+// evaluates it. Account-scoped routes (auth, farms list, invitations) are
+// untouched: the middleware no-ops for those paths, so they keep account roles.
+app.UseMiddleware<FarmContextMiddleware>();
+app.UseAuthorization();
+
+// The scheduler dashboard is a development tool only. A browser navigation to
+// it cannot carry the Bearer token the SPA uses, so it is not mountable behind
+// the app's normal auth in production; SystemOwners use /api/admin/jobs there
+// instead. Local loopback requests are allowed in Development so the dashboard
+// stays usable without weakening anything reachable off-box.
+if (app.Environment.IsDevelopment() && jobOptions.Enabled)
 {
-    FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(uploadsRoot),
-    RequestPath = "/uploads"
-});
+    app.UseHangfireDashboard("/hangfire", new DashboardOptions
+    {
+        DashboardTitle = "FMS scheduled jobs",
+        Authorization = new[] { new SystemOwnerDashboardAuthorizationFilter(app.Environment) }
+    });
+}
+
+// NOTE: uploads are deliberately NOT served as static files. A /uploads static path ran
+// after the authorization middleware, so it published every animal image and document
+// anonymously (no token, no farm scoping) behind nothing but an unguessable file name.
+// Files are now reached only through authorised endpoints that either stream them or hand
+// out a short-lived presigned URL.
 
 var hcOptions = new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
 {

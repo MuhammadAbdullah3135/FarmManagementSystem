@@ -155,127 +155,114 @@ public class AnimalService : IAnimalService
         if (string.IsNullOrWhiteSpace(request.TagNumber))
             return Result<AnimalDetailDto>.Validation("Tag number is required");
 
-        var tag = request.TagNumber.Trim();
+        var item = new BulkAnimalCreateItem { Id = Guid.NewGuid(), Request = request };
 
-        var tagExists = await _context.Animals
-            .AnyAsync(a => a.FarmId == farmId && a.TagNumber == tag && !a.IsDeleted);
-        if (tagExists)
-            return Result<AnimalDetailDto>.Conflict($"An animal with tag '{tag}' already exists in this farm");
+        // Everything farm-scoped this creation needs, in one set of round trips rather
+        // than one per check. The rules applied below are the same ones a batch of
+        // imported rows goes through, so a single create and an import row cannot
+        // validate differently.
+        var lookups = await LoadCreationLookupsAsync(farmId, new[] { item });
+        var validationError = (await ValidateForCreationAsync(farmId, item, lookups)).FirstOrDefault();
+        if (validationError != null)
+            return Result<AnimalDetailDto>.Failure(validationError);
 
-        var animalType = await _context.AnimalTypes
-            .FirstOrDefaultAsync(at => at.Id == request.AnimalTypeId && at.FarmId == farmId);
-        if (animalType == null)
-            return Result<AnimalDetailDto>.NotFound("Animal type not found");
-
-        if (request.BreedId.HasValue)
-        {
-            var breed = await _context.Breeds
-                .FirstOrDefaultAsync(b => b.Id == request.BreedId.Value && b.AnimalTypeId == request.AnimalTypeId);
-            if (breed == null)
-                return Result<AnimalDetailDto>.Validation("Breed not found or does not belong to the selected animal type");
-        }
-
-        var sex = await _context.SexOptions
-            .FirstOrDefaultAsync(s => s.Id == request.SexOptionId && s.FarmId == farmId);
-        if (sex == null)
-            return Result<AnimalDetailDto>.NotFound("Sex option not found");
-
-        if (request.AgeCategoryId.HasValue)
-        {
-            var ageCategory = await _context.AgeCategories
-                .FirstOrDefaultAsync(ac => ac.Id == request.AgeCategoryId.Value && ac.FarmId == farmId);
-            if (ageCategory == null)
-                return Result<AnimalDetailDto>.NotFound("Age category not found");
-        }
-
-        var status = await _context.AnimalStatuses
-            .FirstOrDefaultAsync(s => s.Id == request.AnimalStatusId && s.FarmId == farmId);
-        if (status == null)
-            return Result<AnimalDetailDto>.NotFound("Animal status not found");
-
-        if (request.LocationId.HasValue)
-        {
-            var location = await _context.Locations
-                .FirstOrDefaultAsync(l => l.Id == request.LocationId.Value && l.FarmId == farmId);
-            if (location == null)
-                return Result<AnimalDetailDto>.NotFound("Location not found");
-        }
-
-        if (request.SireId.HasValue)
-        {
-            var sire = await _context.Animals
-                .FirstOrDefaultAsync(a => a.Id == request.SireId.Value && a.FarmId == farmId && !a.IsDeleted);
-            if (sire == null)
-                return Result<AnimalDetailDto>.NotFound("Sire animal not found");
-        }
-
-        if (request.DamId.HasValue)
-        {
-            var dam = await _context.Animals
-                .FirstOrDefaultAsync(a => a.Id == request.DamId.Value && a.FarmId == farmId && !a.IsDeleted);
-            if (dam == null)
-                return Result<AnimalDetailDto>.NotFound("Dam animal not found");
-        }
-
-        var identificationValidation = await ValidateIdentificationValuesAsync(farmId, request.Identifications);
-        if (!identificationValidation.IsSuccess)
-            return Result<AnimalDetailDto>.Failure(identificationValidation.Error!);
-
-        var userId = _currentUser.GetUserId();
-        var now = DateTime.UtcNow;
-
-        var animal = new Domain.Entities.Animal
-        {
-            Id = Guid.NewGuid(),
-            FarmId = farmId,
-            TagNumber = tag,
-            Name = request.Name?.Trim(),
-            AnimalTypeId = request.AnimalTypeId,
-            BreedId = request.BreedId,
-            SexOptionId = request.SexOptionId,
-            AgeCategoryId = request.AgeCategoryId,
-            AnimalStatusId = request.AnimalStatusId,
-            LocationId = request.LocationId,
-            SireId = request.SireId,
-            DamId = request.DamId,
-            DateOfBirth = request.DateOfBirth,
-            AcquisitionDate = request.AcquisitionDate,
-            Notes = request.Notes,
-            CreatedAt = now,
-            CreatedBy = userId
-        };
-
-        foreach (var identification in request.Identifications)
-        {
-            animal.Identifications.Add(new AnimalIdentification
-            {
-                Id = Guid.NewGuid(),
-                FarmId = farmId,
-                IdentificationTypeId = identification.IdentificationTypeId,
-                Value = identification.Value.Trim(),
-                IsPrimary = identification.IsPrimary,
-                DateAttached = now,
-                CreatedAt = now
-            });
-        }
-        EnsureSinglePrimary(animal.Identifications);
-
-        animal.TimelineEvents.Add(new AnimalTimelineEvent
-        {
-            Id = Guid.NewGuid(),
-            FarmId = farmId,
-            EventType = TimelineEventTypes.Created,
-            Title = "Animal registered",
-            Description = $"Animal registered with tag '{tag}'",
-            OccurredAt = now,
-            CreatedAt = now,
-            CreatedBy = userId
-        });
+        var animal = BuildAnimalEntity(farmId, item.Id, request, DateTime.UtcNow, _currentUser.GetUserId());
 
         _context.Animals.Add(animal);
         await _context.SaveChangesAsync();
 
         return await GetAnimalByIdAsync(farmId, animal.Id);
+    }
+
+    /// <summary>
+    /// Validates a batch of animal creations and writes nothing.
+    ///
+    /// This is the preview half of a bulk import: it runs the very same rules
+    /// <see cref="CreateAnimalsAsync"/> runs, so what it reports is exactly what a
+    /// commit would do.
+    /// </summary>
+    public async Task<Result<BulkAnimalCreateResultDto>> ValidateAnimalsAsync(Guid farmId, IReadOnlyList<BulkAnimalCreateItem> items) =>
+        await ValidateBatchAsync(farmId, items);
+
+    /// <summary>
+    /// Validates the batch, then writes every item in a single SaveChanges — which EF
+    /// wraps in one transaction, so the batch is all-or-nothing. Nothing is written
+    /// when any item fails validation, and the caller's ids are used as-is so rows in
+    /// one batch can reference each other.
+    /// </summary>
+    public async Task<Result<BulkAnimalCreateResultDto>> CreateAnimalsAsync(Guid farmId, IReadOnlyList<BulkAnimalCreateItem> items)
+    {
+        var validation = await ValidateBatchAsync(farmId, items);
+        if (!validation.IsSuccess)
+            return validation;
+
+        if (validation.Value!.Failures.Count > 0)
+        {
+            // All-or-nothing: the caller corrects the reported rows and re-uploads.
+            // Nothing was written, so the success count is reported as zero rather
+            // than as "the rows that would have worked".
+            validation.Value.SuccessCount = 0;
+            return validation;
+        }
+
+        var now = DateTime.UtcNow;
+        var userId = _currentUser.GetUserId();
+        foreach (var item in items)
+            _context.Animals.Add(BuildAnimalEntity(farmId, item.Id, item.Request, now, userId));
+
+        await _context.SaveChangesAsync();
+
+        return Result<BulkAnimalCreateResultDto>.Success(new BulkAnimalCreateResultDto
+        {
+            RequestedCount = items.Count,
+            SuccessCount = items.Count
+        });
+    }
+
+    private async Task<Result<BulkAnimalCreateResultDto>> ValidateBatchAsync(Guid farmId, IReadOnlyList<BulkAnimalCreateItem> items)
+    {
+        if (items.Count == 0)
+            return Result<BulkAnimalCreateResultDto>.Validation("No animals were supplied");
+
+        var lookups = await LoadCreationLookupsAsync(farmId, items);
+        var result = new BulkAnimalCreateResultDto { RequestedCount = items.Count };
+
+        // Duplicates inside the batch cannot be seen by the database check above —
+        // those rows do not exist yet — so they are tracked here. The database's own
+        // uniqueness is still the last line of defence at insert time.
+        var firstTagIndex = new Dictionary<string, int>(StringComparer.Ordinal);
+        var firstIdIndex = new Dictionary<Guid, int>();
+
+        for (var index = 0; index < items.Count; index++)
+        {
+            var item = items[index];
+            var messages = (await ValidateForCreationAsync(farmId, item, lookups))
+                .Select(error => error.Message)
+                .ToList();
+
+            var tag = item.Request.TagNumber?.Trim() ?? string.Empty;
+            if (tag.Length > 0)
+            {
+                if (firstTagIndex.TryGetValue(tag, out var firstIndex))
+                    messages.Add($"Tag '{tag}' appears more than once in this batch (item {firstIndex + 1})");
+                else
+                    firstTagIndex[tag] = index;
+            }
+
+            if (!firstIdIndex.TryAdd(item.Id, index))
+                messages.Add("The batch contains the same animal id twice");
+
+            if (messages.Count == 0)
+            {
+                result.SuccessCount++;
+                continue;
+            }
+
+            foreach (var message in messages)
+                result.Failures.Add(new BulkAnimalCreateFailureDto { Index = index, Message = message });
+        }
+
+        return Result<BulkAnimalCreateResultDto>.Success(result);
     }
 
     public async Task<Result<AnimalDetailDto>> UpdateAnimalAsync(Guid farmId, Guid id, UpdateAnimalRequest request)
@@ -792,8 +779,11 @@ public class AnimalService : IAnimalService
 
         await _context.SaveChangesAsync();
 
-        return Result<AnimalImageDto>.Success(MapImage(image));
+        return Result<AnimalImageDto>.Success(await MapImageAsync(image));
     }
+
+
+
 
     public async Task<Result<List<AnimalImageDto>>> GetImagesAsync(Guid farmId, Guid animalId)
     {
@@ -809,7 +799,7 @@ public class AnimalService : IAnimalService
             .ThenByDescending(i => i.CreatedAt)
             .ToListAsync();
 
-        return Result<List<AnimalImageDto>>.Success(images.Select(MapImage).ToList());
+        return Result<List<AnimalImageDto>>.Success(await MapImagesAsync(images));
     }
 
     public async Task<Result> DeleteImageAsync(Guid farmId, Guid animalId, Guid imageId)
@@ -819,7 +809,7 @@ public class AnimalService : IAnimalService
         if (image == null)
             return Result.NotFound("Image not found");
 
-        _fileStorage.Delete(image.StoragePath);
+        await _fileStorage.DeleteAsync(image.StoragePath);
         _context.AnimalImages.Remove(image);
         await _context.SaveChangesAsync();
 
@@ -841,8 +831,11 @@ public class AnimalService : IAnimalService
 
         await _context.SaveChangesAsync();
 
-        return Result<AnimalImageDto>.Success(MapImage(image));
+        return Result<AnimalImageDto>.Success(await MapImageAsync(image));
     }
+
+
+
 
     public async Task<Result<AnimalDocumentDto>> AddDocumentAsync(Guid farmId, Guid animalId, Stream content, string originalFileName, string contentType, long contentLength, string category, string? description)
     {
@@ -896,7 +889,7 @@ public class AnimalService : IAnimalService
 
         await _context.SaveChangesAsync();
 
-        return Result<AnimalDocumentDto>.Success(MapDocument(document));
+        return Result<AnimalDocumentDto>.Success(await MapDocumentAsync(document));
     }
 
     public async Task<Result<List<AnimalDocumentDto>>> GetDocumentsAsync(Guid farmId, Guid animalId, string? category)
@@ -915,7 +908,7 @@ public class AnimalService : IAnimalService
             .OrderByDescending(d => d.CreatedAt)
             .ToListAsync();
 
-        return Result<List<AnimalDocumentDto>>.Success(documents.Select(MapDocument).ToList());
+        return Result<List<AnimalDocumentDto>>.Success(await MapDocumentsAsync(documents));
     }
 
     public async Task<Result> DeleteDocumentAsync(Guid farmId, Guid animalId, Guid documentId)
@@ -925,25 +918,49 @@ public class AnimalService : IAnimalService
         if (document == null)
             return Result.NotFound("Document not found");
 
-        _fileStorage.Delete(document.StoragePath);
+        await _fileStorage.DeleteAsync(document.StoragePath);
         _context.AnimalDocuments.Remove(document);
         await _context.SaveChangesAsync();
 
         return Result.Success();
     }
 
-    public async Task<Result<AnimalDocumentDto>> GetDocumentForDownloadAsync(Guid farmId, Guid animalId, Guid documentId)
+    public async Task<Result<AnimalFileDownload>> GetDocumentForDownloadAsync(Guid farmId, Guid animalId, Guid documentId)
     {
         var document = await _context.AnimalDocuments
             .AsNoTracking()
             .FirstOrDefaultAsync(d => d.Id == documentId && d.AnimalId == animalId && d.FarmId == farmId);
         if (document == null)
-            return Result<AnimalDocumentDto>.NotFound("Document not found");
+            return Result<AnimalFileDownload>.NotFound("Document not found");
 
-        if (!_fileStorage.Exists(document.StoragePath))
-            return Result<AnimalDocumentDto>.NotFound("Document file is missing from storage");
+        if (!await _fileStorage.ExistsAsync(document.StoragePath))
+            return Result<AnimalFileDownload>.NotFound("Document file is missing from storage");
 
-        return Result<AnimalDocumentDto>.Success(MapDocument(document));
+        return Result<AnimalFileDownload>.Success(new AnimalFileDownload
+        {
+            StoragePath = document.StoragePath,
+            OriginalFileName = document.OriginalFileName,
+            ContentType = document.ContentType
+        });
+    }
+
+    public async Task<Result<AnimalFileDownload>> GetImageForDownloadAsync(Guid farmId, Guid animalId, Guid imageId)
+    {
+        var image = await _context.AnimalImages
+            .AsNoTracking()
+            .FirstOrDefaultAsync(i => i.Id == imageId && i.AnimalId == animalId && i.FarmId == farmId);
+        if (image == null)
+            return Result<AnimalFileDownload>.NotFound("Image not found");
+
+        if (!await _fileStorage.ExistsAsync(image.StoragePath))
+            return Result<AnimalFileDownload>.NotFound("Image file is missing from storage");
+
+        return Result<AnimalFileDownload>.Success(new AnimalFileDownload
+        {
+            StoragePath = image.StoragePath,
+            OriginalFileName = image.OriginalFileName,
+            ContentType = image.ContentType
+        });
     }
 
     public async Task<Result<AnimalTransferDto>> TransferAnimalAsync(Guid farmId, Guid animalId, TransferAnimalRequest request)
@@ -1222,11 +1239,13 @@ public class AnimalService : IAnimalService
         }
     }
 
-    private static AnimalImageDto MapImage(AnimalImage image) => new()
+    private async Task<AnimalImageDto> MapImageAsync(AnimalImage image) => new()
     {
         Id = image.Id,
         AnimalId = image.AnimalId,
-        Url = $"/uploads/{image.StoragePath}",
+        Url = await ResolveStorageUrlAsync(
+            image.StoragePath,
+            $"/api/farm/{image.FarmId}/animals/{image.AnimalId}/images/{image.Id}/download"),
         OriginalFileName = image.OriginalFileName,
         ContentType = image.ContentType,
         FileSizeBytes = image.FileSizeBytes,
@@ -1235,19 +1254,316 @@ public class AnimalService : IAnimalService
         CreatedAt = image.CreatedAt
     };
 
-    private static AnimalDocumentDto MapDocument(AnimalDocument document) => new()
+    private async Task<List<AnimalImageDto>> MapImagesAsync(IEnumerable<AnimalImage> images)
+    {
+        var mapped = new List<AnimalImageDto>();
+        foreach (var image in images)
+            mapped.Add(await MapImageAsync(image));
+
+        return mapped;
+    }
+
+    private async Task<AnimalDocumentDto> MapDocumentAsync(AnimalDocument document) => new()
     {
         Id = document.Id,
         AnimalId = document.AnimalId,
         Category = document.Category,
-        Url = $"/uploads/{document.StoragePath}",
-        StoragePath = document.StoragePath,
+        Url = await ResolveStorageUrlAsync(
+            document.StoragePath,
+            $"/api/farm/{document.FarmId}/animals/{document.AnimalId}/documents/{document.Id}/download"),
         OriginalFileName = document.OriginalFileName,
         ContentType = document.ContentType,
         FileSizeBytes = document.FileSizeBytes,
         Description = document.Description,
         CreatedAt = document.CreatedAt
     };
+
+    private async Task<List<AnimalDocumentDto>> MapDocumentsAsync(IEnumerable<AnimalDocument> documents)
+    {
+        var mapped = new List<AnimalDocumentDto>();
+        foreach (var document in documents)
+            mapped.Add(await MapDocumentAsync(document));
+
+        return mapped;
+    }
+
+    /// <summary>
+    /// Prefers a short-lived presigned URL, so the stored file is never world-readable.
+    /// Falls back to the API's own authenticated download route on backends that cannot
+    /// sign (local disk in development), which streams the bytes instead.
+    /// </summary>
+    private async Task<string> ResolveStorageUrlAsync(string storagePath, string fallbackRelativeUrl, string? downloadFileName = null)
+    {
+        if (!_fileStorage.SupportsPresignedUrls)
+            return fallbackRelativeUrl;
+
+        var presigned = await _fileStorage.GetPresignedDownloadUrlAsync(storagePath, downloadFileName);
+
+        return presigned.IsSuccess ? presigned.Value!.Url : fallbackRelativeUrl;
+    }
+
+    /// <summary>
+    /// The farm-scoped rows a creation is validated against, loaded once per batch.
+    ///
+    /// A 5,000-row import that re-queried per check would issue tens of thousands of
+    /// statements, so the rules read from these sets. The rules themselves are
+    /// unchanged and shared with the single-row path.
+    /// </summary>
+    private sealed record CreationLookups(
+        IReadOnlyDictionary<Guid, AnimalType> AnimalTypes,
+        IReadOnlyDictionary<Guid, Breed> Breeds,
+        IReadOnlyDictionary<Guid, SexOption> SexOptions,
+        IReadOnlyDictionary<Guid, AgeCategory> AgeCategories,
+        IReadOnlyDictionary<Guid, AnimalStatus> AnimalStatuses,
+        IReadOnlyDictionary<Guid, Location> Locations,
+        IReadOnlySet<Guid> KnownAnimalIds,
+        IReadOnlySet<string> ExistingTags);
+
+    private async Task<CreationLookups> LoadCreationLookupsAsync(Guid farmId, IReadOnlyList<BulkAnimalCreateItem> items)
+    {
+        var requests = items.Select(item => item.Request).ToList();
+
+        var typeIds = NotEmpty(requests.Select(r => r.AnimalTypeId));
+        var breedIds = NotEmpty(requests.Select(r => r.BreedId));
+        var sexIds = NotEmpty(requests.Select(r => r.SexOptionId));
+        var ageCategoryIds = NotEmpty(requests.Select(r => r.AgeCategoryId));
+        var statusIds = NotEmpty(requests.Select(r => r.AnimalStatusId));
+        var locationIds = NotEmpty(requests.Select(r => r.LocationId));
+        var relatedAnimalIds = NotEmpty(requests.SelectMany(r => new[] { r.SireId, r.DamId }));
+        var proposedTags = requests
+            .Select(r => r.TagNumber?.Trim() ?? string.Empty)
+            .Where(tag => tag.Length > 0)
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+
+        var animalTypes = await _context.AnimalTypes
+            .Where(at => at.FarmId == farmId && typeIds.Contains(at.Id))
+            .ToDictionaryAsync(at => at.Id);
+        var breeds = await _context.Breeds
+            .Where(b => breedIds.Contains(b.Id))
+            .ToDictionaryAsync(b => b.Id);
+        var sexOptions = await _context.SexOptions
+            .Where(s => s.FarmId == farmId && sexIds.Contains(s.Id))
+            .ToDictionaryAsync(s => s.Id);
+        var ageCategories = await _context.AgeCategories
+            .Where(ac => ac.FarmId == farmId && ageCategoryIds.Contains(ac.Id))
+            .ToDictionaryAsync(ac => ac.Id);
+        var animalStatuses = await _context.AnimalStatuses
+            .Where(s => s.FarmId == farmId && statusIds.Contains(s.Id))
+            .ToDictionaryAsync(s => s.Id);
+        var locations = await _context.Locations
+            .Where(l => l.FarmId == farmId && locationIds.Contains(l.Id))
+            .ToDictionaryAsync(l => l.Id);
+
+        var existingAnimalIds = await _context.Animals
+            .Where(a => a.FarmId == farmId && !a.IsDeleted && relatedAnimalIds.Contains(a.Id))
+            .Select(a => a.Id)
+            .ToListAsync();
+
+        // Only the tags this batch proposes are probed, so the cost tracks the batch
+        // rather than the size of the herd.
+        var existingTags = await _context.Animals
+            .Where(a => a.FarmId == farmId && !a.IsDeleted && proposedTags.Contains(a.TagNumber))
+            .Select(a => a.TagNumber)
+            .ToListAsync();
+
+        // Batch ids count as known so a row can name a parent created by the same
+        // batch. Self-reference is still rejected by the sire/dam rules below.
+        var knownAnimalIds = existingAnimalIds
+            .Concat(items.Select(item => item.Id))
+            .ToHashSet();
+
+        return new CreationLookups(
+            animalTypes,
+            breeds,
+            sexOptions,
+            ageCategories,
+            animalStatuses,
+            locations,
+            knownAnimalIds,
+            existingTags.ToHashSet(StringComparer.Ordinal));
+    }
+
+    private static List<Guid> NotEmpty(IEnumerable<Guid> values) =>
+        values.Where(id => id != Guid.Empty).Distinct().ToList();
+
+    private static List<Guid> NotEmpty(IEnumerable<Guid?> values) =>
+        NotEmpty(values.Where(id => id.HasValue).Select(id => id!.Value));
+
+    /// <summary>
+    /// Every creation rule, in the order the single-row path has always applied them,
+    /// returning all failures rather than the first. <see cref="CreateAnimalAsync"/> —
+    /// which used to inline these checks — takes the first; a batch reports them all
+    /// so one upload can list everything wrong with a row.
+    /// </summary>
+    private async Task<List<Error>> ValidateForCreationAsync(Guid farmId, BulkAnimalCreateItem item, CreationLookups lookups)
+    {
+        var request = item.Request;
+        var errors = new List<Error>();
+
+        Add(errors, CheckTag(request, lookups));
+        Add(errors, CheckAnimalType(request, lookups));
+        Add(errors, CheckBreed(request, lookups));
+        Add(errors, CheckSex(request, lookups));
+        Add(errors, CheckAgeCategory(request, lookups));
+        Add(errors, CheckStatus(request, lookups));
+        Add(errors, CheckLocation(request, lookups));
+        Add(errors, CheckSire(request, lookups, item.Id));
+        Add(errors, CheckDam(request, lookups, item.Id));
+
+        if (request.Identifications.Count > 0)
+        {
+            var identificationValidation = await ValidateIdentificationValuesAsync(farmId, request.Identifications);
+            Add(errors, identificationValidation.IsSuccess ? null : identificationValidation.Error);
+        }
+
+        return errors;
+    }
+
+    private static void Add(List<Error> errors, Error? error)
+    {
+        if (error != null)
+            errors.Add(error);
+    }
+
+    private static Error? CheckTag(CreateAnimalRequest request, CreationLookups lookups)
+    {
+        if (string.IsNullOrWhiteSpace(request.TagNumber))
+            return Error.Validation("Tag number is required");
+
+        var tag = request.TagNumber.Trim();
+        return lookups.ExistingTags.Contains(tag)
+            ? Error.Conflict($"An animal with tag '{tag}' already exists in this farm")
+            : null;
+    }
+
+    private static Error? CheckAnimalType(CreateAnimalRequest request, CreationLookups lookups) =>
+        lookups.AnimalTypes.ContainsKey(request.AnimalTypeId) ? null : Error.NotFound("Animal type not found");
+
+    private static Error? CheckBreed(CreateAnimalRequest request, CreationLookups lookups)
+    {
+        if (!request.BreedId.HasValue)
+            return null;
+
+        return lookups.Breeds.TryGetValue(request.BreedId.Value, out var breed) &&
+               breed.AnimalTypeId == request.AnimalTypeId
+            ? null
+            : Error.Validation("Breed not found or does not belong to the selected animal type");
+    }
+
+    private static Error? CheckSex(CreateAnimalRequest request, CreationLookups lookups) =>
+        lookups.SexOptions.ContainsKey(request.SexOptionId) ? null : Error.NotFound("Sex option not found");
+
+    private static Error? CheckAgeCategory(CreateAnimalRequest request, CreationLookups lookups)
+    {
+        if (!request.AgeCategoryId.HasValue)
+            return null;
+
+        return lookups.AgeCategories.ContainsKey(request.AgeCategoryId.Value)
+            ? null
+            : Error.NotFound("Age category not found");
+    }
+
+    private static Error? CheckStatus(CreateAnimalRequest request, CreationLookups lookups) =>
+        lookups.AnimalStatuses.ContainsKey(request.AnimalStatusId) ? null : Error.NotFound("Animal status not found");
+
+    private static Error? CheckLocation(CreateAnimalRequest request, CreationLookups lookups)
+    {
+        if (!request.LocationId.HasValue)
+            return null;
+
+        return lookups.Locations.ContainsKey(request.LocationId.Value) ? null : Error.NotFound("Location not found");
+    }
+
+    private static Error? CheckSire(CreateAnimalRequest request, CreationLookups lookups, Guid ownId)
+    {
+        if (!request.SireId.HasValue)
+            return null;
+
+        // An animal cannot be its own sire: the id is known to the batch, but it is
+        // not an existing animal, which is the same answer the single-row path gave.
+        var sireId = request.SireId.Value;
+        return sireId != ownId && lookups.KnownAnimalIds.Contains(sireId)
+            ? null
+            : Error.NotFound("Sire animal not found");
+    }
+
+    private static Error? CheckDam(CreateAnimalRequest request, CreationLookups lookups, Guid ownId)
+    {
+        if (!request.DamId.HasValue)
+            return null;
+
+        var damId = request.DamId.Value;
+        return damId != ownId && lookups.KnownAnimalIds.Contains(damId)
+            ? null
+            : Error.NotFound("Dam animal not found");
+    }
+
+    /// <summary>
+    /// Builds the animal, its identifications and its "registered" timeline event
+    /// exactly as a single create always has, so an imported animal is
+    /// indistinguishable from one entered by hand. The id is passed in rather than
+    /// generated here, which is what lets rows of one batch reference each other.
+    /// </summary>
+    private static Domain.Entities.Animal BuildAnimalEntity(
+        Guid farmId,
+        Guid id,
+        CreateAnimalRequest request,
+        DateTime now,
+        Guid? userId)
+    {
+        var tag = request.TagNumber.Trim();
+
+        var animal = new Domain.Entities.Animal
+        {
+            Id = id,
+            FarmId = farmId,
+            TagNumber = tag,
+            Name = request.Name?.Trim(),
+            AnimalTypeId = request.AnimalTypeId,
+            BreedId = request.BreedId,
+            SexOptionId = request.SexOptionId,
+            AgeCategoryId = request.AgeCategoryId,
+            AnimalStatusId = request.AnimalStatusId,
+            LocationId = request.LocationId,
+            SireId = request.SireId,
+            DamId = request.DamId,
+            DateOfBirth = request.DateOfBirth,
+            AcquisitionDate = request.AcquisitionDate,
+            Notes = request.Notes,
+            CreatedAt = now,
+            CreatedBy = userId
+        };
+
+        foreach (var identification in request.Identifications)
+        {
+            animal.Identifications.Add(new AnimalIdentification
+            {
+                Id = Guid.NewGuid(),
+                FarmId = farmId,
+                IdentificationTypeId = identification.IdentificationTypeId,
+                Value = identification.Value.Trim(),
+                IsPrimary = identification.IsPrimary,
+                DateAttached = now,
+                CreatedAt = now
+            });
+        }
+        EnsureSinglePrimary(animal.Identifications);
+
+        animal.TimelineEvents.Add(new AnimalTimelineEvent
+        {
+            Id = Guid.NewGuid(),
+            FarmId = farmId,
+            EventType = TimelineEventTypes.Created,
+            Title = "Animal registered",
+            Description = $"Animal registered with tag '{tag}'",
+            OccurredAt = now,
+            CreatedAt = now,
+            CreatedBy = userId
+        });
+
+        return animal;
+    }
 
     private async Task<Result> ValidateIdentificationValuesAsync(Guid farmId, List<CreateAnimalIdentificationRequest> identifications)
     {

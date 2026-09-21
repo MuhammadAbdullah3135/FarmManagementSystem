@@ -36,7 +36,7 @@ public class FarmService : IFarmService
             Id = Guid.NewGuid(),
             UserId = userId,
             FarmId = farm.Id,
-            Role = "Owner",
+            Role = FarmRoles.SystemOwner,
             CreatedAt = DateTime.UtcNow
         });
 
@@ -46,7 +46,7 @@ public class FarmService : IFarmService
 
         await _context.SaveChangesAsync();
 
-        return Result<FarmDto>.Success(MapToDto(farm, "Owner"));
+        return Result<FarmDto>.Success(MapToDto(farm, FarmRoles.SystemOwner));
     }
 
     public async Task<Result<FarmDto>> GetFarmAsync(Guid farmId, Guid userId)
@@ -61,11 +61,18 @@ public class FarmService : IFarmService
         return Result<FarmDto>.Success(MapToDto(userFarm.Farm, userFarm.Role));
     }
 
-    public async Task<Result<List<FarmDto>>> GetUserFarmsAsync(Guid accountId, Guid userId)
+    /// <summary>
+    /// Farms the user is a member of. Membership — not the account the farm
+    /// belongs to — is the gate: a UserFarm row is only created when the user
+    /// owns, created, or accepted an invitation to the farm, so this cannot
+    /// expose a farm the user was never added to. Cross-account membership is
+    /// intentional (invitations are by email).
+    /// </summary>
+    public async Task<Result<List<FarmDto>>> GetUserFarmsAsync(Guid userId)
     {
         var farms = await _context.UserFarms
             .Include(uf => uf.Farm)
-            .Where(uf => uf.Farm.AccountId == accountId && uf.UserId == userId)
+            .Where(uf => uf.UserId == userId)
             .Select(uf => MapToDto(uf.Farm, uf.Role))
             .ToListAsync();
 
@@ -81,8 +88,8 @@ public class FarmService : IFarmService
         if (userFarm == null)
             return Result<FarmDto>.NotFound("Farm not found or access denied");
 
-        if (userFarm.Role != "Owner" && userFarm.Role != "Manager")
-            return Result<FarmDto>.Unauthorized("Only owners and managers can update farm details");
+        if (!FarmRoles.IsFarmAdmin(userFarm.Role))
+            return Result<FarmDto>.Unauthorized("Only farm owners and managers can update farm details");
 
         var farm = userFarm.Farm;
         farm.Name = request.Name;
@@ -105,8 +112,8 @@ public class FarmService : IFarmService
         if (userFarm == null)
             return Result.NotFound("Farm not found or access denied");
 
-        if (userFarm.Role != "Owner")
-            return Result.Unauthorized("Only owners can delete farms");
+        if (userFarm.Role != FarmRoles.SystemOwner)
+            return Result.Unauthorized("Only farm owners can delete farms");
 
         // Soft delete
         userFarm.Farm.IsDeleted = true;

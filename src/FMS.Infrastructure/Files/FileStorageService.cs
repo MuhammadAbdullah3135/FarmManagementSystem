@@ -2,14 +2,24 @@ using FMS.Application.Common;
 
 namespace FMS.Infrastructure.Files;
 
+/// <summary>
+/// Local-disk storage. Intended for development, tests and container-local runs.
+///
+/// NOTE: on Heroku the container filesystem is ephemeral — anything written here is lost
+/// on the next release or dyno cycle. Production should use <see cref="S3FileStorageService"/>.
+/// This provider cannot issue presigned URLs, so callers must stream through
+/// <see cref="OpenReadAsync"/> (see <see cref="SupportsPresignedUrls"/>).
+/// </summary>
 public class FileStorageService : IFileStorageService
 {
     private readonly string _rootPath;
 
     public FileStorageService(string rootPath)
     {
-        _rootPath = rootPath;
+        _rootPath = Path.GetFullPath(rootPath);
     }
+
+    public bool SupportsPresignedUrls => false;
 
     public async Task<Result<FileStorageInfo>> SaveAsync(
         string relativeFolder,
@@ -19,27 +29,22 @@ public class FileStorageService : IFileStorageService
         long maxBytes,
         IReadOnlyCollection<string> allowedExtensions)
     {
-        if (content.Length == 0)
-            return Result<FileStorageInfo>.Validation("File is empty");
+        var validationError = FileUploadValidator.Validate(content.Length, originalFileName, maxBytes, allowedExtensions);
+        if (validationError is not null)
+            return Result<FileStorageInfo>.Failure(validationError);
 
-        if (content.Length > maxBytes)
-            return Result<FileStorageInfo>.Validation($"File exceeds the maximum allowed size of {maxBytes / (1024.0 * 1024.0):0.#} MB");
-
-        var extension = Path.GetExtension(originalFileName);
-        if (string.IsNullOrWhiteSpace(extension) ||
-            !allowedExtensions.Contains(extension.ToLowerInvariant()))
-            return Result<FileStorageInfo>.Validation(
-                $"File type '{extension}' is not allowed. Allowed types: {string.Join(", ", allowedExtensions)}");
-
-        var fileName = $"{Guid.NewGuid():N}{extension.ToLowerInvariant()}";
-        var folderPath = Path.Combine(_rootPath, relativeFolder.Replace('/', Path.DirectorySeparatorChar));
-        Directory.CreateDirectory(folderPath);
-
+        var fileName = $"{Guid.NewGuid():N}{FileUploadValidator.NormalizedExtension(originalFileName)}";
         var storagePath = $"{relativeFolder.TrimEnd('/')}/{fileName}";
-        var fullPath = Path.Combine(_rootPath, storagePath.Replace('/', Path.DirectorySeparatorChar));
 
-        await using var fileStream = new FileStream(fullPath, FileMode.CreateNew, FileAccess.Write, FileShare.None);
-        await content.CopyToAsync(fileStream);
+        if (!TryResolve(storagePath, out var fullPath))
+            return Result<FileStorageInfo>.Validation("Invalid storage path");
+
+        Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
+
+        await using (var fileStream = new FileStream(fullPath, FileMode.CreateNew, FileAccess.Write, FileShare.None, 81920, useAsync: true))
+        {
+            await content.CopyToAsync(fileStream);
+        }
 
         return Result<FileStorageInfo>.Success(new FileStorageInfo
         {
@@ -51,28 +56,66 @@ public class FileStorageService : IFileStorageService
         });
     }
 
-    public void Delete(string storagePath)
+    public Task DeleteAsync(string storagePath, CancellationToken cancellationToken = default)
     {
         try
         {
-            var fullPath = Path.Combine(_rootPath, storagePath.Replace('/', Path.DirectorySeparatorChar));
-            if (File.Exists(fullPath))
+            if (TryResolve(storagePath, out var fullPath) && File.Exists(fullPath))
                 File.Delete(fullPath);
         }
         catch (IOException)
         {
+            // Best-effort: a failed delete must not fail the owning request.
         }
+
+        return Task.CompletedTask;
     }
 
-    public bool Exists(string storagePath)
+    public Task<bool> ExistsAsync(string storagePath, CancellationToken cancellationToken = default)
     {
-        return File.Exists(Path.Combine(_rootPath, storagePath.Replace('/', Path.DirectorySeparatorChar)));
+        return Task.FromResult(TryResolve(storagePath, out var fullPath) && File.Exists(fullPath));
     }
 
-    public Stream OpenRead(string storagePath)
+    public Task<Stream> OpenReadAsync(string storagePath, CancellationToken cancellationToken = default)
     {
-        return new FileStream(
-            Path.Combine(_rootPath, storagePath.Replace('/', Path.DirectorySeparatorChar)),
-            FileMode.Open, FileAccess.Read, FileShare.Read);
+        if (!TryResolve(storagePath, out var fullPath))
+            throw new FileNotFoundException("Invalid storage path", storagePath);
+
+        Stream stream = new FileStream(fullPath, FileMode.Open, FileAccess.Read, FileShare.Read, 81920, useAsync: true);
+        return Task.FromResult(stream);
+    }
+
+    public Task<Result<PresignedDownloadUrl>> GetPresignedDownloadUrlAsync(
+        string storagePath,
+        string? downloadFileName = null,
+        TimeSpan? timeToLive = null,
+        CancellationToken cancellationToken = default)
+    {
+        // Local disk has no signing authority. Callers should fall back to streaming.
+        return Task.FromResult(Result<PresignedDownloadUrl>.Unexpected(
+            "Presigned URLs are not supported by local file storage"));
+    }
+
+    /// <summary>
+    /// Resolves a stored path under the root, refusing anything that would escape it.
+    /// Keys are generated by this service, but they are persisted and replayed, so a
+    /// traversing value must never be able to read outside the uploads root.
+    /// </summary>
+    private bool TryResolve(string storagePath, out string fullPath)
+    {
+        fullPath = string.Empty;
+        if (string.IsNullOrWhiteSpace(storagePath))
+            return false;
+
+        var combined = Path.GetFullPath(Path.Combine(_rootPath, storagePath.Replace('/', Path.DirectorySeparatorChar)));
+        var rootWithSeparator = _rootPath.EndsWith(Path.DirectorySeparatorChar)
+            ? _rootPath
+            : _rootPath + Path.DirectorySeparatorChar;
+
+        if (!combined.StartsWith(rootWithSeparator, StringComparison.Ordinal))
+            return false;
+
+        fullPath = combined;
+        return true;
     }
 }

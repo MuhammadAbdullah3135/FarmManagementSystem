@@ -15,7 +15,7 @@ A lightweight .NET MAUI Android app that wraps the [FMS web frontend](https://mu
 
 - **Requires internet connection** — no offline data caching or native data storage
 - **Android only** — iOS, MacCatalyst, and Windows platform targets have been removed
-- **arm64 only** — built for `android-arm64` ABI; does not produce arm32 or x86 builds
+- **arm64-only Debug build** — the Debug configuration forces the `android-arm64` ABI, so the APK produced by the build command below will not run on arm32 or x86 devices
 - **Debug build** — current APK includes test-only buttons (Test Crash, Share Report) compiled out of Release builds
 - **No push notifications** — not yet implemented
 - **Tightly coupled to GitHub Pages URL** — the WebView URL is hardcoded in `MainPage.cs`; changing the deployment URL requires a code change and rebuild

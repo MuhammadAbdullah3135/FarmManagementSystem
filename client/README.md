@@ -28,6 +28,7 @@ Opens at `http://127.0.0.1:3000`. The dev server proxies `/api` requests to `htt
 | `npm run dev` | Start Vite dev server |
 | `npm run build` | Type-check + production build |
 | `npm run lint` | Run oxlint |
+| `npm test` | Run Vitest component tests |
 | `npm run preview` | Preview production build |
 
 ## Pages & Features
@@ -41,12 +42,23 @@ All routes are defined in `src/App.tsx`. Features verified against source code:
 | `/login` | LoginPage | Email + password login |
 | `/register` | RegisterPage | Account creation (name, email, password) |
 | `/reset-password` | ResetPasswordPage | Email-based password reset |
+| `/confirm-reset-password` | ConfirmResetPasswordPage | Completes a reset using the emailed token + new password |
 
 ### Protected Routes (requires login + farm selection)
 
 | Path | Page |
 |---|---|
 | `/dashboard` | Dashboard — summary stats, alerts, charts (area/line/pie/bar via Recharts) |
+| `/dashboard/notifications` | Notification centre — your alerts for the active farm, with read/dismiss state and a "View" link to the screen that fixes each one. The header bell badges the unread count |
+| `/dashboard/notifications/preferences` | Per alert type: in-app and email channels |
+
+#### Admin
+| Path | Page |
+|---|---|
+| `/dashboard/admin/audit-log` | Audit log (system owner / farm manager / accountant) |
+| `/dashboard/admin/jobs` | Scheduled job status: recurring jobs, last run/state/error, recent failures (SystemOwner only) |
+
+> The job-status page is account-scoped (its endpoint is `/api/admin/jobs`, with no farm in the path), so unlike every other protected page it renders without a farm selected. The notification pages are farm-scoped, like every other protected page, because notifications belong to a farm membership. The header bell shows the *active* farm's unread count and refreshes on navigation.
 
 #### Feed Management
 | Path | Page |
@@ -62,6 +74,7 @@ All routes are defined in `src/App.tsx`. Features verified against source code:
 | Path | Page |
 |---|---|
 | `/dashboard/animals` | Animal list with search/filter (type, breed, status, location) |
+| `/dashboard/animals/import` | Bulk import wizard: upload CSV/Excel → map columns → per-row validation preview → all-or-nothing commit |
 | `/dashboard/animals/:id` | Animal detail (weights, timeline, identifications) |
 
 #### Breeding
@@ -132,6 +145,11 @@ All routes are defined in `src/App.tsx`. Features verified against source code:
 |---|---|
 | `/dashboard/admin/audit-log` | Audit log (entity type, user, action, date range filters) |
 
+#### Configuration
+| Path | Page |
+|---|---|
+| `/dashboard/configuration` | Farm configuration — animal types, breeds, statuses, locations, custom fields, farm config |
+
 ## Key UI Features
 
 - **Farm switcher** in the header — all data is scoped to the selected farm via `X-Farm-Id` header
@@ -151,9 +169,9 @@ All routes are defined in `src/App.tsx`. Features verified against source code:
 ## Known Limitations
 
 - **No role-based menu filtering:** All authenticated users see all sidebar menu items regardless of their role. The backend enforces role restrictions at the API level, so users may see menus they cannot access (resulting in 403 errors when clicked). Roles are not returned from the login endpoint.
-- **Dashboard data display bug:** The "Due Weight Checks" summary card incorrectly shows the vaccination count instead of the weight check count.
 - **Dashboard alerts not clickable:** Alert objects from the API include a `link` field pointing to the relevant page, but the UI renders them as static text without navigation.
 - **No i18n:** English only. Ant Design locale is hardcoded to `en_US`.
+- **No farm management UI:** The header can switch between farms, and `farmStore` exposes a `createFarm` action, but no page lets users create, rename, or delete a farm. The backend `FarmsController` supports full farm CRUD.
 - **No offline support:** Requires an active internet connection. The mobile wrapper shows an offline overlay but provides no cached data.
 - **Single types file:** All domain types are defined in a single `src/types/index.ts` file (1000+ lines).
 

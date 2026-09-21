@@ -53,7 +53,7 @@ public class FarmsController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetUserFarms()
     {
-        var result = await _farmService.GetUserFarmsAsync(GetAccountId(), GetUserId());
+        var result = await _farmService.GetUserFarmsAsync(GetUserId());
 
         if (result.IsSuccess)
             return Ok(result.Value);

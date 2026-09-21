@@ -29,7 +29,7 @@ export const useAuthStore = create<AuthState>()(
         set({ isLoading: true, error: null });
         try {
           const response = await api.post<AuthResponse>('/auth/login', request);
-          const { accessToken, refreshToken, userId, accountId, email, firstName, lastName } = response.data;
+          const { accessToken, refreshToken, userId, accountId, email, firstName, lastName, roles } = response.data;
 
           localStorage.setItem('accessToken', accessToken);
           localStorage.setItem('refreshToken', refreshToken);
@@ -40,7 +40,7 @@ export const useAuthStore = create<AuthState>()(
             email,
             firstName,
             lastName,
-            roles: [],
+            roles: roles ?? [],
           };
 
           localStorage.setItem('user', JSON.stringify(user));
@@ -57,7 +57,7 @@ export const useAuthStore = create<AuthState>()(
         set({ isLoading: true, error: null });
         try {
           const response = await api.post<AuthResponse>('/auth/register', request);
-          const { accessToken, refreshToken, userId, accountId, email, firstName, lastName } = response.data;
+          const { accessToken, refreshToken, userId, accountId, email, firstName, lastName, roles } = response.data;
 
           localStorage.setItem('accessToken', accessToken);
           localStorage.setItem('refreshToken', refreshToken);
@@ -68,7 +68,7 @@ export const useAuthStore = create<AuthState>()(
             email,
             firstName,
             lastName,
-            roles: ['SystemOwner'],
+            roles: roles ?? [],
           };
 
           localStorage.setItem('user', JSON.stringify(user));

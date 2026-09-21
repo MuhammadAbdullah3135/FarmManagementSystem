@@ -7,6 +7,8 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import ConfirmResetPasswordPage from './pages/ConfirmResetPasswordPage';
+import AcceptInvitationPage from './pages/AcceptInvitationPage';
+import MembersPage from './pages/farm/MembersPage';
 import DashboardPage from './pages/DashboardPage';
 import AppLayout from './components/AppLayout';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -36,6 +38,7 @@ import WeightCheckSchedulePage from './pages/health/WeightCheckSchedulePage';
 import VetCostsPage from './pages/health/VetCostsPage';
 import AnimalsPage from './pages/animals/AnimalsPage';
 import AnimalDetailPage from './pages/animals/AnimalDetailPage';
+import AnimalImportPage from './pages/animals/AnimalImportPage';
 import BreedingRecordsPage from './pages/breeding/BreedingRecordsPage';
 import GestationPage from './pages/breeding/GestationPage';
 import BirthRecordingPage from './pages/breeding/BirthRecordingPage';
@@ -51,6 +54,9 @@ import MedicalReportsPage from './pages/reports/MedicalReportsPage';
 import VaccinationReportsPage from './pages/reports/VaccinationReportsPage';
 import EmployeeReportsPage from './pages/reports/EmployeeReportsPage';
 import AuditLogPage from './pages/admin/AuditLogPage';
+import JobsPage from './pages/admin/JobsPage';
+import NotificationsPage from './pages/NotificationsPage';
+import NotificationPreferencesPage from './pages/NotificationPreferencesPage';
 import ConfigurationPage from './pages/configuration/ConfigurationPage';
 
 const App: React.FC = () => {
@@ -71,6 +77,7 @@ const App: React.FC = () => {
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/confirm-reset-password" element={<ConfirmResetPasswordPage />} />
+          <Route path="/accept-invitation" element={<AcceptInvitationPage />} />
           <Route
             path="/dashboard"
             element={
@@ -91,6 +98,10 @@ const App: React.FC = () => {
 
             {/* Tasks */}
             <Route path="tasks" element={<TasksPage />} />
+
+            {/* Notifications */}
+            <Route path="notifications" element={<NotificationsPage />} />
+            <Route path="notifications/preferences" element={<NotificationPreferencesPage />} />
 
             {/* HR */}
             <Route path="hr/employees" element={<EmployeesPage />} />
@@ -117,6 +128,7 @@ const App: React.FC = () => {
 
             {/* Animals */}
             <Route path="animals" element={<AnimalsPage />} />
+            <Route path="animals/import" element={<AnimalImportPage />} />
             <Route path="animals/:id" element={<AnimalDetailPage />} />
 
             {/* Inventory */}
@@ -145,8 +157,12 @@ const App: React.FC = () => {
             {/* Configuration */}
             <Route path="configuration" element={<ConfigurationPage />} />
 
+            {/* Farm membership */}
+            <Route path="farm/members" element={<MembersPage />} />
+
             {/* Admin */}
             <Route path="admin/audit-log" element={<AuditLogPage />} />
+            <Route path="admin/jobs" element={<JobsPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>

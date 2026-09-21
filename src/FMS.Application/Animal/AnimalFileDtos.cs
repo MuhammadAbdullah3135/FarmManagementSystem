@@ -22,6 +22,19 @@ public class BulkTransferRequest
     public string? Reason { get; set; }
 }
 
+/// <summary>
+/// What a download endpoint needs in order to serve a stored file.
+///
+/// Deliberately not the public DTO: it carries the storage key, which clients have no
+/// use for now that files are no longer served from a public path.
+/// </summary>
+public class AnimalFileDownload
+{
+    public string StoragePath { get; set; } = string.Empty;
+    public string OriginalFileName { get; set; } = string.Empty;
+    public string ContentType { get; set; } = string.Empty;
+}
+
 // DTOs
 public class AnimalImageDto
 {
@@ -42,7 +55,6 @@ public class AnimalDocumentDto
     public Guid AnimalId { get; set; }
     public string Category { get; set; } = string.Empty;
     public string Url { get; set; } = string.Empty;
-    public string StoragePath { get; set; } = string.Empty;
     public string OriginalFileName { get; set; } = string.Empty;
     public string ContentType { get; set; } = string.Empty;
     public long FileSizeBytes { get; set; }

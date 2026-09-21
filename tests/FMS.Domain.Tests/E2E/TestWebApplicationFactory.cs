@@ -73,7 +73,10 @@ public class TestWebApplicationFactory : IDisposable
                 {
                     app.UseRouting();
                     app.UseAuthentication();
-                    app.UseAuthorization();
+
+                    // Farm context runs BETWEEN authentication and authorization,
+                    // mirroring Program.cs, so farm-scoped role checks are enforced
+                    // from the resolved farm's role rather than the account role.
                     if (UsesRealFarmContextMiddleware)
                     {
                         // Exercise the REAL production middleware: membership validation
@@ -92,6 +95,8 @@ public class TestWebApplicationFactory : IDisposable
                             await next();
                         });
                     }
+
+                    app.UseAuthorization();
                     app.UseEndpoints(endpoints => endpoints.MapControllers());
                 });
                 webBuilder.ConfigureServices(services =>
@@ -145,10 +150,55 @@ public class TestWebApplicationFactory : IDisposable
                         new FMS.Infrastructure.Configuration.CachedConfigurationService(
                             sp.GetRequiredService<FMS.Infrastructure.Configuration.ConfigurationService>(),
                             sp.GetRequiredService<Microsoft.Extensions.Caching.Memory.IMemoryCache>()));
+                    services.AddScoped<FMS.Application.Farm.IFarmService, FMS.Infrastructure.Farm.FarmService>();
+                    services.AddScoped<FMS.Application.Farm.IFarmMembershipService, FMS.Infrastructure.Farm.FarmMembershipService>();
                     services.AddScoped<FMS.Application.Auth.IAuthService, FMS.Infrastructure.Auth.AuthService>();
                     services.AddScoped<FMS.Application.Auth.IJwtTokenService, FMS.Infrastructure.Auth.JwtTokenService>();
                     // Singleton so all request scopes share the same capturing instance.
                     services.AddSingleton<FMS.Application.Auth.IEmailService, PasswordResetE2ETests.TestEmailService>();
+
+                    // Background jobs. The test host runs no Hangfire scheduler (its
+                    // storage is PostgreSQL, which InMemory cannot stand in for), so the
+                    // status provider is faked and the job classes are registered so
+                    // tests can invoke their entry points directly — the same methods
+                    // Hangfire would call.
+                    services.AddLogging();
+                    services.Configure<FMS.Application.Jobs.JobOptions>(_ => { });
+                    services.AddScoped<FMS.Application.Jobs.IFarmDirectory, FMS.Infrastructure.Jobs.FarmDirectory>();
+                    services.AddScoped<FMS.Infrastructure.Jobs.FeedingTaskGenerationJob>();
+                    services.AddScoped<FMS.Infrastructure.Jobs.HealthStatusRecalculationJob>();
+                    services.AddSingleton<FMS.Application.Jobs.IJobStatusProvider, Jobs.FakeJobStatusProvider>();
+
+                    // Notifications. The dispatcher is a plain DI-resolvable class
+                    // (Hangfire activates it the same way), so tests can invoke it
+                    // directly and then exercise the HTTP surface over the result.
+                    services.Configure<FMS.Application.Notifications.NotificationOptions>(_ => { });
+                    services.AddScoped<FMS.Application.Notifications.INotificationService, FMS.Infrastructure.Notifications.NotificationService>();
+                    services.AddScoped<FMS.Application.Notifications.INotificationDispatcher, FMS.Infrastructure.Notifications.NotificationDispatcher>();
+                    services.AddScoped<FMS.Infrastructure.Jobs.NotificationDispatchJob>();
+
+                    // Bulk animal import. The real reader and pipeline run against the
+                    // test host's InMemory database, so the endpoint exercises the same
+                    // code the API wires up.
+                    //
+                    // The create-animal validator is registered by name rather than by
+                    // scanning the assembly: the test host has never enabled FluentValidation's
+                    // MVC integration, and scanning here would silently start validating
+                    // every existing E2E request body.
+                    services.Configure<FMS.Application.Animal.Import.AnimalImportOptions>(_ => { });
+                    services.AddScoped<FMS.Application.Animal.Import.ISpreadsheetReader,
+                        FMS.Infrastructure.Import.SpreadsheetReader>();
+                    services.AddScoped<FMS.Application.Animal.Import.IAnimalImportService,
+                        FMS.Infrastructure.Import.AnimalImportService>();
+                    services.AddScoped<FluentValidation.IValidator<FMS.Application.Animal.CreateAnimalRequest>,
+                        FMS.API.Validation.Animals.CreateAnimalRequestValidator>();
+
+                    // AnimalService takes file storage for animal images and documents;
+                    // the import pipeline injects that service, so the graph needs it even
+                    // though nothing here uploads a file.
+                    services.AddSingleton<FMS.Application.Common.IFileStorageService>(
+                        new FMS.Infrastructure.Files.FileStorageService(
+                            Path.Combine(Path.GetTempPath(), "fms-e2e-uploads")));
 
                     // Simple test auth: scheme "Test" that always authenticates with the claims from the token
                     services.AddAuthentication("Test")

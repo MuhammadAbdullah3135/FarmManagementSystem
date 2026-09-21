@@ -76,7 +76,37 @@ Requests are processed in this order:
 7. JWT Authentication (HMAC-SHA256, 15 min access / 30 day refresh, zero clock skew)
 8. Authorization
 9. `FarmContextMiddleware` — validates `X-Farm-Id` header against `UserFarms` table, sets farm context
-10. Static Files — serves uploaded files from `/uploads` path
+10. File downloads — there is deliberately **no public static path** for uploads. Files are reachable only through authorized endpoints (see *File storage* below), which either stream the bytes or redirect to a short-lived presigned object-storage URL.
+
+## File storage
+
+Uploads (animal images and documents) go through `IFileStorageService`, which has two backends selected by `Storage:Provider`:
+
+| Provider | Use | Downloads |
+|---|---|---|
+| `Local` (default) | development, tests, CI — no credentials needed | streamed by the API through an authorized endpoint |
+| `S3` | production — any S3-compatible endpoint | short-lived presigned URL (default TTL 5 min) |
+
+**Cloudflare R2 is the recommended object store**: it speaks the S3 API (so the same code serves AWS S3 or MinIO, and leaving `Storage__S3__ServiceUrl` empty targets real AWS S3) and charges no egress, which matters because farm photos are read far more often than written.
+
+Two rules this design enforces:
+
+- **Nothing is world-readable.** Authorization happens in the API *before* a URL is issued; the presigned URL is a bearer token, so its TTL is deliberately short.
+- **Use `S3` in production.** The container filesystem is ephemeral — on Heroku every release and dyno restart discards locally stored files.
+
+Configuration (no secrets in source; see `.env.example`):
+
+```
+Storage__Provider=S3
+Storage__S3__Bucket=...
+Storage__S3__Region=auto
+Storage__S3__ServiceUrl=https://<account-id>.r2.cloudflarestorage.com
+Storage__S3__AccessKeyId=...
+Storage__S3__SecretAccessKey=...
+Storage__PresignedUrlTtlMinutes=5
+```
+
+To move files that are still on local disk, run `scripts/migrate-uploads-to-s3.sh`.
 
 ## Key Endpoints
 
@@ -86,7 +116,7 @@ All farm-scoped endpoints require `Authorization: Bearer <token>` + `X-Farm-Id: 
 
 | Method | Path | Description |
 |---|---|---|
-| POST | `/register` | Create account + user + default farm + seed statuses |
+| POST | `/register` | Create account + user + default farm, then seed the full default lookup set |
 | POST | `/login` | Returns JWT access + refresh tokens |
 | POST | `/refresh` | Swap refresh token for new pair |
 | POST | `/reset-password` | Email-based password reset |
@@ -243,6 +273,15 @@ All farm-scoped endpoints require `Authorization: Bearer <token>` + `X-Farm-Id: 
 | `/configuration/custom-fields` | Custom field definition CRUD |
 | `/configuration/farm-config` | Farm config key-value pairs |
 | `/audit-logs` | Audit log with entity/user/action/date filters — SystemOwner/FarmManager/Accountant only |
+| `/api/admin/jobs` | Scheduled job status: recurring jobs, last run/state/error, recent failures — SystemOwner account role only. Account-scoped (no `{farmId}`), so the farm-context gate deliberately does not apply |
+| `/notifications` | The caller's own notifications, with read/dismiss state. Farm-scoped and self-scoped: the recipient comes from the token, never the request |
+| `/notifications/unread-count` | Unread count for the header badge |
+| `/notifications/{id}/read`, `/notifications/read-all`, `/notifications/{id}/dismiss` | Acknowledge or clear a notification. Another member's id answers 404 |
+| `/notifications/preferences` | Per alert type, in-app and email channels (`Notifications` configuration section holds the default email threshold) |
+
+Background jobs run through Hangfire against the same PostgreSQL database (`hangfire` schema, created on startup after EF migrations). Recurring jobs fan out one execution per active farm: `feeding-task-generation-fan-out` (daily), `health-status-recalculation-fan-out` (hourly) and `notification-dispatch-fan-out` (every 15 minutes). See the `Jobs` configuration section, and `Jobs:Enabled=false` to run an instance that serves HTTP only.
+
+Notification dispatch reuses the dashboard's alert computation and reconciles rather than appends: a new condition notifies each eligible recipient once, a changed one refreshes its row, and a cleared one is resolved. A recipient's own role decides whether an alert type reaches them at all (an Accountant is never alerted about inventory), and a condition whose metric failed is skipped rather than resolved — "we could not tell" is not "it is fixed".
 
 ## Roles
 

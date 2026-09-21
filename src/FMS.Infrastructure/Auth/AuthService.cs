@@ -1,7 +1,6 @@
-using System.Security.Cryptography;
-using System.Text;
 using FMS.Application.Auth;
 using FMS.Application.Common;
+using FMS.Application.Farm;
 using FMS.Domain.Entities;
 using FMS.Infrastructure.Farm;
 using FMS.Infrastructure.Persistence;
@@ -76,7 +75,7 @@ public class AuthService : IAuthService
             Id = Guid.NewGuid(),
             UserId = user.Id,
             FarmId = farm.Id,
-            Role = "Owner",
+            Role = FarmRoles.SystemOwner,
             CreatedAt = DateTime.UtcNow
         });
 
@@ -121,7 +120,8 @@ public class AuthService : IAuthService
             AccountId = account.Id,
             Email = user.Email,
             FirstName = user.FirstName,
-            LastName = user.LastName
+            LastName = user.LastName,
+            Roles = roles
         });
     }
 
@@ -167,7 +167,8 @@ public class AuthService : IAuthService
             AccountId = user.AccountId,
             Email = user.Email,
             FirstName = user.FirstName,
-            LastName = user.LastName
+            LastName = user.LastName,
+            Roles = roles
         });
     }
 
@@ -195,7 +196,7 @@ public class AuthService : IAuthService
             Id = Guid.NewGuid(),
             UserId = user.Id,
             FarmId = farm.Id,
-            Role = "Owner",
+            Role = FarmRoles.SystemOwner,
             CreatedAt = DateTime.UtcNow
         });
 
@@ -267,7 +268,8 @@ public class AuthService : IAuthService
             AccountId = user.AccountId,
             Email = user.Email,
             FirstName = user.FirstName,
-            LastName = user.LastName
+            LastName = user.LastName,
+            Roles = roles
         });
     }
 
@@ -353,9 +355,7 @@ public class AuthService : IAuthService
         return Result.Success();
     }
 
-    private static string HashToken(string token)
-    {
-        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(token));
-        return Convert.ToHexString(bytes).ToLowerInvariant();
-    }
+    // Delegates to the shared hasher so the reset and invitation flows cannot
+    // drift apart.
+    private static string HashToken(string token) => TokenHasher.Hash(token);
 }

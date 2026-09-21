@@ -10,6 +10,8 @@ interface FarmState {
   error: string | null;
   fetchFarms: () => Promise<void>;
   setActiveFarm: (farm: Farm) => void;
+  /** Drops the selected farm, e.g. when membership to it is revoked mid-session. */
+  clearActiveFarm: () => void;
   createFarm: (name: string, description?: string) => Promise<Farm | null>;
 }
 
@@ -46,6 +48,11 @@ export const useFarmStore = create<FarmState>()(
       setActiveFarm: (farm: Farm) => {
         localStorage.setItem('activeFarmId', farm.id);
         set({ activeFarm: farm });
+      },
+
+      clearActiveFarm: () => {
+        localStorage.removeItem('activeFarmId');
+        set({ activeFarm: null });
       },
 
       createFarm: async (name: string, description?: string) => {

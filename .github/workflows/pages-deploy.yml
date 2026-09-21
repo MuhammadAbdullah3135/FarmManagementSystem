@@ -4,6 +4,10 @@ on:
   push:
     branches: [main]
     paths: ['client/**']
+  # The client half of the same gate: a PR holding a broken client test must
+  # fail here rather than at the deploy job. See deploy.yml for the rationale.
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -58,6 +62,9 @@ jobs:
 
   deploy:
     needs: build
+    # Guarded like deploy.yml: lint/build/test run for pull requests, publishing
+    # to Pages never does.
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
