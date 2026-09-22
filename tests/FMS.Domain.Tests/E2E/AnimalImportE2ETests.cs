@@ -62,9 +62,12 @@ public class AnimalImportE2ETests : IClassFixture<AnimalImportE2ETests.Factory>
                 location.LocationType = locationType;
             }
 
-            db.SexOptions.AddRange(
-                new SexOption { Id = Guid.NewGuid(), FarmId = seed.FarmId, Value = "Female" },
-                new SexOption { Id = Guid.NewGuid(), FarmId = seed.FarmId, Value = "Male" });
+            // No sex options here: the shared seed owns the farm's "Male"/"Female".
+            // The import resolves a name against the farm's own configuration, so a
+            // second pair under the same names is ambiguous and makes every row
+            // invalid. These duplicates were a workaround for the seed leaving
+            // SexOption.FarmId unset, which real PostgreSQL rejects and which made
+            // the options invisible to any farm-scoped lookup.
 
             db.AgeCategories.Add(new AgeCategory
             {

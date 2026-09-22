@@ -87,20 +87,34 @@ public class HangfirePostgresIntegrationTests : IClassFixture<HangfirePostgresIn
             }
         }
 
-        /// <summary>Rows in Hangfire's own bookkeeping table, read over raw SQL.</summary>
-        public List<object?[]> QueryHangfireSet()
+        /// <summary>
+        /// Rows in Hangfire's own bookkeeping table, read over raw SQL and keyed by
+        /// the column names the server reports.
+        ///
+        /// Hangfire owns this table, so its columns are read rather than assumed —
+        /// quoting "Key"/"Value" (as this first did) failed with
+        /// 42703: column "Key" does not exist the moment the query ran for real,
+        /// because Hangfire.PostgreSql creates them lowercase.
+        /// </summary>
+        public List<Dictionary<string, string?>> QueryHangfireSet()
         {
-            var rows = new List<object?[]>();
+            var rows = new List<Dictionary<string, string?>>();
             using var conn = new NpgsqlConnection(ConnectionString);
             conn.Open();
             using var cmd = conn.CreateCommand();
             // "set" is quoted because SET is a reserved word; this table is where
             // Hangfire.PostgreSql keeps its key/value sets, including recurring jobs.
-            cmd.CommandText = """SELECT "Key", "Value" FROM hangfire."set" ORDER BY "Key" """;
+            cmd.CommandText = "SELECT * FROM hangfire.\"set\"";
             using var reader = cmd.ExecuteReader();
             while (reader.Read())
             {
-                rows.Add(new object?[] { reader.GetString(0), reader.GetString(1) });
+                var row = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+                for (var i = 0; i < reader.FieldCount; i++)
+                {
+                    row[reader.GetName(i)] = reader.IsDBNull(i) ? null : reader.GetValue(i)?.ToString();
+                }
+
+                rows.Add(row);
             }
 
             return rows;
@@ -174,12 +188,11 @@ public class HangfirePostgresIntegrationTests : IClassFixture<HangfirePostgresIn
 
         options = BackgroundJobsSetup.ResolveOptions(configuration);
 
-        var services = new ServiceCollection();
-        services.AddLogging();
-        services.AddFmsBackgroundJobs(configuration, options);
-
-        return services.BuildServiceProvider();
+        return SchedulerTestProvider.Build(configuration, options);
     }
+
+    private static bool Holds(Dictionary<string, string?> row, string value) =>
+        row.Values.Any(column => column is not null && column.Contains(value, StringComparison.Ordinal));
 
     private void SkipIfUnavailable()
     {
@@ -191,8 +204,9 @@ public class HangfirePostgresIntegrationTests : IClassFixture<HangfirePostgresIn
     {
         SkipIfUnavailable();
 
-        using var provider = BuildScheduler(out var options);
-        using var loggerFactory = provider.GetRequiredService<ILoggerFactory>();
+        // Not disposed on purpose — see SchedulerTestProvider.
+        var provider = BuildScheduler(out var options);
+        var loggerFactory = provider.GetRequiredService<ILoggerFactory>();
 
         // Deliberately no assertion about the schema's absence beforehand: the
         // tests in this class share one database and xUnit does not promise an
@@ -215,8 +229,8 @@ public class HangfirePostgresIntegrationTests : IClassFixture<HangfirePostgresIn
     {
         SkipIfUnavailable();
 
-        using var provider = BuildScheduler(out var options);
-        using var loggerFactory = provider.GetRequiredService<ILoggerFactory>();
+        var provider = BuildScheduler(out var options);
+        var loggerFactory = provider.GetRequiredService<ILoggerFactory>();
         var logger = loggerFactory.CreateLogger("HangfirePostgresIntegrationTests");
 
         BackgroundJobsSetup.Initialize(provider, options, logger);
@@ -261,13 +275,13 @@ public class HangfirePostgresIntegrationTests : IClassFixture<HangfirePostgresIn
         // Cross-check through raw SQL, so the assertion does not rest solely on
         // the monitoring API's view of a table it wrote itself. Key/value shape
         // is left to Hangfire: the ids just have to be in there.
-        var rows = _database.QueryHangfireSet()
-            .Select(row => $"{row[0]}|{row[1]}")
-            .ToList();
+        var rows = _database.QueryHangfireSet();
 
-        Assert.Contains(rows, row => row.Contains(JobNames.FeedingTaskGenerationFanOut, StringComparison.Ordinal));
-        Assert.Contains(rows, row => row.Contains(JobNames.HealthStatusRecalculationFanOut, StringComparison.Ordinal));
-        Assert.Contains(rows, row => row.Contains(JobNames.NotificationDispatchFanOut, StringComparison.Ordinal));
+        // Which column carries the id is Hangfire's business; that the id is in one
+        // of them is the point of reading the table directly.
+        Assert.Contains(rows, row => Holds(row, JobNames.FeedingTaskGenerationFanOut));
+        Assert.Contains(rows, row => Holds(row, JobNames.HealthStatusRecalculationFanOut));
+        Assert.Contains(rows, row => Holds(row, JobNames.NotificationDispatchFanOut));
 
         await Task.CompletedTask;
     }
@@ -277,18 +291,18 @@ public class HangfirePostgresIntegrationTests : IClassFixture<HangfirePostgresIn
     {
         SkipIfUnavailable();
 
-        using (var first = BuildScheduler(out var firstOptions))
-        {
-            using var loggerFactory = first.GetRequiredService<ILoggerFactory>();
-            BackgroundJobsSetup.Initialize(first, firstOptions, loggerFactory.CreateLogger("restart-1"));
-        }
+        var first = BuildScheduler(out var firstOptions);
+        BackgroundJobsSetup.Initialize(
+            first,
+            firstOptions,
+            first.GetRequiredService<ILoggerFactory>().CreateLogger("restart-1"));
 
         // A restart registers with the same ids rather than adding a second copy.
-        using var second = BuildScheduler(out var secondOptions);
-        {
-            using var loggerFactory = second.GetRequiredService<ILoggerFactory>();
-            BackgroundJobsSetup.Initialize(second, secondOptions, loggerFactory.CreateLogger("restart-2"));
-        }
+        var second = BuildScheduler(out var secondOptions);
+        BackgroundJobsSetup.Initialize(
+            second,
+            secondOptions,
+            second.GetRequiredService<ILoggerFactory>().CreateLogger("restart-2"));
 
         var status = await second.GetRequiredService<IJobStatusProvider>().GetStatusAsync();
 

@@ -64,9 +64,12 @@ public static class ApiSeedData
         db.AnimalTypes.Add(cattleType);
         db.Breeds.Add(breed);
 
-        // Sex options
-        var maleSex = new SexOption { Id = Guid.NewGuid(), Value = "Male" };
-        var femaleSex = new SexOption { Id = Guid.NewGuid(), Value = "Female" };
+        // Sex options. FarmId is required: every other lookup here sets it, and
+        // PostgreSQL rejects the row without it (FK_SexOptions_Farms_FarmId).
+        // InMemory enforces no foreign key, which is why the omission survived
+        // until these seeds first ran against a real server.
+        var maleSex = new SexOption { Id = Guid.NewGuid(), FarmId = farmId, Value = "Male" };
+        var femaleSex = new SexOption { Id = Guid.NewGuid(), FarmId = farmId, Value = "Female" };
         db.SexOptions.AddRange(maleSex, femaleSex);
 
         // Statuses

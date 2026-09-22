@@ -21,11 +21,22 @@ namespace FMS.Domain.Tests.Jobs;
 /// </summary>
 public class BackgroundJobsSetupTests
 {
+    /// <summary>
+    /// Nothing listens on port 1, and this suite only asserts container wiring, so
+    /// the job storage must not be able to reach a server even where one exists.
+    /// With "Host=localhost;Port=5432" it found the PostgreSQL service CI runs for
+    /// the integration tests and spent two Npgsql timeouts trying to install its
+    /// schema into fms_test as a user that does not exist. A closed port fails
+    /// immediately, and identically, on every machine.
+    /// </summary>
+    private const string UnreachableConnection =
+        "Host=127.0.0.1;Port=1;Database=fms_test;Username=test;Password=test";
+
     private static IConfiguration Configuration(bool enabled = true) =>
         new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["ConnectionStrings:DefaultConnection"] = "Host=localhost;Database=fms_test;Username=test;Password=test",
+                ["ConnectionStrings:DefaultConnection"] = UnreachableConnection,
                 ["Jobs:Enabled"] = enabled ? "true" : "false",
                 ["Jobs:FeedingTaskGeneration:Cron"] = "30 4 * * *",
                 ["Jobs:HealthStatusRecalculation:Cron"] = "15 * * * *",
@@ -76,10 +87,18 @@ public class BackgroundJobsSetupTests
     [Fact]
     public void AddFmsBackgroundJobs_RegistersEverythingTheSchedulerNeeds()
     {
-        var services = Services();
-        services.AddFmsBackgroundJobs(Configuration(), BackgroundJobsSetup.ResolveOptions(Configuration()));
+        var configuration = Configuration();
 
-        using var provider = services.BuildServiceProvider();
+        // Not disposed on purpose — see SchedulerTestProvider: the container this
+        // builds is the one Hangfire binds its process-global logger and job
+        // storage to, and disposing it breaks every later Hangfire use in the
+        // process, including other test classes running in parallel.
+        var provider = SchedulerTestProvider.Build(
+            configuration,
+            BackgroundJobsSetup.ResolveOptions(configuration),
+            services => services.AddDbContext<FmsDbContext>(options =>
+                options.UseInMemoryDatabase($"JobsSetup_{Guid.NewGuid()}")));
+
         using var scope = provider.CreateScope();
 
         // Startup registration depends on the recurring-job manager...
