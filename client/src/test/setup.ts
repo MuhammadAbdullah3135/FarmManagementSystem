@@ -1,9 +1,31 @@
 import '@testing-library/jest-dom/vitest';
 import { cleanup } from '@testing-library/react';
 import { afterEach } from 'vitest';
+import { Modal, message, notification } from 'antd';
 
-afterEach(() => {
+afterEach(async () => {
+  // antd's static `message` / `notification` / `Modal.confirm` helpers render into React roots of
+  // their own, and testing-library's cleanup unmounts only the containers it created. Left
+  // mounted, those trees keep scheduling React work — motion, focus, the closing animation — and
+  // some of it lands after vitest has torn the jsdom environment down, where react-dom's commit
+  // phase reads a global `window` that no longer exists:
+  //
+  //   ReferenceError: window is not defined
+  //     at react-dom-client.development.js ❯ Immediate.performWorkUntilDeadline
+  //
+  // Vitest reports that as an *unhandled* error and fails the run while every test passed. It did
+  // exactly that on two pushes, attributed to the file whose last test opened a confirm dialog,
+  // and the deploy job that waits on this suite skipped both times. Closing the overlays inside
+  // the test's lifetime is what stops that work being scheduled at all.
+  Modal.destroyAll();
+  message.destroy();
+  notification.destroy();
+
   cleanup();
+
+  // Then let the scheduler flush what is already queued: React batches renders into a macrotask,
+  // and teardown has deleted the globals before the next one runs.
+  await new Promise((resolve) => setTimeout(resolve, 0));
 });
 
 // antd requires matchMedia; jsdom doesn't implement it.
