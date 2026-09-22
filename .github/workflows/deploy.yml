@@ -10,6 +10,11 @@ on:
   pull_request:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      skip_deploy:
+        description: 'Re-run the post-deploy smoke check against the current release without pushing a new container'
+        type: boolean
+        default: false
 
 concurrency:
   group: heroku-deploy
@@ -102,7 +107,10 @@ jobs:
     # suite passes, not release the branch to production. This also makes a
     # manual dispatch on a scratch ref safe (`gh workflow run deploy.yml --ref …`),
     # which is how the gate itself was verified.
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    if: >-
+      github.event_name != 'pull_request'
+      && github.ref == 'refs/heads/main'
+      && inputs.skip_deploy != true
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -118,6 +126,52 @@ jobs:
           set -euo pipefail
           export HEROKU_API_KEY="${{ secrets.HEROKU_API_KEY }}"
           heroku container:login
-          heroku container:push web --app "${{ secrets.HEROKU_APP_NAME }}"
+          # The commit goes in as a build arg so the running image can say what it is; the
+          # smoke job below compares that against the commit it released. Without it a release
+          # that never landed is indistinguishable from one that did.
+          heroku container:push web --arg GIT_SHA="${{ github.sha }}" --app "${{ secrets.HEROKU_APP_NAME }}"
           heroku container:release web --app "${{ secrets.HEROKU_APP_NAME }}"
-          echo "Deployed: https://${{ secrets.HEROKU_APP_NAME }}.herokuapp.com"
+          echo "Deployed: https://${{ secrets.HEROKU_APP_NAME }}.herokuapp.com (${{ github.sha }})"
+
+  smoke:
+    # Verifies production, which is the one thing no test in this workflow can do: the
+    # PostgreSQL integration tests run the same endpoints in-process, and they were green on
+    # commits whose release never reached Heroku at all (a red test-backend skips `deploy`, so
+    # the fix sat on GitHub while the old container answered).
+    #
+    # This can only attest to a release, not prevent one — Heroku has already swapped the
+    # container by the time it runs. Failing loudly is the point: a broken production turns the
+    # workflow red with the endpoint and traceId named, instead of waiting for someone to
+    # notice by hand. Recovery is `heroku releases:rollback web`.
+    #
+    # `always()` because this also has to run when someone re-checks the current release on its
+    # own (workflow_dispatch with skip_deploy), where `deploy` never ran.
+    needs: [deploy]
+    if: >-
+      always()
+      && github.event_name != 'pull_request'
+      && github.ref == 'refs/heads/main'
+      && (needs.deploy.result == 'success' || inputs.skip_deploy == true)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # No `npm ci`: scripts/qa-smoke.mjs runs on plain Node with no dependencies, so this job
+      # adds seconds rather than a second install of the client's node_modules.
+      - name: Smoke the released API
+        env:
+          FMS_API: https://${{ secrets.HEROKU_APP_NAME }}.herokuapp.com/api
+          # The commit this run released: the API has to report it back from /health.
+          FMS_SMOKE_SHA: ${{ github.sha }}
+          # Writes only ever touch this farm. The script refuses to write if the account's farm
+          # does not match, so a changed QA account fails the job instead of poking real data.
+          FMS_SMOKE_FARM: FarmTestingApk
+        run: node scripts/qa-smoke.mjs

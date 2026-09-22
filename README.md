@@ -370,7 +370,8 @@ FarmManagementSystem/
 ├── tests/
 │   └── FMS.Domain.Tests/     # Unit, integration, and E2E tests
 ├── docs/                     # User guide, API docs
-├── scripts/                  # Database backup/restore scripts
+├── scripts/                  # Database backup/restore, plus the live-API QA scripts
+│                             #   (qa-survey, qa-seed, qa-smoke — see docs/VERIFICATION.md)
 ├── Dockerfile                # API container build (multi-stage)
 ├── docker-compose.yml        # Local dev: API + PostgreSQL
 ├── .github/workflows/        # CI/CD: Heroku deploy + GitHub Pages

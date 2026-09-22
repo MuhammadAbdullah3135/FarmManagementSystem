@@ -6,7 +6,9 @@ using Hangfire.PostgreSql;
 
 using System.Threading.RateLimiting;
 using System.Text;
+using FMS.API;
 using FMS.API.Binding;
+using FMS.API.Health;
 using FMS.API.Jobs;
 using FMS.API.Middleware;
 using FMS.API.Security;
@@ -382,20 +384,13 @@ var hcOptions = new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOpt
     ResponseWriter = async (context, report) =>
     {
         context.Response.ContentType = "application/json";
-        var result = new
-        {
-            status = report.Status.ToString(),
-            checks = report.Entries.Select(e => new
-            {
-                name = e.Key,
-                status = e.Value.Status.ToString(),
-                duration = e.Value.Duration.TotalMilliseconds,
-                description = e.Value.Description,
-                exception = e.Value.Exception?.Message
-            }),
-            duration = report.TotalDuration.TotalMilliseconds
-        };
-        await context.Response.WriteAsJsonAsync(result);
+        // Which commit is answering is part of this endpoint's job now: it is where the
+        // post-deploy smoke check reads the build from, so a release that never actually landed
+        // is a failed check rather than something someone notices by hand weeks later.
+        await context.Response.WriteAsJsonAsync(HealthPayload.For(
+            report,
+            BuildStamp.Sha(builder.Configuration),
+            app.Environment.EnvironmentName));
     }
 };
 app.MapHealthChecks("/health", hcOptions);

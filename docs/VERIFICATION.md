@@ -475,6 +475,53 @@ only re-fetched on navigation, so a stale shell is the plausible failure mode.
 
 ---
 
+## Automated QA scripts
+
+Three dependency-free scripts in `scripts/` run against the deployed API
+(`node scripts/…`). All three read `FMS_API`, `FMS_EMAIL` and `FMS_PASSWORD`, defaulting to the
+Heroku API and the `Test@apk.com` QA account.
+
+| Script | What it does | When it runs |
+|---|---|---|
+| `qa-survey.mjs` | Read-only breadth: prints the row count of ~40 list endpoints, so an endpoint that answers 200 with nothing is visible at a glance | By hand |
+| `qa-seed.mjs` | Fills the QA farm's thin tables (animals, feed, health, HR, finance, inventory, tasks). Idempotent; never updates or deletes; `--dry` plans without writing | By hand |
+| `qa-smoke.mjs` | The production contracts, below | Automatically, in `deploy.yml` after a release |
+
+`qa-smoke.mjs` waits out the post-release dyno restart on `/health/live`, then asserts:
+
+1. **Provenance** — `/health` reports the commit this run released. The Docker build bakes it
+   in (`ARG GIT_SHA` → `FMS_BUILD_SHA`), the same way the SPA already stamps `VITE_BUILD_SHA`into its bundle. A missing stamp (`unknown`) or a different commit is a failure, never a skip.
+2. **CORS preflight** for the Pages origin — the one contract no in-process test can see, and
+   the one whose misconfiguration would break the whole web app while every API test stayed green.
+3. **The endpoints that have broken in production before** — the two 500s that grouped by a
+   computed month label inside the query (`dashboard/charts`, `reports/animals`), the six
+   date-only requests that answered 400 because a naive `DateTime` reached a `timestamptz`
+   column, and `dashboard/summary`, where `degradedMetrics` must be empty.
+4. **The write path** — creates an expense with the exact payload the SPA sends (date-only
+   `expenseDate`), updates it, and deletes it in a `finally` that runs even when an assertion
+   throws. It asserts by the created id appearing and then disappearing rather than by a row
+   count, because the QA farm is shared with people.
+
+Why it exists: `deploy` waits on `test-backend` and `test-client`, so a red test job means **no
+container was pushed at all** — which is what happened on the two runs before this was added,
+while production kept serving the previous build and nothing in the repository said so. The
+smoke job cannot prevent a release (Heroku has already swapped the container by the time it
+runs), so it fails the run loudly instead: an `::error::` annotation names the endpoint plus the
+API's `traceId` for the Heroku logs, and the job summary lists every check. Recovery stays
+deliberate — `heroku releases:rollback web`. To re-check the current release **without** pushing
+another container: `gh workflow run deploy.yml -f skip_deploy=true`.
+
+Running it by hand:
+
+```bash
+node scripts/qa-smoke.mjs --read-only               # nothing is written
+node scripts/qa-smoke.mjs                           # includes create → update → delete
+FMS_SMOKE_SHA=<commit> node scripts/qa-smoke.mjs    # also asserts /health reports that commit
+FMS_SMOKE_FARM=OtherFarm node scripts/qa-smoke.mjs  # writes only if the account owns that farm
+```
+
+---
+
 ## Results log
 
 Fill in as each item is executed. Do not mark an item verified on inspection alone.
