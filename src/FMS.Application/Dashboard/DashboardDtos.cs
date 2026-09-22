@@ -112,3 +112,19 @@ public class AnimalTrendPoint
     public string Month { get; set; } = string.Empty;
     public int Count { get; set; }
 }
+
+/// <summary>
+/// One month of the animal-additions trend, exactly as the database returns it.
+/// </summary>
+/// <remarks>
+/// A plain row rather than <see cref="AnimalTrendPoint"/> on purpose: keeping the two integer
+/// date parts separate is what lets the whole grouping and ordering stay in SQL. Projecting a
+/// formatted "{year}-{month}" label and ordering by it is not translatable on PostgreSQL, which
+/// is what used to take the charts endpoint down with a 500.
+/// </remarks>
+public class AnimalTrendBucket
+{
+    public int Year { get; set; }
+    public int Month { get; set; }
+    public int Count { get; set; }
+}

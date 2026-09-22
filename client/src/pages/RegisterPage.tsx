@@ -40,11 +40,11 @@ const RegisterPage: React.FC = () => {
           </Form.Item>
 
           <div style={{ display: 'flex', gap: 16 }}>
-            <Form.Item name="firstName" rules={[{ required: true, message: 'Required' }]} style={{ flex: 1 }}>
+            <Form.Item name="firstName" rules={[{ required: true, message: 'Please enter first name' }]} style={{ flex: 1 }}>
               <Input prefix={<UserOutlined />} placeholder="First Name" size="large" />
             </Form.Item>
 
-            <Form.Item name="lastName" rules={[{ required: true, message: 'Required' }]} style={{ flex: 1 }}>
+            <Form.Item name="lastName" rules={[{ required: true, message: 'Please enter last name' }]} style={{ flex: 1 }}>
               <Input placeholder="Last Name" size="large" />
             </Form.Item>
           </div>

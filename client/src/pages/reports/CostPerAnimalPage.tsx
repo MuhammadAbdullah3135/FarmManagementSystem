@@ -14,10 +14,18 @@ import { getApiError } from '../../api/farmApi';
 
 const { Text } = Typography;
 
-const money = (value: number): string =>
-  value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+/**
+ * Money is nullable on the wire: several optional figures (a caveat's amount, an allocation
+ * pool on a direct cost) arrive as an explicit null. Formatting one used to throw inside
+ * render and take the whole app down with it, so this is the one place that decides what an
+ * absent amount looks like.
+ */
+const money = (value?: number | null): string =>
+  value == null
+    ? '—'
+    : value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-const day = (value?: string): string => (value ? new Date(value).toLocaleDateString() : 'Still here');
+const day = (value?: string | null): string => (value ? new Date(value).toLocaleDateString() : 'Still here');
 
 /**
  * The arithmetic behind one figure, in the words the report itself uses: a direct record is
@@ -25,7 +33,9 @@ const day = (value?: string): string => (value ? new Date(value).toLocaleDateStr
  * can check it by hand instead of trusting a result.
  */
 const allocationText = (component: CostComponent): string => {
-  if (component.method === 'direct' || component.poolAmount === undefined) {
+  // `== null` on purpose: a direct cost serialises its pool fields as null, and so does any
+  // component the API could not put a pool behind.
+  if (component.method === 'direct' || component.poolAmount == null) {
     return component.source;
   }
 
@@ -134,13 +144,13 @@ const CostPerAnimalPage: React.FC = () => {
             type="warning"
             showIcon
             style={{ marginBottom: 16 }}
-            message="Read these numbers with the following in mind"
+            title="Read these numbers with the following in mind"
             description={
               <ul style={{ margin: 0, paddingInlineStart: 20 }}>
                 {report.warnings.map(warning => (
                   <li key={warning.code}>
                     {warning.message}
-                    {warning.amount !== undefined && <> <Text strong>({money(warning.amount)})</Text></>}
+                    {warning.amount != null && <> <Text strong>({money(warning.amount)})</Text></>}
                     {warning.affectedCount > 0 && <> <Text type="secondary">({warning.affectedCount} records/animals)</Text></>}
                   </li>
                 ))}
@@ -157,7 +167,7 @@ const CostPerAnimalPage: React.FC = () => {
               title="Margin"
               value={report?.farm.margin ?? 0}
               precision={2}
-              valueStyle={{ color: (report?.farm.margin ?? 0) < 0 ? '#ff4d4f' : undefined }}
+              styles={{ content: { color: (report?.farm.margin ?? 0) < 0 ? '#ff4d4f' : undefined } }}
             />
           </Card></Col>
           <Col xs={12} sm={6}><Card><Statistic title="Cost per animal-day" value={report?.farm.costPerAnimalDay ?? 0} precision={2} /></Card></Col>

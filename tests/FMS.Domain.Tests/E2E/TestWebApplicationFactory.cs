@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using System.Text;
+using FMS.API.Binding;
 using FMS.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
@@ -113,9 +114,14 @@ public class TestWebApplicationFactory : IDisposable
                     // Add test database — provider chosen by ConfigureDbContextOptions
                     services.AddDbContext<FmsDbContext>(ConfigureDbContextOptions);
 
-                    // Add controllers from the API assembly
+                    // Add controllers from the API assembly. The date-handling rule is applied
+                    // through the same extension Program.cs uses: this host builds its own MVC
+                    // pipeline, so a registration made only in Program.cs would be exercised by
+                    // no test, and that drift is how date-only query values reached PostgreSQL
+                    // as Unspecified (a 400 in production) with the suite still green.
                     services.AddControllers()
                         .AddApplicationPart(typeof(FMS.API.Controllers.DashboardController).Assembly)
+                        .AddUtcDateHandling()
                         .AddJsonOptions(o =>
                         {
                             o.JsonSerializerOptions.Converters.Add(
@@ -137,6 +143,7 @@ public class TestWebApplicationFactory : IDisposable
                     services.AddScoped<FMS.Application.Health.IHealthCostService, FMS.Infrastructure.Health.HealthCostService>();
                     services.AddScoped<FMS.Application.Health.IWeightCheckScheduleService, FMS.Infrastructure.Health.WeightCheckScheduleService>();
                     services.AddScoped<FMS.Application.Tasks.IFarmTaskService, FMS.Infrastructure.Tasks.FarmTaskService>();
+                    services.AddScoped<FMS.Application.Attendance.IAttendanceService, FMS.Infrastructure.Attendance.AttendanceService>();
                     services.AddScoped<FMS.Application.Animal.IAnimalService, FMS.Infrastructure.Animals.AnimalService>();
                     services.AddScoped<FMS.Application.Breeding.IBreedingService, FMS.Infrastructure.Breeding.BreedingService>();
                     services.AddScoped<FMS.Application.Employees.IEmployeeService, FMS.Infrastructure.Employees.EmployeeService>();

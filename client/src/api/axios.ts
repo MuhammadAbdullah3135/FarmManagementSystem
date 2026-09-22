@@ -43,6 +43,49 @@ const api = axios.create({
   },
 });
 
+/**
+ * The in-flight refresh, shared by every request that 401s while it runs.
+ *
+ * Pages fire several requests at once, so an expired access token used to produce one
+ * /auth/refresh per request (six calls for five concurrent requests, measured against the
+ * deployed API). That is wasteful, and it turns a strict single-use refresh token into a
+ * logout loop. One call, everyone waits on it.
+ */
+let refreshInFlight: Promise<string> | null = null;
+
+const refreshAccessToken = (): Promise<string> => {
+  if (!refreshInFlight) {
+    refreshInFlight = (async () => {
+      const refreshToken = localStorage.getItem('refreshToken');
+      if (!refreshToken) {
+        throw new Error('No refresh token stored');
+      }
+
+      // Plain axios, not `api`: going through the instance would recurse into this interceptor.
+      const response = await axios.post(`${API_BASE}/auth/refresh`, { refreshToken });
+      const { accessToken, refreshToken: newRefreshToken } = response.data;
+      localStorage.setItem('accessToken', accessToken);
+      localStorage.setItem('refreshToken', newRefreshToken);
+      return accessToken as string;
+    })().finally(() => {
+      refreshInFlight = null;
+    });
+  }
+
+  return refreshInFlight;
+};
+
+/** Drops the session and sends the user to the login screen. */
+const endSession = () => {
+  localStorage.removeItem('accessToken');
+  localStorage.removeItem('refreshToken');
+  localStorage.removeItem('user');
+  localStorage.removeItem('auth-storage');
+  localStorage.removeItem('farm-storage');
+  localStorage.removeItem('activeFarmId');
+  window.location.href = `${import.meta.env.BASE_URL}login`;
+};
+
 api.interceptors.request.use((config) => {
   // Never attach auth headers to auth endpoints — stale tokens/farm IDs
   // from a previous session cause 403 "Access denied to this farm" on
@@ -70,29 +113,16 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
       originalRequest._retry = true;
 
-      const refreshToken = localStorage.getItem('refreshToken');
-      if (refreshToken) {
+      if (localStorage.getItem('refreshToken')) {
         try {
-          const response = await axios.post(`${API_BASE}/auth/refresh`, {
-            refreshToken,
-          });
-
-          const { accessToken, refreshToken: newRefreshToken } = response.data;
-          localStorage.setItem('accessToken', accessToken);
-          localStorage.setItem('refreshToken', newRefreshToken);
-
+          const accessToken = await refreshAccessToken();
           originalRequest.headers.Authorization = `Bearer ${accessToken}`;
           return api(originalRequest);
         } catch {
-          localStorage.removeItem('accessToken');
-          localStorage.removeItem('refreshToken');
-          localStorage.removeItem('user');
-          localStorage.removeItem('auth-storage');
-          localStorage.removeItem('farm-storage');
-          window.location.href = `${import.meta.env.BASE_URL}login`;
+          endSession();
         }
       }
     }

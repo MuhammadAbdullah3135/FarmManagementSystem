@@ -188,6 +188,80 @@ describe('CostPerAnimalPage', () => {
     expect(screen.getByText('(600.00)')).toBeInTheDocument();
   });
 
+  it('renders a caveat whose amount is null instead of crashing the app', async () => {
+    // The live API sends an explicit null for a caveat that carries no figure. Formatting
+    // that as money threw inside render and the root ErrorBoundary replaced every screen in
+    // the app with "Something went wrong", so this payload is the regression that matters
+    // most: it is the shape production actually returned.
+    mockReport(report({
+      warnings: [
+        {
+          code: 'excluded.inventory-consumption',
+          message: 'Inventory was drawn down in this range.',
+          affectedCount: 2,
+          amount: null,
+        },
+      ],
+    }));
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Read these numbers with the following in mind')).toBeInTheDocument());
+    expect(screen.getByText('Inventory was drawn down in this range.')).toBeInTheDocument();
+    expect(screen.getByText('(2 records/animals)')).toBeInTheDocument();
+  });
+
+  it('renders a direct cost with no allocation pool and an animal that is still present', async () => {
+    // Both arrive as explicit nulls: a direct cost has no pool to divide, and an animal still
+    // on the farm has no departure date.
+    mockReport(report({
+      animals: [
+        {
+          animalId: 'a-1',
+          tagNumber: 'A-001',
+          name: null,
+          locationId: null,
+          locationName: null,
+          presentFrom: '2026-08-23T00:00:00Z',
+          presentTo: null,
+          animalDays: 31,
+          shareOfFarmDays: 0.5,
+          costs: [
+            {
+              key: 'health.records',
+              label: 'Health (medical and vaccinations)',
+              source: 'Medical and vaccination records for this animal',
+              method: 'direct',
+              amount: 3000,
+              recordCount: 2,
+              poolAmount: null,
+              allocatedDays: null,
+              poolDays: null,
+              roundingAdjustment: 0,
+            },
+          ],
+          revenue: [],
+          totalCost: 3000,
+          totalRevenue: 0,
+          margin: -3000,
+          warnings: [],
+        },
+      ],
+      herds: [],
+    }));
+    const user = userEvent.setup();
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('A-001')).toBeInTheDocument());
+    // The date range is one text node ("8/23/2026 – Still here"), so match inside it.
+    expect(screen.getByText(/Still here/)).toBeInTheDocument();
+
+    await user.click(screen.getByText('A-001').closest('tr')!.querySelector('.ant-table-row-expand-icon') as HTMLElement);
+
+    expect(await screen.findByText('Health (medical and vaccinations)')).toBeInTheDocument();
+    // A direct cost shows its source, never "0 / 0 days × —".
+    expect(screen.getByText('Medical and vaccination records for this animal')).toBeInTheDocument();
+  });
+
   it('does not show a caveat box when there is nothing to caveat', async () => {
     mockReport(report());
     renderPage();

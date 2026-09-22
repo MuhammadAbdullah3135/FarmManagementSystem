@@ -18,6 +18,28 @@ concurrency:
 jobs:
   test-backend:
     runs-on: ubuntu-latest
+    # A real PostgreSQL for the integration tests. Without it those tests SKIP (they are
+    # written to skip when no server is reachable, so the suite stays usable on a laptop) and
+    # this job went green while production answered 400 and 500 for ordinary requests: the
+    # InMemory provider the rest of the suite uses evaluates LINQ client-side, so it cannot see
+    # a query PostgreSQL refuses to translate or a naive DateTime it refuses to compare.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      # Read by DashboardPostgresIntegrationTests; it creates and drops its own database.
+      FMS_TEST_POSTGRES: "Host=localhost;Port=5432;Database=postgres;Username=postgres;Password=postgres"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -32,6 +54,19 @@ jobs:
         # src/FMS.Mobile (MAUI), which needs the maui-android workload on the runner and failed
         # this job with NETSDK1147, blocking the Heroku release that `deploy` waits on.
         run: dotnet test tests/FMS.Domain.Tests/FMS.Domain.Tests.csproj --nologo
+
+      - name: Assert the PostgreSQL integration tests actually ran
+        # The skip is deliberate on a machine without a database, and the danger here is the
+        # opposite of a failure: skipping is silent. If this ever stops matching, the
+        # provider-drift class of bug is invisible again.
+        run: |
+          dotnet test tests/FMS.Domain.Tests/FMS.Domain.Tests.csproj --nologo \
+            --filter "FullyQualifiedName~DashboardPostgresIntegrationTests" \
+            --logger "console;verbosity=normal" | tee postgres-run.log
+          if grep -q "PostgreSQL integration tests skipped" postgres-run.log; then
+            echo "::error::The PostgreSQL integration tests skipped even though FMS_TEST_POSTGRES is set."
+            exit 1
+          fi
 
   test-client:
     runs-on: ubuntu-latest

@@ -101,7 +101,7 @@ describe('AppLayout no-farm states', () => {
     expect(await screen.findByText('No farm access')).toBeInTheDocument();
   });
 
-  it('asks the user to pick a farm when they have one but none selected', async () => {
+  it('selects the only farm instead of asking the user to pick from a list of one', async () => {
     // The layout refetches farms on mount, so the API (not just the store) must
     // report the farm the user still belongs to.
     vi.mocked(api.get).mockResolvedValue({ data: [farmA] } as never);
@@ -116,7 +116,31 @@ describe('AppLayout no-farm states', () => {
       </MemoryRouter>,
     );
 
+    // The farm is now active — in the header and in the store — and the pages behind
+    // the layout render without the user visiting the selector first.
+    expect(await screen.findByText('Farm A')).toBeInTheDocument();
+    expect(screen.queryByText('Select a farm to continue')).not.toBeInTheDocument();
+    expect(useFarmStore.getState().activeFarm?.id).toBe(farmA.id);
+    expect(localStorage.getItem('activeFarmId')).toBe(farmA.id);
+  });
+
+  it('still asks the user to pick when the account has more than one farm', async () => {
+    const farmB: Farm = { ...farmA, id: 'farm-b', name: 'Farm B' };
+    vi.mocked(api.get).mockResolvedValue({ data: [farmA, farmB] } as never);
+    useAuthStore.setState({ user: userWithRoles(['SystemOwner']), isAuthenticated: true });
+    useFarmStore.setState({ farms: [farmA, farmB], activeFarm: null, isLoading: false, error: null });
+
+    render(
+      <MemoryRouter initialEntries={['/dashboard']}>
+        <Routes>
+          <Route path="/dashboard" element={<AppLayout />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    // Two farms is a real choice, so the app must not make it for the user.
     expect(await screen.findByText('Select a farm to continue')).toBeInTheDocument();
+    expect(useFarmStore.getState().activeFarm).toBeNull();
   });
 
   it('registers a handler that clears the active farm', async () => {

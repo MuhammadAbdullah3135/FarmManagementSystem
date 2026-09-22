@@ -362,15 +362,41 @@ public class DashboardService : IDashboardService
         });
     }
 
+    /// <summary>
+    /// The animal-additions trend as a query the database runs, one row per month.
+    /// </summary>
+    /// <remarks>
+    /// Separate from <see cref="GetChartsAsync"/> so it can be asserted directly against the
+    /// Npgsql provider without a database (<c>NpgsqlQueryTranslationTests</c>). This is the
+    /// shape that works: group by the two date parts and order by them, with no computed label
+    /// in the statement. The version that used to live here projected a formatted
+    /// "{year}-{month}" string and then ordered by it, which PostgreSQL cannot translate — the
+    /// query threw and every dashboard chart rendered "No data" behind a 500, while the InMemory
+    /// provider the suite runs on returned rows and kept the tests green.
+    /// </remarks>
+    public static IQueryable<AnimalTrendBucket> BuildAnimalTrendBuckets(
+        FmsDbContext db, Guid farmId, DateTime? from, DateTime? to)
+    {
+        var query = db.Animals.Where(a => a.FarmId == farmId && !a.IsDeleted);
+        if (from.HasValue) query = query.Where(a => a.CreatedAt >= from.Value);
+        if (to.HasValue) query = query.Where(a => a.CreatedAt <= to.Value);
+
+        return query
+            .GroupBy(a => new { a.CreatedAt.Year, a.CreatedAt.Month })
+            .Select(g => new AnimalTrendBucket { Year = g.Key.Year, Month = g.Key.Month, Count = g.Count() });
+    }
+
     public async Task<Result<DashboardChartsDto>> GetChartsAsync(Guid farmId, DateTime? from, DateTime? to)
     {
-        var animalQuery = _db.Animals.Where(a => a.FarmId == farmId && !a.IsDeleted);
-        if (from.HasValue) animalQuery = animalQuery.Where(a => a.CreatedAt >= from.Value);
-        if (to.HasValue) animalQuery = animalQuery.Where(a => a.CreatedAt <= to.Value);
-        var animalTrends = await animalQuery
-            .GroupBy(a => new { a.CreatedAt.Year, a.CreatedAt.Month })
-            .Select(g => new AnimalTrendPoint { Month = $"{g.Key.Year}-{g.Key.Month:D2}", Count = g.Count() })
-            .OrderBy(t => t.Month).ToListAsync();
+        // Grouping, counting and ordering happen in SQL; the "{year}-{month}" label is applied
+        // to the returned rows afterwards, because ordering by a computed label is exactly what
+        // Npgsql refuses to translate (see BuildAnimalTrendBuckets).
+        var animalTrendBuckets = await BuildAnimalTrendBuckets(_db, farmId, from, to).ToListAsync();
+
+        var animalTrends = animalTrendBuckets
+            .OrderBy(b => b.Year).ThenBy(b => b.Month)
+            .Select(b => new AnimalTrendPoint { Month = $"{b.Year}-{b.Month:D2}", Count = b.Count })
+            .ToList();
         var expenseFilter = new FinanceReportFilter { From = from, To = to };
         var expenseResult = await _financeService.GetExpenseBreakdownAsync(farmId, expenseFilter);
         var feedTrendResult = await _feedService.GetConsumptionTrendAsync(farmId, "day", from, to);

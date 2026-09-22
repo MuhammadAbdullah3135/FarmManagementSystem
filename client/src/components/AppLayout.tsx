@@ -31,6 +31,7 @@ import { useFarmStore } from '../stores/farmStore';
 import { useOfflineStore } from '../offline/connectivity';
 import { clearAllOfflineData, clearOfflineDataForFarm } from '../offline/offlineData';
 import OfflineBanner from './OfflineBanner';
+import RouteErrorBoundary from './RouteErrorBoundary';
 import { filterMenuByRole } from '../utils/permissions';
 import type { AppMenuItem } from '../utils/permissions';
 import { usePermissions } from '../hooks/usePermissions';
@@ -330,6 +331,8 @@ const AppLayout: React.FC = () => {
   }, [location.pathname]);
 
   const handleLogout = () => {
+    // logout() clears the session and the selected farm; navigating afterwards keeps the
+    // login screen reachable even if a cached page would otherwise re-render first.
     logout();
     navigate('/login');
   };
@@ -494,7 +497,11 @@ const AppLayout: React.FC = () => {
           <OfflineBanner />
 
           {activeFarm || isFarmIndependent(stripBase(location.pathname)) ? (
-            <Outlet />
+            /* Keyed by route: a screen that failed stays failed only while you are on it, so
+               navigating anywhere else clears the error instead of showing it forever. */
+            <RouteErrorBoundary routePath={stripBase(location.pathname)} key={stripBase(location.pathname)}>
+              <Outlet />
+            </RouteErrorBoundary>
           ) : isLoadingFarms ? (
             <div style={{ textAlign: 'center', padding: 48 }}>
               <Spin />
@@ -517,7 +524,7 @@ const AppLayout: React.FC = () => {
         placement="left"
         open={mobileMenuOpen}
         onClose={() => setMobileMenuOpen(false)}
-        width={240}
+        size={240}
         closable={false}
         styles={{
           header: { display: 'none' },

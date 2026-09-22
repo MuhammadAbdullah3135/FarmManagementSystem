@@ -8,7 +8,8 @@ export interface AnimalCountByCategory {
 
 export interface AnimalTrendPoint {
   month: string;
-  avgWeight?: number;
+  /** Null when no weight was recorded in that month, so the trend renders a gap. */
+  avgWeight?: number | null;
   animalCount: number;
 }
 
@@ -101,21 +102,25 @@ export interface CostComponent {
   method: CostAllocationMethod | string;
   amount: number;
   recordCount: number;
-  /** The pool a share came from, with the two numbers the UI shows as the arithmetic. */
-  poolAmount?: number;
-  allocatedDays?: number;
-  poolDays?: number;
+  /**
+   * The pool a share came from, with the two numbers the UI shows as the arithmetic.
+   * Absent *and* null mean "not applicable" — the API serialises them as explicit nulls
+   * for a direct cost, so every reader must treat both the same way.
+   */
+  poolAmount?: number | null;
+  allocatedDays?: number | null;
+  poolDays?: number | null;
   roundingAdjustment: number;
 }
 
 export interface AnimalCostRow {
   animalId: string;
   tagNumber: string;
-  name?: string;
-  locationId?: string;
-  locationName?: string;
+  name?: string | null;
+  locationId?: string | null;
+  locationName?: string | null;
   presentFrom: string;
-  presentTo?: string;
+  presentTo?: string | null;
   animalDays: number;
   shareOfFarmDays: number;
   costs: CostComponent[];
@@ -153,7 +158,8 @@ export interface CostReportWarning {
   code: string;
   message: string;
   affectedCount: number;
-  amount?: number;
+  /** Null when the caveat carries no figure — the common case, and not `undefined`. */
+  amount?: number | null;
 }
 
 export interface CostReconciliation {

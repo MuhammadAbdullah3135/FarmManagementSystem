@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware';
 import api from '../api/axios';
 import { getApiError } from '../api/farmApi';
 import { clearOfflineDataOnSignOut } from '../offline/offlineData';
+import { useFarmStore } from './farmStore';
 import type { AuthResponse, User, LoginRequest, RegisterRequest, ResetPasswordRequest, ConfirmResetPasswordRequest } from '../types';
 
 interface AuthState {
@@ -113,6 +114,11 @@ export const useAuthStore = create<AuthState>()(
         localStorage.removeItem('refreshToken');
         localStorage.removeItem('user');
         localStorage.removeItem('activeFarmId');
+
+        // The persisted farm list survives this call otherwise, leaving the previous account's
+        // farm name and id readable on the device after sign-out (and sent as X-Farm-Id by the
+        // next session before it has fetched its own farms).
+        useFarmStore.getState().reset();
 
         // The device must not keep farm data for a user who has signed out: the next
         // person to pick it up would otherwise be able to read it out of the cache with

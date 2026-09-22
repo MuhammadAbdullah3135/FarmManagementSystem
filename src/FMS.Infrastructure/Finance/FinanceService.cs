@@ -707,8 +707,11 @@ public class FinanceService : IFinanceService
 
     public async Task<Result<List<MonthlySummaryItem>>> GetMonthlySummaryAsync(Guid farmId, int year)
     {
-        var startDate = new DateTime(year, 1, 1);
-        var endDate = new DateTime(year + 1, 1, 1);
+        // Explicitly UTC: the year boundaries are compared against timestamp-with-time-zone
+        // columns, and an Unspecified kind is rejected by PostgreSQL (this used to be a 400
+        // on every request for a farm's monthly summary).
+        var startDate = new DateTime(year, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        var endDate = new DateTime(year + 1, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
         var incomeByMonth = await _context.IncomeRecords
             .Where(r => r.FarmId == farmId && r.IncomeDate >= startDate && r.IncomeDate < endDate)

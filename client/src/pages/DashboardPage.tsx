@@ -4,7 +4,7 @@ import {
 } from 'antd';
 import {
   BugOutlined, HeartOutlined, MedicineBoxOutlined, CheckSquareOutlined,
-  NodeIndexOutlined, InboxOutlined, CoffeeOutlined, WarningOutlined,
+  NodeIndexOutlined, InboxOutlined,  CoffeeOutlined,
 } from '@ant-design/icons';
 import {
   BarChart, Bar, LineChart, Line, AreaChart, Area,
@@ -35,6 +35,9 @@ const formatCurrency = (v: number) =>
  */
 const alertAction = (alert: DashboardAlert) =>
   alert.link ? <Link to={alert.link}>View</Link> : undefined;
+
+/** How many alert cards the dashboard shows before it counts the rest. */
+const ALERT_PREVIEW_LIMIT = 5;
 
 const DashboardPage: React.FC = () => {
   const { user } = useAuthStore();
@@ -82,6 +85,16 @@ const DashboardPage: React.FC = () => {
   const warningAlerts = alerts.filter(a => a.severity === 'Warning');
   const infoAlerts = alerts.filter(a => a.severity === 'Info');
 
+  /**
+   * Most severe first, then a preview rather than the lot: one farm's alert set is dominated by
+   * the same condition repeated per animal (33 alerts on the QA farm, nearly all of them the
+   * same overdue vaccination), which buried the summary cards and the charts under a wall of
+   * identical cards. The remainder is counted and linked instead of dropped.
+   */
+  const sortedAlerts = [...criticalAlerts, ...warningAlerts, ...infoAlerts];
+  const previewAlerts = sortedAlerts.slice(0, ALERT_PREVIEW_LIMIT);
+  const hiddenAlertCount = sortedAlerts.length - previewAlerts.length;
+
   return (
     <div>
       <Title level={3}>Welcome, {user?.firstName}!</Title>
@@ -107,7 +120,7 @@ const DashboardPage: React.FC = () => {
                 title="Pregnant"
                 value={summary?.pregnantCount ?? 0}
                 prefix={<HeartOutlined />}
-                valueStyle={{ color: '#1677ff' }}
+                styles={{ content: { color: '#1677ff' } }}
               />
             </Card>
           </Col>
@@ -117,7 +130,7 @@ const DashboardPage: React.FC = () => {
                 title="Sick"
                 value={summary?.sickCount ?? 0}
                 prefix={<MedicineBoxOutlined />}
-                valueStyle={{ color: summary?.sickCount ? '#ff4d4f' : undefined }}
+                styles={{ content: { color: summary?.sickCount ? '#ff4d4f' : undefined } }}
               />
             </Card>
           </Col>
@@ -127,7 +140,7 @@ const DashboardPage: React.FC = () => {
                 title="Due Weight Checks"
                 value={summary?.dueWeightCheckCount ?? 0}
                 prefix={<MedicineBoxOutlined />}
-                valueStyle={{ color: summary?.dueWeightCheckCount ? '#faad14' : undefined }}
+                styles={{ content: { color: summary?.dueWeightCheckCount ? '#faad14' : undefined } }}
               />
             </Card>
           </Col>
@@ -137,7 +150,7 @@ const DashboardPage: React.FC = () => {
                 title="Overdue Tasks"
                 value={summary?.overdueTasks ?? 0}
                 prefix={<CheckSquareOutlined />}
-                valueStyle={{ color: summary?.overdueTasks ? '#ff4d4f' : undefined }}
+                styles={{ content: { color: summary?.overdueTasks ? '#ff4d4f' : undefined } }}
               />
             </Card>
           </Col>
@@ -147,7 +160,7 @@ const DashboardPage: React.FC = () => {
                 title="Upcoming Births"
                 value={summary?.upcomingBirths ?? 0}
                 prefix={<NodeIndexOutlined />}
-                valueStyle={{ color: summary?.upcomingBirths ? '#52c41a' : undefined }}
+                styles={{ content: { color: summary?.upcomingBirths ? '#52c41a' : undefined } }}
               />
             </Card>
           </Col>
@@ -176,42 +189,27 @@ const DashboardPage: React.FC = () => {
 
       {/* ── Alerts ─────────────────────────────────────────── */}
       {alerts.length > 0 && (
-        <Card title="Alerts" style={{ marginTop: 16 }}>
-          <Space direction="vertical" style={{ width: '100%' }}>
-            {criticalAlerts.map((alert, i) => (
+        <Card title={`Alerts (${sortedAlerts.length})`} style={{ marginTop: 16 }}>
+          <Space orientation="vertical" style={{ width: '100%' }}>
+            {previewAlerts.map((alert, i) => (
               <Alert
-                key={`crit-${i}`}
-                type="error"
+                key={`${alert.severity}-${i}`}
+                /* Severity keeps antd's own icon: overriding it with a single warning
+                   triangle made every Critical alert look like every other one. */
+                type={alert.severity === 'Critical' ? 'error' : alert.severity === 'Warning' ? 'warning' : 'info'}
                 showIcon
-                icon={<WarningOutlined />}
-                message={alert.title}
+                title={alert.title}
                 description={alert.message}
                 action={alertAction(alert)}
                 closable
               />
             ))}
-            {warningAlerts.map((alert, i) => (
-              <Alert
-                key={`warn-${i}`}
-                type="warning"
-                showIcon
-                message={alert.title}
-                description={alert.message}
-                action={alertAction(alert)}
-                closable
-              />
-            ))}
-            {infoAlerts.map((alert, i) => (
-              <Alert
-                key={`info-${i}`}
-                type="info"
-                showIcon
-                message={alert.title}
-                description={alert.message}
-                action={alertAction(alert)}
-                closable
-              />
-            ))}
+            {hiddenAlertCount > 0 && (
+              <Text type="secondary">
+                {hiddenAlertCount} more alert{hiddenAlertCount === 1 ? '' : 's'} on this farm —{' '}
+                <Link to="/dashboard/notifications">see them all</Link>.
+              </Text>
+            )}
           </Space>
         </Card>
       )}

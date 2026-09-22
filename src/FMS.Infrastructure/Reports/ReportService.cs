@@ -59,16 +59,26 @@ public class ReportService : IReportService
         if (to.HasValue)
             weightQuery = weightQuery.Where(w => w.RecordedAt <= to.Value);
 
-        var growthTrend = await weightQuery
+        // The scalars are loaded and grouped in memory, the way the sibling reports below do it.
+        // The previous version projected the trend straight out of SQL: a formatted
+        // "{year}-{month}" label in the projection and an OrderBy on that label, which
+        // PostgreSQL cannot translate (ordering by a value the same statement computes). That
+        // threw, so the whole animal report answered 500 — invisible to the suite, which runs on
+        // the InMemory provider that evaluates this client-side.
+        var weightRows = await weightQuery
+            .Select(w => new { w.RecordedAt, w.WeightKg, w.AnimalId })
+            .ToListAsync();
+
+        var growthTrend = weightRows
             .GroupBy(w => new { w.RecordedAt.Year, w.RecordedAt.Month })
+            .OrderBy(g => g.Key.Year).ThenBy(g => g.Key.Month)
             .Select(g => new AnimalTrendPointDto
             {
                 Month = $"{g.Key.Year}-{g.Key.Month:D2}",
                 AvgWeight = g.Average(w => w.WeightKg),
                 AnimalCount = g.Select(w => w.AnimalId).Distinct().Count()
             })
-            .OrderBy(t => t.Month)
-            .ToListAsync();
+            .ToList();
 
         // Mortality — animals with Terminal status
         var mortalityCount = await _db.Animals

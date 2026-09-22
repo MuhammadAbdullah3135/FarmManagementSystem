@@ -6,6 +6,7 @@ using Hangfire.PostgreSql;
 
 using System.Threading.RateLimiting;
 using System.Text;
+using FMS.API.Binding;
 using FMS.API.Jobs;
 using FMS.API.Middleware;
 using FMS.API.Security;
@@ -87,10 +88,15 @@ var emailConfigurationWarning = EmailConfigurationGuard.EnsureUsable(
     builder.Environment.IsDevelopment());
 builder.Host.UseSerilog();
 
-builder.Services.AddControllers().AddJsonOptions(o =>
-{
-    o.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
-});
+// Dates are UTC by default: a value with no time zone ("2026-09-22") is read as UTC instead of
+// Unspecified, which PostgreSQL rejects against every timestamp column in the schema. The rule
+// is shared with the E2E test host through this extension so the two cannot drift apart.
+builder.Services.AddControllers()
+    .AddUtcDateHandling()
+    .AddJsonOptions(o =>
+    {
+        o.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
+    });
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {

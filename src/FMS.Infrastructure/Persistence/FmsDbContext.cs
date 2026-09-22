@@ -84,4 +84,18 @@ public class FmsDbContext : DbContext
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(FmsDbContext).Assembly);
         base.OnModelCreating(modelBuilder);
     }
+
+    /// <summary>
+    /// Applies the UTC convention to every date property in the model. Every date column in
+    /// the schema is <c>timestamp with time zone</c>, and PostgreSQL rejects Unspecified
+    /// values against those, so this is what keeps a date constructed anywhere in the server
+    /// from failing at the database. See <see cref="UtcDateTimeConverter"/>.
+    /// </summary>
+    protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
+    {
+        configurationBuilder.Properties<DateTime>().HaveConversion<UtcDateTimeConverter>();
+        configurationBuilder.Properties<DateTime?>().HaveConversion<UtcNullableDateTimeConverter>();
+
+        base.ConfigureConventions(configurationBuilder);
+    }
 }

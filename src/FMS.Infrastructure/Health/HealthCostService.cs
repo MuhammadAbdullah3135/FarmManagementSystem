@@ -122,8 +122,10 @@ public class HealthCostService : IHealthCostService
 
     public async Task<Result<List<HealthCostByMonthDto>>> GetCostsByMonthAsync(Guid farmId, int year)
     {
-        var start = new DateTime(year, 1, 1);
-        var end = new DateTime(year + 1, 1, 1);
+        // Explicitly UTC: these boundaries are compared against timestamp-with-time-zone
+        // columns, which PostgreSQL rejects an Unspecified value against.
+        var start = new DateTime(year, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        var end = new DateTime(year + 1, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
         var medicalByMonth = await _context.MedicalRecords
             .Where(m => m.FarmId == farmId && !m.IsDeleted && m.Cost > 0 && m.DateRecorded >= start && m.DateRecorded < end)
