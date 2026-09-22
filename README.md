@@ -138,6 +138,7 @@ All features below are implemented and verified against the source code. If some
 - Identification types, location types, hierarchical locations
 - Custom field definitions (String/Number/Boolean/Date/Select)
 - Farm configuration key-value pairs
+- Every configurable list can be created **inline from the form that needs it** — a missing expense category, breed, location, department or status is added in place, so an entry form is never abandoned half-filled and re-started. One registry maps each of the 17 configurable lookups to its modal fields and create call, so a form declares which lookup a field needs instead of each page hand-writing a modal and a create handler
 
 ### Admin
 - Audit log with filters (entity type, user, action, date range) — all CUD operations automatically logged via EF Core interceptor
@@ -204,7 +205,11 @@ The client has its own Vitest suite (`cd client && npm test`), alongside `tsc`, 
 `vite build`. It covers the offline shell in particular — the IndexedDB store, its schema
 migration step and its clearing policy against a real IndexedDB implementation, the
 connectivity store, the service-worker template and the build-time precache guard, and the
-banner and layout wiring that uses them.
+banner and layout wiring that uses them. It also covers the inline quick-add registry — each
+lookup kind's real API wiring, the select's create/select/error contract, a source-level guard
+that every configurable field is bound to the expected kind, and end-to-end flows for expenses,
+suppliers and the configuration page — and the responsive rules that keep card heads from
+truncating their titles or overflowing at narrower widths.
 
 A handful of tests need a real PostgreSQL server, because InMemory cannot stand in
 for it: the dashboard metric calculations, and the Hangfire job-storage schema and
