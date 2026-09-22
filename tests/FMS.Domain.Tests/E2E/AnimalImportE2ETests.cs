@@ -50,24 +50,12 @@ public class AnimalImportE2ETests : IClassFixture<AnimalImportE2ETests.Factory>
 
         protected override async Task SeedAsync(FmsDbContext db, ApiSeedData.SeedIds seed)
         {
-            // The import resolves names against the farm's own configuration, and the
-            // configuration lookup navigates a location's type, so the seed's location
-            // needs one.
-            var locationType = new LocationType { Id = Guid.NewGuid(), FarmId = seed.FarmId, Name = "Shed" };
-            db.LocationTypes.Add(locationType);
-
-            foreach (var location in await db.Locations.Where(location => location.FarmId == seed.FarmId).ToListAsync())
-            {
-                location.LocationTypeId = locationType.Id;
-                location.LocationType = locationType;
-            }
-
-            // No sex options here: the shared seed owns the farm's "Male"/"Female".
-            // The import resolves a name against the farm's own configuration, so a
-            // second pair under the same names is ambiguous and makes every row
-            // invalid. These duplicates were a workaround for the seed leaving
-            // SexOption.FarmId unset, which real PostgreSQL rejects and which made
-            // the options invisible to any farm-scoped lookup.
+            // No location type and no sex options: the shared seed owns both. It adds
+            // the location type its required FK needs, and its sex options belong to
+            // the farm. This factory used to supply its own copies to work around
+            // those columns being empty — a state PostgreSQL rejects outright, and
+            // since the import resolves a name against the farm's own configuration,
+            // the second pair under the same names made every row ambiguous.
 
             db.AgeCategories.Add(new AgeCategory
             {

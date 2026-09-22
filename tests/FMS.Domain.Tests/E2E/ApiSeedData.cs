@@ -78,8 +78,18 @@ public static class ApiSeedData
         var soldStatus = new AnimalStatus { Id = Guid.NewGuid(), FarmId = farmId, Name = "Sold", Category = FMS.Domain.Enums.AnimalStatusCategory.Terminal, IsSystemDefined = true };
         db.AnimalStatuses.AddRange(activeStatus, sickStatus, soldStatus);
 
-        // Location
-        var location = new Location { Id = Guid.NewGuid(), FarmId = farmId, Name = "Main Barn" };
+        // Location, with the type its required FK needs. Location.LocationTypeId
+        // is another column PostgreSQL enforces and InMemory does not — the
+        // animal-import factory used to add a location type of its own per test
+        // for exactly this reason.
+        var locationType = new LocationType { Id = Guid.NewGuid(), FarmId = farmId, Name = "Barn" };
+        db.LocationTypes.Add(locationType);
+
+        var location = new Location
+        {
+            Id = Guid.NewGuid(), FarmId = farmId, Name = "Main Barn",
+            LocationTypeId = locationType.Id
+        };
         db.Locations.Add(location);
 
         // Finance
@@ -221,6 +231,7 @@ public static class ApiSeedData
         var weightRecord = new WeightRecord
         {
             Id = Guid.NewGuid(),
+            FarmId = farmId,
             AnimalId = activeAnimalIds[0],
             WeightKg = 450,
             RecordedAt = DateTime.UtcNow.AddDays(-30)
