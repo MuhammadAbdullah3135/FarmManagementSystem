@@ -518,7 +518,16 @@ node scripts/qa-smoke.mjs --read-only               # nothing is written
 node scripts/qa-smoke.mjs                           # includes create → update → delete
 FMS_SMOKE_SHA=<commit> node scripts/qa-smoke.mjs    # also asserts /health reports that commit
 FMS_SMOKE_FARM=OtherFarm node scripts/qa-smoke.mjs  # writes only if the account owns that farm
+FMS_API=https://<app>.herokuapp.com/api node scripts/qa-smoke.mjs
 ```
+
+`FMS_API` is the app's own `.../api` URL — the same value `client/.env.production` is built with.
+CI passes it directly rather than assembling it from `HEROKU_APP_NAME`, because the Heroku CLI
+accepts an app's *hostname* in `--app` as readily as its name: deriving the URL produced
+`https://<host>.herokuapp.com`, and the smoke job's first run reported "No such app" about a host
+that does not exist while the release it was verifying was live and correct. A request that never
+reached the API is reported as such, not as an endpoint failure. Override the URL with the
+`FMS_SMOKE_API_URL` secret if the app ever moves.
 
 ---
 

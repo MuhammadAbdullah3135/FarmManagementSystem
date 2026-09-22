@@ -131,7 +131,10 @@ jobs:
           # that never landed is indistinguishable from one that did.
           heroku container:push web --arg GIT_SHA="${{ github.sha }}" --app "${{ secrets.HEROKU_APP_NAME }}"
           heroku container:release web --app "${{ secrets.HEROKU_APP_NAME }}"
-          echo "Deployed: https://${{ secrets.HEROKU_APP_NAME }}.herokuapp.com (${{ github.sha }})"
+          # Not printed as a URL: `--app` accepts an app's hostname as happily as its name, so this
+          # secret is not necessarily a bare name, and "https://$HEROKU_APP_NAME.herokuapp.com"
+          # would then be a host that does not exist. The env var is what smoke checks against.
+          echo "Released ${{ github.sha }} to Heroku app '${{ secrets.HEROKU_APP_NAME }}'"
 
   smoke:
     # Verifies production, which is the one thing no test in this workflow can do: the
@@ -168,7 +171,14 @@ jobs:
       # adds seconds rather than a second install of the client's node_modules.
       - name: Smoke the released API
         env:
-          FMS_API: https://${{ secrets.HEROKU_APP_NAME }}.herokuapp.com/api
+          # Not built from HEROKU_APP_NAME, deliberately. The Heroku CLI accepts an app's hostname
+          # in `--app` as readily as its name, so that secret is fine for releasing a container but
+          # unsafe to assemble a URL from: doing so gave `https://<host>.herokuapp.com`, and the
+          # first run of this job spent its time reporting "No such app" about a host that does not
+          # exist - while the release it was supposed to verify was live and correct. This is the
+          # same public URL the client is built against (client/.env.production) and that the other
+          # QA scripts default to. Set the FMS_SMOKE_API_URL secret if the app ever moves.
+          FMS_API: ${{ secrets.FMS_SMOKE_API_URL || 'https://fms-api-3ba95327d590.herokuapp.com/api' }}
           # The commit this run released: the API has to report it back from /health.
           FMS_SMOKE_SHA: ${{ github.sha }}
           # Writes only ever touch this farm. The script refuses to write if the account's farm

@@ -70,8 +70,20 @@ const origin = (path, init) => request(`${ORIGIN}${path}`, init);
 // response to a log line in Heroku.
 const traceOf = (response) => (response.body?.traceId ? ` traceId=${response.body.traceId}` : '');
 
-const describe = (response) =>
-  `${response.status}${response.text ? ` ${response.text.slice(0, 160)}` : ''}${traceOf(response)}`;
+// Heroku's router answers an unknown hostname with its own HTML page, so the request never
+// reached the API at all. That is a different problem from an API that answered (and a raw body
+// of hex escapes hides it), so name the cause instead of pasting the body.
+const isEdgePage = (response) =>
+  typeof response.status === 'number' &&
+  response.status >= 400 &&
+  /<title>\s*(No such app|Application Error)/i.test(response.text ?? '');
+
+const describe = (response) => {
+  if (isEdgePage(response)) {
+    return `${response.status} Heroku's router has no app at ${new URL(BASE).host} — the request never reached the API; check FMS_API (the app's own .../api URL)`;
+  }
+  return `${response.status}${response.text ? ` ${response.text.slice(0, 160)}` : ''}${traceOf(response)}`;
+};
 
 const token = { value: '' };
 const authHeaders = (extra = {}) => ({
