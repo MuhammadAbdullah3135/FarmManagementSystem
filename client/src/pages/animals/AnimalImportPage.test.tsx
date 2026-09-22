@@ -157,7 +157,16 @@ describe('AnimalImportPage', () => {
 
     await waitFor(() => expect(animalImportApi.commit).toHaveBeenCalledTimes(1));
     expect(vi.mocked(animalImportApi.commit).mock.calls[0][1]?.fields.sex).toEqual({ column: 2 });
-    expect(await screen.findByText('Imported 2 animal(s)')).toBeInTheDocument();
+    // The wizard reports the outcome twice on purpose: an antd toast and the result step's Alert.
+    // The toast renders into a React root of its own, so whether it has committed - or already
+    // auto-dismissed - by the time this line runs is a race. Matching the same sentence in both
+    // roots threw "Found multiple elements" on a loaded CI runner; scope to the alert.
+    const resultAlert = (
+      await screen.findByText(
+        /Every animal in the file was created exactly as the add form would have created it/,
+      )
+    ).closest('[role="alert"]');
+    expect(resultAlert).toHaveTextContent('Imported 2 animal(s)');
   });
 
   it('shows the rows when a commit writes nothing', async () => {

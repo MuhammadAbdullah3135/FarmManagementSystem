@@ -120,7 +120,14 @@ describe('EmployeeImportPage', () => {
 
     await userEvent.click(await screen.findByRole('button', { name: /Import 2 employee/ }));
 
-    expect(await screen.findByText('Imported 2 employee(s)')).toBeInTheDocument();
+    // Same sentence, two roots: the antd toast and the result step's Alert. Assert the alert, so
+    // the check cannot depend on whether the toast has committed or expired yet.
+    const resultAlert = (
+      await screen.findByText(
+        /Every employee in the file was created exactly as the add form would have created it/,
+      )
+    ).closest('[role="alert"]');
+    expect(resultAlert).toHaveTextContent('Imported 2 employee(s)');
     expect(screen.getByRole('button', { name: 'View employees' })).toBeInTheDocument();
   });
 
