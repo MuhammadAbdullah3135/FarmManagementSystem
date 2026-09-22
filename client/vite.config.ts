@@ -37,6 +37,8 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     globals: true,
-    setupFiles: ['./src/test/setup.ts'],
+    // Order matters: the teardown guard must be installed before any test file can import React,
+    // because the scheduler binds `setImmediate` once, at load.
+    setupFiles: ['./src/test/teardownGuard.ts', './src/test/setup.ts'],
   },
 })
