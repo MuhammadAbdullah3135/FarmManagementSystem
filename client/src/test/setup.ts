@@ -3,7 +3,14 @@ import { cleanup } from '@testing-library/react';
 import { afterEach } from 'vitest';
 import { Modal, message, notification } from 'antd';
 
+// This file is shared by every test file, including any that declare
+// `@vitest-environment node`. It used to dereference `window` unconditionally, which failed such
+// a file's whole environment with "window is not defined" before a single test ran.
+const hasDom = typeof window !== 'undefined' && typeof document !== 'undefined';
+
 afterEach(async () => {
+  if (!hasDom) return;
+
   // antd's static `message` / `notification` / `Modal.confirm` helpers render into React roots of
   // their own, and testing-library's cleanup unmounts only the containers it created. Left
   // mounted, those trees keep scheduling React work — motion, focus, the closing animation — and
@@ -16,7 +23,7 @@ afterEach(async () => {
   // Vitest reports that as an *unhandled* error and fails the run while every test passed. It did
   // exactly that on two pushes, attributed to the file whose last test opened a confirm dialog,
   // and the deploy job that waits on this suite skipped both times. Closing the overlays inside
-  // the test's lifetime is what stops that work being scheduled at all.
+  // the test's lifetime stops that work being scheduled at all.
   Modal.destroyAll();
   message.destroy();
   notification.destroy();
@@ -29,7 +36,7 @@ afterEach(async () => {
 });
 
 // antd requires matchMedia; jsdom doesn't implement it.
-if (!window.matchMedia) {
+if (hasDom && !window.matchMedia) {
   window.matchMedia = ((query: string) => ({
     matches: false,
     media: query,
@@ -52,8 +59,10 @@ if (typeof globalThis.ResizeObserver === 'undefined') {
 }
 
 // antd message/notification render outside React tree — jsdom lacks scrollIntoView.
-Element.prototype.scrollIntoView = Element.prototype.scrollIntoView ?? (() => {});
+if (hasDom) {
+  Element.prototype.scrollIntoView = Element.prototype.scrollIntoView ?? (() => {});
 
-if (typeof window.HTMLElement.prototype.scrollTo !== 'function') {
-  window.HTMLElement.prototype.scrollTo = () => {};
+  if (typeof window.HTMLElement.prototype.scrollTo !== 'function') {
+    window.HTMLElement.prototype.scrollTo = () => {};
+  }
 }
