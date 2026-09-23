@@ -22,7 +22,7 @@ vi.mock('../api/sync', () => ({ syncApi: { applyMutations: vi.fn() } }));
 import TasksPage from './TasksPage';
 import { tasksApi } from '../api/tasks';
 import { syncApi } from '../api/sync';
-import { replaceCollection, resetOfflineDbConnection } from '../offline/db';
+import { replaceCollection, resetOfflineDbConnection, touchSessionMarker } from '../offline/db';
 import { useOfflineStore } from '../offline/connectivity';
 import { getCounts, listScopeMutations } from '../offline/outbox';
 import { useQueueStore } from '../offline/queueEvents';
@@ -265,6 +265,31 @@ describe('TasksPage completion queue', () => {
     expect(tasksApi.complete).not.toHaveBeenCalled();
     expect(await getCounts(scope.accountId)).toMatchObject({ pending: 0, applied: 1 });
   });
+
+  /*
+   * A refused completion must not consume what the user typed, and must not make the row look
+   * done. The window (5.6) is the refusal that is reachable honestly — the cap is the same
+   * branch, asserted at `enqueueMutation`, its only writer.
+   */
+  it('keeps the completion notes and leaves the task open when the write window refuses it', async () => {
+    await cacheTask();
+    await touchSessionMarker(
+      scope.accountId,
+      new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(),
+    );
+
+    await completeTask('Fence repaired');
+
+    // The reason, in the policy's own words…
+    expect(await screen.findByText(/no longer be delivered reliably/)).toBeInTheDocument();
+    // …the task is still open on screen…
+    expect(screen.queryByText('Waiting to sync')).not.toBeInTheDocument();
+    expect(screen.queryByText('Synced')).not.toBeInTheDocument();
+    // …and nothing reached either the queue or the live endpoint.
+    expect(await listScopeMutations(scope)).toHaveLength(0);
+    expect(tasksApi.complete).not.toHaveBeenCalled();
+    expect(await getCounts(scope.accountId)).toMatchObject({ pending: 0, applied: 0 });
+  }, 20_000);
 
   it('keeps cancelling a live request: it is not one of the offline workflows', async () => {
     await cacheTask();

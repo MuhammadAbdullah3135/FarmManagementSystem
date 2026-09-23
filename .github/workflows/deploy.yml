@@ -66,12 +66,23 @@ jobs:
         # provider-drift class of bug is invisible again.
         run: |
           dotnet test tests/FMS.Domain.Tests/FMS.Domain.Tests.csproj --nologo \
-            --filter "FullyQualifiedName~DashboardPostgresIntegrationTests" \
+            --filter "FullyQualifiedName~DashboardPostgresIntegrationTests|FullyQualifiedName~IdempotencyIndexPostgresIntegrationTests" \
             --logger "console;verbosity=normal" | tee postgres-run.log
           if grep -q "PostgreSQL integration tests skipped" postgres-run.log; then
             echo "::error::The PostgreSQL integration tests skipped even though FMS_TEST_POSTGRES is set."
             exit 1
           fi
+          # A total skip is caught above, but a *partial* one is not, and the offline phase's
+          # only schema change rests on these two: the filtered unique index is what refuses a
+          # retry that raced past the idempotency ledger, and no other test can observe it.
+          # So the tests that must have run are named.
+          for test in AppliedButUnrecordedMutation_IsRefusedByTheUniqueIndex_AndReportedAsAlreadyApplied \
+                      LiveRecordingsWithoutAMutationId_Coexist_UnderTheFilteredIndex; do
+            if ! grep -q "Passed .*$test" postgres-run.log; then
+              echo "::error::$test did not run against PostgreSQL."
+              exit 1
+            fi
+          done
 
   test-client:
     runs-on: ubuntu-latest
@@ -100,6 +111,15 @@ jobs:
 
       - name: Test
         run: npm test
+
+      - name: Phase 5 acceptance invariants
+        # The behaviour is covered by the suites above; this gates the *constraints* — no
+        # polling anywhere in the offline layer, a flush that cannot re-trigger itself, the
+        # store's (accountId, farmId) key paths, the worker's default-deny allowlist, the
+        # approved cached surface — plus the built worker's precache list. Each one is a
+        # decision a later increment could otherwise undo without failing anything else.
+        working-directory: .
+        run: node scripts/verify-phase5.mjs --invariants-only
 
   deploy:
     needs: [test-backend, test-client]

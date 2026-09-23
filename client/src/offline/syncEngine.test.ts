@@ -34,8 +34,24 @@ import {
   resetSyncEngineForTests,
 } from './syncEngine';
 import { enqueueMutation, getCounts, listPendingMutations } from './outbox';
-import { WEIGHT_RECORD, type MutationEnvelope, type WeightRecordPayload } from './mutationKinds';
-import { getOutboxItem, resetOfflineDbConnection, type OutboxItem } from './db';
+import {
+  ATTENDANCE_CHECK_IN,
+  TASK_COMPLETE,
+  WEIGHT_RECORD,
+  type AttendanceMutationPayload,
+  type MutationEnvelope,
+  type TaskCompletionPayload,
+  type WeightRecordPayload,
+} from './mutationKinds';
+import {
+  getOutboxItem,
+  getSessionMarker,
+  resetOfflineDbConnection,
+  touchSessionMarker,
+  type OfflineScope,
+  type OutboxItem,
+} from './db';
+import { currentSessionState } from './offlineData';
 import { useSyncStore } from './syncStatus';
 import { useOfflineStore } from './connectivity';
 import { useAuthStore } from '../stores/authStore';
@@ -749,6 +765,195 @@ describe('sync engine', () => {
     expect(await getCounts(account)).toMatchObject({ pending: 0, applied: 1 });
 
     teardown();
+  });
+
+  /*
+   * The offline-write window (5.6) and the flush have to agree about what "we reached the
+   * server" means.
+   *
+   * The window exists so a device stops accepting offline work before its refresh token can
+   * expire with the queue undeliverable. A flush the server accepted is the strongest possible
+   * evidence of the opposite, so it resets the window — but only an *authenticated* answer
+   * counts: a transport failure reached nothing, and a 401 means the session cannot deliver,
+   * which is precisely what the window is there to flag. Without the reset a device could come
+   * back online, drain its whole queue, and still refuse the next record.
+   */
+  it('advances the offline write window once a flush reaches the server', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    vi.setSystemTime(new Date('2026-09-23T08:00:00.000Z'));
+
+    // Work recorded while the device could still deliver it...
+    const item = await enqueueWeight('a-1', 412, '2026-09-23T06:00:00.000Z');
+
+    // ...then eight days without a reachable API. The window is shut and the next record is
+    // refused, which is the state a user hits after a long spell offline.
+    await touchSessionMarker(account, '2026-09-15T08:00:00.000Z');
+    useOfflineStore.setState({ isOnline: false });
+
+    expect((await currentSessionState(account)).status).toBe('blocked');
+
+    const refused = await enqueueMutation<WeightRecordPayload>({
+      scope,
+      kind: WEIGHT_RECORD,
+      targetId: 'a-2',
+      occurredAt: '2026-09-23T07:00:00.000Z',
+      payload: weightPayload('a-2', 399, '2026-09-23T07:00:00.000Z'),
+    });
+    expect(refused.item).toBeNull();
+    expect(refused.refusal).toBe('session-stale');
+    expect(await pendingIds()).toEqual([item.mutationId]);
+
+    // The connection comes back and the queue drains. That is the event that proves the API is
+    // reachable again, so it is the event that reopens the window.
+    useOfflineStore.setState({ isOnline: true });
+    vi.mocked(syncApi.applyMutations).mockImplementation(async (_farmId, envelopes) => accepted(envelopes));
+
+    await requestFlush();
+
+    expect(await pendingIds()).toEqual([]);
+    const marker = await getSessionMarker(account);
+    expect(Date.parse(marker!.lastServerContactAt))
+      .toBeGreaterThan(Date.parse('2026-09-15T08:00:00.000Z'));
+    expect(await currentSessionState(account)).toMatchObject({ status: 'fresh', writeAllowed: true });
+
+    // And work can be recorded again, which is the whole point of a window being a window.
+    const queuedAgain = await enqueueMutation<WeightRecordPayload>({
+      scope,
+      kind: WEIGHT_RECORD,
+      targetId: 'a-2',
+      occurredAt: '2026-09-23T07:30:00.000Z',
+      payload: weightPayload('a-2', 399, '2026-09-23T07:30:00.000Z'),
+    });
+    expect(queuedAgain.item).not.toBeNull();
+  });
+
+  it('does advance the window when the server answers by refusing one record', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    vi.setSystemTime(new Date('2026-09-23T08:00:00.000Z'));
+
+    await enqueueWeight('a-1', 412, '2026-09-23T06:00:00.000Z');
+    await touchSessionMarker(account, '2026-09-15T08:00:00.000Z');
+
+    // A per-item 4xx: the row is quarantined with the server's own words, and the fact that
+    // matters here is that the server *answered* — the session is alive and the API is up.
+    vi.mocked(syncApi.applyMutations).mockImplementation(async (_farmId, envelopes) =>
+      rejected(envelopes, [0], 'Weight must be greater than zero'));
+
+    await requestFlush();
+
+    expect(await getCounts(account)).toMatchObject({ pending: 0, quarantined: 1 });
+    const marker = await getSessionMarker(account);
+    expect(Date.parse(marker!.lastServerContactAt))
+      .toBeGreaterThan(Date.parse('2026-09-15T08:00:00.000Z'));
+  });
+
+  it('does not advance the window when the connection never reached the server', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    vi.setSystemTime(new Date('2026-09-23T08:00:00.000Z'));
+
+    await enqueueWeight('a-1', 412, '2026-09-23T06:00:00.000Z');
+    await touchSessionMarker(account, '2026-09-15T08:00:00.000Z');
+
+    // No response object at all: the request never arrived. Advancing the window here would
+    // let a device that cannot reach the API keep accepting records forever, which is the one
+    // failure the window exists to prevent.
+    vi.mocked(syncApi.applyMutations).mockRejectedValue(
+      Object.assign(new Error('Network Error'), { isAxiosError: true, config: { headers: {} } }),
+    );
+
+    await requestFlush();
+
+    expect(await pendingIds()).toHaveLength(1);
+    expect((await getSessionMarker(account))!.lastServerContactAt).toBe('2026-09-15T08:00:00.000Z');
+    expect((await currentSessionState(account)).status).toBe('blocked');
+  });
+
+  it('does not advance the window when the session cannot deliver (401)', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    vi.setSystemTime(new Date('2026-09-23T08:00:00.000Z'));
+
+    await enqueueWeight('a-1', 412, '2026-09-23T06:00:00.000Z');
+    await touchSessionMarker(account, '2026-09-15T08:00:00.000Z');
+
+    // The server answered — but with a dead session, and no refresh to recover it. That is
+    // exactly the state the window is there to flag, so it must not be cleared by it.
+    vi.mocked(syncApi.applyMutations).mockRejectedValue(httpError(401));
+    vi.mocked(ensureFreshAccessToken).mockRejectedValue(new Error('refresh refused'));
+
+    await requestFlush();
+
+    expect(await pendingIds()).toHaveLength(1);
+    expect((await getSessionMarker(account))!.lastServerContactAt).toBe('2026-09-15T08:00:00.000Z');
+    expect(useSyncStore.getState().sessionExpired).toBe(true);
+  });
+
+  /*
+   * A full offline session, which is what the device actually carries: several workflows, more
+   * than one farm, queued with the network gone and flushed on reconnect.
+   *
+   * The per-workflow tests each prove their own payload; what this one adds is the *mix* — that
+   * the queue is one account-wide list of heterogeneous work, that the flush honours the
+   * per-farm sequentiality across it, and that one reconnect delivers every effect exactly
+   * once with the times the device captured rather than the time it reconnected.
+   */
+  it('flushes a mixed offline session across farms, once, with the device times', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    vi.setSystemTime(new Date('2026-09-23T08:00:00.000Z'));
+
+    const second: OfflineScope = { accountId: account, farmId: 'farm-b' };
+    useOfflineStore.setState({ isOnline: false });
+
+    // Queued one simulated second apart, so the assertions describe the queue's oldest-first
+    // rule rather than its mutation-id tie-break.
+    const weight = await enqueueWeight('a-1', 412, '2026-09-23T06:00:00.000Z');
+    vi.setSystemTime(new Date(Date.now() + 1_000));
+    const completion = (await enqueueMutation<TaskCompletionPayload>({
+      scope,
+      kind: TASK_COMPLETE,
+      targetId: 't-1',
+      occurredAt: '2026-09-23T06:05:00.000Z',
+      payload: { taskId: 't-1', completionNotes: 'Fence repaired', occurredAt: '2026-09-23T06:05:00.000Z' },
+    })).item!;
+    vi.setSystemTime(new Date(Date.now() + 1_000));
+    const checkIn = (await enqueueMutation<AttendanceMutationPayload>({
+      scope: second,
+      kind: ATTENDANCE_CHECK_IN,
+      targetId: 'e-1',
+      occurredAt: '2026-09-23T06:10:00.000Z',
+      payload: { employeeId: 'e-1', occurredAt: '2026-09-23T06:10:00.000Z' },
+    })).item!;
+
+    expect(await pendingIds()).toHaveLength(3);
+
+    // One reconnect.
+    useOfflineStore.setState({ isOnline: true });
+    vi.mocked(syncApi.applyMutations).mockImplementation(async (_farmId, envelopes) => accepted(envelopes));
+
+    await requestFlush();
+
+    // A farm's work goes to that farm's context, and the farms are flushed in turn rather than
+    // in parallel — the same rule that keeps a day's order meaningful.
+    expect(syncCalls().map(([farmId]) => farmId)).toEqual(['farm-a', 'farm-b']);
+    const firstBatch = syncCalls()[0][1];
+    expect(firstBatch.map((envelope) => envelope.operation)).toEqual(['weight.record', 'task.complete']);
+    expect(syncCalls()[1][1].map((envelope) => envelope.operation)).toEqual(['attendance.checkIn']);
+
+    // Every envelope carries the device's capture time, and the ids the queue minted.
+    expect(firstBatch.map((envelope) => envelope.clientMutationId)).toEqual([
+      weight.mutationId,
+      completion.mutationId,
+    ]);
+    expect((firstBatch[0].payload as WeightRecordPayload).recordedAt).toBe('2026-09-23T06:00:00.000Z');
+    expect((firstBatch[1].payload as TaskCompletionPayload).occurredAt).toBe('2026-09-23T06:05:00.000Z');
+    expect((syncCalls()[1][1][0].payload as AttendanceMutationPayload).occurredAt).toBe('2026-09-23T06:10:00.000Z');
+
+    // Three effects applied, nothing left, and a second pass adds nothing: the queue is empty
+    // and the server has already seen every id.
+    expect(await getCounts(account)).toMatchObject({ pending: 0, applied: 3 });
+    expect(sentMutationIds()).toEqual([weight.mutationId, completion.mutationId, checkIn.mutationId]);
+
+    await requestFlush();
+    expect(syncCalls()).toHaveLength(2);
   });
 
   it('honours a trigger that arrives while a pass is already running', async () => {

@@ -2,7 +2,7 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import 'fake-indexeddb/auto';
 import { IDBFactory } from 'fake-indexeddb';
-import { useCachedQuery } from './cachedQuery';
+import { CACHED_COLLECTIONS, useCachedQuery } from './cachedQuery';
 import { getCollection, getMeta, getStats, replaceCollection, resetOfflineDbConnection } from './db';
 import { useOfflineStore } from './connectivity';
 import { useAuthStore } from '../stores/authStore';
@@ -275,13 +275,27 @@ describe('useCachedQuery', () => {
   });
 
   it('refuses a collection that is not registered as cacheable', () => {
-    // The cached surface is an approved list of three collections; anything else must be
-    // a deliberate decision rather than an accidental device-wide mirror of the API.
+    // The cached surface is an approved list; anything else must be a deliberate decision
+    // rather than an accidental device-wide mirror of the API. `animals@lookup` is registered
+    // (5.4's cache-only animal lookup) — `animals@all` deliberately is not.
     expect(() =>
       renderHook(() =>
         useCachedQuery({ collection: 'animals' as never, variant: 'all', fetcher: vi.fn() }),
       ),
     ).toThrow(/not a registered cached variant/);
+  });
+
+  it('declares exactly the approved cached surface', () => {
+    // Pinned on purpose: every collection a device mirrors of the API is a decision about what
+    // may live on a stolen handset and what a delta must keep in step. A sixth entry is
+    // therefore a diff somebody has to approve, not an accident review has to notice.
+    expect(CACHED_COLLECTIONS).toEqual({
+      weightCheckStatus: ['all'],
+      tasks: ['firstPage'],
+      employees: ['listPage1', 'options'],
+      animals: ['lookup'],
+      attendance: ['firstPage'],
+    });
   });
 });
 

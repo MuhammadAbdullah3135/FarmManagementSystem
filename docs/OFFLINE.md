@@ -316,15 +316,33 @@ screens already render, so a page can say *why* it refused instead of blaming st
 | 5.5 | Attendance and task completion on the same machinery, with the three conflict rules | see 4.5.5 |
 | 5.6 | Delta reads with tombstones, the central modification stamp, the offline-write window and the queue cap | see 4.5.6 |
 
-Two things in Phase 5 cannot be proven in this environment and are handed back as device
-runbooks (see [VERIFICATION.md](VERIFICATION.md), item 6):
+**Seven** things in Phase 5 cannot be proven in this environment and are handed back as device
+runbooks (see [VERIFICATION.md](VERIFICATION.md), section 6, for the consolidated list and the
+steps):
 
-1. **`CacheModes.NoCache` × the service worker** — whether the Android WebView setting defeats the
-   worker, and whether it needs to change. Nothing in this repository can exercise it; the
-   architecture's constraint is instead enforced by the worker's same-origin allowlist and
-   asserted by test.
-2. **Surviving an app kill** — whether a queue and a cache survive the WebView's IndexedDB being
-   torn down by the OS, including after 5.6's delta reads and with all three workflows queued.
+1. **`CacheModes.NoCache` × the service worker** (6a) — whether the Android WebView setting
+   defeats the worker, and whether it needs to change. Nothing in this repository can exercise
+   it; the architecture's constraint is instead enforced by the worker's same-origin allowlist
+   and asserted by test.
+2. **Surviving an app kill** (6d) — whether a queue and a cache survive the WebView's IndexedDB
+   being torn down by the OS, including after 5.6's delta reads, with all three workflows queued,
+   and with the two cross-device conflict rules (6d steps 8–9) that jsdom cannot reach.
+3. The remaining five: the cached pages and the write path on a real WebView (6b), a deploy
+   reaching the device (6c), sign-out with unsynced work (6e), the five-day warning and the
+   seven-day refusal (6f), and two devices seeing each other's deltas per farm (6g).
+
+**Everything else is re-measurable in one command**, and the runbook list is printed by it:
+
+```bash
+node scripts/verify-phase5.mjs
+```
+
+Last run against this tree: 788 backend tests passed (0 failed, 15 skipped — the Postgres/SMTP/
+Hangfire integration classes, which CI runs against a real `postgres:16` and now *fails* if they
+skip), 431 client tests across 54 files passed, lint at its 8-warning baseline, and all 21
+checks green (the script's own output is the record). One behavioural gap was found and closed in that pass: a flush that
+reached the server did not reset the five-day/seven-day write window, so a device that came back
+online and drained its queue could still refuse the next record (`syncEngine.ts`, `finishPass`).
 
 ## Constraints confirmed in the code
 

@@ -14,7 +14,7 @@ import AttendancePage from './AttendancePage';
 import { attendanceApi } from '../../api/attendance';
 import { employeesApi } from '../../api/hr';
 import { syncApi } from '../../api/sync';
-import { replaceCollection, resetOfflineDbConnection } from '../../offline/db';
+import { replaceCollection, resetOfflineDbConnection, touchSessionMarker } from '../../offline/db';
 import { useOfflineStore } from '../../offline/connectivity';
 import { getCounts, listScopeMutations } from '../../offline/outbox';
 import { useQueueStore } from '../../offline/queueEvents';
@@ -178,6 +178,29 @@ describe('AttendancePage', () => {
     expect(syncApi.applyMutations).not.toHaveBeenCalled();
     expect(await getCounts(scope.accountId)).toMatchObject({ pending: 1 });
   });
+
+  /*
+   * A refused check-in must not leave the register claiming the employee is in.
+   *
+   * The button has no text to preserve, so the thing worth preserving is the *state* it would
+   * have flipped: nothing may appear as waiting, and nothing may be queued.
+   */
+  it('leaves the register alone when the write window refuses the check-in', async () => {
+    await seedCache();
+    await touchSessionMarker(
+      scope.accountId,
+      new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(),
+    );
+
+    render(<AttendancePage />);
+    await userEvent.click(await screen.findByRole('button', { name: /In/ }));
+
+    expect(await screen.findByText(/no longer be delivered reliably/)).toBeInTheDocument();
+    expect(screen.queryByText('Check-in waiting to sync')).not.toBeInTheDocument();
+    expect(await listScopeMutations(scope)).toHaveLength(0);
+    expect(await getCounts(scope.accountId)).toMatchObject({ pending: 0 });
+    expect(syncApi.applyMutations).not.toHaveBeenCalled();
+  }, 20_000);
 
   it('queues a check-out through the same machinery, as its own operation', async () => {
     await seedCache();

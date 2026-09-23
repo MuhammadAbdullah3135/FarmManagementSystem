@@ -83,6 +83,14 @@ export async function noteServerContact(
 /** In-memory throttle state for `noteServerContact`; not persisted, and not authoritative. */
 let lastServerContactWrite: { accountId: string; at: number } | null = null;
 
+/**
+ * Test seam: forget the throttle, so a test that wants to observe a marker write is not
+ * silently swallowed by a write another test made thirty seconds of fake time ago.
+ */
+export function resetServerContactThrottleForTests(): void {
+  lastServerContactWrite = null;
+}
+
 /** Sign-out: the next user of this device sees none of the previous user's cached farm data. */
 export async function clearOfflineDataOnSignOut(): Promise<void> {
   await clearCachedData();

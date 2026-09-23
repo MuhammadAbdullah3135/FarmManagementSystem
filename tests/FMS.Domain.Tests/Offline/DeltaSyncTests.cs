@@ -9,6 +9,7 @@ using FMS.Infrastructure.Health;
 using FMS.Infrastructure.Persistence;
 using FMS.Infrastructure.Tasks;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 
 namespace FMS.Domain.Tests.Offline;
 
@@ -492,5 +493,67 @@ public class DeltaSyncTests
         Assert.Equal(2, all.Value!.Count);
         Assert.Equal(2, overdue.Value!.Count);
         Assert.All(all.Value, s => Assert.Equal(WeightCheckStatusType.Overdue, s.Status));
+    }
+
+    /// <summary>
+    /// The envelope the status endpoint now returns is exactly the array it returned before 5.6.
+    ///
+    /// <para>
+    /// This is the one delta-capable endpoint whose *wire shape* changed (the other two only
+    /// grew a query parameter), so the claim "nothing about the rows changed, only the wrapper"
+    /// has to be an assertion rather than a paragraph. Two things are checked: the rows the
+    /// envelope carries are byte-for-byte the rows the old list read produces, and the field set
+    /// of a row is pinned — a field silently renamed or dropped fails here rather than on a
+    /// device whose cached rows stop lining up after a deploy.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task WeightCheckStatus_NoCursor_ReturnsExactlyTheRowsTheListReadReturns()
+    {
+        using var context = CreateContext();
+        var seed = await SeedFarmAsync(context);
+        var service = new WeightCheckScheduleService(context, new FixedCurrentUser());
+
+        context.WeightCheckSchedules.Add(BuildSchedule(seed));
+
+        var longAgo = DateTime.UtcNow.AddDays(-100);
+        foreach (var animalId in new[] { seed.AnimalId, seed.OtherAnimalId })
+        {
+            context.WeightRecords.Add(new WeightRecord
+            {
+                Id = Guid.NewGuid(),
+                FarmId = seed.FarmId,
+                AnimalId = animalId,
+                WeightKg = 380m,
+                RecordedAt = longAgo
+            });
+        }
+
+        await context.SaveChangesAsync();
+
+        // The pre-5.6 read, unchanged and still used by the dashboard and the notification job…
+        var list = await service.GetWeightCheckStatusAsync(seed.FarmId);
+        // …and the cached read the device makes, with no cursor: its first read of the day.
+        var delta = await service.GetWeightCheckStatusAsync(seed.FarmId, null);
+
+        var json = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+
+        Assert.False(delta.Value!.RequiresFullSync);
+        Assert.Empty(delta.Value.DeletedIds);
+        Assert.Equal(list.Value!.Count, delta.Value.Items.Count);
+        Assert.Equal(list.Value.Count, delta.Value.TotalCount);
+        Assert.Equal(
+            JsonSerializer.Serialize(list.Value, json),
+            JsonSerializer.Serialize(delta.Value.Items, json));
+
+        // The row's own fields, pinned. Pre-5.6 clients read exactly these.
+        using var document = JsonDocument.Parse(JsonSerializer.Serialize(delta.Value.Items, json));
+        Assert.Equal(
+            new[]
+            {
+                "animalId", "animalTagNumber", "animalName", "lastWeightDate",
+                "nextDueDate", "status", "statusName", "daysUntilDue"
+            },
+            document.RootElement[0].EnumerateObject().Select(p => p.Name).ToArray());
     }
 }

@@ -505,6 +505,33 @@ Added in 4.5.6, and also verified here rather than handed off:
   soft-deleted animal and no longer re-creates its weight-check task, and the full read still
   returns every entry for the dashboard and the notification job.
 
+Re-verified after the Phase 5 audit (the increment that closed the gap this list found):
+
+- **The offline-write window and the flush agree about reachability.** A pass the server
+  answered (`2xx`, a per-item `4xx`, a `5xx` — all of them authenticated answers) advances the
+  session marker, so a device that comes back online and drains its queue can record again
+  immediately; a transport failure and a `401` with no recovery deliberately do **not**, because
+  a dead session is the state the window exists to flag. Four tests: reset on `2xx`, reset on a
+  per-item refusal, no reset without a response, no reset on `401`.
+- **A mixed batch of every workflow.** One request carrying a weight, a check-in and a task
+  completion is applied exactly once each, on the row its own workflow owns, with the device's
+  timestamps — and the identical batch replayed answers byte for byte and writes nothing (the
+  retry a device makes after being killed mid-flush). Client side, the mirror: a queue holding
+  two farms' work flushes per farm in turn, oldest first, and a second pass sends nothing.
+- **A refusal never costs the user their input.** Driven through the real gate (an aged session
+  marker), the record-weight screen keeps the entered weight and the task screen keeps its notes,
+  the attendance row is not left looking checked-in, and nothing is queued or sent.
+- **The status endpoint's envelope is the array it always was.** `items` is asserted equal, field
+  for field, to the pre-5.6 list read, with the row's field set pinned so a rename or a removal
+  fails here rather than on a device whose cached rows stop lining up after a deploy.
+- **The constraints are asserted, not just described:** no `setInterval` anywhere in the offline
+  layer, queue traffic cannot re-trigger a flush, the store's key paths carry
+  `(accountId, farmId)`, the worker keeps its cross-origin and allowlist rules, and the cached
+  surface is exactly the approved collections.
+- **A number corrected:** the paced long-queue test uses **450** items (three requests,
+  200/200/50). No test with 620 items ever existed; a figure to that effect appeared in one of
+  the phase reports and is wrong. The suite and this document have always said 450.
+
 **Not verified here, and handed back:** the queue **cap** on a device. It is asserted in the
 suites (including that the store is the authority for the count, not the page's own view), but
 reaching 5,000 items on a device is not a realistic manual test, and filling the queue by hand
@@ -512,9 +539,32 @@ would not test anything the suite does not already assert. The *window* is verif
 below, because it can be reached honestly (item 6f).
 
 **Not verified, and therefore not claimed:** anything that depends on the Android WebView
-itself. jsdom has no service worker and no HTTP cache, so the three checks below can only be
-run on a device or emulator. They are the reason this item is handed off rather than marked
-done.
+itself. jsdom has no service worker and no HTTP cache, so the checks below can only be run on a
+device or emulator, and *no* report may treat them as covered. There are **seven**, and this is
+the one place they are listed:
+
+| Runbook | The question it answers |
+|---|---|
+| 6a | Does the shell load with no connection, and does `CacheModes.NoCache` defeat the worker? |
+| 6b | Do the cached pages and the offline write path behave on a real WebView? |
+| 6c | Does a deploy reach the device within one online launch? |
+| 6d | Do queued writes survive a cold kill and flush exactly once — all three workflows, plus quarantine and the two cross-device rules? |
+| 6e | Does sign-out with unsynced work keep the queue and refuse to flush another account's? |
+| 6f | Do the five-day warning and the seven-day refusal behave, and is the refusal not a dead end? |
+| 6g | Do two devices see each other's deltas, per farm, including removals and an unanswerable cursor? |
+
+Everything else in Phase 5 is re-measurable in one command:
+
+```bash
+node scripts/verify-phase5.mjs                 # both suites + the shell, the invariants, the phase's shape
+node scripts/verify-phase5.mjs --invariants-only  # the static half only (what CI runs on every push)
+```
+
+It prints a PASS/FAIL line per claim with the numbers it actually measured, exits non-zero on
+any failure, and names these seven runbooks in its output so a green run cannot be read as
+device coverage. The invariant half also runs in `npm test`
+(`src/offline/phase5Invariants.test.ts`), so a later increment that regresses one of Phase 5's
+constraints fails the suite rather than the audit.
 
 ### Runbook
 
@@ -567,9 +617,10 @@ WebView's IndexedDB durability under an OS kill is the part jsdom cannot answer.
 2. Turn on airplane mode. Record **three** different weights for three different animals, then
    check one employee **in**, and **complete** one task — all three workflows in the one queue,
    which is the device-side version of the mixed-queue case the suite covers in jsdom.
-3. Confirm all three show as *Waiting to sync*, then swipe the app away from recents (cold kill).
-4. Relaunch **still offline**. **Pass:** the three items are still listed with the device
-   timestamps you recorded, and the badge still reads 3.
+3. Confirm all five items (3 weights · 1 check-in · 1 task completion) show as *Waiting to
+   sync*, then swipe the app away from recents (cold kill).
+4. Relaunch **still offline**. **Pass:** the five items are still listed with the device
+   timestamps you recorded, and the badge still reads 5.
 5. Turn airplane mode off. **Pass:** the queue drains, each row flips to the server's own record,
    and the badge reaches 0.
 6. Check the records on a second device or the web app: exactly **three** new weights, with the

@@ -176,6 +176,8 @@ A delta is bounded rather than paged: past 500 changed rows the answer is `requi
 
 **One response shape changed.** `GET …/weight-schedules/status` returned a bare array before this and now returns the envelope above: a delta needs a server-owned cursor to send back, and a bare array has nowhere to put one. `GET …/weight-schedules/status/overdue` is unchanged (it is the notification job's read, not a cached collection).
 
+**And nothing about the rows changed.** For `weight-schedules/status` — the only one of the three whose wire shape moved — `items` is asserted to be equal, field for field, to the array the pre-`updatedSince` read still returns (`WeightCheckStatus_NoCursor_ReturnsExactlyTheRowsTheListReadReturns`, which also pins the row's field set, so a rename or a removal fails there rather than on a device whose cached rows stop lining up after a deploy). For `tasks` and `employees` the parameter is purely additive: with no `updatedSince` the query and the rows are what they always were, and a client that never sends one sees no change at all.
+
 The guarantee this rests on is server-side and central: `FmsDbContext` stamps `CreatedAt` on insert (only when unset — an import or backfill that states its own time is never overwritten) and `ModifiedAt` on every modification, so a row cannot be written without a timestamp that a cursor can find. It is deliberately in the context rather than in each service: the write that matters most here is a soft delete, which is a modification that a service can perform without touching `ModifiedAt` at all.
 
 ## Error Responses

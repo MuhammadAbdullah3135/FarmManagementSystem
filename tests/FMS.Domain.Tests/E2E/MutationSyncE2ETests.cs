@@ -375,6 +375,112 @@ public class MutationSyncE2ETests : IClassFixture<MutationSyncE2ETests.Factory>,
         Assert.Equal(0, await LedgerCountAsync(badWeightId));
     }
 
+    /// <summary>
+    /// One batch carrying every queued workflow: the shape a device actually sends after a day
+    /// offline with weights, attendance and tasks all waiting.
+    ///
+    /// <para>
+    /// The per-workflow tests prove each payload and each conflict rule; what this one adds is
+    /// that the three coexist in a single request — the server routes by operation, each item
+    /// goes through its own service method, and one reconnect produces exactly three effects.
+    /// Replaying the identical batch then has to answer identically and add nothing, because
+    /// that is the retry a device makes after it is killed mid-flush.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task MixedOperationsBatch_AppliesEveryWorkflowOnce_AndReplaysCleanly()
+    {
+        var client = ClientFor(_factory.MemberFarmId);
+        var weightId = Guid.NewGuid();
+        var checkInId = Guid.NewGuid();
+        var completionId = Guid.NewGuid();
+        var deviceTime = DateTime.UtcNow.AddHours(-3);
+
+        // This test owns the employee and the task it acts on. The fixture is shared across the
+        // class (`IClassFixture`), so a seeded task another test completes — or a seeded
+        // employee another test checks in — would make this one pass alone and fail in the
+        // suite. The weight needs nothing of its own: it is identified by its mutation id.
+        var employeeId = Guid.NewGuid();
+        var taskId = Guid.NewGuid();
+        await QueryAsync(async db =>
+        {
+            db.Employees.Add(new Employee
+            {
+                Id = employeeId,
+                FarmId = _factory.MemberFarmId,
+                FirstName = "Hana",
+                LastName = "Yusuf",
+                SalaryType = SalaryType.Monthly,
+                SalaryRate = 1000m,
+                HireDate = DateTime.UtcNow.AddYears(-1),
+                IsActive = true
+            });
+            db.FarmTasks.Add(new FarmTask
+            {
+                Id = taskId,
+                FarmId = _factory.MemberFarmId,
+                Title = "Mixed batch task",
+                Status = FarmTaskStatus.Pending,
+                DueDate = DateTime.UtcNow.AddDays(1)
+            });
+            await db.SaveChangesAsync();
+            return true;
+        });
+
+        var items = new object[]
+        {
+            WeightItem(weightId, _factory.AnimalId, 505m, deviceTime),
+            CheckInItem(checkInId, employeeId, deviceTime),
+            CompleteItem(completionId, taskId, deviceTime, "Fence repaired")
+        };
+
+        var first = await SendAsync(client, _factory.MemberFarmId, items);
+        var firstBody = await first.Content.ReadAsStringAsync();
+        var result = await ReadResultAsync(first);
+
+        _output.WriteLine(firstBody);
+
+        Assert.Equal(3, result.RequestedCount);
+        Assert.Equal(3, result.SuccessCount);
+        Assert.Equal(3, result.AcceptedCount);
+        Assert.Equal(0, result.RejectedCount);
+        Assert.All(result.Items, item => Assert.Equal(SyncMutationOutcome.Accepted, item.Outcome));
+
+        // Exactly one effect per workflow, each on the row its own workflow owns.
+        Assert.Equal(1, await WeightCountAsync(weightId));
+        Assert.Equal(1, await LedgerCountAsync(weightId));
+
+        var attendance = await QueryAsync(db => db.AttendanceRecords
+            .AsNoTracking()
+            .SingleAsync(r => r.EmployeeId == employeeId));
+        Assert.Equal(AttendanceStatus.Present, attendance.Status);
+        Assert.Equal(deviceTime, attendance.CheckInAt);
+        Assert.Equal(checkInId, attendance.ClientMutationId);
+        Assert.Equal(1, await LedgerCountAsync(checkInId));
+
+        var task = await QueryAsync(db => db.FarmTasks
+            .AsNoTracking()
+            .SingleAsync(t => t.Id == taskId));
+        Assert.Equal(FarmTaskStatus.Completed, task.Status);
+        Assert.Equal(deviceTime, task.CompletedAt);
+        Assert.Equal("Fence repaired", task.CompletionNotes);
+        Assert.Equal(completionId, task.CompletionClientMutationId);
+        Assert.Equal(1, await LedgerCountAsync(completionId));
+
+        // The kill-mid-flush retry: the same batch, byte for byte, answers byte for byte and
+        // writes nothing new.
+        var second = await SendAsync(client, _factory.MemberFarmId, items);
+        var secondBody = await second.Content.ReadAsStringAsync();
+
+        Assert.Equal(firstBody, secondBody);
+        Assert.Equal(1, await WeightCountAsync(weightId));
+        Assert.Equal(1, await QueryAsync(db => db.AttendanceRecords
+            .CountAsync(r => r.EmployeeId == employeeId)));
+        Assert.Equal(1, await LedgerCountAsync(weightId));
+        Assert.Equal(1, await LedgerCountAsync(checkInId));
+        Assert.Equal(1, await LedgerCountAsync(completionId));
+    }
+
     // ── farm scoping: the service's own check, not a new one ──
 
     [Fact]

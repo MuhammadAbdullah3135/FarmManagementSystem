@@ -12,7 +12,7 @@ import RecordWeightPage from './RecordWeightPage';
 import { lookupsApi } from '../../api/attendance';
 import { syncApi, type SyncMutationResult } from '../../api/sync';
 import type { MutationEnvelope, WeightRecordPayload } from '../../offline/mutationKinds';
-import { replaceCollection, resetOfflineDbConnection } from '../../offline/db';
+import { replaceCollection, resetOfflineDbConnection, touchSessionMarker } from '../../offline/db';
 import { useOfflineStore } from '../../offline/connectivity';
 import { useAuthStore } from '../../stores/authStore';
 import { useFarmStore } from '../../stores/farmStore';
@@ -208,6 +208,36 @@ describe('RecordWeightPage', () => {
     expect(await getCounts(scope.accountId)).toMatchObject({ pending: 0, quarantined: 1 });
   }, 20_000);
 
+  /*
+   * A refusal must not look like a save, and must not throw the measurement away.
+   *
+   * Both 5.6 refusals (the write window and the queue cap) fail through the same branch — the
+   * page shows the reason and returns *before* it clears the form — so this test drives the
+   * one that is reachable honestly, by ageing the session marker the way a long spell offline
+   * would. The cap's own classification is asserted at `enqueueMutation`, its only writer.
+   */
+  it('keeps the entered weight when the write window refuses it', async () => {
+    await touchSessionMarker(
+      scope.accountId,
+      new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(),
+    );
+
+    renderPage();
+    await recordWeight(userEvent.setup(), '412');
+
+    // The reason, in the policy's own words, with the way out.
+    expect(await screen.findByText(/no longer be delivered reliably/)).toBeInTheDocument();
+    // …and the weight is still in the box: a worker who has to re-type a measurement is one
+    // who may not bother. (Compared as a number: the input formats what the user typed.)
+    const field = screen.getByRole('spinbutton') as HTMLInputElement;
+    expect(Number(field.value)).toBe(412);
+
+    // Nothing was queued and nothing was sent, so the screen cannot be read as "saved".
+    expect(await getCounts(scope.accountId)).toMatchObject({ pending: 0, applied: 0 });
+    expect(syncApi.applyMutations).not.toHaveBeenCalled();
+    expect(screen.queryByText(/Waiting to sync/)).not.toBeInTheDocument();
+  }, 20_000);
+
   it('refuses to guess an animal when nothing is stored on the device', async () => {
     useOfflineStore.setState({ isOnline: false });
     vi.mocked(lookupsApi.animals).mockResolvedValue(res({ items: ANIMALS, totalCount: 1 }));
@@ -226,14 +256,21 @@ describe('RecordWeightPage', () => {
     renderPage();
 
     const user_ = userEvent.setup();
-    await recordWeight(user_, '412');
-    await waitFor(() => expect(screen.getByText('Synced')).toBeInTheDocument());
+    const slow = { timeout: 5_000 };
 
     // A second animal weighed in the same minute is a second measurement, not a correction:
     // the queue never merges items, and the server's weight index is non-unique on
     // (AnimalId, RecordedAt).
+    //
+    // The waits are explicit because a completed pass now writes the session marker (5.6's
+    // offline-write window) as well as the queue rows, so a flush is a few storage calls longer
+    // — and under the whole suite's parallel load the testing-library default of one second is
+    // not enough. The assertions are unchanged.
+    await recordWeight(user_, '412');
+    await waitFor(() => expect(screen.getByText('Synced')).toBeInTheDocument(), slow);
+
     await recordWeight(user_, '418');
-    await waitFor(() => expect(syncApi.applyMutations).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(syncApi.applyMutations).toHaveBeenCalledTimes(2), slow);
 
     const sent = vi.mocked(syncApi.applyMutations).mock.calls
       .flatMap(([, items]) => items)

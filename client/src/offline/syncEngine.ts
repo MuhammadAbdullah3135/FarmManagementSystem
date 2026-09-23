@@ -19,6 +19,13 @@
  *   \"skip the item\" — the queue is not allowed to lose work because the server was busy.
  * - **A per-item 4xx quarantines that item and continues.** One bad row must not stall a
  *   device, and the server's own message is what the user has to act on.
+ * - **A pass that reached the server resets the offline-write window.** The window (5.6) exists
+ *   so a device stops accepting offline work before its refresh token can expire with the queue
+ *   undeliverable; a flush the server accepted is proof the opposite, and without this a device
+ *   that came back online and drained its queue could still refuse the next record until some
+ *   unrelated page fetch happened. Only a pass with an **authenticated answer** counts: a
+ *   transport failure never reached anything, and a 401 means the session cannot deliver, which
+ *   is the state the window is there to flag.
  * - **No polling.** Every trigger is an event: connectivity, focus, visibility, a successful
  *   request, a successful refresh, or an explicit \"Sync now\". A backoff schedules exactly one
  *   retry timer; nothing runs on an interval.
@@ -34,7 +41,7 @@ import { isAccessTokenExpiringWithin, TOKEN_REFRESH_WINDOW_MS } from '../api/acc
 import { syncApi, type SyncMutationItemResult, type SyncMutationResult } from '../api/sync';
 import { useAuthStore } from '../stores/authStore';
 import { useOfflineStore } from './connectivity';
-import { noteServerContact } from './offlineData';
+import { noteServerContact, resetServerContactThrottleForTests } from './offlineData';
 import { useQueueStore } from './queueEvents';
 import { useSyncStore } from './syncStatus';
 import { getMutationKind, type MutationEnvelope } from './mutationKinds';
@@ -146,25 +153,29 @@ async function runPass(force: boolean): Promise<void> {
 
   const pending = await listPendingMutations(accountId);
   if (pending.length === 0) {
-    await finishPass({ clean: true });
+    // Nothing was sent, so nothing proves the server is reachable: the window is untouched.
+    await finishPass({ clean: true, reachedServer: false });
     return;
   }
 
   sync.setFlushing(true);
   let stopped = false;
+  /** Whether anything in this pass got an authenticated answer from the server. */
+  let reachedServer = false;
 
   try {
     // Farm by farm, oldest first within each: a farm's items are contiguous in this order,
     // which is what makes the batches meaningful to the server's per-farm context.
     for (const [farmId, items] of groupByFarm(pending)) {
-      const outcome = await flushFarm(farmId, items);
-      if (outcome === 'stop') {
+      const farm = await flushFarm(farmId, items);
+      reachedServer = reachedServer || farm.reachedServer;
+      if (farm.outcome === 'stop') {
         stopped = true;
         break;
       }
     }
   } finally {
-    await finishPass({ clean: !stopped });
+    await finishPass({ clean: !stopped, reachedServer });
     sync.setFlushing(false);
   }
 }
@@ -184,8 +195,16 @@ function groupByFarm(items: OutboxItem[]): Map<string, OutboxItem[]> {
  * Sends one farm's pending items, in batches. Returns 'stop' when the pass must end (the
  * session died, the limiter spoke, or the server is failing) and 'continue' when the next
  * farm may be tried.
+ *
+ * Also reports whether any request in the farm got an authenticated answer, which is what the
+ * offline-write window is reset from (see the module header).
  */
-async function flushFarm(farmId: string, items: OutboxItem[]): Promise<'continue' | 'stop'> {
+async function flushFarm(
+  farmId: string,
+  items: OutboxItem[],
+): Promise<{ outcome: 'continue' | 'stop'; reachedServer: boolean }> {
+  let reachedServer = false;
+
   // One refresh per farm pass, then stop: "refresh once then stop" is the whole rule, and it
   // keeps a dead session from spending a request per item discovering the same thing.
   let refreshed = false;
@@ -194,6 +213,10 @@ async function flushFarm(farmId: string, items: OutboxItem[]): Promise<'continue
   while (offset < items.length) {
     const chunk = items.slice(offset, offset + MAX_ITEMS_PER_REQUEST);
     const outcome = await sendChunk(farmId, chunk);
+
+    // Recorded before the switch so every exit below carries it, including the ones that stop
+    // the pass: the server answering is the fact, whether or not the answer was welcome.
+    if (reachedTheServer(outcome)) reachedServer = true;
 
     switch (outcome.kind) {
       case 'ok':
@@ -217,7 +240,7 @@ async function flushFarm(farmId: string, items: OutboxItem[]): Promise<'continue
             continue;
           } catch {
             useSyncStore.getState().setSessionExpired(true);
-            return 'stop';
+            return { outcome: 'stop', reachedServer };
           }
         }
 
@@ -225,19 +248,19 @@ async function flushFarm(farmId: string, items: OutboxItem[]): Promise<'continue
         // pending (not quarantined) — nothing is wrong with them, and the next session sends
         // them.
         useSyncStore.getState().setSessionExpired(true);
-        return 'stop';
+        return { outcome: 'stop', reachedServer };
       }
 
       case 'rate-limited': {
         const wait = outcome.retryAfterMs;
         scheduleRetry(wait, outcome.message);
-        return 'stop';
+        return { outcome: 'stop', reachedServer };
       }
 
       case 'retry':
         await recordAttempts(chunk, outcome.message);
         scheduleRetry(null, outcome.message);
-        return 'stop';
+        return { outcome: 'stop', reachedServer };
 
       case 'farm-denied':
         // Membership is gone for this farm. Every item in this chunk would get the same
@@ -246,13 +269,13 @@ async function flushFarm(farmId: string, items: OutboxItem[]): Promise<'continue
         for (const item of chunk) {
           await quarantine(item, outcome.message);
         }
-        return 'continue';
+        return { outcome: 'continue', reachedServer };
 
       case 'batch-rejected': {
         // The request itself was refused (a 400 on the batch, a 413, a proxy refusing it):
         // send the items one at a time so each gets its own verdict rather than the batch's.
         const individual = await sendIndividually(farmId, chunk);
-        if (individual === 'stop') return 'stop';
+        if (individual === 'stop') return { outcome: 'stop', reachedServer };
         offset += MAX_ITEMS_PER_REQUEST;
         break;
       }
@@ -265,18 +288,41 @@ async function flushFarm(farmId: string, items: OutboxItem[]): Promise<'continue
     }
   }
 
-  return 'continue';
+  return { outcome: 'continue', reachedServer };
 }
 
 type ChunkOutcome =
   | { kind: 'ok'; body: SyncMutationResult }
   | { kind: 'auth' }
   | { kind: 'rate-limited'; retryAfterMs: number | null; message: string }
-  | { kind: 'retry'; message: string }
+  /** `serverAnswered` is what separates a 5xx (the API is up and refused) from no response at
+   * all (the connection went away); only the former is evidence the server is reachable. */
+  | { kind: 'retry'; message: string; serverAnswered: boolean }
   | { kind: 'farm-denied'; message: string }
   | { kind: 'batch-rejected'; message: string }
   /** Nothing in the chunk was sendable by this build; the items were marked, not sent. */
   | { kind: 'skipped' };
+
+/**
+ * Whether this outcome proves the API was reached *and* the session can deliver.
+ *
+ * Every kind except two does: a transport failure never arrived, and a 401 means the session is
+ * dead — the one state the offline-write window exists to flag, so it must not clear it.
+ */
+function reachedTheServer(outcome: ChunkOutcome): boolean {
+  switch (outcome.kind) {
+    case 'ok':
+    case 'rate-limited':
+    case 'farm-denied':
+    case 'batch-rejected':
+      return true;
+    case 'retry':
+      return outcome.serverAnswered;
+    case 'auth':
+    case 'skipped':
+      return false;
+  }
+}
 
 async function sendChunk(farmId: string, chunk: OutboxItem[]): Promise<ChunkOutcome> {
   const envelopes: MutationEnvelope[] = [];
@@ -322,7 +368,11 @@ async function sendChunk(farmId: string, chunk: OutboxItem[]): Promise<ChunkOutc
     }
 
     if (status !== undefined && status >= 500) {
-      return { kind: 'retry', message: getApiError(error, 'The server could not save this yet') };
+      return {
+        kind: 'retry',
+        message: getApiError(error, 'The server could not save this yet'),
+        serverAnswered: true,
+      };
     }
 
     if (isFarmAccessDenied(error)) {
@@ -333,8 +383,9 @@ async function sendChunk(farmId: string, chunk: OutboxItem[]): Promise<ChunkOutc
       return { kind: 'batch-rejected', message: getApiError(error, 'This batch was refused') };
     }
 
-    // No response at all: the connection went away mid-flush. Retry later, change nothing.
-    return { kind: 'retry', message: getApiError(error, 'No connection') };
+    // No response at all: the connection went away mid-flush. Retry later, change nothing —
+    // and do not claim the server was reached, because it was not.
+    return { kind: 'retry', message: getApiError(error, 'No connection'), serverAnswered: false };
   }
 }
 
@@ -429,11 +480,23 @@ async function quarantine(item: OutboxItem, message: string): Promise<void> {
 /**
  * Ends a pass: reaps old applied items, refreshes the counts every queue view reads, and
  * clears or arms the backoff.
+ *
+ * A pass the server answered also resets the offline-write window. Called directly rather than
+ * through the trigger chokepoint on purpose: queue traffic is marked `syncRequest`, which is
+ * what stops a flush from re-triggering itself, and that must stay true.
  */
-async function finishPass(options: { clean: boolean }): Promise<void> {
+async function finishPass(options: { clean: boolean; reachedServer: boolean }): Promise<void> {
   const sync = useSyncStore.getState();
 
   await purgeOldApplied();
+
+  if (options.reachedServer) {
+    try {
+      await noteServerContact();
+    } catch {
+      // A storage failure must not fail the pass that proved the connection works.
+    }
+  }
 
   if (options.clean) {
     failureRounds = 0;
@@ -564,4 +627,5 @@ export function resetSyncEngineForTests(): void {
   recheckRequested = false;
   backoffUntil = 0;
   failureRounds = 0;
+  resetServerContactThrottleForTests();
 }
