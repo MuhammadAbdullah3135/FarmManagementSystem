@@ -54,6 +54,13 @@ public class UpdateFarmTaskRequest
 public class CompleteFarmTaskRequest
 {
     public string? CompletionNotes { get; set; }
+
+    /// <summary>
+    /// When the work was actually finished. Null (every live completion) means the server
+    /// stamps its own clock; a device that was offline supplies the real time, so a task
+    /// completed at 07:10 is not recorded as 14:00 when it syncs.
+    /// </summary>
+    public DateTime? OccurredAt { get; set; }
 }
 
 public class CancelFarmTaskRequest
@@ -64,6 +71,12 @@ public class CancelFarmTaskRequest
 public class FarmTaskListFilter
 {
     public string? Search { get; set; }
+
+    /// <summary>
+    /// Delta read: return only rows changed after this instant, plus the ids of any deleted
+    /// since. Omitted (the normal case) means the whole collection, exactly as before.
+    /// </summary>
+    public DateTime? UpdatedSince { get; set; }
     public FarmTaskStatus? Status { get; set; }
     public FarmTaskPriority? Priority { get; set; }
     public Guid? AssignedEmployeeId { get; set; }

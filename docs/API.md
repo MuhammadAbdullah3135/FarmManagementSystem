@@ -102,5 +102,81 @@ The report deliberately does not price three things, and names each one instead 
 
 Warning codes, all in `warnings[]`: `feed.not-recorded`, `labour.not-recorded` (a zero that means "nothing was recorded", not "it was free"), `pool.unallocated` (with `amount`), `animal.presence-start-unknown` and `animal.departure-unknown` (with `affectedCount` — an animal counted as present for the whole range, so its share is overstated), `excluded.medicine-cost`, `excluded.inventory-consumption`, `excluded.feed-purchases` (with `affectedCount`), and `rows.unassigned`, which should never appear: it means money in a source total reached no row, and it is stated rather than hidden.
 
+## Offline mutations (sync)
+
+`POST /api/farm/{farmId}/sync/mutations` applies work a device did while it was offline. Farm-scoped exactly like every other farm route (X-Farm-Id header, membership enforced, route/header farm match), authorized exactly as the three workflows it applies — animal weights, attendance and task completion all require any farm member today, and the endpoint's per-operation role requirement is asserted against those controllers' own attributes by a test, so a workflow that gains a role cannot be reached through sync without it.
+
+Body: `{ "items": [ { "operation", "clientMutationId", "payload" } ] }`, up to 200 items (a larger request is a 400 — a transport guard, not the queue-cap policy). Operations and their payloads:
+
+| Operation | Payload | Applied by |
+|---|---|---|
+| `weight.record` | `animalId`, `weightKg`, `recordedAt?`, `notes?` | `IAnimalService.AddWeightAsync` |
+| `attendance.checkIn` | `employeeId`, `occurredAt?` | `IAttendanceService.CheckInAsync` |
+| `attendance.checkOut` | `employeeId`, `occurredAt?` | `IAttendanceService.CheckOutAsync` |
+| `task.complete` | `taskId`, `completionNotes?`, `occurredAt?` | `IFarmTaskService.CompleteTaskAsync` |
+
+Each item is applied by calling the workflow's own service method with the route's farm id — not a parallel implementation — so the sync path cannot accept what the live endpoint refuses, cannot answer with different words for the same input, and refuses an item naming another farm's animal with the same "Animal not found" a forged live request gets. The device timestamp is validated against the same 5-minute future tolerance the weight endpoint always had, now one shared constant (a queued 06:55 check-in is recorded at 06:55, not at the hour it synced).
+
+The response is the import pipeline's result shape with a per-item outcome, and the batch always answers **200** when the request is well-formed:
+
+- `requestedCount`, `successCount` (accepted + superseded), `acceptedCount`, `supersededCount`, `rejectedCount`
+- `items[]` — `index`, `clientMutationId`, `outcome`, `message`, `targetEntityId`, `result` (the workflow's own DTO, exactly as the single-record endpoint returns it)
+- `failures[]` — `index` + `message` for every rejected item, so a client can quarantine one row and keep the rest
+
+Outcomes, as the enum names the API writes for every other enum: **`Accepted`** — the workflow ran and its effect is committed; **`Superseded`** — nothing was written because existing state already means what the item asked for, so the device may treat it as done; **`Rejected`** — nothing was written and the server's own message explains why.
+
+Which of the last two a workflow produces is its conflict policy, not a judgement made from the message text. The services report an already-satisfied change with the distinct `Superseded` error code (both endpoints still answer **409**, as they always did), and the sync layer reads the code:
+
+| Workflow | State it meets | Outcome |
+|---|---|---|
+| `weight.record` | — | Always `Accepted`: two measurements are two facts, never merged |
+| `attendance.checkIn` | A day that already has an **earlier** check-in | `Superseded` — earliest wins; the stored time stands |
+| `attendance.checkIn` | A day with a **later** stored check-in | `Accepted` — the stored check-in moves back to the device's time |
+| `attendance.checkIn` | A day entered by hand (no check-in time, e.g. Leave) | `Superseded`, naming the status that stands: a device's clock does not overturn what a person typed |
+| `attendance.checkOut` | A **later** stored check-out | `Superseded` — latest wins; the later time stands |
+| `attendance.checkOut` | An **earlier** stored check-out | `Accepted` — the stored check-out moves forward, and `HoursWorked` follows |
+| `attendance.checkOut` | No record for that day at all | `Rejected` ("No attendance record found for today") — a check-out with no shift to close |
+| `task.complete` | Already completed with **equivalent** notes (absent ≡ blank) | `Superseded` — the intent is satisfied and nothing is written twice |
+| `task.complete` | Already completed by this same `clientMutationId` | `Superseded` ("This completion was already applied") — the crash window, where the ledger row does not exist yet |
+| `task.complete` | Already completed with **different** notes | `Rejected` — the record and the device disagree about a fact, so a human decides; the recorded notes are left untouched |
+| `task.complete` | Cancelled | `Rejected` ("Open tasks only can be completed. Current status: Cancelled") — the server owns the lifecycle |
+
+Only a supplied device time can move a stored time: a live request's `occurredAt` is merely the server's clock at arrival, which is not evidence about when a shift started or ended, so a live check-in or check-out on a day that already has a record is the conflict it has always been. Attendance's identity is the `(EmployeeId, Date)` unique index — one row per employee-day across every device — while its content is the device's, which is what makes the two rules above possible at all.
+
+Idempotency: `clientMutationId` (a device-generated GUID, required) makes a retry safe. The server keeps a `ProcessedMutation` row per applied mutation and answers a repeat with **the result recorded the first time**, byte for byte, instead of re-running the workflow or creating a second record; the id is also stamped on the row the workflow created, behind a unique `(FarmId, ClientMutationId)` index, so even a retry that races past the ledger (or one whose ledger row was lost with the process) is refused by the database and reported as already applied rather than duplicated. Items whose outcome is `Rejected` are not recorded — they wrote nothing, so a retry after the blocking state changes (a manager reopens a task) can still succeed — and neither are `Superseded` ones.
+
+Live single-record endpoints accept no idempotency key, so idempotency is unreachable from them and their status codes are unchanged (`Superseded` answers 409, as `Conflict` always did). Two live **messages** changed when this policy landed: a check-in against a day somebody entered by hand now says which status stands, and completing a task that is already complete now says whether it is already done or whether the notes disagree, instead of "Open tasks only can be completed. Current status: Completed" for both. A live check-in or check-out with no body behaves exactly as before.
+
+## Incremental reads (`updatedSince`)
+
+The three collections a device caches can be read as deltas. Each accepts `?updatedSince=<ISO instant>` — the `cursor` from the previous read, never the device's own clock — and answers with the same envelope whether it was asked for a delta or the whole collection:
+
+| Route | Cacheable collection |
+|---|---|
+| `GET /api/farm/{farmId}/tasks?updatedSince=` | tasks (`pageSize` 10, first page, no filters) |
+| `GET /api/farm/{farmId}/employees?updatedSince=` | employees (the roster) |
+| `GET /api/farm/{farmId}/weight-schedules/status?updatedSince=` | the weight-check projection (computed) |
+
+```json
+{
+  "items": [ /* the workflow's own DTOs — unchanged shapes */ ],
+  "page": 1, "pageSize": 3, "totalCount": 3, "totalPages": 1,
+  "deletedIds": ["6f1c…"],
+  "cursor": "2026-09-23T08:00:00.0000000Z",
+  "requiresFullSync": false
+}
+```
+
+- **`items`** — only the rows whose `COALESCE(ModifiedAt, CreatedAt)` is after `updatedSince`, plus the ids of rows deleted since. A row that was created and never edited is still reported: matching `ModifiedAt` alone would leave it invisible to every delta forever.
+- **`deletedIds`** — rows that existed when the caller last synced and do not now. This is the field that cannot be inferred: a delta that omits a row is indistinguishable from one that has nothing to say about it, so removals are stated. Hard deletes are named from the audit log (which records `(FarmId, EntityType, EntityId, Timestamp)` on every delete, indexed on `(FarmId, Timestamp)`); a soft-deleted employee names itself, since its row is its own tombstone and it is left out of `items`.
+- **`cursor`** — the server's timestamp for this read, sent back as `updatedSince` next time. It is returned on a full read too, which is what lets the *next* read be a delta.
+- **`requiresFullSync`** — the cursor could not be answered precisely: it is older than 30 days, it is in the future, or the change cannot be narrowed to rows (an edited or removed weight-check schedule can take entries away, and a delta has no id for an entry that no longer exists). The client should then read the collection without `updatedSince` and replace its copy. Answering "nothing changed" to a cursor the server cannot interpret is the one reply that loses data silently, so it is never given.
+
+A delta is bounded rather than paged: past 500 changed rows the answer is `requiresFullSync`, because paging a delta would require the client to walk every page before advancing its cursor and a row changed between two pages would be lost. Filters and paging are not applied to a delta — it answers "what changed in the collection" — and only the shapes listed above are delta-capable; every other list endpoint still returns `PagedResult` and never grows fields it does not fill.
+
+**One response shape changed.** `GET …/weight-schedules/status` returned a bare array before this and now returns the envelope above: a delta needs a server-owned cursor to send back, and a bare array has nowhere to put one. `GET …/weight-schedules/status/overdue` is unchanged (it is the notification job's read, not a cached collection).
+
+The guarantee this rests on is server-side and central: `FmsDbContext` stamps `CreatedAt` on insert (only when unset — an import or backfill that states its own time is never overwritten) and `ModifiedAt` on every modification, so a row cannot be written without a timestamp that a cursor can find. It is deliberately in the context rather than in each service: the write that matters most here is a soft delete, which is a modification that a service can perform without touching `ModifiedAt` at all.
+
 ## Error Responses
 All errors follow RFC 7807 Problem Details format with traceId for debugging.

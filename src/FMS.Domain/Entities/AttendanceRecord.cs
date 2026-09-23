@@ -17,5 +17,16 @@ public class AttendanceRecord : AuditableEntity
     public DateTime? CheckOutAt { get; set; }
     public string? Notes { get; set; }
 
+    /// <summary>
+    /// The offline device's id for the mutation that created this row, when it arrived
+    /// through the sync endpoint. Null for everything recorded live.
+    ///
+    /// Uniquely indexed per farm with <see cref="FarmId"/>. The <c>(EmployeeId, Date)</c>
+    /// index already prevents two records for one employee-day; this one identifies
+    /// <em>which</em> queued mutation produced the row that exists, which is what lets a
+    /// replay return the original result instead of a conflict.
+    /// </summary>
+    public Guid? ClientMutationId { get; set; }
+
     public Employee Employee { get; set; } = null!;
 }

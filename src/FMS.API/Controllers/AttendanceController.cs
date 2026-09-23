@@ -24,17 +24,21 @@ public class AttendanceController : ControllerBase
         return MapResult(result);
     }
 
+    /// <summary>
+    /// The body is optional. A live check-in sends none and the server stamps the time; a
+    /// device that was offline supplies the time it was actually at the gate.
+    /// </summary>
     [HttpPost("{employeeId:guid}/check-in")]
-    public async Task<IActionResult> CheckIn(Guid farmId, Guid employeeId)
+    public async Task<IActionResult> CheckIn(Guid farmId, Guid employeeId, [FromBody] CheckInRequest? request = null)
     {
-        var result = await _attendanceService.CheckInAsync(farmId, employeeId);
+        var result = await _attendanceService.CheckInAsync(farmId, employeeId, request);
         return MapResult(result);
     }
 
     [HttpPost("{employeeId:guid}/check-out")]
-    public async Task<IActionResult> CheckOut(Guid farmId, Guid employeeId)
+    public async Task<IActionResult> CheckOut(Guid farmId, Guid employeeId, [FromBody] CheckOutRequest? request = null)
     {
-        var result = await _attendanceService.CheckOutAsync(farmId, employeeId);
+        var result = await _attendanceService.CheckOutAsync(farmId, employeeId, request);
         return MapResult(result);
     }
 
@@ -61,6 +65,10 @@ public class AttendanceController : ControllerBase
         "NotFound" => NotFound(error.Message),
         "Validation" => BadRequest(error.Message),
         "Conflict" => Conflict(error.Message),
+        // "Your intent is already satisfied" is a conflict over HTTP too — nothing was written —
+        // and it has always answered 409 here. The distinct code exists for the queued path,
+        // where the caller has to tell it apart from a refusal without reading message text.
+        Error.SupersededCode => Conflict(error.Message),
         "Unauthorized" => Unauthorized(error.Message),
         _ => StatusCode(500, error.Message)
     };

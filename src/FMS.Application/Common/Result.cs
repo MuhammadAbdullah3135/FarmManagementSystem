@@ -35,6 +35,13 @@ public class Result<T>
     public static Result<T> Conflict(string message) =>
         Failure(Error.Conflict(message));
 
+    /// <summary>
+    /// Existing state already means what the caller asked for: nothing was written and nothing
+    /// is wrong. <see cref="Error.Superseded"/> explains why this is a distinct outcome.
+    /// </summary>
+    public static Result<T> Superseded(string message) =>
+        Failure(Error.Superseded(message));
+
     public static Result<T> Unexpected(string message = "An unexpected error occurred") =>
         Failure(Error.Unexpected(message));
 }

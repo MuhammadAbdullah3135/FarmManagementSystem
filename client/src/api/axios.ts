@@ -1,5 +1,16 @@
 import axios from 'axios';
 
+declare module 'axios' {
+  /**
+   * Marks a request as queue traffic (the sync flush). Its success must not be treated as
+   * "some other request proved the API is reachable", which would re-trigger the flush that
+   * sent it and let a busy queue schedule itself in a loop.
+   */
+  export interface AxiosRequestConfig {
+    syncRequest?: boolean;
+  }
+}
+
 const API_BASE = import.meta.env.VITE_API_URL ?? '/api';
 
 /**
@@ -36,6 +47,41 @@ export const isFarmAccessDenied = (error: unknown): boolean => {
   return typeof data?.error === 'string' && data.error === FARM_ACCESS_DENIED_ERROR;
 };
 
+/**
+ * Why a flush is worth attempting: something just proved the API is reachable.
+ *
+ * `request-succeeded` is every ordinary successful call — the piggyback that makes "the app
+ * has a connection" self-evident without a poller. `token-refreshed` is the session being
+ * renewed, which is the moment a queue that had stalled on an expired token becomes
+ * sendable again.
+ */
+export type SyncTriggerReason = 'request-succeeded' | 'token-refreshed';
+
+let syncTriggerHandler: ((reason: SyncTriggerReason) => void) | null = null;
+
+/**
+ * Registers what happens when a request succeeded or the session was refreshed.
+ *
+ * A registered callback rather than an import of the sync engine, for the same reason
+ * `setFarmAccessDeniedHandler` exists: the engine imports this module, so importing it back
+ * would be a cycle. The engine owns the decision (it may be offline, already flushing, or
+ * inside a backoff window).
+ */
+export const setSyncTriggerHandler = (
+  handler: ((reason: SyncTriggerReason) => void) | null,
+): void => {
+  syncTriggerHandler = handler;
+};
+
+const notifySyncTrigger = (reason: SyncTriggerReason) => {
+  try {
+    syncTriggerHandler?.(reason);
+  } catch {
+    // A trigger is opportunistic: whatever went wrong there must never fail the request that
+    // produced it.
+  }
+};
+
 const api = axios.create({
   baseURL: API_BASE,
   headers: {
@@ -66,6 +112,11 @@ const refreshAccessToken = (): Promise<string> => {
       const { accessToken, refreshToken: newRefreshToken } = response.data;
       localStorage.setItem('accessToken', accessToken);
       localStorage.setItem('refreshToken', newRefreshToken);
+
+      // Once, after a successful refresh: a queue that was waiting on an expired access
+      // token can go now. This is the only place a refresh announces itself, so an item
+      // queued behind one is not stuck until the user happens to open a page.
+      notifySyncTrigger('token-refreshed');
       return accessToken as string;
     })().finally(() => {
       refreshInFlight = null;
@@ -74,6 +125,15 @@ const refreshAccessToken = (): Promise<string> => {
 
   return refreshInFlight;
 };
+
+/**
+ * Renews the access token, sharing the single in-flight refresh with every 401ing request.
+ *
+ * Exported for the sync engine, which refreshes *proactively* when the token is nearly
+ * expired instead of waiting for a 401: a queue that has been offline for a week should not
+ * spend its first round trip discovering that its token died overnight.
+ */
+export const ensureFreshAccessToken = (): Promise<string> => refreshAccessToken();
 
 /** Drops the session and sends the user to the login screen. */
 const endSession = () => {
@@ -100,8 +160,13 @@ api.interceptors.request.use((config) => {
     config.headers.Authorization = `Bearer ${token}`;
   }
 
+  // A request that names its own farm keeps it. The sync flush walks every farm in the
+  // account, so stamping the *active* farm on its batches would be refused by
+  // FarmContextMiddleware (header and route must agree), and the user's active farm has no
+  // bearing on which farm a queued item belongs to. Every other request still gets the
+  // active farm, exactly as before.
   const farmId = localStorage.getItem('activeFarmId');
-  if (farmId) {
+  if (farmId && !config.headers['X-Farm-Id']) {
     config.headers['X-Farm-Id'] = farmId;
   }
 
@@ -109,7 +174,14 @@ api.interceptors.request.use((config) => {
 });
 
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // The reachability signal the queue piggybacks on. Not a poller: it costs nothing extra
+    // and it is only ever true when some other part of the app has just talked to the API.
+    if (!response.config?.syncRequest) {
+      notifySyncTrigger('request-succeeded');
+    }
+    return response;
+  },
   async (error) => {
     const originalRequest = error.config;
 

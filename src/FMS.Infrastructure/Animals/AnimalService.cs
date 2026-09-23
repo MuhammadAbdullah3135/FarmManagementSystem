@@ -3,6 +3,7 @@ using FMS.Application.Common;
 using FMS.Domain.Common;
 using FMS.Domain.Entities;
 using FMS.Domain.Enums;
+using FMS.Infrastructure.Common;
 using FMS.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -536,7 +537,7 @@ public class AnimalService : IAnimalService
         });
     }
 
-    public async Task<Result<WeightRecordDto>> AddWeightAsync(Guid farmId, Guid animalId, CreateWeightRecordRequest request)
+    public async Task<Result<WeightRecordDto>> AddWeightAsync(Guid farmId, Guid animalId, CreateWeightRecordRequest request, Guid? mutationId = null)
     {
         var animal = await _context.Animals
             .FirstOrDefaultAsync(a => a.Id == animalId && a.FarmId == farmId && !a.IsDeleted);
@@ -546,8 +547,9 @@ public class AnimalService : IAnimalService
         if (request.WeightKg <= 0)
             return Result<WeightRecordDto>.Validation("Weight must be greater than zero");
 
-        if (request.RecordedAt != default && request.RecordedAt > DateTime.UtcNow.AddMinutes(5))
-            return Result<WeightRecordDto>.Validation("Recorded date cannot be in the future");
+        if (request.RecordedAt != default
+            && MutationTimestampRules.IsTooFarInTheFuture(request.RecordedAt, DateTime.UtcNow))
+            return Result<WeightRecordDto>.Validation(MutationTimestampRules.WeightRecordedAtMessage);
 
         var userId = _currentUser.GetUserId();
         var now = DateTime.UtcNow;
@@ -562,6 +564,7 @@ public class AnimalService : IAnimalService
             WeightKg = weight,
             RecordedAt = recordedAt,
             Notes = request.Notes,
+            ClientMutationId = mutationId,
             CreatedAt = now,
             CreatedBy = userId
         };
@@ -615,8 +618,9 @@ public class AnimalService : IAnimalService
         if (request.WeightKg <= 0)
             return Result<WeightRecordDto>.Validation("Weight must be greater than zero");
 
-        if (request.RecordedAt != default && request.RecordedAt > DateTime.UtcNow.AddMinutes(5))
-            return Result<WeightRecordDto>.Validation("Recorded date cannot be in the future");
+        if (request.RecordedAt != default
+            && MutationTimestampRules.IsTooFarInTheFuture(request.RecordedAt, DateTime.UtcNow))
+            return Result<WeightRecordDto>.Validation(MutationTimestampRules.WeightRecordedAtMessage);
 
         var oldWeight = record.WeightKg;
         var newWeight = Math.Round(request.WeightKg, 2);

@@ -16,7 +16,13 @@ public interface IEmployeeService
 
     // Employees
     Task<Result<EmployeeDto>> GetEmployeeByIdAsync(Guid farmId, Guid id);
-    Task<Result<PagedResult<EmployeeDto>>> GetEmployeesAsync(Guid farmId, EmployeeListFilter filter);
+    /// <summary>
+    /// The employee list. With <see cref="EmployeeListFilter.UpdatedSince"/> set this is a
+    /// delta: only rows changed after that cursor — soft-deleted employees included — with the
+    /// deleted ones reported as ids in <c>DeletedIds</c> and left out of the rows, so a client
+    /// can remove them from its cache.
+    /// </summary>
+    Task<Result<DeltaResult<EmployeeDto>>> GetEmployeesAsync(Guid farmId, EmployeeListFilter filter);
     Task<Result<EmployeeDto>> CreateEmployeeAsync(Guid farmId, CreateEmployeeRequest request);
 
     /// <summary>

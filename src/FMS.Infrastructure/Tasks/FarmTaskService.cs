@@ -3,6 +3,7 @@ using FMS.Application.Tasks;
 using FMS.Domain.Common;
 using FMS.Domain.Entities;
 using FMS.Domain.Enums;
+using FMS.Infrastructure.Common;
 using FMS.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -31,12 +32,56 @@ public class FarmTaskService : IFarmTaskService
         return Result<FarmTaskDto>.Success(MapTask(task));
     }
 
-    public async Task<Result<PagedResult<FarmTaskDto>>> GetTasksAsync(Guid farmId, FarmTaskListFilter filter)
+    public async Task<Result<DeltaResult<FarmTaskDto>>> GetTasksAsync(Guid farmId, FarmTaskListFilter filter)
     {
         var page = filter.Page < 1 ? 1 : filter.Page;
         var pageSize = filter.PageSize < 1 || filter.PageSize > 100 ? 20 : filter.PageSize;
 
+        // One instant for the whole read: it is both the cursor handed back and the point the
+        // delta is measured against, so a client that sends this value back cannot land on the
+        // wrong side of its own answer.
+        var cursor = DateTime.UtcNow;
+
         var query = QueryTasks(farmId);
+
+        if (filter.UpdatedSince.HasValue)
+        {
+            if (!DeltaCursor.IsAnswerable(filter.UpdatedSince, cursor))
+                return Result<DeltaResult<FarmTaskDto>>.Success(DeltaResult<FarmTaskDto>.FullSyncRequired(cursor));
+
+            var since = filter.UpdatedSince.Value;
+
+            // `COALESCE(ModifiedAt, CreatedAt)`: a task that has never been edited keeps a null
+            // ModifiedAt, and asking only for ModifiedAt would leave it invisible to every
+            // delta forever. The rule this encodes is "when this row last changed".
+            //
+            // Filters and paging are deliberately not applied: a delta answers "what changed in
+            // the collection", and paging one would force the client to walk every page before
+            // it could advance its cursor (see DeltaCursor.MaxDeltaRows).
+            var changed = await query
+                .Where(t => (t.ModifiedAt ?? t.CreatedAt) > since)
+                .OrderBy(t => t.Status == FarmTaskStatus.Completed || t.Status == FarmTaskStatus.Cancelled)
+                .ThenBy(t => t.DueDate)
+                .ThenByDescending(t => t.Priority)
+                .Take(DeltaCursor.MaxDeltaRows + 1)
+                .ToListAsync();
+
+            if (changed.Count > DeltaCursor.MaxDeltaRows)
+                return Result<DeltaResult<FarmTaskDto>>.Success(DeltaResult<FarmTaskDto>.FullSyncRequired(cursor));
+
+            var delta = new DeltaResult<FarmTaskDto>
+            {
+                Items = changed.Select(MapTask).ToList(),
+                Page = 1,
+                PageSize = changed.Count,
+                TotalCount = changed.Count,
+                Cursor = cursor,
+                DeletedIds = await ChangeTombstones
+                    .HardDeletedIdsAsync<FarmTask>(_context, farmId, since)
+            };
+
+            return Result<DeltaResult<FarmTaskDto>>.Success(delta);
+        }
 
         if (!string.IsNullOrWhiteSpace(filter.Search))
             query = query.Where(t => t.Title.Contains(filter.Search));
@@ -60,6 +105,14 @@ public class FarmTaskService : IFarmTaskService
             query = query.Where(t => t.DueDate < DateTime.UtcNow &&
                                      (t.Status == FarmTaskStatus.Pending || t.Status == FarmTaskStatus.InProgress));
 
+        var full = await PageAsync(query, filter, page, pageSize);
+        return Result<DeltaResult<FarmTaskDto>>.Success(DeltaResult<FarmTaskDto>.From(full, cursor));
+    }
+
+    /// <summary>One page of a task query, in the order the list is always shown in.</summary>
+    private static async Task<PagedResult<FarmTaskDto>> PageAsync(
+        IQueryable<FarmTask> query, FarmTaskListFilter filter, int page, int pageSize)
+    {
         var totalCount = await query.CountAsync();
 
         var tasks = await query
@@ -70,13 +123,13 @@ public class FarmTaskService : IFarmTaskService
             .Take(pageSize)
             .ToListAsync();
 
-        return Result<PagedResult<FarmTaskDto>>.Success(new PagedResult<FarmTaskDto>
+        return new PagedResult<FarmTaskDto>
         {
             Items = tasks.Select(MapTask).ToList(),
             Page = page,
             PageSize = pageSize,
             TotalCount = totalCount
-        });
+        };
     }
 
     // Commands
@@ -181,22 +234,33 @@ public class FarmTaskService : IFarmTaskService
         return await MapLoadedAsync(farmId, task.Id);
     }
 
-    public async Task<Result<FarmTaskDto>> CompleteTaskAsync(Guid farmId, Guid id, CompleteFarmTaskRequest request)
+    public async Task<Result<FarmTaskDto>> CompleteTaskAsync(Guid farmId, Guid id, CompleteFarmTaskRequest request, Guid? mutationId = null)
     {
         var task = await _context.FarmTasks
             .FirstOrDefaultAsync(t => t.Id == id && t.FarmId == farmId);
         if (task == null)
             return Result<FarmTaskDto>.NotFound("Task not found");
 
-        if (task.Status != FarmTaskStatus.Pending && task.Status != FarmTaskStatus.InProgress)
+        if (task.Status == FarmTaskStatus.Completed)
+            return AlreadyCompleted(task, mutationId, request.CompletionNotes);
+
+        if (task.Status == FarmTaskStatus.Cancelled)
             return Result<FarmTaskDto>.Conflict($"Open tasks only can be completed. Current status: {task.Status}");
 
         if (!string.IsNullOrWhiteSpace(request.CompletionNotes) && request.CompletionNotes.Length > 1000)
             return Result<FarmTaskDto>.Validation("Completion notes cannot exceed 1000 characters");
 
         var now = DateTime.UtcNow;
+        var completedAt = request.OccurredAt ?? now;
+        if (MutationTimestampRules.IsTooFarInTheFuture(completedAt, now))
+            return Result<FarmTaskDto>.Validation(MutationTimestampRules.TaskCompletedAtMessage);
+
         task.Status = FarmTaskStatus.Completed;
-        task.CompletedAt = now;
+        task.CompletedAt = completedAt;
+
+        // The id of the queued mutation that completed this task, kept as the first one that
+        // did so; a live completion leaves it null so the column only ever describes queued work.
+        task.CompletionClientMutationId ??= mutationId;
         task.CompletedBy = _currentUser.GetUserId();
         task.CompletionNotes = request.CompletionNotes?.Trim();
         task.ModifiedAt = now;
@@ -214,7 +278,7 @@ public class FarmTaskService : IFarmTaskService
                 Description = request.CompletionNotes,
                 RelatedEntityId = task.Id,
                 RelatedEntityType = "FarmTask",
-                OccurredAt = now,
+                OccurredAt = completedAt,
                 CreatedAt = now,
                 CreatedBy = _currentUser.GetUserId()
             });
@@ -272,6 +336,40 @@ public class FarmTaskService : IFarmTaskService
 
         return await MapLoadedAsync(farmId, task.Id);
     }
+
+    /// <summary>
+    /// A completion for a task that is already complete.
+    ///
+    /// "Already done" is not a failure for a queued item: its intent — this task is finished —
+    /// is satisfied by the state that is already there, so it is reported as
+    /// <see cref="Error.SupersededCode"/> and the device may clear it. What is <em>not</em>
+    /// swallowed is a disagreement about a fact: if the notes the device is reporting are not
+    /// the notes already recorded, the server's record and the device's account of the work
+    /// differ, and that is a conflict a human has to look at. Silently accepting it would
+    /// discard what the device knew; silently overwriting it would discard what the server
+    /// already recorded.
+    /// </summary>
+    private static Result<FarmTaskDto> AlreadyCompleted(
+        FarmTask task, Guid? mutationId, string? incomingNotes)
+    {
+        // The same queued mutation already completed this task: a replay that arrived before
+        // its ledger row existed (a crash between the apply and the record).
+        if (mutationId.HasValue && task.CompletionClientMutationId == mutationId)
+            return Result<FarmTaskDto>.Superseded("This completion was already applied");
+
+        return NotesMatch(task.CompletionNotes, incomingNotes)
+            ? Result<FarmTaskDto>.Superseded("Task is already completed")
+            : Result<FarmTaskDto>.Conflict("This task was already completed with different completion notes");
+    }
+
+    /// <summary>
+    /// Whether two completions say the same thing. Absent and blank are the same note here:
+    /// neither records anything, and treating them as different would report a disagreement
+    /// that does not exist.
+    /// </summary>
+    private static bool NotesMatch(string? stored, string? incoming) =>
+        string.Equals(stored?.Trim(), incoming?.Trim(), StringComparison.Ordinal) ||
+        (string.IsNullOrWhiteSpace(stored) && string.IsNullOrWhiteSpace(incoming));
 
     // Helpers
 

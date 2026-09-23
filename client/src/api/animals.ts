@@ -36,6 +36,25 @@ export interface CreateAnimalPayload {
   }[];
 }
 
+/**
+ * One row of an animal's weight history, as the API returns it.
+ *
+ * There is deliberately no `addWeight` here: recording a weight goes through the offline
+ * write queue (4.5.4) even when the device is online, so there is exactly one write path and
+ * an online record and an offline one cannot behave differently. The queue sends it to
+ * `POST /farm/{farmId}/sync/mutations`, which applies it by calling the same service method
+ * `POST …/weights` would.
+ */
+export interface WeightRecord {
+  id: string;
+  animalId: string;
+  weightKg: number;
+  recordedAt: string;
+  changeFromPreviousKg?: number | null;
+  notes?: string | null;
+  createdAt: string;
+}
+
 export const animalsApi = {
   list: (params: AnimalListFilter = {}) =>
     axios.get<PagedResult<unknown>>(farmUrl('/animals'), { params }),
@@ -62,5 +81,7 @@ export const animalsApi = {
   },
 
   getWeights: (id: string, page = 1, pageSize = 20) =>
-    axios.get<unknown>(farmUrl(`/animals/${id}/weights`), { params: { page, pageSize } }),
+    axios.get<PagedResult<WeightRecord>>(farmUrl(`/animals/${id}/weights`), {
+      params: { page, pageSize },
+    }),
 };

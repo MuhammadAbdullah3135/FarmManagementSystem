@@ -2,6 +2,7 @@ using FMS.Application.Common;
 using FMS.Application.Employees;
 using FMS.Domain.Entities;
 using FMS.Domain.Enums;
+using FMS.Infrastructure.Common;
 using FMS.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -153,15 +154,19 @@ public class EmployeeService : IEmployeeService
         return Result<EmployeeDto>.Success(MapEmployee(employee));
     }
 
-    public async Task<Result<PagedResult<EmployeeDto>>> GetEmployeesAsync(Guid farmId, EmployeeListFilter filter)
+    public async Task<Result<DeltaResult<EmployeeDto>>> GetEmployeesAsync(Guid farmId, EmployeeListFilter filter)
     {
         var page = filter.Page < 1 ? 1 : filter.Page;
         var pageSize = filter.PageSize < 1 || filter.PageSize > 100 ? 20 : filter.PageSize;
+        var cursor = DateTime.UtcNow;
 
         var query = _context.Employees
             .Include(e => e.Department)
             .Include(e => e.EmployeeRole)
             .Where(e => e.FarmId == farmId && !e.IsDeleted);
+
+        if (filter.UpdatedSince.HasValue)
+            return await DeltaAsync(farmId, filter, cursor);
 
         if (!string.IsNullOrWhiteSpace(filter.Search))
         {
@@ -187,13 +192,73 @@ public class EmployeeService : IEmployeeService
             .Take(pageSize)
             .ToListAsync();
 
-        return Result<PagedResult<EmployeeDto>>.Success(new PagedResult<EmployeeDto>
+        var full = new PagedResult<EmployeeDto>
         {
             Items = employees.Select(MapEmployee).ToList(),
             Page = page,
             PageSize = pageSize,
             TotalCount = totalCount
-        });
+        };
+
+        return Result<DeltaResult<EmployeeDto>>.Success(DeltaResult<EmployeeDto>.From(full, cursor));
+    }
+
+    /// <summary>
+    /// The delta read.
+    ///
+    /// <para>
+    /// Two things make this more than "the same query with a date filter". An employee is
+    /// soft-deleted, so a removed row is still <em>there</em> — it is found by the cursor, and
+    /// then split out: its id becomes a tombstone and its row is left out of the items, which
+    /// is the shape a client can act on uniformly (upsert the items, drop the ids). And the
+    /// cursor is <c>COALESCE(ModifiedAt, CreatedAt)</c>: an employee created and never edited
+    /// has no ModifiedAt, and matching on that alone would make it invisible forever.
+    /// </para>
+    /// </summary>
+    private async Task<Result<DeltaResult<EmployeeDto>>> DeltaAsync(
+        Guid farmId, EmployeeListFilter filter, DateTime cursor)
+    {
+        if (!DeltaCursor.IsAnswerable(filter.UpdatedSince, cursor))
+            return Result<DeltaResult<EmployeeDto>>.Success(DeltaResult<EmployeeDto>.FullSyncRequired(cursor));
+
+        var since = filter.UpdatedSince!.Value;
+
+        // Filters and paging are deliberately not applied here, and the deletion filter the
+        // full read uses is not either: a delta answers "what changed in the collection", and
+        // a soft delete is a modification, so it is exactly what this read has to be able to
+        // see. See DeltaCursor.MaxDeltaRows for why a delta is bounded rather than paged.
+        var changed = await _context.Employees
+            .AsNoTracking()
+            .Include(e => e.Department)
+            .Include(e => e.EmployeeRole)
+            .Where(e => e.FarmId == farmId && (e.ModifiedAt ?? e.CreatedAt) > since)
+            .OrderBy(e => e.LastName).ThenBy(e => e.FirstName)
+            .Take(DeltaCursor.MaxDeltaRows + 1)
+            .ToListAsync();
+
+        if (changed.Count > DeltaCursor.MaxDeltaRows)
+            return Result<DeltaResult<EmployeeDto>>.Success(DeltaResult<EmployeeDto>.FullSyncRequired(cursor));
+
+        var deletedIds = changed.Where(e => e.IsDeleted).Select(e => e.Id).ToList();
+
+        // A hard delete should not exist for an employee, but if one ever happens the audit log
+        // still knows the id, and one indexed read is cheaper than a client that keeps showing
+        // somebody who is gone.
+        deletedIds.AddRange(await ChangeTombstones.HardDeletedIdsAsync<Employee>(_context, farmId, since));
+
+        var live = changed.Where(e => !e.IsDeleted).Select(MapEmployee).ToList();
+
+        var delta = new DeltaResult<EmployeeDto>
+        {
+            Items = live,
+            Page = 1,
+            PageSize = live.Count,
+            TotalCount = live.Count,
+            Cursor = cursor,
+            DeletedIds = deletedIds.Distinct().ToList()
+        };
+
+        return Result<DeltaResult<EmployeeDto>>.Success(delta);
     }
 
     public async Task<Result<EmployeeDto>> CreateEmployeeAsync(Guid farmId, CreateEmployeeRequest request)

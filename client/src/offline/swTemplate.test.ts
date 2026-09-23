@@ -96,6 +96,7 @@ describe('generated worker', () => {
     version: 'test-version',
     precache: buildPrecacheManifest({ assets: builtAssets(), base }),
     shellUrl: `${base}${SHELL_FILE_NAME}`,
+    assetPrefix: `${base}assets/`,
   });
 
   it('carries the version, the shell and the precache list', () => {
@@ -110,6 +111,18 @@ describe('generated worker', () => {
   it('never handles cross-origin requests', () => {
     expect(source).toContain('url.origin !== self.location.origin');
     expect(source).toContain("if (request.method !== 'GET') return;");
+  });
+
+  /// Same-origin is not a licence: only the precache manifest and the hashed asset
+  /// prefix are ever served or stored. A catch-all runtime cache would have stored a
+  /// same-origin API's authenticated 200 (found by the browser smoke test in 5.1),
+  /// so same-origin handling is an allowlist and the fallback is "no worker at all".
+  it('serves and stores same-origin requests only from the precache/asset allowlist', () => {
+    expect(source).toContain('var ASSET_PREFIX');
+    expect(source).toContain('PRECACHE.indexOf(url.pathname) !== -1 || url.pathname.indexOf(ASSET_PREFIX) === 0');
+    // The unconditional catch-all is gone: a request outside the allowlist must reach
+    // the network untouched, never `respondWith`.
+    expect(source).not.toContain('event.respondWith(cacheFirstAsset(request));\n});');
   });
 
   it('serves navigations network-first and assets cache-first', () => {
@@ -127,7 +140,7 @@ describe('generated worker', () => {
   });
 
   it('refuses an empty precache list', () => {
-    expect(() => buildServiceWorker({ version: 'v', precache: [], shellUrl: '/index.html' }))
+    expect(() => buildServiceWorker({ version: 'v', precache: [], shellUrl: '/index.html', assetPrefix: '/assets/' }))
       .toThrow(/empty/i);
   });
 });

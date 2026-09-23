@@ -1,6 +1,16 @@
 import React from 'react';
 import { Alert, Typography } from 'antd';
 import { useOfflineStore } from '../offline/connectivity';
+import { useSyncStore } from '../offline/syncStatus';
+import { formatSyncAge } from '../offline/syncAge';
+import {
+  queueCapacityFrom,
+  sessionBlockedMessage,
+  sessionWarningMessage,
+  queueFullMessage,
+  queueWarningMessage,
+  type OfflineSessionState,
+} from '../offline/offlinePolicy';
 
 const { Text } = Typography;
 
@@ -9,52 +19,49 @@ export interface OfflineBannerProps {
    * Injected in tests; defaults to the live connectivity store.
    */
   state?: Pick<ReturnType<typeof useOfflineStore.getState>, 'isOnline' | 'storageAvailable' | 'stats'>;
-}
-
-function formatLastSynced(value: string | null): string {
-  if (!value) return 'never';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return 'never';
-
-  const minutes = Math.floor((Date.now() - date.getTime()) / 60000);
-  if (minutes < 1) return 'just now';
-  if (minutes < 60) return `${minutes} minute${minutes === 1 ? '' : 's'} ago`;
-
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} hour${hours === 1 ? '' : 's'} ago`;
-
-  const days = Math.floor(hours / 24);
-  return `${days} day${days === 1 ? '' : 's'} ago`;
+  /** Injected in tests; defaults to the live queue counts. */
+  queue?: { pendingCount: number; quarantinedCount: number };
+  /** Injected in tests; defaults to the live session state. */
+  session?: OfflineSessionState;
 }
 
 /**
  * Tells the truth about what the device can currently do.
  *
- * The wording matters more than the styling: while there is no write queue (that is
- * 4.5.4), an offline banner that implies "your changes will sync later" would be a
- * lie the user only discovers when their morning's work is gone. So this states
- * plainly that saving needs a connection, and separately reports what is actually
- * stored on the device.
+ * Since 4.5.4 it can tell the better truth: work is queued rather than refused. The banner says
+ * so — with how many records are actually waiting, and how old the cached data is — because the
+ * one thing an offline banner must never do is imply a save that will not happen. It also names
+ * the records the server has refused, since those need a person, not a connection.
  */
-const OfflineBanner: React.FC<OfflineBannerProps> = ({ state }) => {
+const OfflineBanner: React.FC<OfflineBannerProps> = ({ state, queue, session }) => {
   // Subscribed field by field on purpose: zustand v5 compares selector results by
   // reference, so a selector that builds a fresh object would re-render on every store
   // update and never settle.
   const liveOnline = useOfflineStore((store) => store.isOnline);
   const liveStorageAvailable = useOfflineStore((store) => store.storageAvailable);
   const liveStats = useOfflineStore((store) => store.stats);
+  const livePending = useSyncStore((store) => store.pendingCount);
+  const liveQuarantined = useSyncStore((store) => store.quarantinedCount);
+  const liveSession = useSyncStore((store) => store.session);
+  const liveCapacity = useSyncStore((store) => store.capacity);
 
   const isOnline = state?.isOnline ?? liveOnline;
   const storageAvailable = state?.storageAvailable ?? liveStorageAvailable;
   const stats = state?.stats ?? liveStats;
+  const pendingCount = queue?.pendingCount ?? livePending;
+  const quarantinedCount = queue?.quarantinedCount ?? liveQuarantined;
+  const sessionState = session ?? liveSession;
+  // Derived from the count rather than passed in beside it: two props that must agree are two
+  // props that can disagree, and the limit is a function of the count by definition.
+  const queueCapacity = queue ? queueCapacityFrom(pendingCount) : liveCapacity;
 
   if (isOnline) return null;
 
   const stored = stats.recordCount > 0
-    ? `${stats.recordCount} record${stats.recordCount === 1 ? '' : 's'} stored · last synced ${formatLastSynced(stats.lastSyncedAt)}`
+    ? `${stats.recordCount} record${stats.recordCount === 1 ? '' : 's'} stored · last synced ${formatSyncAge(stats.lastSyncedAt)}`
     : storageAvailable
       ? 'Nothing stored on this device yet'
-      : 'Offline storage is unavailable on this device';
+      : 'Offline storage is unavailable on this device — nothing can be saved until you are back online';
 
   return (
     <Alert
@@ -64,7 +71,53 @@ const OfflineBanner: React.FC<OfflineBannerProps> = ({ state }) => {
       message="Offline"
       description={
         <>
-          Saving changes needs a connection — reconnect and try again. <Text type="secondary">{stored}</Text>
+          Changes are saved on this device and sent when the connection is back.
+          {pendingCount > 0 && (
+            <> <Text strong>{pendingCount} waiting to sync.</Text></>
+          )}
+          {quarantinedCount > 0 && (
+            <>
+              {' '}
+              <Text type="danger">
+                {quarantinedCount} record{quarantinedCount === 1 ? '' : 's'} could not be sent — see
+                “Offline &amp; sync”.
+              </Text>
+            </>
+          )}
+          {/*
+            * The two limits (5.6), said while they are still limits rather than failures. A
+            * session that has gone too long without the API is the one case where this banner
+            * stops promising that queued work will be delivered — because it may not be.
+            */}
+          {sessionState.status === 'blocked' && (
+            <>
+              {' '}
+              <Text type="danger">
+                {sessionBlockedMessage(sessionState.daysSinceServerContact ?? 0)}
+              </Text>
+            </>
+          )}
+          {sessionState.status === 'warning' && (
+            <>
+              {' '}
+              <Text type="warning">
+                {sessionWarningMessage(sessionState.daysSinceServerContact ?? 0)}
+              </Text>
+            </>
+          )}
+          {queueCapacity.full ? (
+            <>
+              {' '}
+              <Text type="danger">{queueFullMessage()}</Text>
+            </>
+          ) : queueCapacity.warning ? (
+            <>
+              {' '}
+              <Text type="warning">{queueWarningMessage(queueCapacity.remaining)}</Text>
+            </>
+          ) : null}
+          <br />
+          <Text type="secondary">{stored}</Text>
         </>
       }
     />

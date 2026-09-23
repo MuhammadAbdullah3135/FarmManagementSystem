@@ -32,6 +32,8 @@ export interface ServiceWorkerInput {
   version: string;
   precache: string[];
   shellUrl: string;
+  /** URL prefix of Vite's hashed output, e.g. `/FarmManagementSystem/assets/`. */
+  assetPrefix: string;
 }
 
 /** `''` and `'/'` both mean "served from the domain root"; anything else keeps a trailing slash. */
@@ -114,8 +116,17 @@ export function selectServiceWorkerVersion({
  * - **Cross-origin requests are never handled.** The API runs on its own host and its
  *   responses are per-user; caching them here would leak one session's data into
  *   another's. That check is asserted by a test rather than left to review.
+ * - **Same-origin handling is an allowlist, not a default.** Only the precache
+ *   manifest and the hashed asset prefix are ever served or stored; everything else
+ *   on this origin bypasses the worker. This is the enforced form of the no-API rule:
+ *   the production API is cross-origin so its responses can never be cached anyway,
+ *   but a same-origin API (the dev proxy's shape, or a future re-hosting) returns
+ *   ordinary 200s that the old catch-all runtime cache would have stored — an
+ *   authenticated response in a shared cache is a cross-account leak. Found exactly
+ *   that way: a browser smoke test fetched a same-origin /api path and it landed in
+ *   the cache. Default-deny makes the failure impossible rather than topology-dependent.
  */
-export function buildServiceWorker({ version, precache, shellUrl }: ServiceWorkerInput): string {
+export function buildServiceWorker({ version, precache, shellUrl, assetPrefix }: ServiceWorkerInput): string {
   if (precache.length === 0) {
     throw new Error('Offline shell build failed: the precache list is empty.');
   }
@@ -126,6 +137,7 @@ export function buildServiceWorker({ version, precache, shellUrl }: ServiceWorke
 var CACHE_PREFIX = ${JSON.stringify(SHELL_CACHE_PREFIX)};
 var VERSION = ${JSON.stringify(version)};
 var SHELL_URL = ${JSON.stringify(shellUrl)};
+var ASSET_PREFIX = ${JSON.stringify(assetPrefix)};
 var PRECACHE = ${JSON.stringify(precache, null, 2)};
 var CACHE_NAME = CACHE_PREFIX + VERSION;
 
@@ -186,7 +198,12 @@ self.addEventListener('fetch', function (event) {
   // Range requests (media seeking) would be stored as partial bodies; skip them.
   if (request.headers.get('range')) return;
 
-  event.respondWith(cacheFirstAsset(request));
+  // The allowlist: the exact precache manifest, or the hashed asset output. Anything
+  // else — an /api/ path most of all — is not ours to serve or store; the browser's
+  // own HTTP rules apply, exactly as if no worker were registered.
+  if (PRECACHE.indexOf(url.pathname) !== -1 || url.pathname.indexOf(ASSET_PREFIX) === 0) {
+    event.respondWith(cacheFirstAsset(request));
+  }
 });
 
 async function networkFirstShell(request) {

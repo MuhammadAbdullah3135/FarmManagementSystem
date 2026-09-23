@@ -293,8 +293,35 @@ public class FarmTaskTests
         Assert.Equal(FarmTaskStatus.Completed, completedAfterStart.Value!.Status);
     }
 
+    /// <summary>
+    /// A completion that says the same thing as the recorded one is already satisfied, not an
+    /// error: a queued item's intent is met, so the device may clear it and nothing is written
+    /// twice. (Until 4.5.5 this was a plain conflict, which is exactly what made a replay of a
+    /// completion look like a failure to a queue.)
+    /// </summary>
     [Fact]
-    public async Task CompleteTask_AlreadyCompleted_ReturnsConflict()
+    public async Task CompleteTask_AlreadyCompletedWithTheSameNotes_IsSuperseded()
+    {
+        using var context = CreateContext();
+        var seed = await SeedAsync(context);
+        var service = CreateService(context);
+
+        var created = await service.CreateFarmTaskAsync(seed.FarmId, ValidRequest(seed));
+        await service.CompleteTaskAsync(seed.FarmId, created.Value!.Id,
+            new CompleteFarmTaskRequest { CompletionNotes = "Fence repaired" });
+
+        var again = await service.CompleteTaskAsync(seed.FarmId, created.Value.Id,
+            new CompleteFarmTaskRequest { CompletionNotes = "Fence repaired" });
+
+        Assert.Equal(Error.SupersededCode, again.Error!.Code);
+    }
+
+    /// <summary>
+    /// Absent and blank are the same note: neither records anything, so a completion carrying
+    /// no notes has not disagreed with a completion that recorded none.
+    /// </summary>
+    [Fact]
+    public async Task CompleteTask_AlreadyCompletedWithoutAnyNotes_IsSuperseded()
     {
         using var context = CreateContext();
         var seed = await SeedAsync(context);
@@ -303,8 +330,84 @@ public class FarmTaskTests
         var created = await service.CreateFarmTaskAsync(seed.FarmId, ValidRequest(seed));
         await service.CompleteTaskAsync(seed.FarmId, created.Value!.Id, new CompleteFarmTaskRequest());
 
-        var again = await service.CompleteTaskAsync(seed.FarmId, created.Value.Id, new CompleteFarmTaskRequest());
+        var again = await service.CompleteTaskAsync(seed.FarmId, created.Value.Id,
+            new CompleteFarmTaskRequest { CompletionNotes = "   " });
+
+        Assert.Equal(Error.SupersededCode, again.Error!.Code);
+    }
+
+    /// <summary>
+    /// A disagreement about a fact is surfaced rather than swallowed or overwritten: the
+    /// server's record of the work and the device's account of it differ, so a person decides.
+    /// </summary>
+    [Fact]
+    public async Task CompleteTask_AlreadyCompletedWithDifferentNotes_IsRefused_AndKeepsTheRecordedNotes()
+    {
+        using var context = CreateContext();
+        var seed = await SeedAsync(context);
+        var service = CreateService(context);
+
+        var created = await service.CreateFarmTaskAsync(seed.FarmId, ValidRequest(seed));
+        await service.CompleteTaskAsync(seed.FarmId, created.Value!.Id,
+            new CompleteFarmTaskRequest { CompletionNotes = "Fence repaired" });
+
+        var again = await service.CompleteTaskAsync(seed.FarmId, created.Value.Id,
+            new CompleteFarmTaskRequest { CompletionNotes = "Gate repaired" });
+
         Assert.Equal("Conflict", again.Error!.Code);
+        Assert.Contains("different completion notes", again.Error.Message);
+
+        var stored = await context.FarmTasks.AsNoTracking()
+            .SingleAsync(t => t.Id == created.Value.Id);
+        Assert.Equal("Fence repaired", stored.CompletionNotes);
+    }
+
+    /// <summary>
+    /// The same queued mutation completing the task twice is the crash window: the ledger has
+    /// no row, the apply already happened, and the task itself carries the mutation id. It must
+    /// come back as already satisfied, never as a disagreement with itself.
+    /// </summary>
+    [Fact]
+    public async Task CompleteTask_ReplayOfTheSameQueuedMutation_IsSuperseded()
+    {
+        using var context = CreateContext();
+        var seed = await SeedAsync(context);
+        var service = CreateService(context);
+        var mutationId = Guid.NewGuid();
+
+        var created = await service.CreateFarmTaskAsync(seed.FarmId, ValidRequest(seed));
+        var first = await service.CompleteTaskAsync(seed.FarmId, created.Value!.Id,
+            new CompleteFarmTaskRequest { CompletionNotes = "Done" }, mutationId);
+        Assert.True(first.IsSuccess);
+
+        // A different note this time, so only the mutation id can explain the answer.
+        var replay = await service.CompleteTaskAsync(seed.FarmId, created.Value.Id,
+            new CompleteFarmTaskRequest { CompletionNotes = "Rewritten" }, mutationId);
+
+        Assert.Equal(Error.SupersededCode, replay.Error!.Code);
+        Assert.Contains("already applied", replay.Error.Message);
+    }
+
+    /// <summary>
+    /// The lifecycle is the server's: a cancelled task refuses a completion with the wording it
+    /// has always used, so the queue shows the user a message that names the state.
+    /// </summary>
+    [Fact]
+    public async Task CompleteTask_Cancelled_IsRefusedWithTheSameWording()
+    {
+        using var context = CreateContext();
+        var seed = await SeedAsync(context);
+        var service = CreateService(context);
+
+        var created = await service.CreateFarmTaskAsync(seed.FarmId, ValidRequest(seed));
+        await service.CancelTaskAsync(seed.FarmId, created.Value!.Id,
+            new CancelFarmTaskRequest { Reason = "Not needed" });
+
+        var again = await service.CompleteTaskAsync(seed.FarmId, created.Value.Id,
+            new CompleteFarmTaskRequest());
+
+        Assert.Equal("Conflict", again.Error!.Code);
+        Assert.Contains("Open tasks only can be completed. Current status: Cancelled", again.Error.Message);
     }
 
     [Fact]

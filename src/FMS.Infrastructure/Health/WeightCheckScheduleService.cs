@@ -3,6 +3,7 @@ using FMS.Application.Health;
 using FMS.Domain.Common;
 using FMS.Domain.Entities;
 using FMS.Domain.Enums;
+using FMS.Infrastructure.Common;
 using FMS.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -205,35 +206,94 @@ public class WeightCheckScheduleService : IWeightCheckScheduleService
 
     public async Task<Result<List<WeightCheckStatusDto>>> GetWeightCheckStatusAsync(Guid farmId)
     {
-        var statuses = await ComputeWeightCheckStatusesAsync(farmId);
-        return Result<List<WeightCheckStatusDto>>.Success(statuses);
+        var statuses = await ComputeWeightCheckStatusesAsync(farmId, null);
+        return Result<List<WeightCheckStatusDto>>.Success(statuses.Select(e => e.Status).ToList());
+    }
+
+    public async Task<Result<DeltaResult<WeightCheckStatusDto>>> GetWeightCheckStatusAsync(Guid farmId, DateTime? updatedSince)
+    {
+        var cursor = DateTime.UtcNow;
+
+        if (updatedSince.HasValue && !DeltaCursor.IsAnswerable(updatedSince, cursor))
+            return Result<DeltaResult<WeightCheckStatusDto>>.Success(DeltaResult<WeightCheckStatusDto>.FullSyncRequired(cursor));
+
+        if (updatedSince is { } since)
+        {
+            // An edited or removed schedule can take entries away, and the delta has no id for
+            // an entry that no longer exists — so the honest answer is a full read. An added
+            // one can only create entries, which the changed-input filter below already catches.
+            var schedulesChanged = await ChangeTombstones.AnyChangedSinceAsync<WeightCheckSchedule>(
+                _context, farmId, since, new[] { AuditAction.Update, AuditAction.Delete });
+
+            if (schedulesChanged)
+                return Result<DeltaResult<WeightCheckStatusDto>>.Success(DeltaResult<WeightCheckStatusDto>.FullSyncRequired(cursor));
+        }
+
+        var entries = await ComputeWeightCheckStatusesAsync(farmId, updatedSince);
+
+        var byDueDate = entries.OrderBy(e => e.Status.DaysUntilDue).Select(e => e.Status).ToList();
+
+        var delta = new DeltaResult<WeightCheckStatusDto>
+        {
+            Items = byDueDate,
+            Page = 1,
+            PageSize = byDueDate.Count,
+            TotalCount = byDueDate.Count,
+            Cursor = cursor,
+            // An animal that was deleted takes its entries with it, and nothing is left to
+            // return — the id is how the client knows to drop the row it still holds.
+            DeletedIds = updatedSince is { } deletedSince
+                ? await _context.Animals
+                    .AsNoTracking()
+                    .Where(a => a.FarmId == farmId && a.IsDeleted && (a.ModifiedAt ?? a.CreatedAt) > deletedSince)
+                    .Select(a => a.Id)
+                    .ToListAsync()
+                : new List<Guid>()
+        };
+
+        return Result<DeltaResult<WeightCheckStatusDto>>.Success(delta);
     }
 
     public async Task<Result<List<WeightCheckStatusDto>>> GetOverdueWeightChecksAsync(Guid farmId)
     {
-                var all = await ComputeWeightCheckStatusesAsync(farmId);
-        var overdue = all.Where(s => s.Status == WeightCheckStatusType.Overdue || s.Status == WeightCheckStatusType.Due).ToList();
+        var all = await ComputeWeightCheckStatusesAsync(farmId, null);
+        var overdue = all
+            .Where(e => e.Status.Status == WeightCheckStatusType.Overdue || e.Status.Status == WeightCheckStatusType.Due)
+            .OrderBy(e => e.Status.DaysUntilDue)
+            .Select(e => e.Status)
+            .ToList();
         return Result<List<WeightCheckStatusDto>>.Success(overdue);
     }
 
-    private async Task<List<WeightCheckStatusDto>> ComputeWeightCheckStatusesAsync(Guid farmId)
+    /// <summary>One computed entry, with the timestamp of the newest input behind it.</summary>
+    private sealed record ComputedWeightCheck(WeightCheckStatusDto Status, DateTime ChangedAt);
+
+    /// <summary>
+    /// The projection itself. <paramref name="changedSince"/> turns it into a delta by keeping
+    /// only the entries one of whose inputs was touched after that moment.
+    /// </summary>
+    private async Task<List<ComputedWeightCheck>> ComputeWeightCheckStatusesAsync(Guid farmId, DateTime? changedSince)
     {
         var schedules = await _context.WeightCheckSchedules
             .AsNoTracking()
             .Where(s => s.FarmId == farmId && s.IsActive)
             .ToListAsync();
 
+        // Deleted animals are excluded: the status of an animal that is gone is not work anyone
+        // can do, and its weight-check task should not be re-created on every read.
         var animals = await _context.Animals
             .AsNoTracking()
-            .Where(a => a.FarmId == farmId)
+            .Where(a => a.FarmId == farmId && !a.IsDeleted)
             .ToListAsync();
 
-        var results = new List<WeightCheckStatusDto>();
+        var results = new List<ComputedWeightCheck>();
         var today = DateTime.UtcNow.Date;
         var userId = _currentUser.GetUserId();
 
         foreach (var schedule in schedules)
         {
+            var scheduleChangedAt = schedule.ModifiedAt ?? schedule.CreatedAt;
+
             var matchingAnimals = animals.Where(a =>
                 (!schedule.AnimalTypeId.HasValue || a.AnimalTypeId == schedule.AnimalTypeId) &&
                 (!schedule.BreedId.HasValue || a.BreedId == schedule.BreedId) &&
@@ -248,6 +308,7 @@ public class WeightCheckScheduleService : IWeightCheckScheduleService
                     .OrderByDescending(wr => wr.RecordedAt)
                     .FirstOrDefaultAsync();
 
+                var animalChangedAt = animal.ModifiedAt ?? animal.CreatedAt;
                 var lastDate = lastRecord?.RecordedAt;
                 if (!lastDate.HasValue)
                     lastDate = animal.CreatedAt;
@@ -263,7 +324,14 @@ public class WeightCheckScheduleService : IWeightCheckScheduleService
                 else
                     status = WeightCheckStatusType.Upcoming;
 
-                results.Add(new WeightCheckStatusDto
+                var changedAt = Later(
+                    Later(animalChangedAt, scheduleChangedAt),
+                    lastRecord is null ? animal.CreatedAt : lastRecord.ModifiedAt ?? lastRecord.CreatedAt);
+
+                if (changedSince is { } sinceValue && changedAt <= sinceValue)
+                    continue;
+
+                results.Add(new ComputedWeightCheck(new WeightCheckStatusDto
                 {
                     AnimalId = animal.Id,
                     AnimalTagNumber = animal.TagNumber,
@@ -273,7 +341,7 @@ public class WeightCheckScheduleService : IWeightCheckScheduleService
                     Status = status,
                     StatusName = status.ToString(),
                     DaysUntilDue = daysUntilDue
-                });
+                }, changedAt));
 
                 if (status == WeightCheckStatusType.Due || status == WeightCheckStatusType.Overdue)
                 {
@@ -306,6 +374,8 @@ public class WeightCheckScheduleService : IWeightCheckScheduleService
         }
 
         await _context.SaveChangesAsync();
-        return results.OrderBy(s => s.DaysUntilDue).ToList();
+        return results;
     }
+
+    private static DateTime Later(DateTime left, DateTime right) => left >= right ? left : right;
 }

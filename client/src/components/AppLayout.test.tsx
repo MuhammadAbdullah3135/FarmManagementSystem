@@ -19,6 +19,7 @@ vi.mock('../api/axios', () => ({
 
 import AppLayout, { appMenuItems } from './AppLayout';
 import { useOfflineStore } from '../offline/connectivity';
+import { useSyncStore } from '../offline/syncStatus';
 import { filterMenuByRole } from '../utils/permissions';
 
 const userWithRoles = (roles: string[]): User => ({
@@ -366,7 +367,7 @@ describe('AppLayout offline awareness', () => {
     });
   });
 
-  it('tells the user the app is offline, and says saving needs a connection', async () => {
+  it('tells the user the app is offline, and that their changes are kept', async () => {
     useOfflineStore.setState({
       isOnline: false,
       stats: {
@@ -375,11 +376,13 @@ describe('AppLayout offline awareness', () => {
         lastSyncedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
       },
     });
+    useSyncStore.setState({ pendingCount: 2, quarantinedCount: 0 });
 
     renderLayout(['SystemOwner']);
 
     expect(await screen.findByText('Offline')).toBeInTheDocument();
-    expect(screen.getByText(/Saving changes needs a connection/)).toBeInTheDocument();
+    expect(screen.getByText(/Changes are saved on this device and sent when the connection is back/)).toBeInTheDocument();
+    expect(screen.getByText(/2 waiting to sync/)).toBeInTheDocument();
     expect(screen.getByText(/4 records stored · last synced 3 days ago/)).toBeInTheDocument();
   });
 
@@ -406,5 +409,96 @@ describe('AppLayout offline awareness', () => {
     await userEvent.click(clearItem);
     expect(await screen.findAllByText('Clear offline data?')).not.toHaveLength(0);
     expect(screen.getByText(/7 cached records across 3 collections/)).toBeInTheDocument();
+  });
+});
+
+/*
+ * The write queue at a glance (4.5.4): the header badge counts what has not reached the
+ * server, the sign-out path warns before abandoning it, and clearing offline data says how
+ * many unsynced records it is about to discard.
+ */
+describe('AppLayout write queue', () => {
+  const renderWithQueue = (pendingCount: number, quarantinedCount: number) => {
+    useSyncStore.setState({ pendingCount, quarantinedCount });
+    return renderLayout(['SystemOwner']);
+  };
+
+  beforeEach(() => {
+    vi.mocked(api.get).mockResolvedValue({ data: [] } as never);
+    localStorage.clear();
+    useSyncStore.setState({ pendingCount: 0, quarantinedCount: 0 });
+    useOfflineStore.setState({
+      isOnline: true,
+      storageAvailable: true,
+      stats: { recordCount: 0, collectionCount: 0, lastSyncedAt: null },
+    });
+  });
+
+  it('badges everything that has not reached the server, and opens the queue', async () => {
+    render(
+      <MemoryRouter initialEntries={['/dashboard']}>
+        <Routes>
+          <Route path="/dashboard" element={<AppLayout />}>
+            <Route path="sync" element={<div>queue screen</div>} />
+          </Route>
+        </Routes>
+      </MemoryRouter>,
+    );
+    await act(async () => {
+      useSyncStore.setState({ pendingCount: 2, quarantinedCount: 1 });
+    });
+
+    // antd renders a badge's count as the element's title attribute.
+    expect(await screen.findByTitle('3')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Offline and sync' }));
+    expect(await screen.findByText('queue screen')).toBeInTheDocument();
+  });
+
+  it('shows no badge when everything has been sent', async () => {
+    renderWithQueue(0, 0);
+
+    await screen.findByText('Dashboard');
+    expect(screen.queryByTitle('0')).not.toBeInTheDocument();
+  });
+
+  it('warns before signing out with unsynced records, and keeps them', async () => {
+    renderWithQueue(3, 0);
+
+    await userEvent.click(await screen.findByText('Owner Person'));
+    await userEvent.click(await screen.findByText('Logout'));
+
+    // antd renders a confirm title twice (the modal title and the body's own heading), so
+    // the assertion is on the copy rather than on a single node.
+    expect(await screen.findAllByText('Sign out with unsynced records?')).not.toHaveLength(0);
+    expect(screen.getByText(/3 records on this device have not reached the server yet/)).toBeInTheDocument();
+
+    // Staying signed in leaves the session and the queue exactly as they were. (antd keeps a
+    // closed dialog mounted, so the click targets the most recent matching node.)
+    await userEvent.click((await screen.findAllByText('Stay signed in')).at(-1)!);
+    expect(useAuthStore.getState().isAuthenticated).toBe(true);
+  });
+
+  it('signs out on request, and the queue is a cache lifetime decision, not a session one', async () => {
+    renderWithQueue(1, 0);
+
+    await userEvent.click(await screen.findByText('Owner Person'));
+    await userEvent.click(await screen.findByText('Logout'));
+    await userEvent.click((await screen.findAllByText('Sign out anyway')).at(-1)!);
+
+    expect(useAuthStore.getState().isAuthenticated).toBe(false);
+  });
+
+  it('says how many unsynced records clearing offline data would discard', async () => {
+    useOfflineStore.setState({
+      stats: { recordCount: 5, collectionCount: 2, lastSyncedAt: new Date().toISOString() },
+    });
+    renderWithQueue(2, 0);
+
+    await userEvent.click(await screen.findByText('Owner Person'));
+    await userEvent.click(await screen.findByText('Clear offline data'));
+
+    expect(await screen.findAllByText('Clear offline data?')).not.toHaveLength(0);
+    expect((await screen.findAllByText(/discards 2 unsynced records/)).length).toBeGreaterThan(0);
   });
 });

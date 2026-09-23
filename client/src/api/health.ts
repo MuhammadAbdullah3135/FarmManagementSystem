@@ -1,6 +1,6 @@
 import api from './axios';
 import { farmUrl } from './farmApi';
-import type { MedicalRecord, MedicalRecordListItem, Medicine, MedicineListItem, MedicineStock, MedicineAlert, VaccineType, VaccineTypeListItem, VaccinationRecord, VaccinationRecordListItem, VaccinationSchedule, WeightCheckSchedule, WeightCheckStatus, HealthCostSummary, HealthCostByVet, HealthCostByAnimal, HealthCostByMonth, PagedResult } from '../types';
+import type { MedicalRecord, MedicalRecordListItem, Medicine, MedicineListItem, MedicineStock, MedicineAlert, VaccineType, VaccineTypeListItem, VaccinationRecord, VaccinationRecordListItem, VaccinationSchedule, WeightCheckSchedule, WeightCheckStatus, DeltaResult, HealthCostSummary, HealthCostByVet, HealthCostByAnimal, HealthCostByMonth, PagedResult } from '../types';
 import type { VaccinationStatus } from '../types';
 
 export interface MedicalRecordListFilter {
@@ -211,8 +211,19 @@ export const weightCheckSchedulesApi = {
 };
 
 export const weightCheckStatusApi = {
-  all: () =>
-    api.get<WeightCheckStatus[]>(farmUrl('/weight-schedules/status')),
+  /**
+   * The farm's weight-check status projection.
+   *
+   * Returns the delta envelope (`items`, `deletedIds`, `cursor`, `requiresFullSync`) rather than
+   * the bare array it returned before 5.6: this is one of the collections a device caches, and a
+   * delta read needs a server-owned cursor to send back. Without `updatedSince` it is the whole
+   * projection, exactly as before, plus that cursor.
+   */
+  all: (updatedSince?: string | null) =>
+    api.get<DeltaResult<WeightCheckStatus>>(farmUrl('/weight-schedules/status'), {
+      params: updatedSince ? { updatedSince } : undefined,
+    }),
+  /** Not a cached collection: the notification job's own read, unchanged. */
   overdue: () =>
     api.get<WeightCheckStatus[]>(farmUrl('/weight-schedules/status/overdue')),
 };

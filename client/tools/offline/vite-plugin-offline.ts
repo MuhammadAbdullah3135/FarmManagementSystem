@@ -10,6 +10,9 @@ import {
   SHELL_FILE_NAME,
 } from './sw-template.ts';
 
+/** Vite's default output subdirectory for hashed bundles. */
+export const ASSET_DIR = 'assets';
+
 /** Every file under `dir`, as output-relative POSIX paths (e.g. `assets/index-a1b2.js`). */
 function listOutputFiles(dir: string): string[] {
   const found: string[] = [];
@@ -75,11 +78,15 @@ export function offlineShell(options: { buildSha?: string } = {}): Plugin {
         return;
       }
 
+      const normalizedBase = normalizeBase(base);
       const version = selectServiceWorkerVersion({ buildSha: options.buildSha, manifest: precache });
       const source = buildServiceWorker({
         version,
         precache,
-        shellUrl: `${normalizeBase(base)}${SHELL_FILE_NAME}`,
+        shellUrl: `${normalizedBase}${SHELL_FILE_NAME}`,
+        // The worker's same-origin allowlist: Vite's hashed output. Anything outside
+        // the precache manifest and this prefix is never served or stored by the worker.
+        assetPrefix: `${normalizedBase}${ASSET_DIR}/`,
       });
 
       writeFileSync(join(outDir, SERVICE_WORKER_FILE_NAME), source, 'utf8');

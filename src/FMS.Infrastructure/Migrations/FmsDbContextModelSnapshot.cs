@@ -549,6 +549,9 @@ namespace FMS.Infrastructure.Migrations
                     b.Property<DateTime?>("CheckOutAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<Guid?>("ClientMutationId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -581,6 +584,10 @@ namespace FMS.Infrastructure.Migrations
 
                     b.HasIndex("EmployeeId", "Date")
                         .IsUnique();
+
+                    b.HasIndex("FarmId", "ClientMutationId")
+                        .IsUnique()
+                        .HasFilter("\"ClientMutationId\" IS NOT NULL");
 
                     b.HasIndex("FarmId", "Date");
 
@@ -1570,6 +1577,9 @@ namespace FMS.Infrastructure.Migrations
                     b.Property<Guid?>("CompletedBy")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("CompletionClientMutationId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("CompletionNotes")
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)");
@@ -1622,6 +1632,10 @@ namespace FMS.Infrastructure.Migrations
                     b.HasIndex("LocationId");
 
                     b.HasIndex("FarmId", "AssignedEmployeeId");
+
+                    b.HasIndex("FarmId", "CompletionClientMutationId")
+                        .IsUnique()
+                        .HasFilter("\"CompletionClientMutationId\" IS NOT NULL");
 
                     b.HasIndex("FarmId", "Status", "DueDate");
 
@@ -2782,6 +2796,60 @@ namespace FMS.Infrastructure.Migrations
                     b.ToTable("PerformanceReviews");
                 });
 
+            modelBuilder.Entity("FMS.Domain.Entities.ProcessedMutation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ClientMutationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("FarmId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("ModifiedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("OccurredAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Operation")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("Outcome")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("ResultJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("TargetEntityId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FarmId", "ClientMutationId")
+                        .IsUnique();
+
+                    b.HasIndex("FarmId", "CreatedAt");
+
+                    b.ToTable("ProcessedMutations");
+                });
+
             modelBuilder.Entity("FMS.Domain.Entities.RefreshToken", b =>
                 {
                     b.Property<Guid>("Id")
@@ -3411,6 +3479,9 @@ namespace FMS.Infrastructure.Migrations
                     b.Property<Guid>("AnimalId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("ClientMutationId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -3440,6 +3511,10 @@ namespace FMS.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("AnimalId", "RecordedAt");
+
+                    b.HasIndex("FarmId", "ClientMutationId")
+                        .IsUnique()
+                        .HasFilter("\"ClientMutationId\" IS NOT NULL");
 
                     b.ToTable("WeightRecords");
                 });
@@ -4408,6 +4483,17 @@ namespace FMS.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Employee");
+                });
+
+            modelBuilder.Entity("FMS.Domain.Entities.ProcessedMutation", b =>
+                {
+                    b.HasOne("FMS.Domain.Entities.Farm", "Farm")
+                        .WithMany()
+                        .HasForeignKey("FarmId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Farm");
                 });
 
             modelBuilder.Entity("FMS.Domain.Entities.RefreshToken", b =>

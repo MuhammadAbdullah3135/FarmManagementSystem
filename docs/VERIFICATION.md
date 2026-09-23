@@ -17,7 +17,7 @@ item could be verified for real.
 | 3 | `docker compose` stack + its fail-fast guards | **HANDED OFF** | Docker not installed; compose corrected first so the runbook can pass |
 | 4 | Rotate the two leaked secrets | **HANDED OFF (account owner)** | Requires production credentials; guard + tripwires landed here |
 | 5 | Live email delivery (reset, invitation, digest) | **HANDED OFF** | No provider credentials or mailbox in this environment |
-| 6 | Offline shell inside a real Android WebView | **HANDED OFF** | No device or emulator here; jsdom cannot exercise the WebView's cache or a service worker's install |
+| 6 | Offline shell and the offline write queue inside a real Android WebView | **HANDED OFF** | No device or emulator here; jsdom cannot exercise the WebView's cache, a service worker's install, or IndexedDB durability across an OS kill |
 
 ---
 
@@ -32,6 +32,8 @@ item could be verified for real.
 | `Initialize_OnRealPostgres_InstallsTheHangfireSchema` | `tests/FMS.Domain.Tests/Jobs/HangfirePostgresIntegrationTests.cs` | same (added in this subphase) |
 | `Initialize_OnRealPostgres_RegistersTheThreeRecurringJobs` | same | same |
 | `Initialize_OnRealPostgres_IsIdempotentAcrossRestarts` | same | same |
+| `AppliedButUnrecordedMutation_IsRefusedByTheUniqueIndex_AndReportedAsAlreadyApplied` | `tests/FMS.Domain.Tests/E2E/IdempotencyIndexPostgresIntegrationTests.cs` | same (added in 5.3) |
+| `LiveRecordingsWithoutAMutationId_Coexist_UnderTheFilteredIndex` | same | same (added in 5.3) |
 
 The three new ones close a gap the scheduler's own tests name explicitly:
 `BackgroundJobsSetupTests` can only reach the container wiring, because "the job
@@ -40,6 +42,19 @@ Hangfire schema name, the schema installation, the recurring-job writes and thei
 idempotency across restarts were therefore never exercised anywhere — and a mistake
 in any of them (`SchemaName`, `PrepareSchemaIfNecessary`, a colliding job id) would
 first appear in production.
+
+The two 5.3 ones close the same class of gap for offline idempotency. The sync
+endpoint's ledger catches a retry that arrives after the first attempt recorded its
+result, but not a retry that arrives after the mutation was applied and *before* the
+ledger row was written — a crash in between, or two syncs racing. There, the only
+thing preventing a duplicate record is the unique index on the mutation id the target
+row carries, and **the EF InMemory provider the rest of the suite runs on ignores
+unique indexes entirely**: a unit test cannot see this at all. The first test
+reproduces the crash window against a real database (it applies a mutation over the
+endpoint, deletes its ledger row with SQL, then re-sends the batch) and asserts that
+the retry answers "already applied" with exactly one row in the table; the second
+asserts the filtered index still tolerates any number of live rows, which carry no
+mutation id.
 
 ### Runbook
 
@@ -68,7 +83,7 @@ dotnet test tests/FMS.Domain.Tests/FMS.Domain.Tests.csproj --nologo
 ```
 
 Expected: `Failed: 0` and **`Skipped: 0`**. Before this run the same command reports
-`Skipped: 5`; a run that still reports skips has not connected to anything and
+`Skipped: 7`; a run that still reports skips has not connected to anything and
 proves nothing.
 
 ### What to report back
@@ -77,6 +92,11 @@ proves nothing.
 - For the Hangfire tests specifically: whether the `hangfire` schema and its
   `job`/`state`/`set` tables were found, and whether all three recurring jobs came
   back with their crons (`5 0 * * *`, `0 * * * *`, `*/15 * * * *`).
+- For the 5.3 idempotency tests: that both passed, and — if either failed — the
+  constraint name from the error, because that says which index did or did not exist
+  on the deployed schema (`IX_WeightRecords_FarmId_ClientMutationId` is the expected
+  one), and whether the migration `AddIdempotentMutations` was applied to the
+  database under test.
 - If either new Hangfire test fails, the assertion text — that is new signal about
   the storage path, and worth fixing before the next release.
 
@@ -394,7 +414,7 @@ heroku config:set Email__Provider=SendGrid \
 
 ---
 
-## 6. Offline shell in a real Android WebView — HANDED OFF
+## 6. Offline shell and write queue in a real Android WebView — HANDED OFF
 
 ### What is verified here, and what is not
 
@@ -412,6 +432,85 @@ reload.
 - Transaction scope is correct: a store not listed on the transaction throws, which is how a
   silent cross-store write failure was found in this increment.
 
+Added in 4.5.4, and also verified here rather than handed off:
+
+- The queue's schema-version 2 upgrade runs over a populated version-1 database (a real v1 → v2
+  migration, not a fresh install), and the outbox is isolated from the read cache on every
+  clearing path: sign-out clears the cache and *keeps* the queue, "clear offline data" clears both.
+- Items are append-only through the typed layer: the only mutations the API exposes are
+  status/attempts/error/appliedAt, the payload is never re-written, and a re-enqueue of an
+  existing mutation id is refused rather than overwriting.
+- Flush order and behaviour: oldest-first, batches capped at the server's own 200-item limit,
+  paced 500 ms apart, **sequential per farm**; a 450-item week-old queue is proven to leave as
+  three requests (200/200/50) with nothing dropped and nothing sent twice, each item keeping the
+  device timestamp from a week earlier.
+- One invalid item is quarantined with the server's verbatim message while the valid items in
+  the same batch still apply; an item the server refuses is never silently deleted.
+- A 401 refreshes once and then stops with the items untouched (they are not lost, and the
+  screen says the session expired); 429/5xx back off exponentially with jitter, are capped, and
+  honour the server's `retryAfter`; a trigger arriving *during* a pass is honoured rather than
+  dropped (this was a real engine bug the tests caught).
+- The `online`/focus/success/refresh/"Sync now" triggers all fire a flush, and **no polling**
+  exists: with no timer running, a quiet device makes no requests at all.
+- Offline the Record-weight screen renders its picker from the cached lookup and never fetches
+  it; with nothing cached it offers no animals rather than a hand-typed tag.
+- Two weights captured at the same instant, on the same or different devices, are two records.
+- The queued row appears marked *Waiting to sync*, is replaced by the server's row on success,
+  and is rolled back with the server's own message on refusal.
+- A different account sign-in cannot address the previous account's queue: the engine reads the
+  queue for the access token's account and every key carries `(accountId, farmId, mutationId)`.
+
+Added in 4.5.5, and also verified here rather than handed off:
+
+- The three conflict rules are asserted against real HTTP, not stated: an earlier queued check-in
+  moves the stored `CheckInAt` back and is accepted; a later one is superseded and changes
+  nothing; a later check-out moves `CheckOutAt` forward and an earlier one is superseded; and a
+  day somebody entered by hand is never rewritten.
+- A completion for an already-completed task is reported done rather than as a failure, and one
+  whose notes disagree with the record is reported with the server's own message — measured
+  against the live endpoint's answer for the same input, the way 3.4/4.3/5.3 measured parity.
+- Replay, per workflow: the same check-in batch, the same check-out batch and the same completion
+  batch each sent twice create one row (or one transition) and are answered with the first
+  response byte for byte.
+- The payload shape of all three new kinds is asserted key-by-key against the server's binding
+  types, because a renamed key binds as null rather than failing.
+- The attendance page renders its cached register and employee cards offline, queues a check-in
+  with the device's clock, and never calls the live endpoint for a check-in, check-out or
+  completion.
+
+Added in 4.5.6, and also verified here rather than handed off:
+
+- The central stamp: an insert gets `CreatedAt` (and keeps a deliberate one), a modification
+  gets `ModifiedAt` without the caller setting anything, a soft delete moves the tombstone — and
+  with the audit interceptor attached, one change is stamped once and audited once. This is the
+  guarantee every delta rests on, so it is asserted directly rather than inferred from a delta
+  test passing.
+- Delta reads, per collection, including what a naive "modified after" filter gets wrong: a
+  task created and never edited is reported (no `ModifiedAt` at all), a task deleted is named
+  from the audit log, an employee soft-deleted is named and left out of the items, an animal
+  deleted drops its weight-check entry and is named as a tombstone, and an edited schedule asks
+  for a full read instead of guessing at entries it can no longer see.
+- A cursor the server cannot answer (40 days old, or from a device whose clock ran ahead) is
+  answered with `requiresFullSync` and no items, never with "nothing changed".
+- Client side: a delta is merged, not replaced — a row the delta does not mention survives; the
+  ids it reports as deleted are removed from the store in the same transaction that stores the
+  new cursor; a `requiresFullSync` answer is followed by exactly one full read and a replace; the
+  first read of a collection stores its cursor, which is what makes the second read a delta; and
+  each farm is sent only its own cursor.
+- The offline-write window and the queue cap: warning at five days and refusing at seven, with
+  the refusal leaving nothing stored; refusing at 5,000 items and warning from 4,500; and a
+  refusal that reaches the page as a typed reason (session, capacity, storage) rather than as
+  "storage failed".
+- The deleted-animal fix that changes existing behaviour: the projection no longer lists a
+  soft-deleted animal and no longer re-creates its weight-check task, and the full read still
+  returns every entry for the dashboard and the notification job.
+
+**Not verified here, and handed back:** the queue **cap** on a device. It is asserted in the
+suites (including that the store is the authority for the count, not the page's own view), but
+reaching 5,000 items on a device is not a realistic manual test, and filling the queue by hand
+would not test anything the suite does not already assert. The *window* is verified on a device
+below, because it can be reached honestly (item 6f).
+
 **Not verified, and therefore not claimed:** anything that depends on the Android WebView
 itself. jsdom has no service worker and no HTTP cache, so the three checks below can only be
 run on a device or emulator. They are the reason this item is handed off rather than marked
@@ -428,7 +527,7 @@ dotnet build src/FMS.Mobile/FMS.Mobile.csproj -f net10.0-android -c Debug
 # 2. Check what the WebView actually stored, over USB:
 #    desktop Chrome → chrome://inspect → the device → inspect the FMS page
 #      Application → Cache Storage  → expect a cache named fms-shell-<hash>
-#      Application → IndexedDB      → expect fms-offline → cache / syncMeta
+#      Application → IndexedDB      → expect fms-offline → cache / syncMeta / outbox
 #      Network → reload with the network on: the navigation should read "(ServiceWorker)"
 ```
 
@@ -445,13 +544,61 @@ dotnet build src/FMS.Mobile/FMS.Mobile.csproj -f net10.0-android -c Debug
    If it then passes, keep the change **and** note that a stale bundle becomes possible after a
    deploy — check 6c is what covers that.
 
-**6b. Does the online-only messaging stay honest?**
+**6b. Do the cached pages and the offline write path behave on a device?**
 
-With airplane mode on and the shell loaded, open a data page (animals, tasks, dashboard).
-**Pass:** the page fails or shows empty as it does today, the banner still says saving needs a
-connection, and nothing anywhere promises that the attempt was queued. This is the check that
-keeps 4.5.1 from overstating itself; it will change when 4.5.2/4.5.4 land, and should be
-re-run then.
+*(Rewritten for 4.5.4: this check used to assert that nothing promised the attempt was queued,
+because nothing was. Weight recording now queues, so the assertion inverts.)*
+
+With airplane mode on and the shell loaded:
+
+1. Open animals, tasks and employees. **Pass:** each renders last-known rows with a freshness
+   label that matches how old the cache really is, and none shows a blank or broken state.
+2. Switch farms. **Pass:** the previous farm's rows are never visible for even a frame.
+3. Record a weight for an animal in the picker. **Pass:** the row appears immediately marked
+   *Waiting to sync*, the header badge increments, and the banner's pending count agrees.
+4. Open the sync screen. **Pass:** the item is listed under its farm, named by its cached tag.
+
+**6d. Do queued writes survive a cold kill, and do they flush exactly once?**
+
+*(The device-side mirror of the 4.5.4 acceptance criterion that the suite proves in jsdom. The
+WebView's IndexedDB durability under an OS kill is the part jsdom cannot answer.)*
+
+1. Online, load the shell and open the Record weight screen so the animal lookup is cached.
+2. Turn on airplane mode. Record **three** different weights for three different animals, then
+   check one employee **in**, and **complete** one task — all three workflows in the one queue,
+   which is the device-side version of the mixed-queue case the suite covers in jsdom.
+3. Confirm all three show as *Waiting to sync*, then swipe the app away from recents (cold kill).
+4. Relaunch **still offline**. **Pass:** the three items are still listed with the device
+   timestamps you recorded, and the badge still reads 3.
+5. Turn airplane mode off. **Pass:** the queue drains, each row flips to the server's own record,
+   and the badge reaches 0.
+6. Check the records on a second device or the web app: exactly **three** new weights, with the
+   timestamps from step 2 (not the reconnect time), no duplicates, exactly one attendance row for
+   the employee with the check-in time you recorded, and the task completed at the device time.
+   On the sync screen, the per-farm line should have named what was waiting by workflow
+   ("3 weights · 1 check-in · 1 task completion") before it drained.
+7. **Then the counter-check:** with the network on, force-stop the app mid-flush (or use
+   `chrome://inspect` → Network → offline to cut it during the request). Relaunch and let it
+   flush. **Pass:** still exactly three rows — the same batch sent twice creates one row per
+   mutation id, which is 4.5.3's guarantee exercised from a real device.
+8. **Quarantine path:** record a weight the server refuses (the simplest is a timestamp more
+   than 5 minutes in the future — set the device clock forward). **Pass:** it is quarantined with
+   the server's own wording, the *other* queued items still apply, and Retry/Dismiss both work.
+9. **The two cross-device rules, which is the part jsdom cannot test at all:** with the network
+   on, check the same employee in from two devices at different times. **Pass:** exactly one
+   attendance row for the day, carrying the earlier time, and the second device's item reports
+   as already satisfied rather than as an error. Then complete the same task from two devices
+   with **different notes**. **Pass:** one is applied, the other is quarantined with the
+   server's message about differing notes — nothing silently overwrites what was recorded.
+
+**6e. Sign-out with unsynced work.**
+
+1. Offline, queue at least one weight.
+2. Sign out. **Pass:** the app warns about the outstanding count, and the queue is **not**
+   discarded by signing out.
+3. Sign back in as the same account. **Pass:** the item is still there and flushes normally.
+4. Sign in as a **different** account (if the device has one). **Pass:** the other account's
+   queue is not visible and is never flushed on its behalf.
 
 **6c. Does a deploy reach the device within one online launch?**
 
@@ -466,12 +613,48 @@ only re-fetched on navigation, so a stale shell is the plausible failure mode.
    name persists across relaunches, which means the worker is not being refreshed and the
    update path needs work before offline writes are built on top of it.
 
+**6f. Does the offline-write window behave on a device?**
+
+*(The window is seven days of not reaching the API. Waiting seven days is not a test, so the
+marker is moved instead — it is one record in one store, and this is what it is for.)*
+
+1. Online, load the shell and open any page (that write is what puts a timestamp in the marker).
+2. Over USB, `chrome://inspect` → the device → **Application → IndexedDB → fms-offline →
+   session**. Note the record's `lastServerContactAt`.
+3. Turn airplane mode on. Edit that value to **five days ago**, then relaunch the app.
+   **Pass:** the banner warns that the device has not reached the server in 5 days, and recording
+   a weight still succeeds.
+4. Edit it again to **eight days ago** and relaunch. **Pass:** the banner says new offline records
+   can no longer be delivered reliably, the sync screen shows the same, and recording a weight is
+   **refused** with a message naming the days and telling the user to sync — with nothing added to
+   the queue (check the counts).
+5. Turn airplane mode off and let one request succeed, then reopen the sync screen.
+   **Pass:** the warning is gone (any successful request resets the window) and recording works
+   again — the refusal is not a dead end.
+
+**6g. Do two devices see each other's deltas?**
+
+1. On device A (or the web app) while device B is offline and loaded, rename an employee and
+   delete a task.
+2. Bring device B back online and let its lists refresh.
+   **Pass:** the renamed employee shows the new name without a full reload, the deleted task is
+   **gone** from device B's cached list (a tombstone was applied, not merely left unmentioned),
+   and device B's freshness label updates.
+3. Switch device B to another farm and back. **Pass:** the farm's own cursor was used both times
+   — the list is right for each farm and the other farm's rows never appear.
+4. Leave device B offline for over 30 days if you can (or set its stored cursor — the `syncMeta`
+   record for the collection — to a date more than 30 days old). **Pass:** the next read is a full
+   read, not a delta, and the cache is replaced rather than merged.
+
 ### What to report back
 
-- For each of 6a/6b/6c: pass or fail, the device or emulator used, the Android version, and the
-  cache name before and after where applicable.
+- For each of 6a/6b/6c/6d/6e/6f/6g: pass or fail, the device or emulator used, the Android
+  version, and the cache name before and after where applicable.
+- For 6f, the marker values you used and whether the refusal left the queue untouched.
 - Whether `CacheModes.NoCache` had to be changed, and the observation that justified it.
 - Anything the banner showed that was not true (a count, an age, or a promise about saving).
+- After 6d step 6, the exact server-side timestamps of the three weights versus the device
+  capture times — this is the one claim a jsdom run cannot make for you.
 
 ---
 
@@ -542,4 +725,4 @@ Fill in as each item is executed. Do not mark an item verified on inspection alo
 | 3. compose stack | | | | |
 | 4. Secret rotation | | | | |
 | 5. Live email delivery | | | | reset/invitation/digest to a real inbox; blocked on the two preconditions above |
-| 6. Offline shell (device) | | | | three checks: shell loads offline × `CacheModes.NoCache`, messaging stays honest, a deploy reaches the device |
+| 6. Offline shell (device) | | | | seven checks: shell loads offline × `CacheModes.NoCache`, messaging stays honest, a deploy reaches the device, queued writes survive a cold kill (6d), sign-out keeps the queue (6e), the offline-write window (6f), two devices see each other's deltas (6g) |

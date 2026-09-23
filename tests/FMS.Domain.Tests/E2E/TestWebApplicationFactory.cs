@@ -144,6 +144,10 @@ public class TestWebApplicationFactory : IDisposable
                     services.AddScoped<FMS.Application.Health.IWeightCheckScheduleService, FMS.Infrastructure.Health.WeightCheckScheduleService>();
                     services.AddScoped<FMS.Application.Tasks.IFarmTaskService, FMS.Infrastructure.Tasks.FarmTaskService>();
                     services.AddScoped<FMS.Application.Attendance.IAttendanceService, FMS.Infrastructure.Attendance.AttendanceService>();
+                    // Queued offline mutations (phase 5.3). Registered here for the same reason the
+                    // import services are: this host builds its own graph, so a registration made
+                    // only in Program.cs would be exercised by no test.
+                    services.AddScoped<FMS.Application.Sync.IMutationSyncService, FMS.Infrastructure.Sync.MutationSyncService>();
                     services.AddScoped<FMS.Application.Animal.IAnimalService, FMS.Infrastructure.Animals.AnimalService>();
                     services.AddScoped<FMS.Application.Breeding.IBreedingService, FMS.Infrastructure.Breeding.BreedingService>();
                     services.AddScoped<FMS.Application.Employees.IEmployeeService, FMS.Infrastructure.Employees.EmployeeService>();

@@ -18,6 +18,21 @@ public class AttendanceRecordDto
     public string? Notes { get; set; }
 }
 
+/// <summary>
+/// Body of a check-in. Optional: the live endpoint sends no body and the server stamps the
+/// time, while a device that was offline supplies the time the work actually happened.
+/// </summary>
+public class CheckInRequest
+{
+    public DateTime? OccurredAt { get; set; }
+}
+
+/// <summary>Body of a check-out; same contract as <see cref="CheckInRequest"/>.</summary>
+public class CheckOutRequest
+{
+    public DateTime? OccurredAt { get; set; }
+}
+
 public class UpsertAttendanceRequest
 {
     public Guid EmployeeId { get; set; }

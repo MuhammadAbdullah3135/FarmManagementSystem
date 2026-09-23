@@ -91,6 +91,10 @@ public class TasksController : ControllerBase
         "NotFound" => NotFound(error.Message),
         "Validation" => BadRequest(error.Message),
         "Conflict" => Conflict(error.Message),
+        // A completion that is already satisfied answers 409 as it always has (nothing was
+        // written). The separate code is what lets the sync endpoint report it as done to a
+        // device instead of as a refusal, without either side matching on message text.
+        Error.SupersededCode => Conflict(error.Message),
         "Unauthorized" => Unauthorized(error.Message),
         _ => StatusCode(500, error.Message)
     };

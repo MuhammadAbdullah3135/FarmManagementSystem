@@ -67,6 +67,9 @@ describe('offline shell build step', () => {
     expect(source).toContain('/FarmManagementSystem/index.html');
     expect(source).toContain('/FarmManagementSystem/assets/app-abc123.js');
     expect(source).toContain('/FarmManagementSystem/favicon.svg');
+    // The worker's same-origin allowlist is wired from the real base: only the
+    // hashed asset output (and the precache manifest) is ever served or stored.
+    expect(source).toContain('"/FarmManagementSystem/assets/"');
     // Not the source map, and never the worker itself.
     expect(source).not.toContain('.js.map');
     expect(source).not.toContain('"sw.js"');

@@ -1,3 +1,4 @@
+using FMS.Domain.Common;
 using FMS.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 
@@ -78,6 +79,71 @@ public class FmsDbContext : DbContext
     public DbSet<Customer> Customers => Set<Customer>();
     public DbSet<CustomerSale> CustomerSales => Set<CustomerSale>();
     public DbSet<Domain.Entities.AuditLog> AuditLogs => Set<Domain.Entities.AuditLog>();
+
+    /// <summary>The idempotency ledger for queued offline mutations (see <c>ProcessedMutation</c>).</summary>
+    public DbSet<ProcessedMutation> ProcessedMutations => Set<ProcessedMutation>();
+
+    // ── the modification stamp ─────────────────────────────
+    //
+    // Every row's timestamps are set here, on the way out, rather than by each service. That
+    // is not tidiness: offline delta reads ask "what changed since <cursor>", so a row that
+    // was written without a timestamp is a row a device will never learn about. Relying on
+    // ~128 call sites to remember is how that happens, and the one write that matters most —
+    // a soft delete, which is a Modified entry setting IsDeleted — is exactly the kind a
+    // service can perform without touching ModifiedAt at all.
+    //
+    // Only the two overloads that do the work are overridden: DbContext's no-argument
+    // SaveChanges/SaveChangesAsync delegate to these, so there is one stamp per save rather
+    // than one per layer.
+
+    public override int SaveChanges(bool acceptAllChangesOnSuccess)
+    {
+        StampTimestamps();
+        return base.SaveChanges(acceptAllChangesOnSuccess);
+    }
+
+    public override Task<int> SaveChangesAsync(
+        bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
+    {
+        StampTimestamps();
+        return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+    }
+
+    /// <summary>
+    /// Stamps the rows this save is writing.
+    ///
+    /// <para>
+    /// Skipped while the audit interceptor is saving its own rows: that nested save is the one
+    /// that actually flushes the business changes, and restamping there would move
+    /// <c>ModifiedAt</c> a few microseconds past the value the audit entry just recorded — the
+    /// audit payload and the row would disagree about the same write.
+    /// </para>
+    /// </summary>
+    private void StampTimestamps()
+    {
+        if (IsSavingAuditLogs) return;
+
+        var now = DateTime.UtcNow;
+
+        foreach (var entry in ChangeTracker.Entries<BaseEntity>())
+        {
+            switch (entry.State)
+            {
+                case EntityState.Added:
+                    // A value set deliberately (an import, a seeder, a backfill) is never
+                    // overwritten; only a row that arrived with no timestamp gets one.
+                    if (entry.Entity.CreatedAt == default)
+                        entry.Entity.CreatedAt = now;
+                    break;
+
+                case EntityState.Modified:
+                    // Includes a soft delete: marking a row IsDeleted is a modification, so the
+                    // tombstone carries a fresh timestamp whether the service set one or not.
+                    entry.Entity.ModifiedAt = now;
+                    break;
+            }
+        }
+    }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

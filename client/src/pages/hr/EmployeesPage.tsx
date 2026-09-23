@@ -8,6 +8,8 @@ import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import { employeesApi, departmentsApi, employeeRolesApi } from '../../api/hr';
 import { getApiError } from '../../api/farmApi';
+import { useCachedQuery } from '../../offline/cachedQuery';
+import SyncAgeLabel from '../../components/SyncAgeLabel';
 import LookupQuickAddSelect from '../../components/LookupQuickAddSelect';
 import type { Department, Employee, EmployeeRole } from '../../types';
 
@@ -15,41 +17,62 @@ const SALARY_TYPES = ['Monthly', 'Weekly', 'Daily', 'Hourly'];
 
 const EmployeesPage: React.FC = () => {
   const navigate = useNavigate();
-  const [employees, setEmployees] = useState<Employee[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [roles, setRoles] = useState<EmployeeRole[]>([]);
-  const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
-  const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Employee | null>(null);
+  // The input's text versus the search the list was actually fetched with: the table
+  // reloads on Enter (as it always has), not on every keystroke.
   const [search, setSearch] = useState('');
+  const [submittedSearch, setSubmittedSearch] = useState('');
   const [form] = Form.useForm();
 
-  const load = useCallback(async (p: number) => {
-    setLoading(true);
-    try {
-      const [empRes, deptRes, roleRes] = await Promise.all([
-        employeesApi.list({ search: search || undefined, page: p, pageSize: 10 }),
-        departmentsApi.list(),
-        employeeRolesApi.list(),
-      ]);
-      setEmployees(empRes.data.items);
-      setTotal(empRes.data.totalCount);
-      setPage(p);
-      setDepartments(deptRes.data);
-      setRoles(roleRes.data);
-    } catch (err) {
-      message.error(getApiError(err));
-    } finally {
-      setLoading(false);
-    }
-  }, [search]);
+  /**
+   * Page one with no search is the cached roster (Phase 5.2). Searches and later pages
+   * are live queries and are deliberately never written to the device — otherwise every
+   * keystroke would leave another copy of the employee list on it.
+   */
+  const employeesQuery = useCachedQuery<Employee>({
+    collection: 'employees',
+    variant: 'listPage1',
+    // Delta-capable, but only the cached view uses it: a search or a later page is a live query
+    // that reads straight from the server and stores nothing.
+    supportsDelta: true,
+    cacheable: page === 1 && !submittedSearch,
+    paramsKey: `${page}|${submittedSearch}`,
+    fetcher: async (cursor) => {
+      const res = await employeesApi.list({
+        search: submittedSearch || undefined,
+        page,
+        pageSize: 10,
+        updatedSince: cursor,
+      });
+      const data = res.data;
+      return {
+        rows: data.items,
+        total: data.totalCount,
+        // Reported on a full read as well, so the next read can be a delta.
+        cursor: data.cursor,
+        delta: cursor ? {
+          deletedIds: data.deletedIds ?? [],
+          requiresFullSync: data.requiresFullSync,
+        } : undefined,
+      };
+    },
+    onError: (err) => message.error(getApiError(err)),
+  });
 
-  useEffect(() => {
-    const timer = window.setTimeout(() => { load(1); }, 0);
-    return () => window.clearTimeout(timer);
-  }, [load]);
+  /** Keeps the input, the page and the submitted search in step without a reload loop. */
+  const handleSearch = () => {
+    if (page === 1 && search === submittedSearch) {
+      // Re-running the same search should still re-ask the server.
+      employeesQuery.refresh();
+      return;
+    }
+    setPage(1);
+    setSubmittedSearch(search);
+  };
 
   /** Options-only refresh: keeps the table page and search untouched. */
   const loadOptions = useCallback(async () => {
@@ -64,6 +87,13 @@ const EmployeesPage: React.FC = () => {
       message.error(getApiError(err));
     }
   }, []);
+
+  // Departments and roles are lookups the form needs, not cached work lists: they are
+  // out of this subphase's scope and stay network-only.
+  useEffect(() => {
+    const timer = window.setTimeout(() => { void loadOptions(); }, 0);
+    return () => window.clearTimeout(timer);
+  }, [loadOptions]);
 
   const openCreate = () => {
     setEditing(null);
@@ -103,7 +133,7 @@ const EmployeesPage: React.FC = () => {
         message.success('Employee created');
       }
       setModalOpen(false);
-      load(page);
+      employeesQuery.refresh();
     } catch (err) {
       if ((err as { errorFields?: unknown }).errorFields) return;
       message.error(getApiError(err));
@@ -114,7 +144,7 @@ const EmployeesPage: React.FC = () => {
     try {
       await employeesApi.remove(id);
       message.success('Employee deleted');
-      load(page);
+      employeesQuery.refresh();
     } catch (err) {
       message.error(getApiError(err));
     }
@@ -162,7 +192,7 @@ const EmployeesPage: React.FC = () => {
             prefix={<SearchOutlined />}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            onPressEnter={() => load(1)}
+            onPressEnter={handleSearch}
             style={{ width: 200 }}
           />
           <Button icon={<UploadOutlined />} onClick={() => navigate('/dashboard/hr/employees/import')}>
@@ -174,12 +204,18 @@ const EmployeesPage: React.FC = () => {
         </Space>
       }
     >
+      {/* The freshness label describes these rows: cached views must never look live. */}
+      {employeesQuery.lastSyncedAt && (
+        <div style={{ marginBottom: 8 }}>
+          <SyncAgeLabel lastSyncedAt={employeesQuery.lastSyncedAt} />
+        </div>
+      )}
       <Table
         rowKey="id"
         columns={columns}
-        dataSource={employees}
-        loading={loading}
-        pagination={{ current: page, total, pageSize: 10, onChange: load }}
+        dataSource={employeesQuery.rows}
+        loading={employeesQuery.isLoading}
+        pagination={{ current: page, total: employeesQuery.total, pageSize: 10, onChange: setPage }}
       />
 
       <Modal

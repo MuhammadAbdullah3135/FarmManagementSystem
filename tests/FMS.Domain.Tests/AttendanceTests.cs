@@ -113,6 +113,143 @@ public class AttendanceTests
         Assert.Equal("Conflict", again.Error!.Code);
     }
 
+    // ── the queued rules: earliest check-in wins, latest check-out wins ──
+
+    /// <summary>
+    /// A shift starts when the employee was first at the gate, so a device reporting an earlier
+    /// time than the stored one moves it back. This is the half of the rule 4.5.3 deliberately
+    /// left unimplemented.
+    /// </summary>
+    [Fact]
+    public async Task CheckIn_QueuedEarlierThanTheStoredOne_MovesTheStoredTimeBack()
+    {
+        using var context = CreateContext();
+        var seed = await SeedAsync(context);
+        var service = CreateService(context);
+
+        var live = await service.CheckInAsync(seed.FarmId, seed.AliId);
+        var storedTime = live.Value!.CheckInAt!.Value;
+
+        var earlier = storedTime.AddHours(-2);
+        var queued = await service.CheckInAsync(seed.FarmId, seed.AliId,
+            new CheckInRequest { OccurredAt = earlier }, Guid.NewGuid());
+
+        Assert.True(queued.IsSuccess);
+        Assert.Equal(earlier, queued.Value!.CheckInAt);
+
+        var stored = await context.AttendanceRecords.AsNoTracking()
+            .SingleAsync(r => r.EmployeeId == seed.AliId);
+        Assert.Equal(earlier, stored.CheckInAt);
+    }
+
+    /// <summary>
+    /// The later check-in is "already satisfied", not an error: the day does have a check-in,
+    /// so a queue may clear the item — and the stored time is left where it is.
+    /// </summary>
+    [Fact]
+    public async Task CheckIn_QueuedLaterThanTheStoredOne_IsSuperseded_AndChangesNothing()
+    {
+        using var context = CreateContext();
+        var seed = await SeedAsync(context);
+        var service = CreateService(context);
+
+        var first = await service.CheckInAsync(seed.FarmId, seed.AliId,
+            new CheckInRequest { OccurredAt = DateTime.UtcNow.Date.AddHours(6) });
+        var storedTime = first.Value!.CheckInAt!.Value;
+
+        var queued = await service.CheckInAsync(seed.FarmId, seed.AliId,
+            new CheckInRequest { OccurredAt = storedTime.AddHours(1) }, Guid.NewGuid());
+
+        Assert.Equal(Error.SupersededCode, queued.Error!.Code);
+        Assert.Equal("Employee already has an attendance record for that day", queued.Error.Message);
+
+        var stored = await context.AttendanceRecords.AsNoTracking()
+            .SingleAsync(r => r.EmployeeId == seed.AliId);
+        Assert.Equal(storedTime, stored.CheckInAt);
+    }
+
+    /// <summary>
+    /// A day somebody entered by hand has no check-in time for "earlier" to beat, and it says
+    /// something a clock cannot overturn: it is reported as already satisfied, untouched, so a
+    /// person decides rather than a device.
+    /// </summary>
+    [Fact]
+    public async Task CheckIn_QueuedForADayEnteredByHand_IsSuperseded_AndTheManualRecordStands()
+    {
+        using var context = CreateContext();
+        var seed = await SeedAsync(context);
+        var service = CreateService(context);
+
+        var date = DateTime.UtcNow.Date;
+        await service.UpsertAttendanceAsync(seed.FarmId, new UpsertAttendanceRequest
+        {
+            EmployeeId = seed.AliId,
+            Date = date,
+            Status = AttendanceStatus.Leave,
+            Notes = "Approved leave"
+        });
+
+        var queued = await service.CheckInAsync(seed.FarmId, seed.AliId,
+            new CheckInRequest { OccurredAt = date.AddHours(9) }, Guid.NewGuid());
+
+        Assert.Equal(Error.SupersededCode, queued.Error!.Code);
+        Assert.Contains("Leave", queued.Error.Message);
+
+        var stored = await context.AttendanceRecords.AsNoTracking()
+            .SingleAsync(r => r.EmployeeId == seed.AliId);
+        Assert.Equal(AttendanceStatus.Leave, stored.Status);
+        Assert.Null(stored.CheckInAt);
+    }
+
+    [Fact]
+    public async Task CheckOut_QueuedLaterThanTheStoredOne_MovesTheStoredTimeForward()
+    {
+        using var context = CreateContext();
+        var seed = await SeedAsync(context);
+        var service = CreateService(context);
+
+        var day = DateTime.UtcNow.Date.AddDays(-1);
+        await service.CheckInAsync(seed.FarmId, seed.AliId,
+            new CheckInRequest { OccurredAt = day.AddHours(6) });
+        await service.CheckOutAsync(seed.FarmId, seed.AliId,
+            new CheckOutRequest { OccurredAt = day.AddHours(15) });
+
+        var later = await service.CheckOutAsync(seed.FarmId, seed.AliId,
+            new CheckOutRequest { OccurredAt = day.AddHours(18) }, Guid.NewGuid());
+
+        Assert.True(later.IsSuccess);
+        Assert.Equal(day.AddHours(18), later.Value!.CheckOutAt);
+
+        var stored = await context.AttendanceRecords.AsNoTracking()
+            .SingleAsync(r => r.EmployeeId == seed.AliId);
+        Assert.Equal(day.AddHours(18), stored.CheckOutAt);
+        Assert.Equal(12d, stored.CheckOutAt!.Value.Subtract(stored.CheckInAt!.Value).TotalHours, 2);
+    }
+
+    [Fact]
+    public async Task CheckOut_QueuedEarlierThanTheStoredOne_IsSuperseded_AndTheLaterTimeStands()
+    {
+        using var context = CreateContext();
+        var seed = await SeedAsync(context);
+        var service = CreateService(context);
+
+        var day = DateTime.UtcNow.Date.AddDays(-1);
+        await service.CheckInAsync(seed.FarmId, seed.AliId,
+            new CheckInRequest { OccurredAt = day.AddHours(6) });
+        await service.CheckOutAsync(seed.FarmId, seed.AliId,
+            new CheckOutRequest { OccurredAt = day.AddHours(18) });
+
+        var queued = await service.CheckOutAsync(seed.FarmId, seed.AliId,
+            new CheckOutRequest { OccurredAt = day.AddHours(15) }, Guid.NewGuid());
+
+        Assert.Equal(Error.SupersededCode, queued.Error!.Code);
+        Assert.Equal("Employee has already checked out today", queued.Error.Message);
+
+        var stored = await context.AttendanceRecords.AsNoTracking()
+            .SingleAsync(r => r.EmployeeId == seed.AliId);
+        Assert.Equal(day.AddHours(18), stored.CheckOutAt);
+    }
+
     [Fact]
     public async Task UpsertAttendance_CreatesThenUpdatesSameDate()
     {

@@ -21,6 +21,16 @@ public class FarmTask : AuditableEntity
     public DateTime? CompletedAt { get; set; }
     public Guid? CompletedBy { get; set; }
     public string? CompletionNotes { get; set; }
+
+    /// <summary>
+    /// The offline device's id for the mutation that completed this task, when it arrived
+    /// through the sync endpoint. Null for everything completed live.
+    ///
+    /// A completion changes a task in place and creates no row of its own, so the
+    /// idempotency id has to live on the task itself. Uniquely indexed per farm with
+    /// <see cref="FarmId"/>.
+    /// </summary>
+    public Guid? CompletionClientMutationId { get; set; }
     public string? CancelReason { get; set; }
 
     public Guid? AssignedEmployeeId { get; set; }

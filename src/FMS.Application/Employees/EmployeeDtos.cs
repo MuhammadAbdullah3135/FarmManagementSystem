@@ -83,6 +83,14 @@ public class EmployeeListFilter
     public Guid? DepartmentId { get; set; }
     public Guid? EmployeeRoleId { get; set; }
     public bool? IsActive { get; set; }
+
+    /// <summary>
+    /// Delta read: return only rows changed after this instant, plus the ids of employees
+    /// deleted since (a soft delete keeps its row, but the delta reports it as a tombstone and
+    /// leaves it out of <c>Items</c>). Omitted means the whole list, exactly as before.
+    /// </summary>
+    public DateTime? UpdatedSince { get; set; }
+
     public int Page { get; set; } = 1;
     public int PageSize { get; set; } = 20;
 }

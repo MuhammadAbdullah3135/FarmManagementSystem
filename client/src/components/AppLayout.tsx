@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import '../AppLayout.css';
-import { Layout, Menu, Typography, Dropdown, Avatar, Badge, Button, Drawer, Result, Space, Spin, message, Modal } from 'antd';
+import { Layout, Menu, Typography, Dropdown, Avatar, Badge, Button, Drawer, Result, Space, Spin, Tooltip, message, Modal } from 'antd';
 import {
   DashboardOutlined,
   SwapOutlined,
@@ -24,11 +24,13 @@ import {
   MenuOutlined,
   CloseOutlined,
   BellOutlined,
+  CloudSyncOutlined,
 } from '@ant-design/icons';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import { useFarmStore } from '../stores/farmStore';
 import { useOfflineStore } from '../offline/connectivity';
+import { useSyncStore } from '../offline/syncStatus';
 import { clearAllOfflineData, clearOfflineDataForFarm } from '../offline/offlineData';
 import OfflineBanner from './OfflineBanner';
 import RouteErrorBoundary from './RouteErrorBoundary';
@@ -212,7 +214,12 @@ export const appMenuItems: AppMenuItem[] = [
  * (its endpoint is /api/admin/jobs, with no farm in the path), so it must stay
  * reachable even when the user has no farm selected.
  */
-const farmIndependentPaths = ['/dashboard/admin/jobs'];
+const farmIndependentPaths = [
+  '/dashboard/admin/jobs',
+  // The queue belongs to the account, not to the farm being viewed: items queued against a
+  // farm whose access was removed still have to be visible and actionable.
+  '/dashboard/sync',
+];
 
 const isFarmIndependent = (pathname: string) =>
   farmIndependentPaths.some(
@@ -239,6 +246,12 @@ const AppLayout: React.FC = () => {
   // as a single field (not a derived object) so the reference stays stable between
   // updates, which is what zustand v5 compares.
   const offlineStats = useOfflineStore((store) => store.stats);
+
+  // The queue, for the header badge and the sign-out warning. Scalar selectors, for the same
+  // stability reason.
+  const pendingCount = useSyncStore((store) => store.pendingCount);
+  const quarantinedCount = useSyncStore((store) => store.quarantinedCount);
+  const unsyncedCount = pendingCount + quarantinedCount;
 
   useEffect(() => {
     fetchFarms();
@@ -331,6 +344,24 @@ const AppLayout: React.FC = () => {
   }, [location.pathname]);
 
   const handleLogout = () => {
+    // Signing out clears the cached read data but *keeps* the queue: a measurement that only
+    // exists on this device is not something to throw away on the way out. The user is told
+    // exactly that, because "sign out" usually means "the device stops mattering".
+    if (pendingCount > 0) {
+      Modal.confirm({
+        title: 'Sign out with unsynced records?',
+        content: `${pendingCount} record${pendingCount === 1 ? '' : 's'} on this device ${pendingCount === 1 ? 'has' : 'have'} not reached the server yet. They stay on this device and are sent the next time this account signs in.`,
+        okText: 'Sign out anyway',
+        okButtonProps: { danger: true },
+        cancelText: 'Stay signed in',
+        onOk: () => {
+          logout();
+          navigate('/login');
+        },
+      });
+      return;
+    }
+
     // logout() clears the session and the selected farm; navigating afterwards keeps the
     // login screen reachable even if a cached page would otherwise re-render first.
     logout();
@@ -345,21 +376,24 @@ const AppLayout: React.FC = () => {
    */
   const handleClearOfflineData = () => {
     const { recordCount, collectionCount } = offlineStats;
+    const queuedWarning = pendingCount > 0
+      ? ` It also discards ${pendingCount} unsynced record${pendingCount === 1 ? '' : 's'} that ${pendingCount === 1 ? 'has' : 'have'} never reached the server. That cannot be undone.`
+      : '';
+
     Modal.confirm({
       title: 'Clear offline data?',
-      // No write queue exists yet, so nothing here can be unsaved work and this copy must
-      // not imply otherwise. When 4.5.4 lands, this is the line that has to start warning
-      // about queued items.
-      content: recordCount > 0
-        ? `This device has ${recordCount} cached record${recordCount === 1 ? '' : 's'} across ${collectionCount} collection${collectionCount === 1 ? '' : 's'}. Clearing removes them; the app fetches them again next time you are online.`
+      // The queue exists now, so this copy has to say what clearing it costs. A cached row is
+      // fetched again next time the device is online; a queued one is simply gone.
+      content: recordCount > 0 || pendingCount > 0
+        ? `This device has ${recordCount} cached record${recordCount === 1 ? '' : 's'} across ${collectionCount} collection${collectionCount === 1 ? '' : 's'}. Clearing removes them; the app fetches them again next time you are online.${queuedWarning}`
         : 'This device has no cached records. Nothing will change.',
       okText: 'Clear',
       okButtonProps: { danger: true },
       onOk: async () => {
         const cleared = await clearAllOfflineData();
         message.success(
-          cleared.recordCount > 0
-            ? `Cleared ${cleared.recordCount} cached record${cleared.recordCount === 1 ? '' : 's'}.`
+          cleared.recordCount > 0 || cleared.queuedCount > 0
+            ? `Cleared ${cleared.recordCount} cached record${cleared.recordCount === 1 ? '' : 's'} and discarded ${cleared.queuedCount} unsynced record${cleared.queuedCount === 1 ? '' : 's'}.`
             : 'Nothing to clear.',
         );
       },
@@ -382,6 +416,11 @@ const AppLayout: React.FC = () => {
       key: 'build',
       label: BUILD_LABEL,
       disabled: true,
+    },
+    {
+      key: 'offline-sync',
+      label: unsyncedCount > 0 ? `Offline & sync (${unsyncedCount})` : 'Offline & sync',
+      onClick: () => navigate('/dashboard/sync'),
     },
     {
       key: 'offline-data',
@@ -470,6 +509,30 @@ const AppLayout: React.FC = () => {
           </div>
 
           <Space size={4} style={{ minWidth: 0 }}>
+            {/*
+              The queue, at a glance: what is waiting and what the server refused. Red when a
+              record needs a person (a refusal never resolves itself), otherwise a plain count.
+            */}
+            <Tooltip
+              title={
+                unsyncedCount === 0
+                  ? 'Offline & sync'
+                  : `${pendingCount} waiting to sync${quarantinedCount > 0 ? `, ${quarantinedCount} refused by the server` : ''}`
+              }
+            >
+              <Button
+                type="text"
+                aria-label="Offline and sync"
+                onClick={() => navigate('/dashboard/sync')}
+              >
+                <Badge count={unsyncedCount} size="small" overflowCount={99}>
+                  <CloudSyncOutlined
+                    style={{ fontSize: 16, color: quarantinedCount > 0 ? '#cf1322' : undefined }}
+                  />
+                </Badge>
+              </Button>
+            </Tooltip>
+
             <Button
               type="text"
               aria-label="Notifications"

@@ -65,10 +65,23 @@ export const performanceReviewsApi = {
 // Lookups used by HR/task/feed forms.
 // GET wrappers are shared with the Configuration page and live in ./configuration;
 // they are re-exported here so existing call sites keep working unchanged.
+/**
+ * The farm's animals as a form lookup: a bounded first page of 100, not the full list.
+ *
+ * Named rather than inline because 4.5.4 caches this exact call as the device's animal
+ * lookup, and the offline weight-recording picker and the queue screens both resolve an
+ * animal's label through it.
+ */
+export interface AnimalLookupRow {
+  id: string;
+  tagNumber: string;
+  name?: string;
+}
+
 export const lookupsApi = {
   ...configurationApi,
   animals: () =>
-    api.get<PagedResult<{ id: string; tagNumber: string; name?: string }>>(
+    api.get<PagedResult<AnimalLookupRow>>(
       farmUrl('/animals?page=1&pageSize=100')
     ),
 };

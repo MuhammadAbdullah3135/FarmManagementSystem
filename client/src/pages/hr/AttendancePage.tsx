@@ -1,6 +1,6 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
-  Button, Card, Col, DatePicker, Form, Input, Modal, Row, Select, Space, Table, Tag, message,
+  Alert, Button, Card, Col, DatePicker, Form, Input, Modal, Row, Select, Space, Table, Tag, Typography, message,
 } from 'antd';
 import { LoginOutlined, LogoutOutlined, PlusOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
@@ -8,7 +8,24 @@ import dayjs, { Dayjs } from 'dayjs';
 import { attendanceApi } from '../../api/attendance';
 import { employeesApi } from '../../api/hr';
 import { getApiError } from '../../api/farmApi';
+import { useCachedQuery } from '../../offline/cachedQuery';
+import SyncAgeLabel from '../../components/SyncAgeLabel';
+import OutboxTable from '../../components/OutboxTable';
+import {
+  ATTENDANCE_CHECK_IN,
+  ATTENDANCE_CHECK_OUT,
+  type AttendanceMutationPayload,
+} from '../../offline/mutationKinds';
+import { enqueueMutation, type OutboxItem } from '../../offline/outbox';
+import { requestFlush } from '../../offline/syncEngine';
+import { useSyncStore } from '../../offline/syncStatus';
+import { useOfflineStore } from '../../offline/connectivity';
+import { useOutboxItems } from '../../offline/useOutbox';
+import { useAuthStore } from '../../stores/authStore';
+import { useFarmStore } from '../../stores/farmStore';
 import type { AttendanceRecord, AttendanceStatus, Employee } from '../../types';
+
+const { Text } = Typography;
 
 const STATUS_COLORS: Record<AttendanceStatus, string> = {
   Present: 'green',
@@ -21,72 +38,139 @@ const STATUS_COLORS: Record<AttendanceStatus, string> = {
 
 const ATTENDANCE_STATUSES: AttendanceStatus[] = ['Present', 'Absent', 'Late', 'HalfDay', 'Leave', 'Holiday'];
 
+/**
+ * Attendance, with or without a connection.
+ *
+ * Check-in and check-out are queued exactly as weights are (4.5.4): one write path, the device's
+ * own time, and the server's answer replacing the row once it has it. The register and the
+ * employee list are cached work lists, so the page is usable with no signal — including the
+ * state of the day you are looking at, because a page that can queue a check-in but cannot show
+ * who is already in would make the user guess.
+ *
+ * Both buttons stay enabled offline on purpose. The cached register may be stale, and a device
+ * that refused a legitimate check-out because its cache had not caught up would be worse than
+ * one that sends it and shows the server's message if it turns out to be wrong. The queue's
+ * oldest-first order is what makes the common case work: a check-in queued before a check-out
+ * reaches the server first, so the day exists by the time the check-out is applied.
+ *
+ * The manual entry dialog stays a live request: it is an administrative correction, not
+ * fieldwork, and 4.5.5's offline targets are the check-in and the check-out.
+ */
 const AttendancePage: React.FC = () => {
-  const [employees, setEmployees] = useState<Employee[]>([]);
-  const [records, setRecords] = useState<AttendanceRecord[]>([]);
-  const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
-  const [loading, setLoading] = useState(false);
   const [dateRange, setDateRange] = useState<[Dayjs | null, Dayjs | null]>([dayjs(), dayjs()]);
   const [modalOpen, setModalOpen] = useState(false);
   const [form] = Form.useForm();
 
-  const loadEmployees = useCallback(async () => {
-    try {
-      const res = await employeesApi.list({ page: 1, pageSize: 100 });
-      setEmployees(res.data.items);
-    } catch (err) {
-      message.error(getApiError(err));
-    }
-  }, []);
+  const accountId = useAuthStore((state) => state.user?.accountId ?? null);
+  const farmId = useFarmStore((state) => state.activeFarm?.id ?? null);
+  const scope = accountId && farmId ? { accountId, farmId } : null;
 
-  const loadRecords = useCallback(async (p: number) => {
-    setLoading(true);
-    try {
+  const isOnline = useOfflineStore((store) => store.isOnline);
+  const isFlushing = useSyncStore((store) => store.isFlushing);
+
+  /** Today's view, first page — the cached work list. Anything else is a live query. */
+  const isDefaultRange = Boolean(dateRange[0]?.isSame(dayjs(), 'day') && dateRange[1]?.isSame(dayjs(), 'day'));
+
+  const employeesQuery = useCachedQuery<Employee>({
+    collection: 'employees',
+    variant: 'options',
+    // The whole roster, so a delta is exactly right here: nothing is dropped by paging.
+    supportsDelta: true,
+    fetcher: async (cursor) => {
+      const res = await employeesApi.list({ page: 1, pageSize: 100, updatedSince: cursor });
+      const data = res.data;
+      return {
+        rows: data.items,
+        total: data.totalCount,
+        // Reported on a full read as well, so the next read can be a delta.
+        cursor: data.cursor,
+        delta: cursor ? {
+          deletedIds: data.deletedIds ?? [],
+          requiresFullSync: data.requiresFullSync,
+        } : undefined,
+      };
+    },
+    onError: (err) => message.error(getApiError(err)),
+  });
+
+  const recordsQuery = useCachedQuery<AttendanceRecord>({
+    collection: 'attendance',
+    variant: 'firstPage',
+    cacheable: page === 1 && isDefaultRange,
+    paramsKey: `${page}|${dateRange[0]?.format('YYYY-MM-DD') ?? ''}|${dateRange[1]?.format('YYYY-MM-DD') ?? ''}`,
+    fetcher: async () => {
       const res = await attendanceApi.list({
         from: dateRange[0]?.toISOString(),
         to: dateRange[1]?.toISOString(),
-        page: p,
+        page,
         pageSize: 10,
       });
-      setRecords(res.data.items);
-      setTotal(res.data.totalCount);
-      setPage(p);
-    } catch (err) {
-      message.error(getApiError(err));
-    } finally {
-      setLoading(false);
+      return { rows: res.data.items, total: res.data.totalCount };
+    },
+    onError: (err) => message.error(getApiError(err)),
+  });
+
+  // Only this page's workflows: the weight page's queue and this one's must not show each
+  // other's records.
+  const items = useOutboxItems(scope, { kinds: [ATTENDANCE_CHECK_IN, ATTENDANCE_CHECK_OUT] });
+  const quarantined = items.filter((item) => item.status === 'quarantined');
+
+  const pendingFor = (kind: string) => {
+    const map = new Map<string, OutboxItem>();
+    for (const item of items) {
+      if (item.status === 'pending' && item.kind === kind) map.set(item.targetId, item);
     }
-  }, [dateRange]);
+    return map;
+  };
+  const pendingCheckIns = pendingFor(ATTENDANCE_CHECK_IN);
+  const pendingCheckOuts = pendingFor(ATTENDANCE_CHECK_OUT);
 
-  useEffect(() => {
-    const timer = window.setTimeout(() => { loadEmployees(); }, 0);
-    return () => window.clearTimeout(timer);
-  }, [loadEmployees]);
+  const employees = employeesQuery.rows;
+  const records = recordsQuery.rows;
 
-  useEffect(() => {
-    const timer = window.setTimeout(() => { loadRecords(1); }, 0);
-    return () => window.clearTimeout(timer);
-  }, [loadRecords]);
-
-  const handleCheckIn = async (empId: string) => {
-    try {
-      await attendanceApi.checkIn(empId);
-      message.success('Checked in');
-      loadRecords(page);
-    } catch (err) {
-      message.error(getApiError(err));
-    }
+  const employeeLabel = (item: OutboxItem) => {
+    const employee = employees.find((e) => e.id === item.targetId);
+    return employee ? `${employee.firstName} ${employee.lastName}` : null;
   };
 
-  const handleCheckOut = async (empId: string) => {
-    try {
-      await attendanceApi.checkOut(empId);
-      message.success('Checked out');
-      loadRecords(page);
-    } catch (err) {
-      message.error(getApiError(err));
+  const queueAttendance = async (employee: Employee, kind: string, verb: string) => {
+    if (!scope) {
+      message.error('Select a farm first.');
+      return;
     }
+
+    // The device's clock, captured now: the time the employee was at the gate, not the time the
+    // request reaches the server. 5.3's endpoint validates it against the same tolerance the
+    // live endpoint applies.
+    const occurredAt = new Date().toISOString();
+    const payload: AttendanceMutationPayload = { employeeId: employee.id, occurredAt };
+
+    const queued = await enqueueMutation<AttendanceMutationPayload>({
+      scope,
+      kind,
+      targetId: employee.id,
+      occurredAt,
+      payload,
+    });
+
+    if (!queued.item) {
+      // An attendance record that is not queued is one the server will never see, so this must
+      // fail loudly rather than look like a save — with the reason, which since 5.6 may be the
+      // device being full or the session being too old to deliver it.
+      message.error(queued.message ?? 'Nothing was recorded.');
+      return;
+    }
+
+    if (queued.warning) message.warning(queued.warning);
+
+    message.success(
+      isOnline
+        ? `${verb} ${employee.firstName}. Sending now.`
+        : `${verb} ${employee.firstName} on this device. It will sync when you are online.`,
+    );
+
+    void requestFlush();
   };
 
   const handleUpsert = async () => {
@@ -102,7 +186,7 @@ const AttendancePage: React.FC = () => {
       });
       message.success('Attendance recorded');
       setModalOpen(false);
-      loadRecords(page);
+      recordsQuery.refresh();
     } catch (err) {
       if ((err as { errorFields?: unknown }).errorFields) return;
       message.error(getApiError(err));
@@ -113,7 +197,7 @@ const AttendancePage: React.FC = () => {
     try {
       await attendanceApi.remove(id);
       message.success('Record deleted');
-      loadRecords(page);
+      recordsQuery.refresh();
     } catch (err) {
       message.error(getApiError(err));
     }
@@ -155,43 +239,120 @@ const AttendancePage: React.FC = () => {
 
   return (
     <div>
-      <Card title="Today's Attendance" style={{ marginBottom: 16 }}>
-        <Space wrap>
-          {employees.filter((e) => e.isActive).map((emp) => (
-            <Card key={emp.id} size="small" style={{ width: 200 }}>
-              <div style={{ marginBottom: 8 }}>{emp.firstName} {emp.lastName}</div>
-              <Space>
-                <Button size="small" type="primary" icon={<LoginOutlined />} onClick={() => handleCheckIn(emp.id)}>
-                  In
-                </Button>
-                <Button size="small" icon={<LogoutOutlined />} onClick={() => handleCheckOut(emp.id)}>
-                  Out
-                </Button>
-              </Space>
-            </Card>
-          ))}
-        </Space>
-      </Card>
+      <Space direction="vertical" size={16} style={{ width: '100%' }}>
+        {!isOnline && (
+          <Alert
+            type="warning"
+            showIcon
+            message="You are offline"
+            description="Check-in and check-out still work: they are stored on this device and sent when the connection is back."
+          />
+        )}
 
-      <Card
-        title="Attendance Records"
-        extra={
-          <Space>
-            <DatePicker.RangePicker value={dateRange} onChange={(v) => v && setDateRange(v)} />
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => { form.resetFields(); form.setFieldsValue({ date: dayjs(), status: 'Present' }); setModalOpen(true); }}>
-              Manual Entry
-            </Button>
+        {quarantined.length > 0 && (
+          <Alert
+            type="error"
+            showIcon
+            message={`${quarantined.length} attendance record${quarantined.length === 1 ? '' : 's'} could not be saved`}
+            description="The server refused them. Each message below says why — fix and retry, or dismiss."
+          />
+        )}
+
+        <Card title="Today's Attendance">
+          <Space wrap>
+            {employees.filter((e) => e.isActive).map((emp) => {
+              const pendingIn = pendingCheckIns.get(emp.id);
+              const pendingOut = pendingCheckOuts.get(emp.id);
+              return (
+                <Card key={emp.id} size="small" style={{ width: 220 }}>
+                  <div style={{ marginBottom: 8 }}>{emp.firstName} {emp.lastName}</div>
+                  {pendingIn && (
+                    <div style={{ marginBottom: 8 }}>
+                      <Tag color="blue">Check-in waiting to sync</Tag>
+                    </div>
+                  )}
+                  {pendingOut && (
+                    <div style={{ marginBottom: 8 }}>
+                      <Tag color="blue">Check-out waiting to sync</Tag>
+                    </div>
+                  )}
+                  <Space>
+                    <Button
+                      size="small"
+                      type="primary"
+                      icon={<LoginOutlined />}
+                      onClick={() => void queueAttendance(emp, ATTENDANCE_CHECK_IN, 'Checked in')}
+                    >
+                      In
+                    </Button>
+                    <Button
+                      size="small"
+                      icon={<LogoutOutlined />}
+                      onClick={() => void queueAttendance(emp, ATTENDANCE_CHECK_OUT, 'Checked out')}
+                    >
+                      Out
+                    </Button>
+                  </Space>
+                </Card>
+              );
+            })}
+            {employees.length === 0 && (
+              <Text type="secondary">
+                No employees are stored on this device yet. Open the employee list once while online.
+              </Text>
+            )}
           </Space>
-        }
-      >
-        <Table
-          rowKey="id"
-          columns={columns}
-          dataSource={records}
-          loading={loading}
-          pagination={{ current: page, total, pageSize: 10, onChange: loadRecords }}
-        />
-      </Card>
+
+          {employeesQuery.lastSyncedAt && (
+            <div style={{ marginTop: 12 }}>
+              <SyncAgeLabel lastSyncedAt={employeesQuery.lastSyncedAt} />
+            </div>
+          )}
+        </Card>
+
+        <Card
+          title="Attendance Records"
+          extra={
+            <Space>
+              <DatePicker.RangePicker value={dateRange} onChange={(v) => v && setDateRange(v)} />
+              <Button type="primary" icon={<PlusOutlined />} onClick={() => { form.resetFields(); form.setFieldsValue({ date: dayjs(), status: 'Present' }); setModalOpen(true); }}>
+                Manual Entry
+              </Button>
+            </Space>
+          }
+        >
+          {/* The freshness label describes these rows: a cached register must never look live. */}
+          {recordsQuery.lastSyncedAt && (
+            <div style={{ marginBottom: 8 }}>
+              <SyncAgeLabel lastSyncedAt={recordsQuery.lastSyncedAt} />
+            </div>
+          )}
+          <Table
+            rowKey="id"
+            columns={columns}
+            dataSource={records}
+            loading={recordsQuery.isLoading}
+            pagination={{ current: page, total: recordsQuery.total, pageSize: 10, onChange: setPage }}
+          />
+        </Card>
+
+        <Card
+          title="Recorded on this device"
+          extra={<Text type="secondary">Kept for a day after they sync.</Text>}
+        >
+          <OutboxTable
+            items={items}
+            targetLabel={employeeLabel}
+            loading={isFlushing}
+            emptyText="Check-ins and check-outs you record show up here until the server has them."
+          />
+          <div style={{ marginTop: 12 }}>
+            <Button disabled={items.length === 0} loading={isFlushing} onClick={() => void requestFlush({ force: true })}>
+              Sync now
+            </Button>
+          </div>
+        </Card>
+      </Space>
 
       <Modal title="Manual Attendance" open={modalOpen} onOk={handleUpsert} onCancel={() => setModalOpen(false)} destroyOnClose>
         <Form form={form} layout="vertical">

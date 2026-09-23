@@ -60,6 +60,8 @@ import AuditLogPage from './pages/admin/AuditLogPage';
 import JobsPage from './pages/admin/JobsPage';
 import NotificationsPage from './pages/NotificationsPage';
 import NotificationPreferencesPage from './pages/NotificationPreferencesPage';
+import RecordWeightPage from './pages/offline/RecordWeightPage';
+import SyncStatusPage from './pages/offline/SyncStatusPage';
 import ConfigurationPage from './pages/configuration/ConfigurationPage';
 
 const App: React.FC = () => {
@@ -105,6 +107,10 @@ const App: React.FC = () => {
             {/* Notifications */}
             <Route path="notifications" element={<NotificationsPage />} />
             <Route path="notifications/preferences" element={<NotificationPreferencesPage />} />
+
+            {/* Offline work: recording that works without a connection, and the queue it fills */}
+            <Route path="records/weight" element={<RecordWeightPage />} />
+            <Route path="sync" element={<SyncStatusPage />} />
 
             {/* HR */}
             <Route path="hr/employees" element={<EmployeesPage />} />

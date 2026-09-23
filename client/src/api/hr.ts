@@ -4,6 +4,7 @@ import type {
   Department,
   EmployeeRole,
   Employee,
+  DeltaResult,
   SalaryPayment,
   PayrollReport,
   PagedResult,
@@ -28,13 +29,19 @@ export interface EmployeeListFilter {
   departmentId?: string;
   employeeRoleId?: string;
   isActive?: boolean;
+  /**
+   * The server's cursor from the last read of this collection. Present means "only what changed
+   * since then, plus the ids of employees deleted since" (Phase 5.6) — a soft-deleted employee
+   * is reported as a tombstone and left out of `items`.
+   */
+  updatedSince?: string | null;
   page?: number;
   pageSize?: number;
 }
 
 export const employeesApi = {
   list: (filter: EmployeeListFilter) =>
-    api.get<PagedResult<Employee>>(farmUrl('/employees'), { params: filter }),
+    api.get<DeltaResult<Employee>>(farmUrl('/employees'), { params: filter }),
   get: (id: string) => api.get<Employee>(farmUrl(`/employees/${id}`)),
   create: (data: {
     firstName: string;

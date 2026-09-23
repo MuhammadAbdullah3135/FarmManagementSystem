@@ -14,7 +14,7 @@ public interface IAnimalService
     Task<Result> RemoveIdentificationAsync(Guid farmId, Guid animalId, Guid identificationId);
 
     Task<Result<PagedResult<WeightRecordDto>>> GetWeightsAsync(Guid farmId, Guid animalId, int page, int pageSize);
-    Task<Result<WeightRecordDto>> AddWeightAsync(Guid farmId, Guid animalId, CreateWeightRecordRequest request);
+    Task<Result<WeightRecordDto>> AddWeightAsync(Guid farmId, Guid animalId, CreateWeightRecordRequest request, Guid? mutationId = null);
     Task<Result<WeightRecordDto>> UpdateWeightAsync(Guid farmId, Guid animalId, Guid weightId, UpdateWeightRecordRequest request);
     Task<Result> DeleteWeightAsync(Guid farmId, Guid animalId, Guid weightId);
     Task<Result<WeightReportDto>> GetWeightReportAsync(Guid farmId, Guid animalId);

@@ -120,6 +120,9 @@ public class NotificationDispatcherTests
                 ? Task.FromException<Result<List<WeightCheckStatusDto>>>(UnavailableError())
                 : _inner.GetWeightCheckStatusAsync(farmId);
 
+        public Task<Result<DeltaResult<WeightCheckStatusDto>>> GetWeightCheckStatusAsync(Guid farmId, DateTime? updatedSince) =>
+            _inner.GetWeightCheckStatusAsync(farmId, updatedSince);
+
         public Task<Result<List<WeightCheckStatusDto>>> GetOverdueWeightChecksAsync(Guid farmId) =>
             Unavailable
                 ? Task.FromException<Result<List<WeightCheckStatusDto>>>(UnavailableError())

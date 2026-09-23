@@ -57,6 +57,22 @@ export interface PagedResult<T> {
   totalCount: number;
 }
 
+/**
+ * A page that can also answer "what changed since you last asked" (Phase 5.6).
+ *
+ * `deletedIds` is why this exists rather than a plain query filter: a row that was removed
+ * cannot be reported by returning it, and its absence is indistinguishable from "unchanged", so
+ * a device would keep showing it. `cursor` is the server's timestamp for this read — send it
+ * back as `updatedSince` next time rather than the device's own clock, which may be wrong by
+ * more than the interval between syncs. `requiresFullSync` means the cursor could not be
+ * answered precisely and the collection should be re-read in full.
+ */
+export interface DeltaResult<T> extends PagedResult<T> {
+  deletedIds: string[];
+  cursor: string;
+  requiresFullSync: boolean;
+}
+
 // General inventory
 export interface Customer {
   id: string;

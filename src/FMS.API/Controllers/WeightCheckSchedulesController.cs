@@ -54,10 +54,20 @@ public class WeightCheckSchedulesController : ControllerBase
 
     // ── Status ───────────────────────────────────────────
 
+    /// <summary>
+    /// The weight-check status projection for the farm.
+    ///
+    /// <para>
+    /// The response is the same envelope the other cached collections use (items, a cursor, and
+    /// the ids of rows deleted since) rather than the bare array it used to be: it is one of
+    /// the three lists a device caches, and it cannot be deltaed without a server-owned cursor
+    /// for the client to send back. Callers that want rows read <c>items</c>.
+    /// </para>
+    /// </summary>
     [HttpGet("status")]
-    public async Task<IActionResult> GetWeightCheckStatus(Guid farmId)
+    public async Task<IActionResult> GetWeightCheckStatus(Guid farmId, [FromQuery] DateTime? updatedSince = null)
     {
-        var result = await _service.GetWeightCheckStatusAsync(farmId);
+        var result = await _service.GetWeightCheckStatusAsync(farmId, updatedSince);
         return MapResult(result);
     }
 

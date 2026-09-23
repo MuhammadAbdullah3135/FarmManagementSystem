@@ -14,6 +14,13 @@ public class WeightRecordConfiguration : IEntityTypeConfiguration<WeightRecord>
 
         builder.HasIndex(w => new { w.AnimalId, w.RecordedAt });
 
+        // Idempotency: one applied mutation per farm, ever. Filtered, because the column is
+        // null for every live recording — PostgreSQL tolerates repeated nulls under a unique
+        // index, SQL Server does not, and the filter says out loud that nulls are not keys.
+        builder.HasIndex(w => new { w.FarmId, w.ClientMutationId })
+            .IsUnique()
+            .HasFilter("\"ClientMutationId\" IS NOT NULL");
+
         builder.HasOne(w => w.Animal)
             .WithMany(a => a.WeightRecords)
             .HasForeignKey(w => w.AnimalId)
