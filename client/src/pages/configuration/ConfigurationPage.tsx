@@ -10,6 +10,7 @@ import type {
 } from '../../api/configuration';
 import { getApiError } from '../../api/farmApi';
 import LookupQuickAddSelect from '../../components/LookupQuickAddSelect';
+import { DirectionalGlyph } from '../../i18n/DirectionalIcon';
 import { useTranslation } from 'react-i18next';
 
 type ModalType =
@@ -298,8 +299,12 @@ const ConfigurationPage: React.FC = () => {const { t: translate } = useTranslati
     {
       title: translate('name'), dataIndex: 'name',
       render: (name: string, r) => (
-        <span style={{ paddingLeft: r.depth * 20 }}>
-          {r.depth > 0 && <span style={{ color: '#999' }}>↳ </span>}
+        <span style={{ paddingInlineStart: r.depth * 20 }}>
+          {r.depth > 0 && (
+            <span style={{ color: '#999' }}>
+              <DirectionalGlyph mark="tree-branch" />{' '}
+            </span>
+          )}
           {name}
         </span>
       ),

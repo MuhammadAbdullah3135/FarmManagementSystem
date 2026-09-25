@@ -2,7 +2,8 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   Alert, Button, Card, Space, Switch, Table, Tag, Typography, message,
 } from 'antd';
-import { ArrowLeftOutlined, SaveOutlined } from '@ant-design/icons';
+import { SaveOutlined } from '@ant-design/icons';
+import { DirectionalIcon } from '../i18n/DirectionalIcon';
 import type { ColumnsType } from 'antd/es/table';
 import { useNavigate } from 'react-router-dom';
 import { notificationsApi } from '../api/notifications';
@@ -120,7 +121,7 @@ const NotificationPreferencesPage: React.FC = () => {const { t } = useTranslatio
           </Paragraph>
         </div>
         <Space>
-          <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/dashboard/notifications')}>
+          <Button icon={<DirectionalIcon role="back" />} onClick={() => navigate('/dashboard/notifications')}>
             {t('back')}
           </Button>
           <Button

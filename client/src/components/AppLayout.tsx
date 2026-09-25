@@ -4,7 +4,6 @@ import { Layout, Menu, Typography, Dropdown, Avatar, Badge, Button, Drawer, Resu
 import {
   DashboardOutlined,
   SwapOutlined,
-  LogoutOutlined,
   UserOutlined,
   MedicineBoxOutlined,
   TeamOutlined,
@@ -46,6 +45,7 @@ import type { MenuProps } from 'antd';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { changeLocale } from '../i18n';
+import { DirectionalIcon, startSide, useDirection } from '../i18n/DirectionalIcon';
 import { LOCALE_LABELS, SUPPORTED_LOCALES, type Locale } from '../i18n/locale';
 import { refreshAccountLocale, saveAccountLocale } from '../i18n/localeSync';
 
@@ -244,7 +244,10 @@ const farmIndependentPaths = [
 const isFarmIndependent = (pathname: string) =>
   farmIndependentPaths.some(
     (path) => pathname === path || pathname.startsWith(`${path}/`),
-  );  const AppLayout: React.FC = () => {const { t, i18n } = useTranslation('common');  
+  );  const AppLayout: React.FC = () => {const { t, i18n } = useTranslation('common');
+  // The reading direction of the active language, for the few places antd cannot mirror
+  // itself (see i18n/DirectionalIcon).
+  const direction = useDirection();  
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuthStore();
@@ -491,7 +494,9 @@ const isFarmIndependent = (pathname: string) =>
     },
     {
       key: 'logout',
-      icon: <LogoutOutlined />,
+      // Mirrored in Arabic: "sign out" is an arrow leaving a doorway, and which way it
+      // leaves is read from the side the language starts on (see i18n/DirectionalIcon).
+      icon: <DirectionalIcon role="leave" />,
       label: t('logout'),
       onClick: handleLogout,
     },
@@ -510,7 +515,9 @@ const isFarmIndependent = (pathname: string) =>
             icon={<CloseOutlined />}
             onClick={onClose}
             aria-label={t('closeMenu')}
-            style={{ color: '#fff', marginLeft: 'auto' }}
+            // `inline-start` rather than `left`: the close button sits at the trailing edge
+            // of the drawer header, which is the right-hand side in Arabic.
+            style={{ color: '#fff', marginInlineStart: 'auto' }}
           />
         )}
       </div>
@@ -650,7 +657,10 @@ const isFarmIndependent = (pathname: string) =>
       </Layout>
 
       <Drawer
-        placement="left"
+        // The nav drawer slides in from the edge the language starts on: left in English,
+        // right in Arabic. antd's drawer positions itself with physical `left`/`right`, so
+        // the side is chosen here rather than left to the `direction` prop.
+        placement={startSide(direction)}
         open={mobileMenuOpen}
         onClose={() => setMobileMenuOpen(false)}
         size={240}

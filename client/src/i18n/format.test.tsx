@@ -9,6 +9,7 @@ import {
   formatMoney,
   formatNumber,
   formatPercent,
+  formatTime,
   localeTag,
   useFormat,
 } from './format';
@@ -40,10 +41,21 @@ describe('dates', () => {
     expect(formatDateLong('2026-08-03T00:00:00Z', 'es')).toContain('ago');
   });
 
+  it('writes Arabic dates day-first, with an Arabic month name', () => {
+    // `<day>/<month>/<year>` with Latin digits, the same numerals a farm types into a tag
+    // number, and the month named in Arabic — see `localeTag` for why the digits stay 0-9.
+    expect(formatDate('2026-09-24T10:00:00Z', 'ar')).toBe('24/09/2026');
+    expect(formatDateTime('2026-09-24T14:05:00Z', 'ar')).toBe('24/09/2026 14:05');
+    expect(formatDateLong('2026-08-03T00:00:00Z', 'ar')).toContain('أغسطس');
+    expect(formatDateLong('2026-08-03T00:00:00Z', 'ar')).toContain('2026');
+    expect(formatTime('2026-09-24T14:05:00Z', 'ar')).toBe('14:05');
+  });
+
   it('renders an empty string for a missing date rather than "Invalid Date"', () => {
     expect(formatDate(null, 'es')).toBe('');
     expect(formatDate('not a date', 'es')).toBe('');
     expect(formatDate(undefined, 'en')).toBe('');
+    expect(formatDate(null, 'ar')).toBe('');
   });
 });
 
@@ -79,14 +91,31 @@ describe('numbers', () => {
   it('uses the locale tag the language maps to', () => {
     expect(localeTag('en')).toBe('en-US');
     expect(localeTag('es')).toBe('es-ES');
+    // `ar-EG` for the region's conventions and its month names; `u-nu-latn` because the
+    // numbers must stay comparable character by character with the paper they came from.
+    expect(localeTag('ar')).toBe('ar-EG-u-nu-latn');
+  });
+
+  it('keeps Arabic numerals in Latin digits, which is the decision `localeTag` records', () => {
+    const arabic = formatNumber(43016.5, 'ar');
+
+    expect(arabic).toBe('43,016.5');
+    // Arabic-Indic numerals (٤٣٬٠١٦٫٥) would be the same number in a different script; the
+    // assertion is that no digit ever leaves 0-9, so a weight or an amount can be compared
+    // with the sheet it was copied from.
+    expect(/[0-9]/.test(arabic)).toBe(true);
+    expect(/[\u0660-\u0669]/.test(arabic)).toBe(false);
   });
 });
 
 describe('money', () => {
   it('never changes the currency symbol — only the separators', () => {
-    // The decision, stated as a test: `$` in, `$` out, in front, in both languages.
+    // The decision, stated as a test: `$` in, `$` out, in front, in every language.
     expect(formatMoney(1234.57, 'en')).toBe('$1,234.57');
     expect(formatMoney(1234.57, 'es')).toBe('$1234,57');
+    // Arabic lands on the English separators because its tag carries `u-nu-latn` — a bare
+    // `$` in front of a number whose separators follow the same script as the digits.
+    expect(formatMoney(1234.57, 'ar')).toBe('$1,234.57');
     // The separator really does localise, so the assertion above is not passing by luck:
     // five digits and up, Spanish groups with a full stop.
     expect(formatMoney(43016, 'es')).toBe('$43.016,00');
@@ -110,6 +139,7 @@ describe('useFormat', () => {
       <div>
         <span data-testid="money">{format.money(1234.57)}</span>
         <span data-testid="date">{format.date('2026-09-24T10:00:00Z')}</span>
+        <span data-testid="direction">{format.direction}</span>
       </div>
     );
   };
@@ -122,10 +152,22 @@ describe('useFormat', () => {
     expect(screen.getByTestId('date').textContent).toBe('24/09/2026');
   });
 
+  it('binds to Arabic too, rather than falling back to English', async () => {
+    // The bug this pins: the hook used to resolve the locale with
+    // `language === 'es' ? 'es' : 'en'`, so every Arabic date and amount was formatted with
+    // English rules — a chart tooltip reading `2026-09-24` inside an otherwise Arabic page.
+    await i18n.changeLanguage('ar');
+    render(<Probe />);
+
+    expect(screen.getByTestId('date').textContent).toBe('24/09/2026');
+    expect(screen.getByTestId('direction').textContent).toBe('rtl');
+  });
+
   it('renders the English forms while English is active', () => {
     render(<Probe />);
 
     expect(screen.getByTestId('money').textContent).toBe('$1,234.57');
     expect(screen.getByTestId('date').textContent).toBe('2026-09-24');
+    expect(screen.getByTestId('direction').textContent).toBe('ltr');
   });
 });

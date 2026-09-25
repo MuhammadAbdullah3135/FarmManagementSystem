@@ -22,7 +22,7 @@ public static class SupportedLocales
     /// <summary>Used when a user has never chosen, and by the client's own fallback.</summary>
     public const string Default = "en";
 
-    public static readonly IReadOnlyList<string> All = new[] { "en", "es" };
+    public static readonly IReadOnlyList<string> All = new[] { "en", "es", "ar" };
 
     /// <summary>Longest value we will store, so an abandoned column can never hold a blob.</summary>
     public const int MaxLength = 20;
@@ -33,16 +33,23 @@ public static class SupportedLocales
     /// <summary>
     /// The stored form of <paramref name="locale"/>, or null when it is not one we ship.
     ///
-    /// Deliberately strict: an unknown tag is a null (leave the choice alone), never a
-    /// fall back to English, because silently overwriting a Spanish user's preference with
-    /// English is worse than keeping what is already stored.
+    /// A region or script tag is reduced to the language it names first — `AR`, `ar-EG` and
+    /// `ar-EG-u-nu-latn` are all Arabic — which is the same rule the client applies in
+    /// `normalizeLocale`. Without it, a browser reporting `ar-EG` would be refused while the
+    /// client cheerfully treats it as Arabic, so the two halves would disagree about what a
+    /// supported language is.
+    ///
+    /// Deliberately strict about the *language*: an unknown one is a null (leave the choice
+    /// alone), never a fall back to English, because silently overwriting a Spanish user's
+    /// preference with English is worse than keeping what is already stored.
     /// </summary>
     public static string? Normalize(string? locale)
     {
         if (string.IsNullOrWhiteSpace(locale)) return null;
         var trimmed = locale.Trim();
-        return IsSupported(trimmed)
-            ? All.First(l => string.Equals(l, trimmed, StringComparison.OrdinalIgnoreCase))
+        var baseLanguage = trimmed.Split('-', '_')[0];
+        return IsSupported(baseLanguage)
+            ? All.First(l => string.Equals(l, baseLanguage, StringComparison.OrdinalIgnoreCase))
             : null;
     }
 }

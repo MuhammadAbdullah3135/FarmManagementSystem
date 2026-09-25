@@ -47,6 +47,45 @@ export const MAX_ALLOWLIST_ENTRIES = 30;
 /** The shortest reason that describes something rather than restating the value. */
 export const MIN_ALLOWLIST_REASON = 25;
 
+/**
+ * i18next's plural suffixes. A key ending in one of these is a *form* of the key without it.
+ *
+ * The distinction matters because a language is not required to have the same number of
+ * plural forms as English. Arabic has six (zero, one, two, few, many, other) where English
+ * has two, so `intervalDays_one … intervalDays_zero` in Arabic is not six extra keys — it is
+ * the one English `intervalDays` said six ways. Without this, every plural in a richer
+ * language would be reported as a missing key *and* six strays.
+ */
+export const PLURAL_SUFFIXES = ['zero', 'one', 'two', 'few', 'many', 'other', 'plural'];
+
+/** `intervalDays_few` → `intervalDays`. Anything else is returned unchanged. */
+export const logicalKey = (key) => {
+  const cut = key.lastIndexOf('_');
+  if (cut === -1) return key;
+  return PLURAL_SUFFIXES.includes(key.slice(cut + 1)) ? key.slice(0, cut) : key;
+};
+
+export const isPluralVariant = (key) => logicalKey(key) !== key;
+
+/**
+ * The plural categories a language actually selects from, straight from ICU.
+ *
+ * Not a hard-coded table, because the point of the rule that uses it is to catch a *missing*
+ * form, and the only honest source for "how many forms does Arabic need" is the same data
+ * i18next resolves counts against: English needs two (`one`, `other`), Arabic six, Polish
+ * four. `resolvedOptions().pluralCategories` is where V8 reports them; the sample-based
+ * fallback exists so a runtime without it degrades to a real answer rather than to none.
+ */
+export function pluralCategories(locale) {
+  const rules = new Intl.PluralRules(locale);
+  const reported = rules.resolvedOptions?.().pluralCategories;
+  if (Array.isArray(reported) && reported.length > 0) return [...reported];
+
+  const found = new Set();
+  for (const value of [0, 1, 2, 3, 6, 11, 40, 100, 1000]) found.add(rules.select(value));
+  return [...found];
+}
+
 /** Flattens `{ a: { b: 'x' } }` into `{ 'a.b': 'x' }`, the form keys are looked up in. */
 export function flatten(value, prefix = '') {
   const out = {};
@@ -91,6 +130,53 @@ export function placeholders(value) {
 const isBlank = (value) => typeof value !== 'string' || value.trim() === '';
 
 /**
+ * Checks one translated value against its English source, pushing anything wrong.
+ *
+ * `plural` relaxes the placeholder rule from equality to *subset*: a plural form may drop
+ * `{{count}}` when the language's own form carries the number — Arabic's dual "يومان" is
+ * "two days" with no numeral in it — but it may never introduce a placeholder English does
+ * not have, which is what a renamed `{{count}}` would look like.
+ */
+function checkValue({ issues, identical, id, english, translated, plural }) {
+  if (isBlank(translated)) {
+    issues.push({ kind: 'empty-value', key: id, detail: 'blank or not a string' });
+    return;
+  }
+
+  const base = placeholders(english);
+  const other = placeholders(translated);
+  const baseJoined = base.join(',');
+  const otherJoined = other.join(',');
+  if (plural) {
+    if (!other.every((name) => base.includes(name))) {
+      issues.push({
+        kind: 'placeholder-drift',
+        key: id,
+        detail: `English [${baseJoined}] vs [${otherJoined}] — a plural form may drop a placeholder, not add one`,
+      });
+    }
+  } else if (baseJoined !== otherJoined) {
+    issues.push({
+      kind: 'placeholder-drift',
+      key: id,
+      detail: `English [${baseJoined}] vs [${otherJoined}]`,
+    });
+  }
+
+  const baseLines = String(english).split('\n').length;
+  const otherLines = String(translated).split('\n').length;
+  if (baseLines !== otherLines) {
+    issues.push({
+      kind: 'line-break-drift',
+      key: id,
+      detail: `${baseLines} line(s) in English vs ${otherLines}`,
+    });
+  }
+
+  if (translated === english) identical.push(id);
+}
+
+/**
  * Compares one locale against English. Pure — no file access — so the rules it enforces
  * can be tested with fixtures instead of by editing the real resources.
  *
@@ -98,7 +184,7 @@ const isBlank = (value) => typeof value !== 'string' || value.trim() === '';
  * prints, so a report can state "1327/1327 keys have a Spanish value" rather than "the
  * check passed".
  */
-export function compareBundles(base, other) {
+export function compareBundles(base, other, { locale = BASE_LOCALE } = {}) {
   const issues = [];
   let checked = 0;
   const identical = [];
@@ -124,47 +210,84 @@ export function compareBundles(base, other) {
 
     const baseKeys = base[namespace] ?? {};
     const otherKeys = other[namespace] ?? {};
+    const baseLogical = new Set(Object.keys(baseKeys).map(logicalKey));
+
+    // Every translation of one logical key, so a base key can be satisfied by a language's
+    // own plural forms rather than only by a key spelled exactly like the English one.
+    const otherByLogical = new Map();
+    for (const key of Object.keys(otherKeys)) {
+      const bucket = otherByLogical.get(logicalKey(key)) ?? [];
+      bucket.push(key);
+      otherByLogical.set(logicalKey(key), bucket);
+    }
 
     for (const key of Object.keys(baseKeys).sort()) {
       const id = `${namespace}:${key}`;
       checked += 1;
 
-      if (!(key in otherKeys)) {
-        issues.push({ kind: 'missing-key', key: id, detail: `English has ${JSON.stringify(baseKeys[key])}` });
+      if (key in otherKeys) {
+        checkValue({
+          issues,
+          identical,
+          id,
+          english: baseKeys[key],
+          translated: otherKeys[key],
+          plural: isPluralVariant(key),
+        });
         continue;
       }
 
-      const translated = otherKeys[key];
-      if (isBlank(translated)) {
-        issues.push({ kind: 'empty-value', key: id, detail: 'blank or not a string' });
+      const forms = otherByLogical.get(logicalKey(key)) ?? [];
+      if (forms.length > 0) {
+        // `_other` is i18next's guaranteed fallback inside a language, so a language that
+        // supplies plural forms must supply it; without it a count with no matching form
+        // silently falls through to English. Reported on its own, because when `_other` is
+        // missing that is the one fact worth acting on.
+        if (!forms.some((form) => form === `${logicalKey(key)}_other`)) {
+          issues.push({
+            kind: 'plural-forms-without-other',
+            key: `${namespace}:${logicalKey(key)}`,
+            detail: `English is a single string; this locale supplies ${forms.join(', ')} but no _other form`,
+          });
+          continue;
+        }
+
+        // Having opted into plural forms, the locale must carry *every* form its own rules
+        // select from. This is the rule that catches a translation losing one: Arabic without
+        // `_many` still renders, because i18next falls back to `_other`, so nothing else in
+        // this file or on screen would ever notice — the Arabic for 40 would simply read like
+        // the Arabic for 100.
+        const baseName = logicalKey(key);
+        const missingForms = pluralCategories(locale)
+          .map((category) => `${baseName}_${category}`)
+          .filter((form) => !(form in otherKeys));
+        if (missingForms.length > 0) {
+          issues.push({
+            kind: 'missing-plural-form',
+            key: `${namespace}:${baseName}`,
+            detail: `${locale} selects ${pluralCategories(locale).join(', ')}; no value for ${missingForms.join(', ')}`,
+          });
+        }
+
+        for (const form of forms.sort()) {
+          checkValue({
+            issues,
+            identical,
+            id: `${namespace}:${form}`,
+            english: baseKeys[key],
+            translated: otherKeys[form],
+            plural: true,
+          });
+        }
         continue;
       }
 
-      const basePlaceholders = placeholders(baseKeys[key]).join(',');
-      const otherPlaceholders = placeholders(translated).join(',');
-      if (basePlaceholders !== otherPlaceholders) {
-        issues.push({
-          kind: 'placeholder-drift',
-          key: id,
-          detail: `English [${basePlaceholders}] vs [${otherPlaceholders}]`,
-        });
-      }
-
-      const baseLines = String(baseKeys[key]).split('\n').length;
-      const otherLines = String(translated).split('\n').length;
-      if (baseLines !== otherLines) {
-        issues.push({
-          kind: 'line-break-drift',
-          key: id,
-          detail: `${baseLines} line(s) in English vs ${otherLines}`,
-        });
-      }
-
-      if (translated === baseKeys[key]) identical.push(id);
+      issues.push({ kind: 'missing-key', key: id, detail: `English has ${JSON.stringify(baseKeys[key])}` });
     }
 
     for (const key of Object.keys(otherKeys).sort()) {
-      if (!(key in baseKeys)) {
+      // A plural form is extra only when English has no key of that base name at all.
+      if (!(key in baseKeys) && !baseLogical.has(logicalKey(key))) {
         issues.push({ kind: 'extra-key', key: `${namespace}:${key}`, detail: 'no English key of that name' });
       }
     }
@@ -185,13 +308,17 @@ export function readAllowlist(file = ALLOWLIST_FILE) {
  * allowlist's own hygiene — an entry must exist in English, must still be identical
  * (otherwise it is stale and hiding nothing), and must carry a real reason.
  */
-export function evaluate(report, allowlist, { maxEntries = MAX_ALLOWLIST_ENTRIES } = {}) {
+export function evaluate(report, allowlist, { maxEntries = MAX_ALLOWLIST_ENTRIES, locale } = {}) {
   const failures = [...report.issues];
 
-  const allowance = allowlist.byKey ?? new Map(allowlist.entries.map((e) => [e.key, e]));
-  const entries = allowlist.entries ?? [...allowance.values()];
+  const allEntries = allowlist.entries ?? [];
+  // An entry may be restricted to the locales it was reviewed for (`"locales": ["es"]`).
+  // "Total" is a genuine cognate in Spanish and a translated word in Arabic, so a single
+  // global list would either hide a real Arabic gap or fail on a Spanish one that is right.
+  const entries = locale ? allEntries.filter((e) => !e.locales || e.locales.includes(locale)) : allEntries;
+  const allowance = new Map(entries.map((e) => [e.key, e]));
 
-  for (const [index, entry] of entries.entries()) {
+  for (const [index, entry] of allEntries.entries()) {
     const reason = typeof entry.reason === 'string' ? entry.reason.trim() : '';
     if (reason.length < MIN_ALLOWLIST_REASON) {
       failures.push({
@@ -202,10 +329,10 @@ export function evaluate(report, allowlist, { maxEntries = MAX_ALLOWLIST_ENTRIES
     }
   }
 
-  if (entries.length > maxEntries) {
+  if (allEntries.length > maxEntries) {
     failures.push({
       kind: 'allowlist-too-large',
-      key: `${entries.length} entries`,
+      key: `${allEntries.length} entries`,
       detail: `at most ${maxEntries}; growth here is how "untranslated" starts passing`,
     });
   }
@@ -238,8 +365,8 @@ export function runCheck({ dir = LOCALES_DIR } = {}) {
   const allowlist = readAllowlist(path.join(dir, 'untranslated-allowlist.json'));
 
   const locales = readLocaleDirs(dir).map((locale) => {
-    const report = compareBundles(base, loadLocaleBundles(locale, path.join(dir, locale)));
-    const { failures, allowed } = evaluate(report, allowlist);
+    const report = compareBundles(base, loadLocaleBundles(locale, path.join(dir, locale)), { locale });
+    const { failures, allowed } = evaluate(report, allowlist, { locale });
     return { locale, checked: report.checked, identical: report.identical.length, allowed, failures };
   });
 

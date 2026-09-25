@@ -315,7 +315,7 @@ export default function BirthRecordingPage() {const { t } = useTranslation('bree
                   <span>
                     {t('offspring2')}{index + 1}
                     {selectedDamTag && (
-                      <Tag style={{ marginLeft: 8 }} color="blue">
+                      <Tag style={{ marginInlineStart: 8 }} color="blue">
                         {t('tag')} {selectedDamTag}-{index + 1}
                       </Tag>
                     )}

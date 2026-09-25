@@ -1,14 +1,19 @@
 import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { ConfigProvider } from 'antd';
-import enUS from 'antd/locale/en_US';
+import { ConfigProvider } from 'antd';import enUS from 'antd/locale/en_US';
 import esES from 'antd/locale/es_ES';
+import arEG from 'antd/locale/ar_EG';
 import dayjs from 'dayjs';
 // Registers the Spanish month and day names with dayjs. Without this import
 // `dayjs.locale('es')` is a no-op and dates keep their English month abbreviations
 // ("3 Aug 2026") inside otherwise-Spanish screens.
 import 'dayjs/locale/es';
+// Same for Arabic: `dayjs.locale('ar')` needs the bundle registered first.
+import 'dayjs/locale/ar';
 import { useTranslation } from 'react-i18next';
+// The direction of a language is decided in one place (`RTL_LOCALES`), so adding a language
+// never means hunting for `=== 'ar'` comparisons.
+import { DEFAULT_LOCALE, applyDocumentLocale, directionOf, normalizeLocale } from './i18n/locale';
 import ErrorBoundary from './components/ErrorBoundary';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
@@ -76,27 +81,33 @@ import SyncStatusPage from './pages/offline/SyncStatusPage';
 import ConfigurationPage from './pages/configuration/ConfigurationPage';
 import DataExportPage from './pages/configuration/DataExportPage';
 
-const ANTD_LOCALES = { en: enUS, es: esES } as const;
+const ANTD_LOCALES = { en: enUS, es: esES, ar: arEG } as const;
 
 const App: React.FC = () => {
   // Subscribing here is what makes a language change reach the parts of antd the
   // resources do not cover: its pagination, date pickers and the `Select` empty text
   // come from `ConfigProvider locale`, not from i18next.
   const { i18n } = useTranslation();
-  const language = i18n.language.split('-')[0];
-  const locale = language === 'es' ? 'es' : 'en';
+  const locale = normalizeLocale(i18n.language) ?? DEFAULT_LOCALE;
+  // RTL is a property of the language, not a per-screen decision, so it is derived once here
+  // and handed to antd, which mirrors its own components from this prop alone (it does not
+  // read a `[dir]` attribute). The document attribute is set in the effect below, for the
+  // parts CSS owns: scrollbars, text selection, form controls.
+  const direction = directionOf(locale);
 
   // dayjs is a separate global from i18next and from antd's own locale bundle, so it is
   // set here rather than in `i18n/index.ts` — this component is the one thing that
   // re-renders on a language change and owns the provider the whole tree sits in.
   useEffect(() => {
     dayjs.locale(locale);
+    applyDocumentLocale(locale);
   }, [locale]);
 
   return (
     <ErrorBoundary>
       <ConfigProvider
       locale={ANTD_LOCALES[locale]}
+      direction={direction}
       theme={{
         token: {
           colorPrimary: '#1677ff',

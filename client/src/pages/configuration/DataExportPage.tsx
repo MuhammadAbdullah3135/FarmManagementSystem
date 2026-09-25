@@ -285,7 +285,7 @@ const DataExportPage: React.FC = () => {const { t } = useTranslation('configurat
           </Card>
 
           <Card title={t('notIncluded')} style={{ marginBottom: 16 }}>
-            <ul style={{ margin: 0, paddingLeft: 18 }}>
+            <ul style={{ margin: 0, paddingInlineStart: 18 }}>
               {manifest.excludedEntities.map((exclusion) => (
                 <li key={exclusion.entity}>
                   <Text strong>{exclusion.entity}</Text> — {exclusion.reason}
@@ -295,7 +295,7 @@ const DataExportPage: React.FC = () => {const { t } = useTranslation('configurat
           </Card>
 
           <Card title={t('pleaseNote')}>
-            <ul style={{ margin: 0, paddingLeft: 18 }}>
+            <ul style={{ margin: 0, paddingInlineStart: 18 }}>
               {manifest.notes.map((note) => (
                 <li key={note}>{note}</li>
               ))}

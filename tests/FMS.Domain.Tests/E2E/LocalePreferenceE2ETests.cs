@@ -135,18 +135,59 @@ public class LocalePreferenceE2ETests : IDisposable
         Assert.Equal("es", stored);
     }
 
-    [Fact]
-    public async Task A_region_tag_is_kept_as_the_language_it_names()
+    [Theory]
+    [InlineData("ES", "es")]
+    [InlineData("es", "es")]
+    // 7.3's Arabic, in the tags a browser actually reports: a bare language, a region, and
+    // the client's own formatting tag. All three name Arabic; storing the base language is
+    // what lets an account's choice match what the client can render.
+    [InlineData("ar", "ar")]
+    [InlineData("ar-EG", "ar")]
+    [InlineData("ar-EG-u-nu-latn", "ar")]
+    [InlineData("AR_eg", "ar")]
+    public async Task A_region_tag_is_kept_as_the_language_it_names(string sent, string expected)
     {
         var device = SignedInDevice();
 
-        // `ES` and a region-qualified tag both mean Spanish; storing the base language is what
-        // lets one account's choice match what the client can render.
-        Assert.Equal("es", (await (await device.PutAsJsonAsync("/api/auth/me/locale", new { locale = "ES" }))
+        var response = await device.PutAsJsonAsync("/api/auth/me/locale", new { locale = sent });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(expected, (await response.Content.ReadFromJsonAsync<LocaleBody>())!.Locale);
+
+        // And it is what a second device is told, which is the only reason to store it.
+        var body = await (await SignInAsync(NewDevice())).Content.ReadFromJsonAsync<LoginBody>();
+        Assert.Equal(expected, body!.Locale);
+    }
+
+    [Fact]
+    public async Task Every_language_the_client_ships_is_one_the_server_will_store()
+    {
+        // The hand-kept pair this guards: `SupportedLocales.All` and the client's resource
+        // directories. A language stored here that the client cannot render is a page that
+        // silently falls back to English for the rest of the account's life.
+        var device = SignedInDevice();
+
+        foreach (var locale in FMS.Application.Common.SupportedLocales.All)
+        {
+            var saved = await device.PutAsJsonAsync("/api/auth/me/locale", new { locale });
+
+            Assert.Equal(HttpStatusCode.OK, saved.StatusCode);
+            Assert.Equal(locale, (await saved.Content.ReadFromJsonAsync<LocaleBody>())!.Locale);
+        }
+    }
+
+    [Fact]
+    public async Task Arabic_chosen_on_one_device_follows_the_account_like_any_other_language()
+    {
+        var deviceA = SignedInDevice();
+        Assert.Equal("ar", (await (await deviceA.PutAsJsonAsync("/api/auth/me/locale", new { locale = "ar" }))
             .Content.ReadFromJsonAsync<LocaleBody>())!.Locale);
 
-        Assert.Equal("es", (await (await device.PutAsJsonAsync("/api/auth/me/locale", new { locale = "es" }))
-            .Content.ReadFromJsonAsync<LocaleBody>())!.Locale);
+        // Device B signs in with no local storage of its own and must be told Arabic — which
+        // is also what makes the client set `dir="rtl"` on its first paint rather than after
+        // a re-render.
+        var body = await (await SignInAsync(NewDevice())).Content.ReadFromJsonAsync<LoginBody>();
+        Assert.Equal("ar", body!.Locale);
     }
 
     [Fact]

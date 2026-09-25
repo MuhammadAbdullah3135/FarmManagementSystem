@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, Descriptions, Tag, Tabs, Table, Button, Space, Spin, Typography, message, Breadcrumb, Empty } from 'antd';
-import { ArrowLeftOutlined } from '@ant-design/icons';
+import { DirectionalIcon } from '../../i18n/DirectionalIcon';
 import { animalsApi, type WeightRecord } from '../../api/animals';
 import { weightCheckStatusApi } from '../../api/health';
 import { breedingRecordsApi } from '../../api/breeding';
@@ -411,7 +411,7 @@ export default function AnimalDetailPage() {const { t } = useTranslation('animal
       <Card
         title={`${animal.tagNumber}${animal.name ? ` - ${animal.name}` : ''}`}
         extra={
-          <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/dashboard/animals')}>
+          <Button icon={<DirectionalIcon role="back" />} onClick={() => navigate('/dashboard/animals')}>
             {t('back')}
           </Button>
         }

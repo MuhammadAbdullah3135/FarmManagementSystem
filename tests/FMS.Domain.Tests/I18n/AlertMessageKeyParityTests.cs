@@ -12,8 +12,14 @@ namespace FMS.Domain.Tests.I18n;
 /// server states *what* happened (`notifications.alertOverdueVaccinationTitle`) and the client
 /// decides *how* to say it; a typo, or a key added on one side only, therefore does not throw —
 /// the client silently falls back to the English text the server also sent. Silent English in a
-/// Spanish UI is exactly the failure this subphase exists to remove, so it is asserted here
-/// instead: for every alert template the server can emit, the key exists in *both* bundles.
+/// translated UI is exactly the failure this subphase exists to remove, so it is asserted here
+/// instead: for every alert template the server can emit, the key exists in *every* bundle.
+/// </para>
+///
+/// <para>
+/// Every locale the client ships, discovered from the resource directory rather than listed
+/// here: 7.3 added Arabic, and a hand-written list would have gone on checking Spanish while
+/// the Arabic bundle was the one missing keys.
 /// </para>
 ///
 /// <para>
@@ -62,14 +68,29 @@ public class AlertMessageKeyParityTests
             .OrderBy(value => value, StringComparer.Ordinal)
             .ToList();
 
+    /// <summary>
+    /// Every locale directory the client ships apart from English, in a stable order.
+    /// </summary>
+    private static List<string> TranslatedLocales()
+    {
+        var root = LocalesDirectory();
+        var locales = Directory.GetDirectories(root)
+            .Select(Path.GetFileName)
+            .Where(name => !string.IsNullOrEmpty(name) && name != "en")
+            .OrderBy(name => name, StringComparer.Ordinal)
+            .ToList();
+
+        Assert.NotEmpty(locales);
+        return locales!;
+    }
+
     [Fact]
-    public void Every_alert_template_key_exists_in_both_client_bundles()
+    public void Every_alert_template_key_exists_in_every_client_bundle()
     {
         var keys = DeclaredKeys(typeof(AlertMessageKeys));
         Assert.NotEmpty(keys);
 
         var english = Bundle("en", "notifications");
-        var spanish = Bundle("es", "notifications");
 
         foreach (var key in keys)
         {
@@ -79,13 +100,18 @@ public class AlertMessageKeyParityTests
             Assert.Equal("notifications", namespaceName);
 
             Assert.True(english.ContainsKey(path), $"{key} is missing from en/notifications.json");
-            Assert.True(spanish.ContainsKey(path), $"{key} is missing from es/notifications.json");
-            Assert.False(string.IsNullOrWhiteSpace(spanish[path]), $"{key} is blank in Spanish");
+
+            foreach (var locale in TranslatedLocales())
+            {
+                var bundle = Bundle(locale, "notifications");
+                Assert.True(bundle.ContainsKey(path), $"{key} is missing from {locale}/notifications.json");
+                Assert.False(string.IsNullOrWhiteSpace(bundle[path]), $"{key} is blank in {locale}");
+            }
         }
     }
 
     [Fact]
-    public void Every_alert_type_the_server_stores_has_a_label_key_in_both_bundles()
+    public void Every_alert_type_the_server_stores_has_a_label_key_in_every_bundle()
     {
         // The client translates an alert's *type* through its own vocabulary table, keyed by the
         // value the server stores (`OverdueVaccination` → `alertTypeOverdueVaccination`). A type
@@ -102,14 +128,34 @@ public class AlertMessageKeyParityTests
         Assert.NotEmpty(types);
 
         var english = Bundle("en", "notifications");
-        var spanish = Bundle("es", "notifications");
 
         foreach (var type in types)
         {
             var key = $"alertType{type}";
             Assert.True(english.ContainsKey(key), $"{key} is missing from en/notifications.json");
-            Assert.True(spanish.ContainsKey(key), $"{key} is missing from es/notifications.json");
+
+            foreach (var locale in TranslatedLocales())
+            {
+                Assert.True(
+                    Bundle(locale, "notifications").ContainsKey(key),
+                    $"{key} is missing from {locale}/notifications.json");
+            }
         }
+    }
+
+    [Fact]
+    public void The_server_locale_list_and_the_client_bundles_name_the_same_languages()
+    {
+        // The two halves are kept in step by hand (`SupportedLocales.All` and the resource
+        // directories), so this is the check that notices when one gains a language the other
+        // does not have: storing a language the client cannot render is a silent English page.
+        var clientLocales = TranslatedLocales();
+        var serverLocales = FMS.Application.Common.SupportedLocales.All
+            .Where(locale => locale != FMS.Application.Common.SupportedLocales.Default)
+            .OrderBy(locale => locale, StringComparer.Ordinal)
+            .ToList();
+
+        Assert.Equal(clientLocales, serverLocales);
     }
 
     [Fact]

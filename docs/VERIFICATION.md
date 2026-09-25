@@ -170,6 +170,23 @@ Vitest fails the run on an unhandled error even when every test passes. Local ru
 It is latent on `main` — every `main` run before this date happened to pass. Worth
 tracking down separately: an async task outliving its jsdom environment.
 
+**Second observation, Phase 7.3 (`2026-09-25`, local Windows, Node 24).** One full-suite run of
+68 files and 552 tests failed a single test, then passed twice with no change:
+
+```
+FAIL  src/pages/hr/AttendancePage.test.tsx > … sends the queued check-in with the
+      payload the server binds, and marks it synced
+TestingLibraryElementError: Unable to find role="button" and name `/In/`
+```
+
+The assertion is `await screen.findByRole(...)` — a one-second timeout — and the printed `<body>`
+contained only a leftover antd `message` root, no page markup at all. That is the same shape as the
+finding above (work from an earlier file outliving or racing its environment), not a statement
+about content: the same file passes alone and passes in the full suite on either side. Reproduced
+1 time in 3 full runs; the file alone, and the file alongside the new RTL tests, passed 4/4. Left
+as an open observation rather than papered over with a longer timeout — raising the timeout would
+hide a race rather than fix one.
+
 ### Reproducing the gate evidence
 
 ```bash
@@ -823,6 +840,106 @@ evidence. None of them is a regression, and none is registered anywhere else.
 
 ---
 
+## 8. Arabic (RTL) inside the Android WebView — HANDED OFF
+
+### What is verified here, and what is not
+
+Verified in this repository, by the client suite (`cd client && npx vitest run`):
+
+- Every English key has an Arabic value in each of the 20 namespaces — **1,334/1,334**, with
+  99.9% of the values genuinely different from English, so this is not a copied file. The same
+  test asserts the Arabic plural forms exist and that i18next selects them (`rtlRender.test.tsx`
+  pins the dual form for a count of two).
+- The document is annotated `dir="rtl"` and `lang="ar"`, and gains the flipped
+  `--fms-fade-direction`, the moment `App` renders with Arabic active.
+- antd is given `direction="rtl"` and its Arabic locale, and dayjs is given `ar`; the locale
+  switcher drives all of it from the account menu.
+- The pages with the most traffic and the most custom UI render in Arabic with no raw key
+  (`nav:dashboard`) and no English copy on screen: the navigation shell, the dashboard (with a
+  server-generated alert rendered from its key), the two Phase 5 offline screens, and the export
+  page.
+- Layout is *annotated* correctly: no physical `margin-left`, `left:`, `text-align: left` or
+  directional icon survives outside the one helper that maps a role onto a glyph, and the guard
+  that checks it runs in `npm run lint`. The nav drawer asks for the start side, so it opens
+  from the right in Arabic.
+
+Not verifiable here, and the reason for this section: **jsdom has no layout engine.** Every
+assertion above can pass while a page overlaps itself, truncates, or renders the script badly
+inside the MAUI `WebView` — the wrapper is a plain `Android.WebKit.WebView` on a real device or
+emulator, and nothing in this repository can measure it.
+
+### What the wrapper already does, read from the source rather than assumed
+
+- `MainPage` hosts `https://muhammadabdullah3135.github.io/FarmManagementSystem/` in an
+  `FmsWebView`, so the wrapper shows whatever the last deploy published — there is no bundle to
+  rebuild for this pass, but 7.3 has to be deployed first.
+- `Platforms/Android/AndroidManifest.xml` already sets **`android:supportsRtl="true"`**, which is
+  what lets the platform mirror the WebView's own chrome (scrollbars, text selection handles,
+  context menu). This was in place before 7.3 and needs no change.
+- The wrapper's *own* copy is English and stays English: the overlay's "Couldn't load the app",
+  its explanation, and the "Retry" button (`MainPage.cs`). Those are native MAUI controls, not
+  HTML, so no part of the i18n system reaches them — they are listed as a known gap in
+  `docs/I18N.md`. The overlay only appears when the app shell itself fails to load.
+- Nothing sets `FlowDirection` on the page, so MAUI inherits it from the device's culture. That is
+  the one piece of native behaviour this pass should confirm rather than assume (check 8.2).
+
+### Runbook
+
+With 7.3 deployed, the device's language set to **العربية**, and the app's own switcher also set
+to العربية:
+
+1. **The shell mirrors.** Open the app and sign in. **Pass:** the navigation drawer opens from
+   the **right**, the farm name in the header sits on the right of the toolbar and the account menu
+   on the left, and no text is clipped at the left edge of the screen.
+2. **The native overlay follows the device, or does not matter.** Turn off the network, clear the
+   app's WebView data (or enable airplane mode before the app has ever loaded the shell), and open
+   the app so the Retry overlay appears. **Pass:** the overlay is legible and its text is not
+   clipped — it is English by design. Report whether it is laid out right-to-left (MAUI inheriting
+   the device culture) or left-to-right; either is acceptable here, and the observation is what is
+   being recorded.
+3. **Text is Arabic, top to bottom.** Visit the dashboard, the animal list, `records/weight` and
+   `sync`. **Pass:** headings, table headers, buttons, empty states and toasts are Arabic; a
+   dotted key (`nav:dashboard`) anywhere is a failure, and so is a sentence that is still
+   English — except the values listed as still English in `docs/I18N.md` (seeded lookup data such
+   as breed and location names, and a job's own stored state).
+4. **Numbers and dates.** A weight, an amount on the finance pages, a date column and a chart's
+   tooltip. **Pass:** digits are `0-9` (not `٠-٩`), a date reads `24/09/2026`, and an amount reads
+   `$1,234.57` with the same bare `$` English uses.
+5. **The charts are read, not mirrored.** Open a report with a bar chart. **Pass:** the axis
+   labels and values are Arabic-formatted and *readable*; the bars themselves still run left to
+   right. That is the documented decision (`docs/I18N.md`), not a bug — report it only if a label
+   is unreadable or overflows.
+6. **The back arrow points forwards-in-the-language.** Open an animal, then the notification
+   preferences. **Pass:** the back button's arrow points **right**. Check in/check out on the HR
+   attendance page: those arrows are mirrored rather than swapped.
+7. **Nothing is cut off.** Rotate to landscape and back on the longest table you can find (a
+   finance list or `admin/audit-log`). **Pass:** no column header or amount is truncated, the
+   pinned first column still sticks to the **right** edge while scrolling, and the scroll hint's
+   fade is on the **left** edge, fading rightwards.
+8. **Mixed-direction text.** A farm or animal name typed in Latin characters inside an Arabic
+   sentence (the dashboard's `currentlyManaging`, an animal's tag in a table cell). **Pass:** the
+   Latin name reads left to right inside its right-to-left sentence rather than being reversed or
+   re-ordered. This is the one failure mode that only shows up with real mixed data.
+9. **Offline still works in Arabic.** Turn off the connection, record a weight, and open the sync
+   screen. **Pass:** the offline banner and the queued row are Arabic, the row is marked waiting to
+   sync, and nothing about the mirroring changes when it later syncs.
+
+### What to report back
+
+- For 8.1–8.9: pass or fail, with the device or emulator and the Android version.
+- Which of the eight failed *visually* while the automated suite was green — that gap is the
+  whole reason this runbook exists, so it is the most useful thing you can send back.
+- A screenshot of any page where Arabic text overflows, overlaps, or is clipped, and the page's
+  route so it can be reproduced.
+- Whether the WebView needed anything beyond `ConfigProvider direction` — in particular whether
+  the document's `dir` attribute was applied inside it (open the page and check, or infer it from
+  whether the scrollbar and the drawer are on the right).
+- Whether the native Retry overlay mirrored or not (check 8.2), and whether MAUI's inherited
+  `FlowDirection` is the reason.
+- Whether the charts should be mirrored after all, with a screenshot of what they look like now.
+
+---
+
 ## Automated QA scripts
 
 Three dependency-free scripts in `scripts/` run against the deployed API
@@ -891,3 +1008,4 @@ Fill in as each item is executed. Do not mark an item verified on inspection alo
 | 4. Secret rotation | | | | |
 | 5. Live email delivery | | | | reset/invitation/digest to a real inbox; blocked on the two preconditions above |
 | 6. Offline shell (device) | | | | seven checks: shell loads offline × `CacheModes.NoCache`, messaging stays honest, a deploy reaches the device, queued writes survive a cold kill (6d), sign-out keeps the queue (6e), the offline-write window (6f), two devices see each other's deltas (6g) |
+| 8. Arabic in the Android WebView | | | | nine checks: the shell mirrors, the native Retry overlay is legible, copy is Arabic, digits/dates/amounts stay Latin, charts are *read* not mirrored, the back arrow points right, nothing truncates or loses its pinned column, mixed-direction names read correctly, and offline still works (8.1–8.9) |

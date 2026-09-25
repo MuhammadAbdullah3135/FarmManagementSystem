@@ -1,7 +1,7 @@
 import dayjs from 'dayjs';
 import { useTranslation } from 'react-i18next';
 import { activeLocale } from './index';
-import type { Locale } from './locale';
+import { DEFAULT_LOCALE, directionOf, normalizeLocale, type Locale } from './locale';
 
 /**
  * Dates and numbers, formatted for the language the person is reading.
@@ -37,7 +37,21 @@ import type { Locale } from './locale';
  */
 
 /** The BCP-47 tag behind a locale: what `Intl` and dayjs are actually given. */
-export const localeTag = (locale: Locale): string => (locale === 'es' ? 'es-ES' : 'en-US');
+export const localeTag = (locale: Locale): string => {
+  switch (locale) {
+    case 'es':
+      return 'es-ES';
+    // `ar-EG` for the Arabic month names and the region's conventions, `u-nu-latn` for Latin
+    // digits: an Arabic reader sees 43,016 and 3 أغسطس 2026, not ٤٣٬٠١٦ and ٣ أغسطس ٢٠٢٦. The
+    // digits a farm types into a tag number, a weight or an amount are 0-9, and a figure that
+    // cannot be compared character by character with the source document is a correctness
+    // problem, not a typography one. Switch to `u-nu-arab` for Arabic-Indic numerals.
+    case 'ar':
+      return 'ar-EG-u-nu-latn';
+    default:
+      return 'en-US';
+  }
+};
 
 /**
  * Numeric date/time patterns, per locale.
@@ -50,6 +64,10 @@ export const localeTag = (locale: Locale): string => (locale === 'es' ? 'es-ES' 
 const PATTERNS: Record<Locale, { date: string; dateTime: string; dateTimeSeconds: string }> = {
   en: { date: 'YYYY-MM-DD', dateTime: 'YYYY-MM-DD HH:mm', dateTimeSeconds: 'YYYY-MM-DD HH:mm:ss' },
   es: { date: 'DD/MM/YYYY', dateTime: 'DD/MM/YYYY HH:mm', dateTimeSeconds: 'DD/MM/YYYY HH:mm:ss' },
+  // Day first, like Spanish and like Arabic convention. The digits are Latin here for the
+  // same reason as `localeTag`: dayjs formats numbers itself, so these stay `0-9` whatever
+  // the language, and a table that mixed numeral systems would be worse than either.
+  ar: { date: 'DD/MM/YYYY', dateTime: 'DD/MM/YYYY HH:mm', dateTimeSeconds: 'DD/MM/YYYY HH:mm:ss' },
 };
 
 type DateInput = string | number | Date | null | undefined;
@@ -172,9 +190,14 @@ export const formatPercent = (fraction: number, locale: Locale = activeLocale(),
  */
 export const useFormat = () => {
   const { i18n } = useTranslation();
-  const locale = (i18n.language.split('-')[0] === 'es' ? 'es' : 'en') as Locale;
+  // Resolved through the same normaliser the rest of the app uses, not by testing one
+  // language by name: the earlier `=== 'es' ? 'es' : 'en'` silently formatted every
+  // Arabic date and amount with English rules, and would have done the same to a third
+  // language — a chart tooltip reading `43,016.00` inside an otherwise Arabic screen.
+  const locale = normalizeLocale(i18n.language) ?? DEFAULT_LOCALE;
   return {
     locale,
+    direction: directionOf(locale),
     tag: localeTag(locale),
     date: (value: DateInput) => formatDate(value, locale),
     dateTime: (value: DateInput) => formatDateTime(value, locale),

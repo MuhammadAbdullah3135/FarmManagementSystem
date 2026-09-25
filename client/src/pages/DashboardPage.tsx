@@ -217,7 +217,9 @@ const DashboardPage: React.FC = () => {const { t } = useTranslation('dashboard')
             ))}
             {hiddenAlertCount > 0 && (
               <Text type="secondary">
-                {hiddenAlertCount} {t('moreAlert')}{hiddenAlertCount === 1 ? '' : 's'} {t('onThisFarm')}{' '}
+                {/* The count drives a plural form rather than an appended `s`: Arabic has six
+                    plural categories, so concatenating a suffix is only correct in English. */}
+                {t('moreAlerts', { count: hiddenAlertCount })} {t('onThisFarm')}{' '}
                 <Link to="/dashboard/notifications">{t('seeThemAll')}</Link>.
               </Text>
             )}

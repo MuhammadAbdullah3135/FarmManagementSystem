@@ -3,7 +3,8 @@ import { formatDate } from '../../i18n/format';
 import {
   Alert, Button, Card, Col, DatePicker, Form, Input, Modal, Row, Select, Space, Table, Tag, Typography, message,
 } from 'antd';
-import { LoginOutlined, LogoutOutlined, PlusOutlined } from '@ant-design/icons';
+import { PlusOutlined } from '@ant-design/icons';
+import { DirectionalIcon } from '../../i18n/DirectionalIcon';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs, { Dayjs } from 'dayjs';
 import { attendanceApi } from '../../api/attendance';
@@ -282,14 +283,14 @@ const AttendancePage: React.FC = () => {const { t } = useTranslation('hr');
                     <Button
                       size="small"
                       type="primary"
-                      icon={<LoginOutlined />}
+                      icon={<DirectionalIcon role="enter" />}
                       onClick={() => void queueAttendance(emp, ATTENDANCE_CHECK_IN, 'Checked in')}
                     >
                       {t('in')}
                     </Button>
                     <Button
                       size="small"
-                      icon={<LogoutOutlined />}
+                      icon={<DirectionalIcon role="leave" />}
                       onClick={() => void queueAttendance(emp, ATTENDANCE_CHECK_OUT, 'Checked out')}
                     >
                       {t('out')}

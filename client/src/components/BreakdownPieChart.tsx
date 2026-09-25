@@ -113,7 +113,7 @@ export default function BreakdownPieChart({
         <Space size="large" wrap style={{ width: '100%', justifyContent: 'center', marginTop: 8 }}>
           {slices.map(d => (
             <Text key={d.name} style={{ fontSize: 12, whiteSpace: 'nowrap' }}>
-              <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: d.color, marginRight: 6 }} />
+              <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: d.color, marginInlineEnd: 6 }} />
               {`${d.name} ${formatValue(d.value)} (${percentOf(d.value)}%)`}
             </Text>
           ))}

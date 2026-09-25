@@ -57,6 +57,31 @@ import esImports from './locales/es/imports.json';
 import esValidation from './locales/es/validation.json';
 import esErrors from './locales/es/errors.json';
 
+// Arabic, machine-translated and not yet reviewed by a translator (see
+// locales/README.md and locales/translation-status.json). Arabic is the first
+// right-to-left language this build ships, so its keys also drive the document direction
+// (see `directionOf` in ./locale) and antd's own `direction` prop in App.tsx.
+import arCommon from './locales/ar/common.json';
+import arNav from './locales/ar/nav.json';
+import arAuth from './locales/ar/auth.json';
+import arDashboard from './locales/ar/dashboard.json';
+import arAnimals from './locales/ar/animals.json';
+import arBreeding from './locales/ar/breeding.json';
+import arFeed from './locales/ar/feed.json';
+import arHealth from './locales/ar/health.json';
+import arHr from './locales/ar/hr.json';
+import arFinance from './locales/ar/finance.json';
+import arInventory from './locales/ar/inventory.json';
+import arTasks from './locales/ar/tasks.json';
+import arReports from './locales/ar/reports.json';
+import arConfiguration from './locales/ar/configuration.json';
+import arAdmin from './locales/ar/admin.json';
+import arNotifications from './locales/ar/notifications.json';
+import arOffline from './locales/ar/offline.json';
+import arImports from './locales/ar/imports.json';
+import arValidation from './locales/ar/validation.json';
+import arErrors from './locales/ar/errors.json';
+
 /** One namespace per feature area, so a translation file maps onto a screen. */
 export const NAMESPACES = [
   'common',
@@ -127,6 +152,28 @@ export const resources = {
     imports: esImports,
     validation: esValidation,
     errors: esErrors,
+  },
+  ar: {
+    common: arCommon,
+    nav: arNav,
+    auth: arAuth,
+    dashboard: arDashboard,
+    animals: arAnimals,
+    breeding: arBreeding,
+    feed: arFeed,
+    health: arHealth,
+    hr: arHr,
+    finance: arFinance,
+    inventory: arInventory,
+    tasks: arTasks,
+    reports: arReports,
+    configuration: arConfiguration,
+    admin: arAdmin,
+    notifications: arNotifications,
+    offline: arOffline,
+    imports: arImports,
+    validation: arValidation,
+    errors: arErrors,
   },
 } as const;
 

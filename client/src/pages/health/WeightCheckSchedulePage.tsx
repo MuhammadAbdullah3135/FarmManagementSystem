@@ -223,7 +223,7 @@ const WeightCheckSchedulePage: React.FC = () => {const { t } = useTranslation('h
             <InputNumber min={1} style={{ width: '100%' }} placeholder={t('eG7304590')} />
           </Form.Item>
           <div style={{ marginBottom: 16 }}>
-            <span style={{ marginRight: 8, fontSize: 12, color: '#999' }}>{t('quickSelect')}</span>
+            <span style={{ marginInlineEnd: 8, fontSize: 12, color: '#999' }}>{t('quickSelect')}</span>
             <Space size={4}>
               {PRESET_DAYS.map(d => (
                 <Tag key={d} style={{ cursor: 'pointer' }} onClick={() => form.setFieldsValue({ recurrenceDays: d })}>{d} {t('days')}</Tag>

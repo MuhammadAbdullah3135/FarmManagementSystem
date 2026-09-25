@@ -28,15 +28,15 @@ function LineageCard({ node, side }: { node: LineageNode; side?: 'sire' | 'dam' 
         style={{
           width: 220,
           marginBottom: 8,
-          borderLeft: `4px solid ${borderColor}`,
+          borderInlineStart: `4px solid ${borderColor}`,
           background: bgColor,
           boxShadow: node.isRoot ? '0 2px 8px rgba(0,0,0,0.15)' : 'none',
         }}
       >
         <div style={{ marginBottom: 4 }}>
           <strong style={{ fontSize: 13 }}>{node.tagNumber}</strong>
-          {node.name && <Text type="secondary" style={{ marginLeft: 6, fontSize: 12 }}>({node.name})</Text>}
-          {node.isRoot && <Tag color="gold" style={{ marginLeft: 6 }}>{t('root')}</Tag>}
+          {node.name && <Text type="secondary" style={{ marginInlineStart: 6, fontSize: 12 }}>({node.name})</Text>}
+          {node.isRoot && <Tag color="gold" style={{ marginInlineStart: 6 }}>{t('root')}</Tag>}
         </div>
         <div style={{ fontSize: 12, color: '#666' }}>
           <Tag color={tagColor} style={{ fontSize: 11 }}>{node.sex}</Tag>

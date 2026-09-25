@@ -14,7 +14,7 @@
  *     device or browser. The device cache is only a hint for the frame before `/auth/me`
  *     answers; the account always wins when the two disagree.
  */
-export const SUPPORTED_LOCALES = ['en', 'es'] as const;
+export const SUPPORTED_LOCALES = ['en', 'es', 'ar'] as const;
 
 export type Locale = (typeof SUPPORTED_LOCALES)[number];
 
@@ -27,6 +27,49 @@ export const DEFAULT_LOCALE: Locale = 'en';
 export const LOCALE_LABELS: Record<Locale, string> = {
   en: 'English',
   es: 'Español',
+  ar: 'العربية',
+};
+
+/**
+ * The languages written right to left.
+ *
+ * A list rather than `locale === 'ar'` scattered through the app: the direction of a script
+ * is a property of the language, and the next RTL language (Farsi, Hebrew, Urdu) joins this
+ * array and nothing else.
+ */
+export const RTL_LOCALES = ['ar'] as const;
+
+export type Direction = 'ltr' | 'rtl';
+
+export const directionOf = (locale: Locale): Direction =>
+  (RTL_LOCALES as readonly string[]).includes(locale) ? 'rtl' : 'ltr';
+
+/**
+ * Where `applyDocumentLocale` publishes the direction a `linear-gradient` should use.
+ *
+ * The one thing CSS cannot express logically: a gradient has no `inline-start` keyword, so
+ * the scroll hint in AppLayout.css reads its direction from this variable. Publishing it on
+ * the root keeps the direction in a single place instead of spawning `[dir='rtl']`
+ * overrides that a reader has to find.
+ */
+export const GRADIENT_DIRECTION_VAR = '--fms-fade-direction';
+
+/**
+ * Puts the active language on the document itself: `lang` for assistive technology and the
+ * browser's own hyphenation and spell-check, `dir` for everything CSS does not control —
+ * scrollbar side, text selection, form controls, and the direction of the page's own
+ * default text alignment.
+ *
+ * antd's `direction` prop does not set either of these (it drives its own styles), so both
+ * halves are needed: the prop for the component library, the attribute for the document.
+ */
+export const applyDocumentLocale = (locale: Locale): void => {
+  const root = globalThis.document?.documentElement;
+  if (!root) return; // a non-DOM environment (a node-side test) has nothing to set
+  const direction = directionOf(locale);
+  root.lang = locale;
+  root.dir = direction;
+  root.style.setProperty(GRADIENT_DIRECTION_VAR, direction === 'rtl' ? 'to right' : 'to left');
 };
 
 /** The app's own localStorage key for the language. Namespaced like the other app keys. */

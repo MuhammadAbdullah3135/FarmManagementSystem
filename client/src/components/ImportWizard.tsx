@@ -213,7 +213,7 @@ const ImportWizard: React.FC<ImportWizardProps> = ({
       title: t('problem'),
       key: 'problem',
       render: (_, row) => (
-        <ul style={{ margin: 0, paddingLeft: 18 }}>
+        <ul style={{ margin: 0, paddingInlineStart: 18 }}>
           {row.errors.map((rowError, index) => (
             <li key={index}>{renderKeyedMessage(rowError.messageKey, rowError.messageArgs, rowError.message)}</li>
           ))}
@@ -289,7 +289,10 @@ const ImportWizard: React.FC<ImportWizardProps> = ({
 
           <Space direction="vertical" style={{ width: '100%' }} size="small">
             {preview.fields.map((field) => {
-              const value = draft[field.key] ?? { source: t('ignore') as Source, constant: '' };
+              // `'ignore'` is the *value* the mapping is built from, not copy: translating it
+              // here produced a source the Select could not match and `toMapping` could not
+              // recognise, so an untouched field stopped being sent as explicitly ignored.
+              const value = draft[field.key] ?? { source: 'ignore' as Source, constant: '' };
               const suggestions = preview.lookups[field.key];
 
               return (
@@ -313,12 +316,12 @@ const ImportWizard: React.FC<ImportWizardProps> = ({
                       }))
                     }
                     options={[
-                      { value: 'ignore', label: 'Ignore' },
+                      { value: 'ignore', label: t('ignore') },
                       ...preview.headers.map((header, index) => ({
                         value: `col:${index}` as Source,
-                        label: `Column ${index + 1}: ${header}`,
+                        label: t('columnNumber', { number: index + 1, header }),
                       })),
-                      { value: 'constant', label: 'Same value for every row' },
+                      { value: 'constant', label: t('sameValueForEveryRow') },
                     ]}
                   />
 

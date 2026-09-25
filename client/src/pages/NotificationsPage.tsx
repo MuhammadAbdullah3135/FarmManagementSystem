@@ -215,7 +215,8 @@ const NotificationsPage: React.FC = () => {const { t } = useTranslation('notific
 
         {totalCount > PAGE_SIZE && (
           <Pagination
-            style={{ marginTop: 16, textAlign: 'right' }}
+            // Centred-to-trailing: `end` is the right-hand side in English, the left in Arabic.
+            style={{ marginTop: 16, textAlign: 'end' }}
             current={page}
             pageSize={PAGE_SIZE}
             total={totalCount}

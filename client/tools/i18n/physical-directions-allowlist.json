@@ -1,0 +1,11 @@
+{
+  "note": "Physical values that are deliberately physical. Each entry needs a reason a reviewer can check; the checker fails on a missing reason and on an entry that no longer matches anything. Anything here that is really a layout bug must be made logical instead.",
+  "entries": [
+    {
+      "rel": "AppLayout.css",
+      "rule": "gradient-direction",
+      "contains": "--fms-fade-direction",
+      "reason": "A `linear-gradient` direction has no logical keyword in CSS, so the scroll hint cannot say `to inline-end`. The value here is only the fallback for the custom property `applyDocumentLocale` sets on the document, which flips it to `to right` under Arabic."
+    }
+  ]
+}

@@ -23,6 +23,20 @@ const stripComments = (code: string) =>
 const tableFor = (ns: string): Record<string, string> =>
   ((resources.en as unknown as Record<string, Record<string, string>>)[ns] ?? {});
 
+/**
+ * i18next's plural suffixes. A call site that passes `count` resolves `key_one` / `key_other`
+ * rather than the bare `key`, so a key that exists only as plural forms is not a missing key
+ * — the source is naming a set, and the count selects from it at runtime.
+ */
+const PLURAL_SUFFIXES = ['zero', 'one', 'two', 'few', 'many', 'other', 'plural'];
+
+/** True when the namespace holds this key, or any plural form of it. */
+const resolvesIn = (ns: string, key: string): boolean => {
+  const table = tableFor(ns);
+  if (table[key] !== undefined) return true;
+  return PLURAL_SUFFIXES.some((suffix) => table[`${key}_${suffix}`] !== undefined);
+};
+
 describe('english resources', () => {
   it('initialises with every namespace and is ready before the first render', () => {
     expect(i18n.isInitialized).toBe(true);
@@ -47,7 +61,7 @@ describe('english resources', () => {
         const [ns, key] = raw.includes(':') ? raw.split(':') : [namespaces[0], raw];
         checked += 1;
         if (!key) continue;
-        if (tableFor(ns)[key] === undefined) missing.push(`${rel} → ${ns}:${key}`);
+        if (!resolvesIn(ns, key)) missing.push(`${rel} → ${ns}:${key}`);
       }
     }
 

@@ -114,9 +114,9 @@ const AuditLogPage: React.FC = () => {const { t: translate } = useTranslation('a
       <table style={{ width: '100%', fontSize: 13, borderCollapse: 'collapse' }}>
         <thead>
           <tr style={{ borderBottom: '1px solid #f0f0f0' }}>
-            <th style={{ textAlign: 'left', padding: '4px 8px' }}>{translate('field')}</th>
-            <th style={{ textAlign: 'left', padding: '4px 8px' }}>{translate('oldValue')}</th>
-            <th style={{ textAlign: 'left', padding: '4px 8px' }}>{translate('newValue')}</th>
+            <th style={{ textAlign: 'start', padding: '4px 8px' }}>{translate('field')}</th>
+            <th style={{ textAlign: 'start', padding: '4px 8px' }}>{translate('oldValue')}</th>
+            <th style={{ textAlign: 'start', padding: '4px 8px' }}>{translate('newValue')}</th>
           </tr>
         </thead>
         <tbody>
