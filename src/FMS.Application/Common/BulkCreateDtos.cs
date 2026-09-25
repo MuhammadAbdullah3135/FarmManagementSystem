@@ -9,7 +9,19 @@ namespace FMS.Application.Common;
 /// "the import says the same thing as the endpoint" true by construction instead of by
 /// careful maintenance.
 /// </summary>
-public readonly record struct FieldError(string Field, string Message);
+/// <para>
+/// <see cref="MessageKey"/> and <see cref="MessageArgs"/> are the i18n addition, and they
+/// are strictly additive: <see cref="Message"/> stays the English sentence it has always
+/// been, so every existing caller and test keeps its byte-identical text, and the client
+/// renders the key when it has one and the English fallback when it does not. A key never
+/// changes even when its rendered text does, which is what keeps the two import paths and
+/// the endpoint answering the same way in every language.
+/// </para>
+public readonly record struct FieldError(
+    string Field,
+    string Message,
+    string? MessageKey = null,
+    IReadOnlyDictionary<string, object?>? MessageArgs = null);
 
 /// <summary>
 /// A batch failure, reported by the item's position in the batch so the caller can

@@ -284,34 +284,17 @@ public class FinanceService : IFinanceService
 
     public async Task<Result<ExpenseDto>> CreateExpenseAsync(Guid farmId, CreateExpenseRequest request)
     {
-        var amountError = ValidateAmount(request.Amount);
-        if (amountError != null)
-            return Result<ExpenseDto>.Validation(amountError);
-
-        var expenseDate = request.ExpenseDate ?? DateTime.UtcNow;
-        if (expenseDate > DateTime.UtcNow.AddMinutes(5))
-            return Result<ExpenseDto>.Validation("Expense date cannot be in the future");
-        if (request.Description?.Length > 1000)
-            return Result<ExpenseDto>.Validation("Description cannot exceed 1000 characters");
+        // One expense, the endpoint's own path: the rules come from ExpenseRules, shared
+        // with the bulk import, and the answer is still the first message.
+        var errors = ExpenseRules.Validate(request.Amount, request.ExpenseDate, request.Description);
+        if (errors.Count > 0)
+            return Result<ExpenseDto>.Validation(errors[0].Message, errors[0].MessageKey, errors[0].MessageArgs);
 
         var referenceError = await ValidateReferencesAsync(farmId, request.ExpenseCategoryId, request.PaymentMethodId, request.AnimalId, request.LocationId);
         if (referenceError != null)
             return Result<ExpenseDto>.Failure(referenceError);
 
-        var expense = new Expense
-        {
-            Id = Guid.NewGuid(),
-            FarmId = farmId,
-            ExpenseDate = expenseDate,
-            Amount = Math.Round(request.Amount, 2),
-            ExpenseCategoryId = request.ExpenseCategoryId,
-            PaymentMethodId = request.PaymentMethodId,
-            AnimalId = request.AnimalId,
-            LocationId = request.LocationId,
-            Description = request.Description?.Trim(),
-            CreatedAt = DateTime.UtcNow,
-            CreatedBy = _currentUser.GetUserId()
-        };
+        var expense = ExpenseRules.Build(farmId, request, _currentUser.GetUserId(), DateTime.UtcNow);
 
         _context.Expenses.Add(expense);
         await _context.SaveChangesAsync();
@@ -326,14 +309,9 @@ public class FinanceService : IFinanceService
         if (expense == null)
             return Result<ExpenseDto>.NotFound("Expense not found");
 
-        var amountError = ValidateAmount(request.Amount);
-        if (amountError != null)
-            return Result<ExpenseDto>.Validation(amountError);
-
-        if (request.ExpenseDate.HasValue && request.ExpenseDate > DateTime.UtcNow.AddMinutes(5))
-            return Result<ExpenseDto>.Validation("Expense date cannot be in the future");
-        if (request.Description?.Length > 1000)
-            return Result<ExpenseDto>.Validation("Description cannot exceed 1000 characters");
+        var errors = ExpenseRules.Validate(request.Amount, request.ExpenseDate, request.Description);
+        if (errors.Count > 0)
+            return Result<ExpenseDto>.Validation(errors[0].Message, errors[0].MessageKey, errors[0].MessageArgs);
 
         var referenceError = await ValidateReferencesAsync(farmId, request.ExpenseCategoryId, request.PaymentMethodId, request.AnimalId, request.LocationId);
         if (referenceError != null)
@@ -533,34 +511,17 @@ public class FinanceService : IFinanceService
 
     public async Task<Result<IncomeRecordDto>> CreateIncomeRecordAsync(Guid farmId, CreateIncomeRecordRequest request)
     {
-        var amountError = ValidateAmount(request.Amount);
-        if (amountError != null)
-            return Result<IncomeRecordDto>.Validation(amountError);
-
-        var incomeDate = request.IncomeDate ?? DateTime.UtcNow;
-        if (incomeDate > DateTime.UtcNow.AddMinutes(5))
-            return Result<IncomeRecordDto>.Validation("Income date cannot be in the future");
-        if (request.Description?.Length > 1000)
-            return Result<IncomeRecordDto>.Validation("Description cannot exceed 1000 characters");
+        // One record, the endpoint's own path: the rules come from IncomeRules, shared
+        // with the bulk import, and the answer is still the first message.
+        var errors = IncomeRules.Validate(request.Amount, request.IncomeDate, request.Description);
+        if (errors.Count > 0)
+            return Result<IncomeRecordDto>.Validation(errors[0].Message, errors[0].MessageKey, errors[0].MessageArgs);
 
         var referenceError = await ValidateIncomeReferencesAsync(farmId, request.IncomeCategoryId, request.PaymentMethodId, request.AnimalId, request.LocationId);
         if (referenceError != null)
             return Result<IncomeRecordDto>.Failure(referenceError);
 
-        var record = new IncomeRecord
-        {
-            Id = Guid.NewGuid(),
-            FarmId = farmId,
-            IncomeDate = incomeDate,
-            Amount = Math.Round(request.Amount, 2),
-            IncomeCategoryId = request.IncomeCategoryId,
-            PaymentMethodId = request.PaymentMethodId,
-            AnimalId = request.AnimalId,
-            LocationId = request.LocationId,
-            Description = request.Description?.Trim(),
-            CreatedAt = DateTime.UtcNow,
-            CreatedBy = _currentUser.GetUserId()
-        };
+        var record = IncomeRules.Build(farmId, request, _currentUser.GetUserId(), DateTime.UtcNow);
 
         _context.IncomeRecords.Add(record);
         await _context.SaveChangesAsync();
@@ -575,14 +536,9 @@ public class FinanceService : IFinanceService
         if (record == null)
             return Result<IncomeRecordDto>.NotFound("Income record not found");
 
-        var amountError = ValidateAmount(request.Amount);
-        if (amountError != null)
-            return Result<IncomeRecordDto>.Validation(amountError);
-
-        if (request.IncomeDate.HasValue && request.IncomeDate > DateTime.UtcNow.AddMinutes(5))
-            return Result<IncomeRecordDto>.Validation("Income date cannot be in the future");
-        if (request.Description?.Length > 1000)
-            return Result<IncomeRecordDto>.Validation("Description cannot exceed 1000 characters");
+        var errors = IncomeRules.Validate(request.Amount, request.IncomeDate, request.Description);
+        if (errors.Count > 0)
+            return Result<IncomeRecordDto>.Validation(errors[0].Message, errors[0].MessageKey, errors[0].MessageArgs);
 
         var referenceError = await ValidateIncomeReferencesAsync(farmId, request.IncomeCategoryId, request.PaymentMethodId, request.AnimalId, request.LocationId);
         if (referenceError != null)
@@ -754,12 +710,244 @@ public class FinanceService : IFinanceService
         return null;
     }
 
-    private static string? ValidateAmount(decimal amount)
+    /// <summary>
+    /// Validates a batch of expenses without writing it, using the same rules and the
+    /// same reference checks as <see cref="CreateExpenseAsync"/>. There is deliberately
+    /// no duplicate check: an expense has no identifier and the endpoint enforces none,
+    /// so the importer must not be stricter than the add form.
+    /// </summary>
+    public Task<Result<BulkCreateResultDto>> ValidateExpensesAsync(
+        Guid farmId, IReadOnlyList<CreateExpenseRequest> requests) =>
+        CheckExpenseBatchAsync(farmId, requests);
+
+    /// <summary>Creates the whole batch in one SaveChanges, so it is atomic.</summary>
+    public async Task<Result<BulkCreateResultDto>> CreateExpensesAsync(
+        Guid farmId, IReadOnlyList<CreateExpenseRequest> requests)
     {
-        if (amount <= 0)
-            return "Amount must be greater than zero";
-        return null;
+        var checkedBatch = await CheckExpenseBatchAsync(farmId, requests);
+        if (!checkedBatch.IsSuccess)
+            return checkedBatch;
+
+        if (checkedBatch.Value!.Failures.Count > 0)
+            return checkedBatch;
+
+        var userId = _currentUser.GetUserId();
+        var now = DateTime.UtcNow;
+
+        foreach (var request in requests)
+            _context.Expenses.Add(ExpenseRules.Build(farmId, request, userId, now));
+
+        await _context.SaveChangesAsync();
+
+        return Result<BulkCreateResultDto>.Success(new BulkCreateResultDto
+        {
+            RequestedCount = requests.Count,
+            SuccessCount = requests.Count,
+            Failures = new List<BulkCreateFailureDto>()
+        });
     }
+
+    /// <summary>
+    /// The expense batch's own checks: every field rule per row, then the references the
+    /// create endpoint would have checked (category, payment method, and the optional
+    /// animal and location). Every reference set is loaded in one query rather than one
+    /// per row.
+    /// </summary>
+    private async Task<Result<BulkCreateResultDto>> CheckExpenseBatchAsync(
+        Guid farmId, IReadOnlyList<CreateExpenseRequest> requests)
+    {
+        var failures = new List<BulkCreateFailureDto>();
+
+        var categoryIds = (await _context.ExpenseCategories
+            .Where(category => category.FarmId == farmId)
+            .Select(category => category.Id)
+            .ToListAsync()).ToHashSet();
+
+        var paymentMethodIds = (await _context.PaymentMethods
+            .Where(method => method.FarmId == farmId)
+            .Select(method => method.Id)
+            .ToListAsync()).ToHashSet();
+
+        var locationIds = (await _context.Locations
+            .Where(location => location.FarmId == farmId)
+            .Select(location => location.Id)
+            .ToListAsync()).ToHashSet();
+
+        // Only the animals the batch actually references are loaded, matching the create
+        // endpoint's "an animal must exist and not be soft-deleted" rule.
+        var animalIds = requests
+            .Where(request => request.AnimalId.HasValue)
+            .Select(request => request.AnimalId!.Value)
+            .Distinct()
+            .ToList();
+
+        var existingAnimalIds = animalIds.Count == 0
+            ? new HashSet<Guid>()
+            : (await _context.Animals
+                .Where(animal => animal.FarmId == farmId && !animal.IsDeleted && animalIds.Contains(animal.Id))
+                .Select(animal => animal.Id)
+                .ToListAsync()).ToHashSet();
+
+        for (var index = 0; index < requests.Count; index++)
+        {
+            var request = requests[index];
+            var errors = ExpenseRules.Validate(request.Amount, request.ExpenseDate, request.Description);
+
+            if (errors.Count > 0)
+            {
+                failures.Add(new BulkCreateFailureDto { Index = index, Message = errors[0].Message });
+                continue;
+            }
+
+            // The same messages the endpoint answers with for these references.
+            if (!categoryIds.Contains(request.ExpenseCategoryId))
+            {
+                failures.Add(new BulkCreateFailureDto { Index = index, Message = "Expense category not found" });
+                continue;
+            }
+
+            if (!paymentMethodIds.Contains(request.PaymentMethodId))
+            {
+                failures.Add(new BulkCreateFailureDto { Index = index, Message = "Payment method not found" });
+                continue;
+            }
+
+            if (request.AnimalId.HasValue && !existingAnimalIds.Contains(request.AnimalId.Value))
+            {
+                failures.Add(new BulkCreateFailureDto { Index = index, Message = "Animal not found" });
+                continue;
+            }
+
+            if (request.LocationId.HasValue && !locationIds.Contains(request.LocationId.Value))
+            {
+                failures.Add(new BulkCreateFailureDto { Index = index, Message = "Location not found" });
+            }
+        }
+
+        return Result<BulkCreateResultDto>.Success(new BulkCreateResultDto
+        {
+            RequestedCount = requests.Count,
+            SuccessCount = requests.Count - failures.Count,
+            Failures = failures
+        });
+    }
+
+    /// <summary>
+    /// Validates a batch of income records without writing it, using the same rules and
+    /// the same reference checks as <see cref="CreateIncomeRecordAsync"/>. There is
+    /// deliberately no duplicate check: an income record has no identifier and the
+    /// endpoint enforces none.
+    /// </summary>
+    public Task<Result<BulkCreateResultDto>> ValidateIncomeRecordsAsync(
+        Guid farmId, IReadOnlyList<CreateIncomeRecordRequest> requests) =>
+        CheckIncomeBatchAsync(farmId, requests);
+
+    /// <summary>Creates the whole batch in one SaveChanges, so it is atomic.</summary>
+    public async Task<Result<BulkCreateResultDto>> CreateIncomeRecordsAsync(
+        Guid farmId, IReadOnlyList<CreateIncomeRecordRequest> requests)
+    {
+        var checkedBatch = await CheckIncomeBatchAsync(farmId, requests);
+        if (!checkedBatch.IsSuccess)
+            return checkedBatch;
+
+        if (checkedBatch.Value!.Failures.Count > 0)
+            return checkedBatch;
+
+        var userId = _currentUser.GetUserId();
+        var now = DateTime.UtcNow;
+
+        foreach (var request in requests)
+            _context.IncomeRecords.Add(IncomeRules.Build(farmId, request, userId, now));
+
+        await _context.SaveChangesAsync();
+
+        return Result<BulkCreateResultDto>.Success(new BulkCreateResultDto
+        {
+            RequestedCount = requests.Count,
+            SuccessCount = requests.Count,
+            Failures = new List<BulkCreateFailureDto>()
+        });
+    }
+
+    /// <summary>
+    /// The income batch's own checks, in the shape of the expense batch above.
+    /// </summary>
+    private async Task<Result<BulkCreateResultDto>> CheckIncomeBatchAsync(
+        Guid farmId, IReadOnlyList<CreateIncomeRecordRequest> requests)
+    {
+        var failures = new List<BulkCreateFailureDto>();
+
+        var categoryIds = (await _context.IncomeCategories
+            .Where(category => category.FarmId == farmId)
+            .Select(category => category.Id)
+            .ToListAsync()).ToHashSet();
+
+        var paymentMethodIds = (await _context.PaymentMethods
+            .Where(method => method.FarmId == farmId)
+            .Select(method => method.Id)
+            .ToListAsync()).ToHashSet();
+
+        var locationIds = (await _context.Locations
+            .Where(location => location.FarmId == farmId)
+            .Select(location => location.Id)
+            .ToListAsync()).ToHashSet();
+
+        var animalIds = requests
+            .Where(request => request.AnimalId.HasValue)
+            .Select(request => request.AnimalId!.Value)
+            .Distinct()
+            .ToList();
+
+        var existingAnimalIds = animalIds.Count == 0
+            ? new HashSet<Guid>()
+            : (await _context.Animals
+                .Where(animal => animal.FarmId == farmId && !animal.IsDeleted && animalIds.Contains(animal.Id))
+                .Select(animal => animal.Id)
+                .ToListAsync()).ToHashSet();
+
+        for (var index = 0; index < requests.Count; index++)
+        {
+            var request = requests[index];
+            var errors = IncomeRules.Validate(request.Amount, request.IncomeDate, request.Description);
+
+            if (errors.Count > 0)
+            {
+                failures.Add(new BulkCreateFailureDto { Index = index, Message = errors[0].Message });
+                continue;
+            }
+
+            if (!categoryIds.Contains(request.IncomeCategoryId))
+            {
+                failures.Add(new BulkCreateFailureDto { Index = index, Message = "Income category not found" });
+                continue;
+            }
+
+            if (!paymentMethodIds.Contains(request.PaymentMethodId))
+            {
+                failures.Add(new BulkCreateFailureDto { Index = index, Message = "Payment method not found" });
+                continue;
+            }
+
+            if (request.AnimalId.HasValue && !existingAnimalIds.Contains(request.AnimalId.Value))
+            {
+                failures.Add(new BulkCreateFailureDto { Index = index, Message = "Animal not found" });
+                continue;
+            }
+
+            if (request.LocationId.HasValue && !locationIds.Contains(request.LocationId.Value))
+            {
+                failures.Add(new BulkCreateFailureDto { Index = index, Message = "Location not found" });
+            }
+        }
+
+        return Result<BulkCreateResultDto>.Success(new BulkCreateResultDto
+        {
+            RequestedCount = requests.Count,
+            SuccessCount = requests.Count - failures.Count,
+            Failures = failures
+        });
+    }
+
 
     private async Task<Error?> ValidateReferencesAsync(Guid farmId, Guid expenseCategoryId, Guid paymentMethodId, Guid? animalId, Guid? locationId)
     {

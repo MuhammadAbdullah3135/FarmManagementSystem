@@ -105,6 +105,14 @@ public class ImportControllerTests
         AssertSameAuthorization<InventoryImportController, InventoryItemsController>();
         AssertSameAuthorization<EmployeeImportController, EmployeesController>();
         AssertSameAuthorization<AnimalImportController, AnimalsController>();
+        AssertSameAuthorization<SupplierImportController, SuppliersController>();
+        AssertSameAuthorization<CustomerImportController, CustomersController>();
+
+        // Finance has no role list on purpose — any authenticated farm member may record
+        // an expense or an income — and the importers must match that, not the stricter
+        // inventory roles.
+        AssertSameAuthorization<ExpenseImportController, FinanceController>();
+        AssertSameAuthorization<IncomeImportController, FinanceController>();
     }
 
     private static void AssertSameAuthorization<TImport, TSingle>()
