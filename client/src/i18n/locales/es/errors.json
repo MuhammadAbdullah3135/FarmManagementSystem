@@ -1,0 +1,9 @@
+{
+  "backToDashboard": "Volver al panel",
+  "reloadApp": "Recargar la aplicación",
+  "restOfAppStillWorks": "El resto de la aplicación sigue funcionando: elige otra pantalla en el menú o vuelve a intentarlo con esta.",
+  "screenFailed": "Esta pantalla ha fallado",
+  "somethingWentWrong": "Algo ha salido mal",
+  "tryAgain": "Volver a intentarlo",
+  "unexpectedRenderError": "La aplicación ha sufrido un error inesperado y ha tenido que dejar de mostrar esta pantalla."
+}

@@ -59,7 +59,7 @@ public class InventoryService : IInventoryService
         var errors = InventoryItemRules.Validate(
             request.Name, request.Category, request.Unit, request.Quantity,
             request.ReorderLevel, request.UnitCost, request.Location);
-        if (errors.Count > 0) return Result<InventoryItemDto>.Validation(errors[0].Message);
+        if (errors.Count > 0) return Result<InventoryItemDto>.Validation(errors[0].Message, errors[0].MessageKey, errors[0].MessageArgs);
 
         var name = request.Name.Trim();
         if (await _context.InventoryItems.AnyAsync(i => i.FarmId == farmId && i.Name == name))
@@ -186,7 +186,7 @@ public class InventoryService : IInventoryService
         var error = InventoryItemRules.Validate(
             request.Name, request.Category, request.Unit, 0,
             request.ReorderLevel, request.UnitCost, request.Location, validateQuantity: false);
-        if (error.Count > 0) return Result<InventoryItemDto>.Validation(error[0].Message);
+        if (error.Count > 0) return Result<InventoryItemDto>.Validation(error[0].Message, error[0].MessageKey, error[0].MessageArgs);
         var name = request.Name.Trim();
         if (await _context.InventoryItems.AnyAsync(i => i.FarmId == farmId && i.Id != id && i.Name == name))
             return Result<InventoryItemDto>.Conflict(InventoryItemRules.DuplicateNameMessage);

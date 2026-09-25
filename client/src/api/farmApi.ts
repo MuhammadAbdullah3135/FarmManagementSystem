@@ -1,3 +1,4 @@
+import { messageKeyFromResponse, renderKeyedMessage } from '../i18n/serverMessage';
 import { useFarmStore } from '../stores/farmStore';
 
 export const getActiveFarmId = (): string => {
@@ -11,9 +12,22 @@ export const getActiveFarmId = (): string => {
 export const farmUrl = (path: string): string => `/farm/${getActiveFarmId()}${path}`;
 
 export const getApiError = (err: unknown, fallback = 'Something went wrong'): string => {
-  const e = err as { response?: { data?: unknown; status?: number }; message?: string };
+  const e = err as {
+    response?: { data?: unknown; status?: number; headers?: Record<string, unknown> };
+    message?: string;
+  };
   const data = e?.response?.data;
   const status = e?.response?.status;
+
+  // A keyed response renders in the active language. When the key is unknown this returns
+  // an empty string and the English fallback below runs unchanged, so nothing that works
+  // today can regress by the server adding a key.
+  const keyed = messageKeyFromResponse(e?.response?.headers, data);
+  if (keyed) {
+    const rendered = renderKeyedMessage(keyed.key, keyed.args, '');
+    if (rendered) return rendered;
+  }
+
   // String bodies (the common case)
   if (typeof data === 'string' && data.trim()) {
     return data;

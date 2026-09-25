@@ -11,6 +11,8 @@ import {
   type AnimalCostRow, type CostComponent, type CostPerAnimalReport, type HerdCostRow,
 } from '../../api/reports';
 import { getApiError } from '../../api/farmApi';
+import { formatDate, formatNumber, formatPercent } from '../../i18n/format';
+import { useTranslation } from 'react-i18next';
 
 const { Text } = Typography;
 
@@ -19,13 +21,19 @@ const { Text } = Typography;
  * pool on a direct cost) arrive as an explicit null. Formatting one used to throw inside
  * render and take the whole app down with it, so this is the one place that decides what an
  * absent amount looks like.
+ *
+ * The figure stays bare — no currency symbol — because that is what this report has always
+ * shown and what its assertions pin: a column header already says the number is money.
+ * `formatNumber` is what still gives the language its own separators.
  */
 const money = (value?: number | null): string =>
   value == null
     ? '—'
-    : value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    : formatNumber(value, undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-const day = (value?: string | null): string => (value ? new Date(value).toLocaleDateString() : 'Still here');
+/** An open-ended range: no end date yet means the animal is still on the farm. */
+const day = (value: string | null | undefined, openLabel: string): string =>
+  value ? formatDate(value) : openLabel;
 
 /**
  * The arithmetic behind one figure, in the words the report itself uses: a direct record is
@@ -42,7 +50,7 @@ const allocationText = (component: CostComponent): string => {
   return `${component.source} · ${component.allocatedDays ?? 0} / ${component.poolDays ?? 0} days × ${money(component.poolAmount)}`;
 };
 
-const CostPerAnimalPage: React.FC = () => {
+const CostPerAnimalPage: React.FC = () => {const { t } = useTranslation('reports'); 
   const [report, setReport] = useState<CostPerAnimalReport | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -64,46 +72,46 @@ const CostPerAnimalPage: React.FC = () => {
   }, [loadData]);
 
   const componentColumns: ColumnsType<CostComponent> = [
-    { title: 'Item', dataIndex: 'label' },
-    { title: 'Amount', dataIndex: 'amount', align: 'right', render: (value: number) => money(value) },
-    { title: 'How it was worked out', key: 'basis', render: (_, component) => (
+    { title: t('item'), dataIndex: 'label' },
+    { title: t('amount'), dataIndex: 'amount', align: 'right', render: (value: number) => money(value) },
+    { title: t('howItWasWorkedOut'), key: 'basis', render: (_, component) => (
       <Text type="secondary" style={{ fontSize: 12 }}>{allocationText(component)}</Text>
     ) },
-    { title: 'Records', dataIndex: 'recordCount', align: 'right', render: (value: number, component) =>
+    { title: t('records'), dataIndex: 'recordCount', align: 'right', render: (value: number, component) =>
       component.method === 'direct' && value ? value : <Text type="secondary">—</Text> },
   ];
 
   const animalColumns: ColumnsType<AnimalCostRow> = [
-    { title: 'Tag', dataIndex: 'tagNumber' },
-    { title: 'Name', dataIndex: 'name', render: (value?: string) => value ?? <Text type="secondary">—</Text> },
-    { title: 'Herd', dataIndex: 'locationName', render: (value?: string) => value ?? <Text type="secondary">Not in a location</Text> },
-    { title: 'Present', key: 'present', render: (_, row) => (
+    { title: t('tag'), dataIndex: 'tagNumber' },
+    { title: t('name'), dataIndex: 'name', render: (value?: string) => value ?? <Text type="secondary">—</Text> },
+    { title: t('herd'), dataIndex: 'locationName', render: (value?: string) => value ?? <Text type="secondary">{t('notInALocation')}</Text> },
+    { title: t('present'), key: 'present', render: (_, row) => (
       <Text style={{ fontSize: 12 }}>
-        {new Date(row.presentFrom).toLocaleDateString()} – {day(row.presentTo)}
+        {formatDate(row.presentFrom)} – {day(row.presentTo, t('stillHere'))}
       </Text>
     ) },
-    { title: 'Animal-days', dataIndex: 'animalDays', align: 'right' },
-    { title: 'Share of farm days', dataIndex: 'shareOfFarmDays', align: 'right',
-      render: (value: number) => `${(value * 100).toFixed(1)}%` },
-    { title: 'Cost', dataIndex: 'totalCost', align: 'right', render: (value: number) => money(value) },
-    { title: 'Revenue', dataIndex: 'totalRevenue', align: 'right', render: (value: number) => money(value) },
-    { title: 'Margin', dataIndex: 'margin', align: 'right', render: (value: number) => (
+    { title: t('animalDays'), dataIndex: 'animalDays', align: 'right' },
+    { title: t('shareOfFarmDays'), dataIndex: 'shareOfFarmDays', align: 'right',
+      render: (value: number) => formatPercent(value) },
+    { title: t('cost'), dataIndex: 'totalCost', align: 'right', render: (value: number) => money(value) },
+    { title: t('revenue'), dataIndex: 'totalRevenue', align: 'right', render: (value: number) => money(value) },
+    { title: t('margin'), dataIndex: 'margin', align: 'right', render: (value: number) => (
       <Text type={value < 0 ? 'danger' : undefined}>{money(value)}</Text>
     ) },
     { title: '', key: 'warnings', width: 90, render: (_, row) => row.warnings.length > 0 ? (
       <Tooltip title={row.warnings.map(code => warningText(code)).join(' ')}>
-        <Tag icon={<InfoCircleOutlined />} color="warning">Caveat</Tag>
+        <Tag icon={<InfoCircleOutlined />} color="warning">{t('caveat')}</Tag>
       </Tooltip>
     ) : null },
   ];
 
   const herdColumns: ColumnsType<HerdCostRow> = [
-    { title: 'Herd', dataIndex: 'locationName' },
-    { title: 'Animals', dataIndex: 'animalCount', align: 'right' },
-    { title: 'Animal-days', dataIndex: 'animalDays', align: 'right' },
-    { title: 'Cost', dataIndex: 'totalCost', align: 'right', render: (value: number) => money(value) },
-    { title: 'Revenue', dataIndex: 'totalRevenue', align: 'right', render: (value: number) => money(value) },
-    { title: 'Margin', dataIndex: 'margin', align: 'right', render: (value: number) => (
+    { title: t('herd'), dataIndex: 'locationName' },
+    { title: t('animals'), dataIndex: 'animalCount', align: 'right' },
+    { title: t('animalDays'), dataIndex: 'animalDays', align: 'right' },
+    { title: t('cost'), dataIndex: 'totalCost', align: 'right', render: (value: number) => money(value) },
+    { title: t('revenue'), dataIndex: 'totalRevenue', align: 'right', render: (value: number) => money(value) },
+    { title: t('margin'), dataIndex: 'margin', align: 'right', render: (value: number) => (
       <Text type={value < 0 ? 'danger' : undefined}>{money(value)}</Text>
     ) },
   ];
@@ -119,7 +127,7 @@ const CostPerAnimalPage: React.FC = () => {
             <DateRangeFilter onChange={(from, to) => void loadData(from, to)} />
             <ExportButton
               filename="cost-per-animal"
-              title="Cost per Animal"
+              title={t('costPerAnimal')}
               headers={['Tag', 'Name', 'Herd', 'Animal-days', 'Cost', 'Revenue', 'Margin']}
               rows={(report?.animals ?? []).map(row => [
                 row.tagNumber, row.name ?? '', row.locationName ?? 'Not in a location',
@@ -131,8 +139,7 @@ const CostPerAnimalPage: React.FC = () => {
         }
       >
         <Text type="secondary">
-          What each animal cost and earned in the range. Shared costs are split by animal-days,
-          and every allocated figure shows the days and the pool it came from.
+          {t('whatEachAnimalCostAndEarnedInThe')}
         </Text>
       </Card>
 
@@ -144,14 +151,14 @@ const CostPerAnimalPage: React.FC = () => {
             type="warning"
             showIcon
             style={{ marginBottom: 16 }}
-            title="Read these numbers with the following in mind"
+            title={t('readTheseNumbersWithTheFollowingInMind')}
             description={
               <ul style={{ margin: 0, paddingInlineStart: 20 }}>
                 {report.warnings.map(warning => (
                   <li key={warning.code}>
                     {warning.message}
                     {warning.amount != null && <> <Text strong>({money(warning.amount)})</Text></>}
-                    {warning.affectedCount > 0 && <> <Text type="secondary">({warning.affectedCount} records/animals)</Text></>}
+                    {warning.affectedCount > 0 && <> <Text type="secondary">({warning.affectedCount} {t('recordsAnimals')}</Text></>}
                   </li>
                 ))}
               </ul>
@@ -160,32 +167,32 @@ const CostPerAnimalPage: React.FC = () => {
         )}
 
         <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-          <Col xs={12} sm={6}><Card><Statistic title="Total cost" value={report?.farm.totalCost ?? 0} precision={2} /></Card></Col>
-          <Col xs={12} sm={6}><Card><Statistic title="Total revenue" value={report?.farm.totalRevenue ?? 0} precision={2} /></Card></Col>
+          <Col xs={12} sm={6}><Card><Statistic title={t('totalCost')} value={report?.farm.totalCost ?? 0} precision={2} /></Card></Col>
+          <Col xs={12} sm={6}><Card><Statistic title={t('totalRevenue')} value={report?.farm.totalRevenue ?? 0} precision={2} /></Card></Col>
           <Col xs={12} sm={6}><Card>
             <Statistic
-              title="Margin"
+              title={t('margin')}
               value={report?.farm.margin ?? 0}
               precision={2}
               styles={{ content: { color: (report?.farm.margin ?? 0) < 0 ? '#ff4d4f' : undefined } }}
             />
           </Card></Col>
-          <Col xs={12} sm={6}><Card><Statistic title="Cost per animal-day" value={report?.farm.costPerAnimalDay ?? 0} precision={2} /></Card></Col>
+          <Col xs={12} sm={6}><Card><Statistic title={t('costPerAnimalDay')} value={report?.farm.costPerAnimalDay ?? 0} precision={2} /></Card></Col>
         </Row>
 
-        <Card title="Cost and revenue per animal" size="small" style={{ marginBottom: 16 }}>
+        <Card title={t('costAndRevenuePerAnimal')} size="small" style={{ marginBottom: 16 }}>
           <Table
             rowKey="animalId"
             size="small"
             columns={animalColumns}
             dataSource={report?.animals ?? []}
             pagination={{ pageSize: 20, hideOnSinglePage: true }}
-            locale={{ emptyText: <Empty description="No animals in this range" /> }}
+            locale={{ emptyText: <Empty description={t('noAnimalsInThisRange')} /> }}
             expandable={{
               expandedRowRender: (row) => (
                 <Row gutter={[16, 16]}>
                   <Col xs={24} lg={12}>
-                    <Text strong>Cost</Text>
+                    <Text strong>{t('cost')}</Text>
                     <Table
                       rowKey="key"
                       size="small"
@@ -196,7 +203,7 @@ const CostPerAnimalPage: React.FC = () => {
                     />
                   </Col>
                   <Col xs={24} lg={12}>
-                    <Text strong>Revenue</Text>
+                    <Text strong>{t('revenue')}</Text>
                     <Table
                       rowKey="key"
                       size="small"
@@ -212,23 +219,23 @@ const CostPerAnimalPage: React.FC = () => {
           />
         </Card>
 
-        <Card title="Cost and revenue per herd" size="small" style={{ marginBottom: 16 }}>
+        <Card title={t('costAndRevenuePerHerd')} size="small" style={{ marginBottom: 16 }}>
           <Table
             rowKey={(row) => row.locationId ?? 'none'}
             size="small"
             columns={herdColumns}
             dataSource={report?.herds ?? []}
             pagination={false}
-            locale={{ emptyText: <Empty description="No data" /> }}
+            locale={{ emptyText: <Empty description={t('noData')} /> }}
           />
           <Text type="secondary" style={{ fontSize: 12 }}>
-            Herds group animals by where they are now, and each row is the sum of its animals' rows.
+            {t('herdsGroupAnimalsByWhereTheyAreNow')}
           </Text>
         </Card>
 
         <Row gutter={[16, 16]}>
           <Col xs={24} lg={12}>
-            <Card title="How these numbers were built" size="small">
+            <Card title={t('howTheseNumbersWereBuilt')} size="small">
               {report?.rules.map(rule => (
                 <p key={rule.key} style={{ marginBottom: 12 }}>
                   <Text strong>{rule.title}</Text>
@@ -239,47 +246,47 @@ const CostPerAnimalPage: React.FC = () => {
             </Card>
           </Col>
           <Col xs={24} lg={12}>
-            <Card title="Reconciliation" size="small">
-              {!reconciliation ? <Empty description="No data" /> : (
+            <Card title={t('reconciliation')} size="small">
+              {!reconciliation ? <Empty description={t('noData')} /> : (
                 <>
                   <Descriptions size="small" column={1} bordered>
-                    <Descriptions.Item label="Expenses in the range">
+                    <Descriptions.Item label={t('expensesInTheRange')}>
                       {money(reconciliation.farmExpensesTotal)}
                     </Descriptions.Item>
-                    <Descriptions.Item label="…of which health-linked">
+                    <Descriptions.Item label={t('ofWhichHealthLinked')}>
                       {money(reconciliation.healthLinkedExpenses)}
                     </Descriptions.Item>
-                    <Descriptions.Item label="…on an animal">
+                    <Descriptions.Item label={t('onAnAnimal')}>
                       {money(reconciliation.expensesAttributedToAnimals + reconciliation.expensesAllocatedFromLocations + reconciliation.expensesAllocatedFromFarmPool)}
                     </Descriptions.Item>
-                    <Descriptions.Item label="…unallocated">
+                    <Descriptions.Item label={t('unallocated')}>
                       {money(reconciliation.expensesUnallocated)}
                     </Descriptions.Item>
-                    <Descriptions.Item label="Feed consumed">
+                    <Descriptions.Item label={t('feedConsumed')}>
                       {money(reconciliation.feedConsumedTotal)}
                     </Descriptions.Item>
-                    <Descriptions.Item label="Health records">
+                    <Descriptions.Item label={t('healthRecords')}>
                       {money(reconciliation.healthRecordsTotal)}
                     </Descriptions.Item>
-                    <Descriptions.Item label="Labour">
+                    <Descriptions.Item label={t('labour')}>
                       {money(reconciliation.labourTotal)}
                     </Descriptions.Item>
-                    <Descriptions.Item label="Cost with no expense behind it">
+                    <Descriptions.Item label={t('costWithNoExpenseBehindIt')}>
                       {money(reconciliation.costOutsideTheExpenseLedger)}
                       <Text type="secondary" style={{ fontSize: 12 }}>
-                        {' '}— feed consumption and labour, which the profit-and-loss expense line does not carry
+                        {' '}{t('feedConsumptionAndLabourWhichTheProfitAnd')}
                       </Text>
                     </Descriptions.Item>
                   </Descriptions>
                   <div style={{ marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                     <Tag color={reconciliation.expensesReconcile ? 'green' : 'red'}>
-                      Expenses {reconciliation.expensesReconcile ? 'add up' : 'do not add up'}
+                      {t('expenses')} {reconciliation.expensesReconcile ? t('addUp') : t('doNotAddUp')}
                     </Tag>
                     <Tag color={reconciliation.feedReconciles ? 'green' : 'red'}>
-                      Feed {reconciliation.feedReconciles ? 'adds up' : 'does not add up'}
+                      {t('feed')} {reconciliation.feedReconciles ? t('addsUp') : t('doesNotAddUp')}
                     </Tag>
                     <Tag color={reconciliation.healthReconciles ? 'green' : 'red'}>
-                      Health {reconciliation.healthReconciles ? 'adds up' : 'does not add up'}
+                      {t('health')} {reconciliation.healthReconciles ? t('addsUp') : t('doesNotAddUp')}
                     </Tag>
                   </div>
                 </>

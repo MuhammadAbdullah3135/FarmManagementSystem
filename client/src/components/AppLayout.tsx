@@ -25,6 +25,9 @@ import {
   CloseOutlined,
   BellOutlined,
   CloudSyncOutlined,
+  DownloadOutlined,
+  TranslationOutlined,
+  CheckOutlined,
 } from '@ant-design/icons';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
@@ -40,6 +43,11 @@ import { usePermissions } from '../hooks/usePermissions';
 import { setFarmAccessDeniedHandler } from '../api/axios';
 import { notificationsApi } from '../api/notifications';
 import type { MenuProps } from 'antd';
+import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
+import { changeLocale } from '../i18n';
+import { LOCALE_LABELS, SUPPORTED_LOCALES, type Locale } from '../i18n/locale';
+import { refreshAccountLocale, saveAccountLocale } from '../i18n/localeSync';
 
 const { Header, Sider, Content } = Layout;
 const { Text } = Typography;
@@ -68,30 +76,33 @@ const stripBase = (pathname: string) =>
  * The navigation tree. Entries whose whole module is role-restricted carry a
  * `requiredModule` key from `MODULE_ROLES`; `filterMenuByRole` hides them (and
  * any group left empty) for users whose roles do not grant access.
+ *
+ * Labels are keys (`nav:*`) rather than text: the tree is language-free, and
+ * {@link localizeMenuItems} resolves each one for the active language.
  */
 export const appMenuItems: AppMenuItem[] = [
   {
     key: '/dashboard',
     icon: <DashboardOutlined />,
-    label: 'Dashboard',
+    labelKey: 'nav:dashboard',
   },
   {
     key: 'feed',
     icon: <MedicineBoxOutlined />,
-    label: 'Feed Management',
+    labelKey: 'nav:feedManagement',
     children: [
-      { key: '/dashboard/feed/types', icon: <CoffeeOutlined />, label: 'Feed Types' },
-      { key: '/dashboard/feed/records', icon: <UnorderedListOutlined />, label: 'Feed Records' },
-      { key: '/dashboard/feed/diet-plans', label: 'Diet Plans' },
-      { key: '/dashboard/feed/schedules', label: 'Feeding Schedules' },
-      { key: '/dashboard/feed/tasks', label: 'Feeding Tasks' },
-      { key: '/dashboard/feed/reports', label: 'Reports' },
+      { key: '/dashboard/feed/types', icon: <CoffeeOutlined />, labelKey: 'nav:feedTypes' },
+      { key: '/dashboard/feed/records', icon: <UnorderedListOutlined />, labelKey: 'nav:feedRecords' },
+      { key: '/dashboard/feed/diet-plans', labelKey: 'nav:dietPlans' },
+      { key: '/dashboard/feed/schedules', labelKey: 'nav:feedingSchedules' },
+      { key: '/dashboard/feed/tasks', labelKey: 'nav:feedingTasks' },
+      { key: '/dashboard/feed/reports', labelKey: 'nav:reports' },
     ],
   },
   {
     key: '/dashboard/tasks',
     icon: <CheckSquareOutlined />,
-    label: 'Farm Tasks',
+    labelKey: 'nav:farmTasks',
   },
   {
     // Ungated on purpose: every member can read their *own* notifications, and
@@ -99,112 +110,121 @@ export const appMenuItems: AppMenuItem[] = [
     // no module for a menu filter to check.
     key: '/dashboard/notifications',
     icon: <BellOutlined />,
-    label: 'Notifications',
+    labelKey: 'nav:notifications',
   },
   {
     key: 'animals',
     icon: <BugOutlined />,
-    label: 'Animals',
+    labelKey: 'nav:animals',
     children: [
-      { key: '/dashboard/animals', icon: <UnorderedListOutlined />, label: 'Animal List' },
+      { key: '/dashboard/animals', icon: <UnorderedListOutlined />, labelKey: 'nav:animalList' },
     ],
   },
   {
     key: 'breeding',
     icon: <NodeIndexOutlined />,
-    label: 'Breeding',
+    labelKey: 'nav:breeding',
     children: [
-      { key: '/dashboard/breeding/records', icon: <UnorderedListOutlined />, label: 'Breeding Records' },
-      { key: '/dashboard/breeding/gestation', icon: <HeartOutlined />, label: 'Gestation Tracking' },
-      { key: '/dashboard/breeding/births', icon: <BugOutlined />, label: 'Birth Records' },
-      { key: '/dashboard/breeding/lineage', icon: <NodeIndexOutlined />, label: 'Lineage View' },
-      { key: '/dashboard/breeding/reports', icon: <BarChartOutlined />, label: 'Reports & Analytics' },
+      { key: '/dashboard/breeding/records', icon: <UnorderedListOutlined />, labelKey: 'nav:breedingRecords' },
+      { key: '/dashboard/breeding/gestation', icon: <HeartOutlined />, labelKey: 'nav:gestationTracking' },
+      { key: '/dashboard/breeding/births', icon: <BugOutlined />, labelKey: 'nav:birthRecords' },
+      { key: '/dashboard/breeding/lineage', icon: <NodeIndexOutlined />, labelKey: 'nav:lineageView' },
+      { key: '/dashboard/breeding/reports', icon: <BarChartOutlined />, labelKey: 'nav:reportsAnalytics' },
     ],
   },
   {
     key: 'hr',
     icon: <TeamOutlined />,
-    label: 'HR',
+    labelKey: 'nav:hr',
     children: [
-      { key: '/dashboard/hr/employees', label: 'Employees' },
-      { key: '/dashboard/hr/departments-roles', label: 'Departments & Roles' },
-      { key: '/dashboard/hr/salary-payments', icon: <DollarOutlined />, label: 'Salary & Payroll' },
-      { key: '/dashboard/hr/attendance', icon: <ClockCircleOutlined />, label: 'Attendance' },
-      { key: '/dashboard/hr/performance', icon: <StarOutlined />, label: 'Performance Reviews' },
+      { key: '/dashboard/hr/employees', labelKey: 'nav:employees' },
+      { key: '/dashboard/hr/departments-roles', labelKey: 'nav:departmentsRoles' },
+      { key: '/dashboard/hr/salary-payments', icon: <DollarOutlined />, labelKey: 'nav:salaryPayroll' },
+      { key: '/dashboard/hr/attendance', icon: <ClockCircleOutlined />, labelKey: 'nav:attendance' },
+      { key: '/dashboard/hr/performance', icon: <StarOutlined />, labelKey: 'nav:performanceReviews' },
     ],
   },
   {
     key: 'finance',
     icon: <DollarOutlined />,
-    label: 'Finance',
+    labelKey: 'nav:finance',
     children: [
-      { key: '/dashboard/finance/expenses', icon: <AuditOutlined />, label: 'Expenses' },
-      { key: '/dashboard/finance/incomes', icon: <AuditOutlined />, label: 'Income' },
-      { key: '/dashboard/finance/reports', icon: <BarChartOutlined />, label: 'Reports' },
-      { key: '/dashboard/finance/categories', icon: <UnorderedListOutlined />, label: 'Categories & Payment Methods' },
+      { key: '/dashboard/finance/expenses', icon: <AuditOutlined />, labelKey: 'nav:expenses' },
+      { key: '/dashboard/finance/incomes', icon: <AuditOutlined />, labelKey: 'nav:income' },
+      { key: '/dashboard/finance/reports', icon: <BarChartOutlined />, labelKey: 'nav:reports' },
+      { key: '/dashboard/finance/categories', icon: <UnorderedListOutlined />, labelKey: 'nav:categoriesPaymentMethods' },
     ],
   },
   {
     key: 'inventory',
     icon: <InboxOutlined />,
-    label: 'Inventory',
+    labelKey: 'nav:inventory',
     children: [
-      { key: '/dashboard/inventory/items', icon: <UnorderedListOutlined />, label: 'Inventory Items', requiredModule: 'inventory.items' },
-      { key: '/dashboard/inventory/movements', icon: <SwapOutlined />, label: 'Stock Movements', requiredModule: 'inventory.items' },
-      { key: '/dashboard/inventory/suppliers', icon: <TeamOutlined />, label: 'Suppliers', requiredModule: 'inventory.suppliers' },
-      { key: '/dashboard/inventory/customers', icon: <TeamOutlined />, label: 'Customers', requiredModule: 'inventory.customers' },
-      { key: '/dashboard/inventory/reports', icon: <BarChartOutlined />, label: 'Reports', requiredModule: 'inventory.items' },
+      { key: '/dashboard/inventory/items', icon: <UnorderedListOutlined />, labelKey: 'nav:inventoryItems', requiredModule: 'inventory.items' },
+      { key: '/dashboard/inventory/movements', icon: <SwapOutlined />, labelKey: 'nav:stockMovements', requiredModule: 'inventory.items' },
+      { key: '/dashboard/inventory/suppliers', icon: <TeamOutlined />, labelKey: 'nav:suppliers', requiredModule: 'inventory.suppliers' },
+      { key: '/dashboard/inventory/customers', icon: <TeamOutlined />, labelKey: 'nav:customers', requiredModule: 'inventory.customers' },
+      { key: '/dashboard/inventory/reports', icon: <BarChartOutlined />, labelKey: 'nav:reports', requiredModule: 'inventory.items' },
     ],
   },
   {
     key: 'health',
     icon: <HeartOutlined />,
-    label: 'Health Management',
+    labelKey: 'nav:healthManagement',
     children: [
-      { key: '/dashboard/health/medical', icon: <MedicineBoxOutlined />, label: 'Medical Records' },
-      { key: '/dashboard/health/medicines', icon: <MedicineBoxOutlined />, label: 'Medicines' },
-      { key: '/dashboard/health/medicines/alerts', icon: <MedicineBoxOutlined />, label: 'Medicine Alerts' },
-      { key: '/dashboard/health/vaccines', label: 'Vaccine Types' },
-      { key: '/dashboard/health/vaccinations', label: 'Vaccination Records' },
-      { key: '/dashboard/health/vaccinations/schedule', label: 'Vaccination Schedules' },
-      { key: '/dashboard/health/weight-schedules', label: 'Weight Check Schedules' },
-      { key: '/dashboard/health/costs', label: 'Vet Costs' },
+      { key: '/dashboard/health/medical', icon: <MedicineBoxOutlined />, labelKey: 'nav:medicalRecords' },
+      { key: '/dashboard/health/medicines', icon: <MedicineBoxOutlined />, labelKey: 'nav:medicines' },
+      { key: '/dashboard/health/medicines/alerts', icon: <MedicineBoxOutlined />, labelKey: 'nav:medicineAlerts' },
+      { key: '/dashboard/health/vaccines', labelKey: 'nav:vaccineTypes' },
+      { key: '/dashboard/health/vaccinations', labelKey: 'nav:vaccinationRecords' },
+      { key: '/dashboard/health/vaccinations/schedule', labelKey: 'nav:vaccinationSchedules' },
+      { key: '/dashboard/health/weight-schedules', labelKey: 'nav:weightCheckSchedules' },
+      { key: '/dashboard/health/costs', labelKey: 'nav:vetCosts' },
     ],
   },
   {
     key: 'reports',
     icon: <BarChartOutlined />,
-    label: 'Reports',
+    labelKey: 'nav:reports',
     children: [
-      { key: '/dashboard/reports/animals', label: 'Animal Reports' },
-      { key: '/dashboard/reports/financial', label: 'Financial Reports' },
-      { key: '/dashboard/reports/feed', label: 'Feed Reports' },
-      { key: '/dashboard/reports/medical', label: 'Medical Reports' },
-      { key: '/dashboard/reports/vaccination', label: 'Vaccination Reports' },
-      { key: '/dashboard/reports/breeding', label: 'Breeding Reports' },
-      { key: '/dashboard/reports/employees', label: 'Employee Reports' },
-      { key: '/dashboard/reports/cost-per-animal', label: 'Cost per Animal' },
+      { key: '/dashboard/reports/animals', labelKey: 'nav:animalReports' },
+      { key: '/dashboard/reports/financial', labelKey: 'nav:financialReports' },
+      { key: '/dashboard/reports/feed', labelKey: 'nav:feedReports' },
+      { key: '/dashboard/reports/medical', labelKey: 'nav:medicalReports' },
+      { key: '/dashboard/reports/vaccination', labelKey: 'nav:vaccinationReports' },
+      { key: '/dashboard/reports/breeding', labelKey: 'nav:breedingReports' },
+      { key: '/dashboard/reports/employees', labelKey: 'nav:employeeReports' },
+      { key: '/dashboard/reports/cost-per-animal', labelKey: 'nav:costPerAnimal' },
     ],
   },
   {
     key: 'configuration',
     icon: <SettingOutlined />,
-    label: 'Configuration',
+    labelKey: 'nav:configuration',
     children: [
-      { key: '/dashboard/configuration', icon: <SettingOutlined />, label: 'Farm Configuration' },
-      { key: '/dashboard/farm/members', icon: <TeamOutlined />, label: 'Members', requiredModule: 'farm.members' },
+      { key: '/dashboard/configuration', icon: <SettingOutlined />, labelKey: 'nav:farmConfiguration' },
+      { key: '/dashboard/farm/members', icon: <TeamOutlined />, labelKey: 'nav:members', requiredModule: 'farm.members' },
+      { key: '/dashboard/configuration/export', icon: <DownloadOutlined />, labelKey: 'nav:dataExport', requiredModule: 'data.export' },
     ],
   },
   {
     key: 'admin',
     icon: <AuditOutlined />,
-    label: 'Admin',
+    labelKey: 'nav:admin',
     children: [
-      { key: '/dashboard/admin/audit-log', icon: <AuditOutlined />, label: 'Audit Log', requiredModule: 'admin.audit-log' },
-      { key: '/dashboard/admin/jobs', icon: <ClockCircleOutlined />, label: 'Scheduled Jobs', requiredModule: 'admin.jobs' },
+      { key: '/dashboard/admin/audit-log', icon: <AuditOutlined />, labelKey: 'nav:auditLog', requiredModule: 'admin.audit-log' },
+      { key: '/dashboard/admin/jobs', icon: <ClockCircleOutlined />, labelKey: 'nav:scheduledJobs', requiredModule: 'admin.jobs' },
     ],
   },
 ];
+
+/** Resolves the `labelKey` of every entry (and its children) for the active language. */
+export const localizeMenuItems = (items: AppMenuItem[], t: TFunction): AppMenuItem[] =>
+  items.map((item) => ({
+    ...item,
+    label: item.labelKey ? t(item.labelKey) : item.label,
+    children: item.children ? localizeMenuItems(item.children, t) : undefined,
+  }));
 
 /**
  * Routes that are account-scoped rather than farm-scoped.
@@ -224,9 +244,7 @@ const farmIndependentPaths = [
 const isFarmIndependent = (pathname: string) =>
   farmIndependentPaths.some(
     (path) => pathname === path || pathname.startsWith(`${path}/`),
-  );
-
-const AppLayout: React.FC = () => {
+  );  const AppLayout: React.FC = () => {const { t, i18n } = useTranslation('common');  
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuthStore();
@@ -235,6 +253,10 @@ const AppLayout: React.FC = () => {
     isLoading: isLoadingFarms,
   } = useFarmStore();
   const { roles } = usePermissions();
+
+  // Normalised because i18next may report a regional tag (`es-MX`) that the switcher
+  // must still match to the `es` entry it offers.
+  const activeLocale = i18n.language.split('-')[0];
 
   const [isMobile, setIsMobile] = useState(
     () => typeof window !== 'undefined' && window.matchMedia('screen and (max-width: 991.98px)').matches,
@@ -256,6 +278,13 @@ const AppLayout: React.FC = () => {
   useEffect(() => {
     fetchFarms();
   }, [fetchFarms]);
+
+  // Once per session: the account's language may have been changed on another device since
+  // this one cached a copy. Silent by design — an offline boot, or a server that predates
+  // the preference, must leave the page exactly as it is.
+  useEffect(() => {
+    void refreshAccountLocale().catch(() => undefined);
+  }, []);
 
   // The badge is a pointer, not a feed: it is refreshed when the active farm
   // changes and on navigation (which covers returning from the notification
@@ -307,11 +336,11 @@ const AppLayout: React.FC = () => {
 
       clearActiveFarm();
       void fetchFarms();
-      message.warning('Your access to that farm was removed.');
+      message.warning(t('yourAccessToThatFarmWasRemoved'));
     });
 
     return () => setFarmAccessDeniedHandler(null);
-  }, [clearActiveFarm, fetchFarms]);
+  }, [clearActiveFarm, fetchFarms, t]);
 
   useEffect(() => {
     const root = document.getElementById('root');
@@ -349,11 +378,11 @@ const AppLayout: React.FC = () => {
     // exactly that, because "sign out" usually means "the device stops mattering".
     if (pendingCount > 0) {
       Modal.confirm({
-        title: 'Sign out with unsynced records?',
+        title: t('signOutWithUnsyncedRecords'),
         content: `${pendingCount} record${pendingCount === 1 ? '' : 's'} on this device ${pendingCount === 1 ? 'has' : 'have'} not reached the server yet. They stay on this device and are sent the next time this account signs in.`,
-        okText: 'Sign out anyway',
+        okText: t('signOutAnyway'),
         okButtonProps: { danger: true },
-        cancelText: 'Stay signed in',
+        cancelText: t('staySignedIn'),
         onOk: () => {
           logout();
           navigate('/login');
@@ -381,13 +410,13 @@ const AppLayout: React.FC = () => {
       : '';
 
     Modal.confirm({
-      title: 'Clear offline data?',
+      title: t('clearOfflineData'),
       // The queue exists now, so this copy has to say what clearing it costs. A cached row is
       // fetched again next time the device is online; a queued one is simply gone.
       content: recordCount > 0 || pendingCount > 0
         ? `This device has ${recordCount} cached record${recordCount === 1 ? '' : 's'} across ${collectionCount} collection${collectionCount === 1 ? '' : 's'}. Clearing removes them; the app fetches them again next time you are online.${queuedWarning}`
         : 'This device has no cached records. Nothing will change.',
-      okText: 'Clear',
+      okText: t('clear'),
       okButtonProps: { danger: true },
       onOk: async () => {
         const cleared = await clearAllOfflineData();
@@ -406,6 +435,24 @@ const AppLayout: React.FC = () => {
     onClick: () => setActiveFarm(farm),
   }));
 
+  /**
+   * Switches language everywhere, then remembers it on the account.
+   *
+   * The switch happens first and unconditionally: the device already has the choice and
+   * the whole UI is bundled, so it applies on the next render. Only the *saving* can fail,
+   * and that is reported as a warning rather than rolled back — the user asked for Spanish
+   * and Spanish is what they should get, even if the account could not be told.
+   */
+  const handleLocaleChange = async (locale: Locale) => {
+    if (locale === activeLocale) return;
+    changeLocale(locale);
+    try {
+      await saveAccountLocale(locale);
+    } catch {
+      message.warning(t('languageSaveFailed'));
+    }
+  };
+
   const userMenuItems = [
     {
       key: 'profile',
@@ -418,13 +465,25 @@ const AppLayout: React.FC = () => {
       disabled: true,
     },
     {
+      key: 'language',
+      icon: <TranslationOutlined />,
+      label: t('language'),
+      children: SUPPORTED_LOCALES.map((locale) => ({
+        key: `locale-${locale}`,
+        // Named in its own language, and ticked when it is the one in use.
+        label: LOCALE_LABELS[locale],
+        icon: locale === activeLocale ? <CheckOutlined /> : null,
+        onClick: () => void handleLocaleChange(locale),
+      })),
+    },
+    {
       key: 'offline-sync',
-      label: unsyncedCount > 0 ? `Offline & sync (${unsyncedCount})` : 'Offline & sync',
+      label: unsyncedCount > 0 ? `${t('offlineSync')} (${unsyncedCount})` : t('offlineSync'),
       onClick: () => navigate('/dashboard/sync'),
     },
     {
       key: 'offline-data',
-      label: 'Clear offline data',
+      label: t('clearOfflineData2'),
       onClick: handleClearOfflineData,
     },
     {
@@ -433,24 +492,24 @@ const AppLayout: React.FC = () => {
     {
       key: 'logout',
       icon: <LogoutOutlined />,
-      label: 'Logout',
+      label: t('logout'),
       onClick: handleLogout,
     },
   ];
 
-  const menuItems = filterMenuByRole(appMenuItems, roles);
+  const menuItems = filterMenuByRole(localizeMenuItems(appMenuItems, t), roles);
 
   const renderNav = (onClose?: () => void) => (
     <>
       <div style={{ padding: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <Text strong style={{ color: '#fff', fontSize: 18 }}>FMS</Text>
+        <Text strong style={{ color: '#fff', fontSize: 18 }}>{t('fms')}</Text>
         {onClose && (
           <Button
             type="text"
             size="small"
             icon={<CloseOutlined />}
             onClick={onClose}
-            aria-label="Close menu"
+            aria-label={t('closeMenu')}
             style={{ color: '#fff', marginLeft: 'auto' }}
           />
         )}
@@ -491,7 +550,7 @@ const AppLayout: React.FC = () => {
                 type="text"
                 icon={<MenuOutlined />}
                 onClick={() => setMobileMenuOpen(true)}
-                aria-label="Open menu"
+                aria-label={t('openMenu')}
               />
             )}
             <Dropdown menu={{ items: farmMenuItems }} trigger={['click']}>
@@ -500,9 +559,9 @@ const AppLayout: React.FC = () => {
                 {activeFarm ? (
                   <Text strong style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: isMobile ? 120 : undefined }}>{activeFarm.name}</Text>
                 ) : farms.length > 0 ? (
-                  <Text type="secondary">Select a farm</Text>
+                  <Text type="secondary">{t('selectAFarm')}</Text>
                 ) : (
-                  <Text type="secondary">No farms yet</Text>
+                  <Text type="secondary">{t('noFarmsYet')}</Text>
                 )}
               </div>
             </Dropdown>
@@ -516,13 +575,20 @@ const AppLayout: React.FC = () => {
             <Tooltip
               title={
                 unsyncedCount === 0
-                  ? 'Offline & sync'
-                  : `${pendingCount} waiting to sync${quarantinedCount > 0 ? `, ${quarantinedCount} refused by the server` : ''}`
+                  ? t('offlineSync')
+                  : [
+                      t('waitingToSyncCount', { count: pendingCount }),
+                      quarantinedCount > 0
+                        ? t('refusedByServerCount', { count: quarantinedCount })
+                        : null,
+                    ]
+                      .filter(Boolean)
+                      .join(', ')
               }
             >
               <Button
                 type="text"
-                aria-label="Offline and sync"
+                aria-label={t('offlineAndSync')}
                 onClick={() => navigate('/dashboard/sync')}
               >
                 <Badge count={unsyncedCount} size="small" overflowCount={99}>
@@ -535,7 +601,7 @@ const AppLayout: React.FC = () => {
 
             <Button
               type="text"
-              aria-label="Notifications"
+              aria-label={t('notifications')}
               onClick={() => navigate('/dashboard/notifications')}
             >
               <Badge count={unreadNotifications} size="small" overflowCount={99}>
@@ -572,11 +638,11 @@ const AppLayout: React.FC = () => {
           ) : (
             <Result
               status="info"
-              title={farms.length > 0 ? 'Select a farm to continue' : 'No farm access'}
+              title={farms.length > 0 ? t('selectAFarmToContinue') : t('noFarmAccess')}
               subTitle={
                 farms.length > 0
-                  ? 'Choose a farm from the selector in the header.'
-                  : 'You are not a member of any farm. Ask a farm owner to invite you, then open the invitation link from your email.'
+                  ? t('chooseAFarmFromTheSelectorInThe')
+                  : t('youAreNotAMemberOfAnyFarm')
               }
             />
           )}

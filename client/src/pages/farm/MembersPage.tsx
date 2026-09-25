@@ -4,13 +4,20 @@ import {
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { PlusOutlined, ReloadOutlined } from '@ant-design/icons';
-import dayjs from 'dayjs';
+import { formatDate } from '../../i18n/format';
+
 import { membersApi, FARM_ROLES, type FarmInvitation, type FarmMember } from '../../api/members';
+import { farmRoleLabel, labeledOptions } from '../../i18n/vocabulary';
+import type { TFunction } from 'i18next';
 import { getApiError } from '../../api/farmApi';
+import { useTranslation } from 'react-i18next';
 
 const { Text } = Typography;
 
-const roleOptions = FARM_ROLES.map((role) => ({ value: role, label: role }));
+// The value stays the stored role name — it is what the API is sent and what the permission
+// tables compare against. Only the label the user reads is translated.
+const roleOptions = (t: TFunction) =>
+  labeledOptions(FARM_ROLES, farmRoleLabel, t);
 
 const roleColor = (role: string): string => {
   switch (role) {
@@ -23,7 +30,7 @@ const roleColor = (role: string): string => {
   }
 };
 
-const MembersPage: React.FC = () => {
+const MembersPage: React.FC = () => {const { t } = useTranslation('common'); 
   const [members, setMembers] = useState<FarmMember[]>([]);
   const [invitations, setInvitations] = useState<FarmInvitation[]>([]);
   const [loading, setLoading] = useState(false);
@@ -70,7 +77,7 @@ const MembersPage: React.FC = () => {
   const handleRoleChange = async (userId: string, role: string) => {
     try {
       await membersApi.updateRole(userId, role);
-      message.success('Role updated');
+      message.success(t('roleUpdated'));
       await load();
     } catch (err) {
       message.error(getApiError(err));
@@ -81,7 +88,7 @@ const MembersPage: React.FC = () => {
   const handleRemove = async (userId: string) => {
     try {
       await membersApi.remove(userId);
-      message.success('Member removed');
+      message.success(t('memberRemoved'));
       await load();
     } catch (err) {
       message.error(getApiError(err));
@@ -91,7 +98,7 @@ const MembersPage: React.FC = () => {
   const handleRevoke = async (id: string) => {
     try {
       await membersApi.revokeInvitation(id);
-      message.success('Invitation revoked');
+      message.success(t('invitationRevoked'));
       await load();
     } catch (err) {
       message.error(getApiError(err));
@@ -100,7 +107,7 @@ const MembersPage: React.FC = () => {
 
   const memberColumns: ColumnsType<FarmMember> = [
     {
-      title: 'Member',
+      title: t('member'),
       key: 'member',
       render: (_, m) => (
         <Space direction="vertical" size={0}>
@@ -110,17 +117,17 @@ const MembersPage: React.FC = () => {
       ),
     },
     {
-      title: 'Farm role',
+      title: t('farmRole'),
       dataIndex: 'role',
       width: 220,
       render: (role: string, m) => (
         <Space>
-          <Tag color={roleColor(role)}>{role}</Tag>
+          <Tag color={roleColor(role)}>{farmRoleLabel(t, role)}</Tag>
           <Select
-            aria-label={`Change role for ${m.email}`}
+            aria-label={t('changeRoleFor', { email: m.email })}
             size="small"
             value={role}
-            options={roleOptions}
+            options={roleOptions(t)}
             style={{ width: 150 }}
             onChange={(value) => void handleRoleChange(m.userId, value)}
           />
@@ -128,49 +135,49 @@ const MembersPage: React.FC = () => {
       ),
     },
     {
-      title: 'Joined',
+      title: t('joined'),
       dataIndex: 'joinedAt',
       width: 140,
-      render: (d: string) => (d ? dayjs(d).format('YYYY-MM-DD') : '-'),
+      render: (d: string) => (d ? formatDate(d) : '-'),
     },
     {
-      title: 'Actions',
+      title: t('actions'),
       key: 'actions',
       width: 120,
       render: (_, m) => (
         <Popconfirm
-          title="Remove this member?"
-          description="They will lose access to this farm immediately."
-          okText="Remove"
+          title={t('removeThisMember')}
+          description={t('theyWillLoseAccessToThisFarmImmediately')}
+          okText={t('remove')}
           okButtonProps={{ danger: true }}
           onConfirm={() => void handleRemove(m.userId)}
         >
-          <Button danger size="small">Remove</Button>
+          <Button danger size="small">{t('remove')}</Button>
         </Popconfirm>
       ),
     },
   ];
 
   const invitationColumns: ColumnsType<FarmInvitation> = [
-    { title: 'Email', dataIndex: 'email', ellipsis: true },
+    { title: t('email'), dataIndex: 'email', ellipsis: true },
     {
-      title: 'Role',
+      title: t('role'),
       dataIndex: 'role',
       width: 160,
-      render: (role: string) => <Tag color={roleColor(role)}>{role}</Tag>,
+      render: (role: string) => <Tag color={roleColor(role)}>{farmRoleLabel(t, role)}</Tag>,
     },
     {
-      title: 'Expires',
+      title: t('expires'),
       dataIndex: 'expiresAt',
       width: 140,
-      render: (d: string) => (d ? dayjs(d).format('YYYY-MM-DD') : '-'),
+      render: (d: string) => (d ? formatDate(d) : '-'),
     },
     {
-      title: 'Actions',
+      title: t('actions'),
       key: 'actions',
       width: 120,
       render: (_, i) => (
-        <Button size="small" onClick={() => void handleRevoke(i.id)}>Revoke</Button>
+        <Button size="small" onClick={() => void handleRevoke(i.id)}>{t('revoke')}</Button>
       ),
     },
   ];
@@ -178,12 +185,12 @@ const MembersPage: React.FC = () => {
   return (
     <Space direction="vertical" size="large" style={{ width: '100%' }}>
       <Card
-        title="Farm members"
+        title={t('farmMembers')}
         extra={
           <Space>
-            <Button icon={<ReloadOutlined />} onClick={() => void load()}>Refresh</Button>
+            <Button icon={<ReloadOutlined />} onClick={() => void load()}>{t('refresh')}</Button>
             <Button type="primary" icon={<PlusOutlined />} onClick={() => setInviteOpen(true)}>
-              Invite member
+              {t('inviteMember')}
             </Button>
           </Space>
         }
@@ -197,7 +204,7 @@ const MembersPage: React.FC = () => {
         />
       </Card>
 
-      <Card title="Pending invitations">
+      <Card title={t('pendingInvitations')}>
         <Table
           rowKey="id"
           columns={invitationColumns}
@@ -209,31 +216,31 @@ const MembersPage: React.FC = () => {
       </Card>
 
       <Modal
-        title="Invite a member"
+        title={t('inviteAMember')}
         open={inviteOpen}
         onCancel={() => setInviteOpen(false)}
         onOk={() => form.submit()}
         confirmLoading={saving}
-        okText="Send invitation"
+        okText={t('sendInvitation')}
         destroyOnClose
       >
         <Form form={form} layout="vertical" onFinish={handleInvite} initialValues={{ role: 'Viewer' }}>
           <Form.Item
             name="email"
-            label="Email address"
+            label={t('emailAddress')}
             rules={[
               { required: true, message: 'Please enter an email address' },
               { type: 'email', message: 'Please enter a valid email address' },
             ]}
           >
-            <Input placeholder="person@example.com" />
+            <Input placeholder={t('personExampleCom')} />
           </Form.Item>
           <Form.Item
             name="role"
-            label="Farm role"
+            label={t('farmRole')}
             rules={[{ required: true, message: 'Please choose a role' }]}
           >
-            <Select options={roleOptions} />
+            <Select options={roleOptions(t)} />
           </Form.Item>
         </Form>
       </Modal>

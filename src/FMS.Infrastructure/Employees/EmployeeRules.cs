@@ -62,14 +62,22 @@ public static class EmployeeRules
         var errors = new List<FieldError>();
 
         if (string.IsNullOrWhiteSpace(firstName))
-            errors.Add(new FieldError(EmployeeImportFields.FirstName, "First name is required"));
+            errors.Add(new FieldError(EmployeeImportFields.FirstName, "First name is required", "validation.employee.firstNameRequired"));
         else if (firstName.Length > NameMaxLength)
-            errors.Add(new FieldError(EmployeeImportFields.FirstName, $"First name cannot exceed {NameMaxLength} characters"));
+            errors.Add(new FieldError(
+                EmployeeImportFields.FirstName,
+                $"First name cannot exceed {NameMaxLength} characters",
+                "validation.employee.firstNameMaxLength",
+                new Dictionary<string, object?> { ["max"] = NameMaxLength }));
 
         if (string.IsNullOrWhiteSpace(lastName))
-            errors.Add(new FieldError(EmployeeImportFields.LastName, "Last name is required"));
+            errors.Add(new FieldError(EmployeeImportFields.LastName, "Last name is required", "validation.employee.lastNameRequired"));
         else if (lastName.Length > NameMaxLength)
-            errors.Add(new FieldError(EmployeeImportFields.LastName, $"Last name cannot exceed {NameMaxLength} characters"));
+            errors.Add(new FieldError(
+                EmployeeImportFields.LastName,
+                $"Last name cannot exceed {NameMaxLength} characters",
+                "validation.employee.lastNameMaxLength",
+                new Dictionary<string, object?> { ["max"] = NameMaxLength }));
 
         if (!string.IsNullOrWhiteSpace(email))
         {
@@ -78,29 +86,45 @@ public static class EmployeeRules
             // The endpoint's own loose check, unchanged: a full RFC parse rejects
             // addresses that providers accept, and the provider is the authority.
             if (!trimmed.Contains('@') || trimmed.StartsWith("@") || trimmed.EndsWith("@"))
-                errors.Add(new FieldError(EmployeeImportFields.Email, "Email address is not valid"));
+                errors.Add(new FieldError(EmployeeImportFields.Email, "Email address is not valid", "validation.employee.emailInvalid"));
         }
 
         if (salaryRate < 0)
-            errors.Add(new FieldError(EmployeeImportFields.SalaryRate, "Salary rate cannot be negative"));
+            errors.Add(new FieldError(EmployeeImportFields.SalaryRate, "Salary rate cannot be negative", "validation.employee.salaryRateNegative"));
 
         if (hireDate.HasValue && hireDate.Value.Date > DateTime.UtcNow.Date)
-            errors.Add(new FieldError(EmployeeImportFields.HireDate, "Hire date cannot be in the future"));
+            errors.Add(new FieldError(EmployeeImportFields.HireDate, "Hire date cannot be in the future", "validation.employee.hireDateFuture"));
 
         // The column caps come last on purpose. They are new, so a request that used to
         // be rejected keeps answering with exactly the message it answered with before —
         // the cap only decides the message for input nothing used to reject at all.
         if (!string.IsNullOrWhiteSpace(email) && email.Trim().Length > EmailMaxLength)
-            errors.Add(new FieldError(EmployeeImportFields.Email, $"Email cannot exceed {EmailMaxLength} characters"));
+            errors.Add(new FieldError(
+                EmployeeImportFields.Email,
+                $"Email cannot exceed {EmailMaxLength} characters",
+                "validation.employee.emailMaxLength",
+                new Dictionary<string, object?> { ["max"] = EmailMaxLength }));
 
         if (phone is not null && phone.Trim().Length > PhoneMaxLength)
-            errors.Add(new FieldError(EmployeeImportFields.Phone, $"Phone cannot exceed {PhoneMaxLength} characters"));
+            errors.Add(new FieldError(
+                EmployeeImportFields.Phone,
+                $"Phone cannot exceed {PhoneMaxLength} characters",
+                "validation.employee.phoneMaxLength",
+                new Dictionary<string, object?> { ["max"] = PhoneMaxLength }));
 
         if (address is not null && address.Trim().Length > AddressMaxLength)
-            errors.Add(new FieldError(EmployeeImportFields.Address, $"Address cannot exceed {AddressMaxLength} characters"));
+            errors.Add(new FieldError(
+                EmployeeImportFields.Address,
+                $"Address cannot exceed {AddressMaxLength} characters",
+                "validation.employee.addressMaxLength",
+                new Dictionary<string, object?> { ["max"] = AddressMaxLength }));
 
         if (notes is not null && notes.Trim().Length > NotesMaxLength)
-            errors.Add(new FieldError(EmployeeImportFields.Notes, $"Notes cannot exceed {NotesMaxLength} characters"));
+            errors.Add(new FieldError(
+                EmployeeImportFields.Notes,
+                $"Notes cannot exceed {NotesMaxLength} characters",
+                "validation.employee.notesMaxLength",
+                new Dictionary<string, object?> { ["max"] = NotesMaxLength }));
 
         return errors;
     }

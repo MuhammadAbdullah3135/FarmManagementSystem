@@ -1,15 +1,17 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Button, Card, List, Result, Space, Tag, Typography, message } from 'antd';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import dayjs from 'dayjs';
+import { formatDate } from '../i18n/format';
+
 import { invitationsApi, type PendingInvitation } from '../api/members';
 import { getApiError } from '../api/farmApi';
 import { useAuthStore } from '../stores/authStore';
 import { useFarmStore } from '../stores/farmStore';
+import { useTranslation } from 'react-i18next';
 
 const { Title, Text } = Typography;
 
-const AcceptInvitationPage: React.FC = () => {
+const AcceptInvitationPage: React.FC = () => {const { t } = useTranslation('auth'); 
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token');
   const navigate = useNavigate();
@@ -73,12 +75,12 @@ const AcceptInvitationPage: React.FC = () => {
     return card(
       <Result
         status="info"
-        title="Sign in to accept your invitation"
-        subTitle="Invitations are tied to your email address, so sign in (or create an account with the invited email) and then open the invitation link again."
+        title={t('signInToAcceptYourInvitation')}
+        subTitle={t('invitationsAreTiedToYourEmailAddressSo')}
         extra={
           <Space>
-            <Link to="/login"><Button type="primary">Sign in</Button></Link>
-            <Link to="/register"><Button>Create account</Button></Link>
+            <Link to="/login"><Button type="primary">{t('signIn')}</Button></Link>
+            <Link to="/register"><Button>{t('createAccount')}</Button></Link>
           </Space>
         }
       />,
@@ -89,9 +91,9 @@ const AcceptInvitationPage: React.FC = () => {
     return card(
       <Result
         status="success"
-        title="Invitation accepted"
-        subTitle="The farm has been added to your farm list. Switch to it from the farm selector in the header."
-        extra={<Button type="primary" onClick={() => navigate('/dashboard')}>Go to dashboard</Button>}
+        title={t('invitationAccepted')}
+        subTitle={t('theFarmHasBeenAddedToYourFarm')}
+        extra={<Button type="primary" onClick={() => navigate('/dashboard')}>{t('goToDashboard')}</Button>}
       />,
     );
   }
@@ -100,40 +102,40 @@ const AcceptInvitationPage: React.FC = () => {
     return card(
       <Result
         status="info"
-        title="Invitation declined"
-        subTitle="No changes were made to your farm memberships."
-        extra={<Button onClick={() => navigate('/dashboard')}>Go to dashboard</Button>}
+        title={t('invitationDeclined')}
+        subTitle={t('noChangesWereMadeToYourFarmMemberships')}
+        extra={<Button onClick={() => navigate('/dashboard')}>{t('goToDashboard')}</Button>}
       />,
     );
   }
 
   return card(
     <>
-      <Title level={3} style={{ marginTop: 0 }}>Farm invitation</Title>
+      <Title level={3} style={{ marginTop: 0 }}>{t('farmInvitation')}</Title>
 
       {token ? (
         <>
-          <Text>You have been invited to join a farm. Accepting adds it to your farm list.</Text>
+          <Text>{t('youHaveBeenInvitedToJoinAFarm')}</Text>
           <div style={{ marginTop: 20 }}>
             <Space>
               <Button type="primary" loading={busy} onClick={() => void handleAccept()}>
-                Accept invitation
+                {t('acceptInvitation')}
               </Button>
               <Button disabled={busy} onClick={() => void handleDecline()}>
-                Decline
+                {t('decline')}
               </Button>
             </Space>
           </div>
         </>
       ) : (
         <Text type="secondary">
-          This page needs the invitation token from the link in your invitation email.
+          {t('thisPageNeedsTheInvitationTokenFromThe')}
         </Text>
       )}
 
       {pending.length > 0 && (
         <div style={{ marginTop: 28 }}>
-          <Text strong>Invitations waiting for you</Text>
+          <Text strong>{t('invitationsWaitingForYou')}</Text>
           <List
             size="small"
             style={{ marginTop: 8 }}
@@ -144,7 +146,7 @@ const AcceptInvitationPage: React.FC = () => {
                   <Text>{invite.farmName}</Text>
                   <Text type="secondary" style={{ fontSize: 12 }}>
                     <Tag>{invite.role}</Tag>
-                    Expires {dayjs(invite.expiresAt).format('YYYY-MM-DD')}
+                    {t('expires')} {formatDate(invite.expiresAt)}
                     {invite.invitedByName ? ` · invited by ${invite.invitedByName}` : ''}
                   </Text>
                 </Space>

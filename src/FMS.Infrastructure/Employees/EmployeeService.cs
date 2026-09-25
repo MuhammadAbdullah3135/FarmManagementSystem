@@ -269,7 +269,7 @@ public class EmployeeService : IEmployeeService
             request.FirstName, request.LastName, request.Email, request.Phone,
             request.Address, request.SalaryRate, request.HireDate, request.Notes);
         if (errors.Count > 0)
-            return Result<EmployeeDto>.Validation(errors[0].Message);
+            return Result<EmployeeDto>.Validation(errors[0].Message, errors[0].MessageKey, errors[0].MessageArgs);
 
         var referenceError = await ValidateReferencesAsync(farmId, request.DepartmentId, request.EmployeeRoleId);
         if (referenceError != null)
@@ -445,7 +445,7 @@ public class EmployeeService : IEmployeeService
             request.Address, request.SalaryRate, request.HireDate, request.Notes);
 
         if (validation.Count > 0)
-            return Result<EmployeeDto>.Validation(validation[0].Message);
+            return Result<EmployeeDto>.Validation(validation[0].Message, validation[0].MessageKey, validation[0].MessageArgs);
 
         var referenceError = await ValidateReferencesAsync(farmId, request.DepartmentId, request.EmployeeRoleId);
         if (referenceError != null)

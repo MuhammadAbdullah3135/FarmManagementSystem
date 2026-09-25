@@ -1,6 +1,7 @@
 import React from 'react';
 import { Typography } from 'antd';
 import { formatSyncAge } from '../offline/syncAge';
+import { useTranslation } from 'react-i18next';
 
 const { Text } = Typography;
 
@@ -21,12 +22,12 @@ export interface SyncAgeLabelProps {
  * paginated view that is deliberately not cached), so the label always means
  * something when it appears.
  */
-const SyncAgeLabel: React.FC<SyncAgeLabelProps> = ({ lastSyncedAt }) => {
+const SyncAgeLabel: React.FC<SyncAgeLabelProps> = ({ lastSyncedAt }) => {const { t } = useTranslation('common'); 
   if (!lastSyncedAt) return null;
 
   return (
     <Text type="secondary" style={{ fontSize: 12 }}>
-      Synced {formatSyncAge(lastSyncedAt)}
+      {t('synced')} {formatSyncAge(lastSyncedAt)}
     </Text>
   );
 };

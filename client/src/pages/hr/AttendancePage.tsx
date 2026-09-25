@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { formatDate } from '../../i18n/format';
 import {
   Alert, Button, Card, Col, DatePicker, Form, Input, Modal, Row, Select, Space, Table, Tag, Typography, message,
 } from 'antd';
@@ -24,6 +25,7 @@ import { useOutboxItems } from '../../offline/useOutbox';
 import { useAuthStore } from '../../stores/authStore';
 import { useFarmStore } from '../../stores/farmStore';
 import type { AttendanceRecord, AttendanceStatus, Employee } from '../../types';
+import { useTranslation } from 'react-i18next';
 
 const { Text } = Typography;
 
@@ -56,7 +58,7 @@ const ATTENDANCE_STATUSES: AttendanceStatus[] = ['Present', 'Absent', 'Late', 'H
  * The manual entry dialog stays a live request: it is an administrative correction, not
  * fieldwork, and 4.5.5's offline targets are the check-in and the check-out.
  */
-const AttendancePage: React.FC = () => {
+const AttendancePage: React.FC = () => {const { t } = useTranslation('hr'); 
   const [page, setPage] = useState(1);
   const [dateRange, setDateRange] = useState<[Dayjs | null, Dayjs | null]>([dayjs(), dayjs()]);
   const [modalOpen, setModalOpen] = useState(false);
@@ -136,7 +138,7 @@ const AttendancePage: React.FC = () => {
 
   const queueAttendance = async (employee: Employee, kind: string, verb: string) => {
     if (!scope) {
-      message.error('Select a farm first.');
+      message.error(t('selectAFarmFirst'));
       return;
     }
 
@@ -184,7 +186,7 @@ const AttendancePage: React.FC = () => {
         checkOutAt: values.checkOutAt?.toISOString(),
         notes: values.notes,
       });
-      message.success('Attendance recorded');
+      message.success(t('attendanceRecorded'));
       setModalOpen(false);
       recordsQuery.refresh();
     } catch (err) {
@@ -196,7 +198,7 @@ const AttendancePage: React.FC = () => {
   const handleDelete = async (id: string) => {
     try {
       await attendanceApi.remove(id);
-      message.success('Record deleted');
+      message.success(t('recordDeleted'));
       recordsQuery.refresh();
     } catch (err) {
       message.error(getApiError(err));
@@ -204,34 +206,34 @@ const AttendancePage: React.FC = () => {
   };
 
   const columns: ColumnsType<AttendanceRecord> = [
-    { title: 'Employee', dataIndex: 'employeeName' },
-    { title: 'Date', dataIndex: 'date', render: (d: string) => dayjs(d).format('YYYY-MM-DD') },
+    { title: t('employee'), dataIndex: 'employeeName' },
+    { title: t('date'), dataIndex: 'date', render: (d: string) => formatDate(d) },
     {
-      title: 'Status',
+      title: t('status'),
       dataIndex: 'status',
       render: (s: AttendanceStatus) => <Tag color={STATUS_COLORS[s]}>{s}</Tag>,
     },
     {
-      title: 'Check In',
+      title: t('checkIn'),
       dataIndex: 'checkInAt',
       render: (d?: string) => d ? dayjs(d).format('HH:mm') : '-',
     },
     {
-      title: 'Check Out',
+      title: t('checkOut'),
       dataIndex: 'checkOutAt',
       render: (d?: string) => d ? dayjs(d).format('HH:mm') : '-',
     },
     {
-      title: 'Hours',
+      title: t('hours'),
       dataIndex: 'hoursWorked',
       render: (h?: number) => h != null ? `${h}h` : '-',
     },
-    { title: 'Notes', dataIndex: 'notes', ellipsis: true, render: (n?: string) => n ?? '-' },
+    { title: t('notes'), dataIndex: 'notes', ellipsis: true, render: (n?: string) => n ?? '-' },
     {
-      title: 'Actions',
+      title: t('actions'),
       render: (_, r) => (
         <Space>
-          <Button size="small" danger onClick={() => handleDelete(r.id)}>Delete</Button>
+          <Button size="small" danger onClick={() => handleDelete(r.id)}>{t('delete')}</Button>
         </Space>
       ),
     },
@@ -244,8 +246,8 @@ const AttendancePage: React.FC = () => {
           <Alert
             type="warning"
             showIcon
-            message="You are offline"
-            description="Check-in and check-out still work: they are stored on this device and sent when the connection is back."
+            message={t('youAreOffline')}
+            description={t('checkInAndCheckOutStillWorkThey')}
           />
         )}
 
@@ -254,11 +256,11 @@ const AttendancePage: React.FC = () => {
             type="error"
             showIcon
             message={`${quarantined.length} attendance record${quarantined.length === 1 ? '' : 's'} could not be saved`}
-            description="The server refused them. Each message below says why — fix and retry, or dismiss."
+            description={t('theServerRefusedThemEachMessageBelowSays')}
           />
         )}
 
-        <Card title="Today's Attendance">
+        <Card title={t('todaySAttendance')}>
           <Space wrap>
             {employees.filter((e) => e.isActive).map((emp) => {
               const pendingIn = pendingCheckIns.get(emp.id);
@@ -268,12 +270,12 @@ const AttendancePage: React.FC = () => {
                   <div style={{ marginBottom: 8 }}>{emp.firstName} {emp.lastName}</div>
                   {pendingIn && (
                     <div style={{ marginBottom: 8 }}>
-                      <Tag color="blue">Check-in waiting to sync</Tag>
+                      <Tag color="blue">{t('checkInWaitingToSync')}</Tag>
                     </div>
                   )}
                   {pendingOut && (
                     <div style={{ marginBottom: 8 }}>
-                      <Tag color="blue">Check-out waiting to sync</Tag>
+                      <Tag color="blue">{t('checkOutWaitingToSync')}</Tag>
                     </div>
                   )}
                   <Space>
@@ -283,14 +285,14 @@ const AttendancePage: React.FC = () => {
                       icon={<LoginOutlined />}
                       onClick={() => void queueAttendance(emp, ATTENDANCE_CHECK_IN, 'Checked in')}
                     >
-                      In
+                      {t('in')}
                     </Button>
                     <Button
                       size="small"
                       icon={<LogoutOutlined />}
                       onClick={() => void queueAttendance(emp, ATTENDANCE_CHECK_OUT, 'Checked out')}
                     >
-                      Out
+                      {t('out')}
                     </Button>
                   </Space>
                 </Card>
@@ -298,7 +300,7 @@ const AttendancePage: React.FC = () => {
             })}
             {employees.length === 0 && (
               <Text type="secondary">
-                No employees are stored on this device yet. Open the employee list once while online.
+                {t('noEmployeesAreStoredOnThisDeviceYet')}
               </Text>
             )}
           </Space>
@@ -311,12 +313,12 @@ const AttendancePage: React.FC = () => {
         </Card>
 
         <Card
-          title="Attendance Records"
+          title={t('attendanceRecords')}
           extra={
             <Space>
               <DatePicker.RangePicker value={dateRange} onChange={(v) => v && setDateRange(v)} />
               <Button type="primary" icon={<PlusOutlined />} onClick={() => { form.resetFields(); form.setFieldsValue({ date: dayjs(), status: 'Present' }); setModalOpen(true); }}>
-                Manual Entry
+                {t('manualEntry')}
               </Button>
             </Space>
           }
@@ -337,26 +339,26 @@ const AttendancePage: React.FC = () => {
         </Card>
 
         <Card
-          title="Recorded on this device"
-          extra={<Text type="secondary">Kept for a day after they sync.</Text>}
+          title={t('recordedOnThisDevice')}
+          extra={<Text type="secondary">{t('keptForADayAfterTheySync')}</Text>}
         >
           <OutboxTable
             items={items}
             targetLabel={employeeLabel}
             loading={isFlushing}
-            emptyText="Check-ins and check-outs you record show up here until the server has them."
+            emptyText={t('checkInsAndCheckOutsYouRecordShow')}
           />
           <div style={{ marginTop: 12 }}>
             <Button disabled={items.length === 0} loading={isFlushing} onClick={() => void requestFlush({ force: true })}>
-              Sync now
+              {t('syncNow')}
             </Button>
           </div>
         </Card>
       </Space>
 
-      <Modal title="Manual Attendance" open={modalOpen} onOk={handleUpsert} onCancel={() => setModalOpen(false)} destroyOnClose>
+      <Modal title={t('manualAttendance')} open={modalOpen} onOk={handleUpsert} onCancel={() => setModalOpen(false)} destroyOnClose>
         <Form form={form} layout="vertical">
-          <Form.Item name="employeeId" label="Employee" rules={[{ required: true }]}>
+          <Form.Item name="employeeId" label={t('employee')} rules={[{ required: true }]}>
             <Select
               showSearch
               optionFilterProp="label"
@@ -365,25 +367,25 @@ const AttendancePage: React.FC = () => {
               popupMatchSelectWidth={false}
             />
           </Form.Item>
-          <Form.Item name="date" label="Date" rules={[{ required: true }]}>
+          <Form.Item name="date" label={t('date')} rules={[{ required: true }]}>
             <DatePicker style={{ width: '100%' }} />
           </Form.Item>
-          <Form.Item name="status" label="Status" rules={[{ required: true }]}>
+          <Form.Item name="status" label={t('status')} rules={[{ required: true }]}>
             <Select options={ATTENDANCE_STATUSES.map((s) => ({ value: s, label: s }))} style={{ width: '100%' }} />
           </Form.Item>
           <Row gutter={[16, 16]}>
             <Col xs={24} sm={12}>
-              <Form.Item name="checkInAt" label="Check In">
+              <Form.Item name="checkInAt" label={t('checkIn')}>
                 <DatePicker showTime style={{ width: '100%' }} />
               </Form.Item>
             </Col>
             <Col xs={24} sm={12}>
-              <Form.Item name="checkOutAt" label="Check Out">
+              <Form.Item name="checkOutAt" label={t('checkOut')}>
                 <DatePicker showTime style={{ width: '100%' }} />
               </Form.Item>
             </Col>
           </Row>
-          <Form.Item name="notes" label="Notes">
+          <Form.Item name="notes" label={t('notes')}>
             <Input.TextArea rows={2} maxLength={1000} />
           </Form.Item>
         </Form>

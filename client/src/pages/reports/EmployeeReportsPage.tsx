@@ -10,13 +10,15 @@ import DateRangeFilter from '../../components/DateRangeFilter';
 import ExportButton from '../../components/ExportButton';
 import { reportsApi, type EmployeeReport, type EmployeePayrollByDepartment } from '../../api/reports';
 import { getApiError } from '../../api/farmApi';
+import { formatMoney } from '../../i18n/format';
+import { useTranslation } from 'react-i18next';
 
 const { Text } = Typography;
 
 const formatCurrency = (v: number) =>
-  `$${v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  formatMoney(v);
 
-const EmployeeReportsPage: React.FC = () => {
+const EmployeeReportsPage: React.FC = () => {const { t } = useTranslation('reports'); 
   const [report, setReport] = useState<EmployeeReport | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -38,31 +40,31 @@ const EmployeeReportsPage: React.FC = () => {
   }, [loadData]);
 
   const deptColumns: ColumnsType<EmployeePayrollByDepartment> = [
-    { title: 'Department', dataIndex: 'departmentName' },
-    { title: 'Employees', dataIndex: 'employeeCount', align: 'right' },
-    { title: 'Total Paid', dataIndex: 'totalPaid', align: 'right', render: (v: number) => formatCurrency(v) },
+    { title: t('department'), dataIndex: 'departmentName' },
+    { title: t('employees'), dataIndex: 'employeeCount', align: 'right' },
+    { title: t('totalPaid'), dataIndex: 'totalPaid', align: 'right', render: (v: number) => formatCurrency(v) },
   ];
 
   const deptData = report?.byDepartment?.map(d => ({ name: d.departmentName, value: d.totalPaid })) ?? [];
 
   return (
     <div>
-      <Card style={{ marginBottom: 16 }} extra={<div style={{ display: 'flex', gap: 8 }}><DateRangeFilter onChange={(from, to) => void loadData(from, to)} /><ExportButton filename="employee-report" title="Employee Report" headers={['Department', 'Employees', 'Total Paid']} rows={(report?.byDepartment ?? []).map(d => [d.departmentName, d.employeeCount, d.totalPaid])} /></div>}>
-        <Text type="secondary">Employee list, salary expenses, payment history by department</Text>
+      <Card style={{ marginBottom: 16 }} extra={<div style={{ display: 'flex', gap: 8 }}><DateRangeFilter onChange={(from, to) => void loadData(from, to)} /><ExportButton filename="employee-report" title={t('employeeReport')} headers={['Department', 'Employees', 'Total Paid']} rows={(report?.byDepartment ?? []).map(d => [d.departmentName, d.employeeCount, d.totalPaid])} /></div>}>
+        <Text type="secondary">{t('employeeListSalaryExpensesPaymentHistoryByDepartment')}</Text>
       </Card>
 
       <Spin spinning={loading}>
         <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-          <Col xs={12} sm={6}><Card><Statistic title="Total Employees" value={report?.totalEmployees ?? 0} /></Card></Col>
-          <Col xs={12} sm={6}><Card><Statistic title="Active" value={report?.activeEmployees ?? 0} valueStyle={{ color: '#52c41a' }} /></Card></Col>
-          <Col xs={12} sm={6}><Card><Statistic title="Total Paid" value={report?.totalPaid ?? 0} precision={2} prefix="$" /></Card></Col>
-          <Col xs={12} sm={6}><Card><Statistic title="Payments" value={report?.paymentCount ?? 0} /></Card></Col>
+          <Col xs={12} sm={6}><Card><Statistic title={t('totalEmployees')} value={report?.totalEmployees ?? 0} /></Card></Col>
+          <Col xs={12} sm={6}><Card><Statistic title={t('active')} value={report?.activeEmployees ?? 0} valueStyle={{ color: '#52c41a' }} /></Card></Col>
+          <Col xs={12} sm={6}><Card><Statistic title={t('totalPaid')} value={report?.totalPaid ?? 0} precision={2} prefix="$" /></Card></Col>
+          <Col xs={12} sm={6}><Card><Statistic title={t('payments')} value={report?.paymentCount ?? 0} /></Card></Col>
         </Row>
 
         <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
           {/* Monthly Payroll Bar Chart */}
           <Col xs={24} lg={14}>
-            <Card title="Payroll by Month" size="small">
+            <Card title={t('payrollByMonth')} size="small">
               {report?.byMonth && report.byMonth.length > 0 ? (
                 <ResponsiveContainer width="100%" height={280}>
                   <BarChart data={report.byMonth}>
@@ -74,22 +76,22 @@ const EmployeeReportsPage: React.FC = () => {
                     <Bar dataKey="amount" name="Amount" fill="#1677ff" />
                   </BarChart>
                 </ResponsiveContainer>
-              ) : <Empty description="No data" />}
+              ) : <Empty description={t('noData')} />}
             </Card>
           </Col>
 
           {/* Department Donut */}
           <Col xs={24} lg={10}>
-            <Card title="Cost by Department" size="small">
+            <Card title={t('costByDepartment')} size="small">
               {deptData.length > 0 ? (
                 <BreakdownPieChart data={deptData} height={280} innerRadius={50} valueFormatter={formatCurrency} />
-              ) : <Empty description="No data" />}
+              ) : <Empty description={t('noData')} />}
             </Card>
           </Col>
         </Row>
 
         {/* Data Table */}
-        <Card title="By Department" size="small">
+        <Card title={t('byDepartment')} size="small">
           <Table rowKey="departmentName" columns={deptColumns} dataSource={report?.byDepartment ?? []} pagination={false} size="small" />
         </Card>
       </Spin>

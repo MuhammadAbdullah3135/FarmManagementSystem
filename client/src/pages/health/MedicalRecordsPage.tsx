@@ -4,11 +4,13 @@ import {
 } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
+import { formatDate, formatMoney } from '../../i18n/format';
 import dayjs from 'dayjs';
 import { medicalRecordsApi } from '../../api/health';
 import { lookupsApi } from '../../api/attendance';
 import { getApiError } from '../../api/farmApi';
 import type { MedicalRecordListItem, MedicalRecordStatus } from '../../types';
+import { useTranslation } from 'react-i18next';
 
 const STATUS_COLORS: Record<MedicalRecordStatus, string> = {
   Open: 'gold',
@@ -22,7 +24,7 @@ interface AnimalOption {
   name?: string;
 }
 
-const MedicalRecordsPage: React.FC = () => {
+const MedicalRecordsPage: React.FC = () => {const { t } = useTranslation('health'); 
   const [records, setRecords] = useState<MedicalRecordListItem[]>([]);
   const [animals, setAnimals] = useState<AnimalOption[]>([]);
   const [total, setTotal] = useState(0);
@@ -134,10 +136,10 @@ const MedicalRecordsPage: React.FC = () => {
       };
       if (editing) {
         await medicalRecordsApi.update(editing.id, data);
-        message.success('Medical record updated');
+        message.success(t('medicalRecordUpdated'));
       } else {
         await medicalRecordsApi.create(data);
-        message.success('Medical record created');
+        message.success(t('medicalRecordCreated'));
       }
       setModalOpen(false);
       load(page);
@@ -150,7 +152,7 @@ const MedicalRecordsPage: React.FC = () => {
   const handleDelete = async (id: string) => {
     try {
       await medicalRecordsApi.remove(id);
-      message.success('Medical record deleted');
+      message.success(t('medicalRecordDeleted'));
       load(page);
     } catch (err) {
       message.error(getApiError(err));
@@ -159,7 +161,7 @@ const MedicalRecordsPage: React.FC = () => {
 
   const columns: ColumnsType<MedicalRecordListItem> = [
     {
-      title: 'Animal',
+      title: t('animal'),
       render: (_, r) => (
         <span>
           {r.animalTagNumber}
@@ -168,49 +170,49 @@ const MedicalRecordsPage: React.FC = () => {
       ),
     },
     {
-      title: 'Diagnosis',
+      title: t('diagnosis'),
       dataIndex: 'diagnosis',
       ellipsis: true,
       render: (d?: string) => d || '-',
     },
     {
-      title: 'Vet',
+      title: t('vet'),
       dataIndex: 'vetName',
       render: (v?: string) => v || '-',
     },
     {
-      title: 'Cost',
+      title: t('cost'),
       dataIndex: 'cost',
       width: 100,
-      render: (c: number) => c > 0 ? `$${c.toFixed(2)}` : '-',
+      render: (c: number) => c > 0 ? formatMoney(c) : '-',
     },
     {
-      title: 'Date',
+      title: t('date'),
       dataIndex: 'dateRecorded',
       width: 120,
-      render: (d: string) => dayjs(d).format('YYYY-MM-DD'),
+      render: (d: string) => formatDate(d),
     },
     {
-      title: 'Follow-up',
+      title: t('followUp'),
       dataIndex: 'followUpDate',
       width: 120,
-      render: (d?: string) => d ? dayjs(d).format('YYYY-MM-DD') : '-',
+      render: (d?: string) => d ? formatDate(d) : '-',
     },
     {
-      title: 'Status',
+      title: t('status'),
       dataIndex: 'statusName',
       width: 110,
       render: (name: string) => <Tag color={STATUS_COLORS[name as MedicalRecordStatus]}>{name}</Tag>,
     },
     {
-      title: 'Actions',
+      title: t('actions'),
       width: 160,
       render: (_, r) => (
         <Space size={4}>
-          <Button size="small" onClick={() => openDetail(r)}>View</Button>
-          <Button size="small" onClick={() => openEdit(r)}>Edit</Button>
-          <Popconfirm title="Delete this record?" onConfirm={() => handleDelete(r.id)}>
-            <Button size="small" danger>Delete</Button>
+          <Button size="small" onClick={() => openDetail(r)}>{t('view')}</Button>
+          <Button size="small" onClick={() => openEdit(r)}>{t('edit')}</Button>
+          <Popconfirm title={t('deleteThisRecord')} onConfirm={() => handleDelete(r.id)}>
+            <Button size="small" danger>{t('delete')}</Button>
           </Popconfirm>
         </Space>
       ),
@@ -220,19 +222,19 @@ const MedicalRecordsPage: React.FC = () => {
   return (
     <>
       <Card
-        title="Medical Records"
+        title={t('medicalRecords')}
         extra={
           <Space wrap>
             <Select
               allowClear
-              placeholder="Status"
+              placeholder={t('status')}
               style={{ width: 130 }}
               value={filters.status}
               onChange={(v) => setFilters((f) => ({ ...f, status: v }))}
               options={['Open', 'InProgress', 'Resolved'].map((s) => ({ value: s, label: s }))}
             />
             <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
-              New Record
+              {t('newRecord')}
             </Button>
           </Space>
         }
@@ -247,7 +249,7 @@ const MedicalRecordsPage: React.FC = () => {
       </Card>
 
       <Modal
-        title={editing ? 'Edit Medical Record' : 'New Medical Record'}
+        title={editing ? t('editMedicalRecord') : t('newMedicalRecord')}
         open={modalOpen}
         onOk={handleSave}
         onCancel={() => setModalOpen(false)}
@@ -255,73 +257,73 @@ const MedicalRecordsPage: React.FC = () => {
         width={640}
       >
         <Form form={form} layout="vertical">
-          <Form.Item name="animalId" label="Animal" rules={[{ required: true, message: 'Select an animal' }]}>
+          <Form.Item name="animalId" label={t('animal')} rules={[{ required: true, message: 'Select an animal' }]}>
             <Select
               showSearch
               optionFilterProp="label"
-              placeholder="Select animal"
+              placeholder={t('selectAnimal')}
               options={animals.map((a) => ({
                 value: a.id,
                 label: `${a.tagNumber}${a.name ? ` - ${a.name}` : ''}`,
               }))}
             />
           </Form.Item>
-          <Form.Item name="symptoms" label="Symptoms" rules={[{ required: true, message: 'Symptoms are required' }]}>
-            <Input.TextArea rows={2} maxLength={2000} placeholder="Describe symptoms..." />
+          <Form.Item name="symptoms" label={t('symptoms')} rules={[{ required: true, message: 'Symptoms are required' }]}>
+            <Input.TextArea rows={2} maxLength={2000} placeholder={t('describeSymptoms')} />
           </Form.Item>
-          <Form.Item name="diagnosis" label="Diagnosis">
-            <Input maxLength={500} placeholder="Diagnosis" />
+          <Form.Item name="diagnosis" label={t('diagnosis')}>
+            <Input maxLength={500} placeholder={t('diagnosis')} />
           </Form.Item>
-          <Form.Item name="treatment" label="Treatment">
-            <Input.TextArea rows={2} maxLength={1000} placeholder="Treatment plan..." />
+          <Form.Item name="treatment" label={t('treatment')}>
+            <Input.TextArea rows={2} maxLength={1000} placeholder={t('treatmentPlan')} />
           </Form.Item>
           <Row gutter={[16, 16]}>
             <Col xs={24} sm={12}>
-              <Form.Item name="medicineUsed" label="Medicine Used">
-                <Input maxLength={500} placeholder="Medicine name" />
+              <Form.Item name="medicineUsed" label={t('medicineUsed')}>
+                <Input maxLength={500} placeholder={t('medicineName')} />
               </Form.Item>
             </Col>
             <Col xs={24} sm={12}>
-              <Form.Item name="dosage" label="Dosage">
-                <Input maxLength={200} placeholder="e.g. 10ml twice daily" />
+              <Form.Item name="dosage" label={t('dosage')}>
+                <Input maxLength={200} placeholder={t('eG10mlTwiceDaily')} />
               </Form.Item>
             </Col>
           </Row>
           <Row gutter={[16, 16]}>
             <Col xs={24} sm={12}>
-              <Form.Item name="vetName" label="Veterinarian">
-                <Input maxLength={200} placeholder="Vet name" />
+              <Form.Item name="vetName" label={t('veterinarian')}>
+                <Input maxLength={200} placeholder={t('vetName')} />
               </Form.Item>
             </Col>
             <Col xs={24} sm={12}>
-              <Form.Item name="cost" label="Cost ($)">
+              <Form.Item name="cost" label={t('cost2')}>
                 <InputNumber min={0} precision={2} style={{ width: '100%' }} placeholder="0.00" />
               </Form.Item>
             </Col>
           </Row>
           <Row gutter={[16, 16]}>
             <Col xs={24} sm={12}>
-              <Form.Item name="dateRecorded" label="Date Recorded" rules={[{ required: true }]}>
+              <Form.Item name="dateRecorded" label={t('dateRecorded')} rules={[{ required: true }]}>
                 <DatePicker style={{ width: '100%' }} />
               </Form.Item>
             </Col>
             <Col xs={24} sm={12}>
-              <Form.Item name="followUpDate" label="Follow-up Date">
+              <Form.Item name="followUpDate" label={t('followUpDate')}>
                 <DatePicker style={{ width: '100%' }} />
               </Form.Item>
             </Col>
           </Row>
-          <Form.Item name="status" label="Status" rules={[{ required: true }]}>
+          <Form.Item name="status" label={t('status')} rules={[{ required: true }]}>
             <Select options={['Open', 'InProgress', 'Resolved'].map((s) => ({ value: s, label: s }))} />
           </Form.Item>
-          <Form.Item name="notes" label="Notes">
-            <Input.TextArea rows={2} maxLength={2000} placeholder="Additional notes..." />
+          <Form.Item name="notes" label={t('notes')}>
+            <Input.TextArea rows={2} maxLength={2000} placeholder={t('additionalNotes')} />
           </Form.Item>
         </Form>
       </Modal>
 
       <Modal
-        title="Medical Record Details"
+        title={t('medicalRecordDetails')}
         open={detailOpen}
         onCancel={() => setDetailOpen(false)}
         footer={null}
@@ -329,20 +331,20 @@ const MedicalRecordsPage: React.FC = () => {
       >
         {detailRecord && (
           <div>
-            <p><strong>Symptoms:</strong></p>
+            <p><strong>{t('symptoms2')}</strong></p>
             <p style={{ whiteSpace: 'pre-wrap' }}>{detailRecord.symptoms}</p>
             {detailRecord.treatment && (
               <>
-                <p><strong>Treatment:</strong></p>
+                <p><strong>{t('treatment2')}</strong></p>
                 <p style={{ whiteSpace: 'pre-wrap' }}>{detailRecord.treatment}</p>
               </>
             )}
             {detailRecord.medicineUsed && (
-              <p><strong>Medicine:</strong> {detailRecord.medicineUsed}{detailRecord.dosage ? ` — ${detailRecord.dosage}` : ''}</p>
+              <p><strong>{t('medicine')}</strong> {detailRecord.medicineUsed}{detailRecord.dosage ? ` — ${detailRecord.dosage}` : ''}</p>
             )}
             {detailRecord.notes && (
               <>
-                <p><strong>Notes:</strong></p>
+                <p><strong>{t('notes2')}</strong></p>
                 <p style={{ whiteSpace: 'pre-wrap' }}>{detailRecord.notes}</p>
               </>
             )}

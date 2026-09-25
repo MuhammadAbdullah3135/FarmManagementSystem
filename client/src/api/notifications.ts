@@ -14,6 +14,14 @@ export interface Notification {
   severity: string;
   title: string;
   message: string;
+  /**
+   * The same title and message as keys plus arguments, when the row was dispatched from a
+   * keyed template. Null for anything stored before keys existed, or generated elsewhere.
+   */
+  titleKey?: string | null;
+  titleArgs?: Record<string, unknown> | null;
+  messageKey?: string | null;
+  messageArgs?: Record<string, unknown> | null;
   link?: string | null;
   dueDate?: string | null;
   createdAt: string;
@@ -70,20 +78,12 @@ export const notificationsApi = {
     api.put<NotificationPreferenceSettings>(farmUrl('/notifications/preferences'), { preferences }),
 };
 
-/** Display names for the API's alert-type keys, falling back to the raw key. */
-export const ALERT_TYPE_LABELS: Record<string, string> = {
-  OverdueVaccination: 'Overdue vaccinations',
-  OverdueWeightCheck: 'Overdue weight checks',
-  Medicine: 'Medicine (expiry & low stock)',
-  OverdueTask: 'Overdue farm tasks',
-  DueBirth: 'Upcoming births',
-  LowInventory: 'Low inventory stock',
-};
-
-export const alertTypeLabel = (alertType: string): string =>
-  ALERT_TYPE_LABELS[alertType] ?? alertType;
-
-/** Severity → antd tag/alert colour, matching the dashboard's alert cards. */
+/**
+ * Severity → antd tag/alert colour, matching the dashboard's alert cards.
+ *
+ * The severity *names* are translated (see `i18n/vocabulary.ts`); the colour is not a
+ * language and stays here, next to the tags that use it.
+ */
 export const severityColor = (severity: string): string => {
   if (severity === 'Critical') return 'red';
   if (severity === 'Warning') return 'gold';

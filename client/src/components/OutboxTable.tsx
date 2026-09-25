@@ -6,9 +6,11 @@ import {
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { markDismissed, requeueMutation } from '../offline/outbox';
-import { OUTBOX_STATUS_COLORS, OUTBOX_STATUS_LABELS, describeItem, kindLabel } from '../offline/mutationKinds';
+import { OUTBOX_STATUS_COLORS, describeItem, kindLabel } from '../offline/mutationKinds';
+import { outboxStatusLabel } from '../i18n/vocabulary';
 import { requestFlush } from '../offline/syncEngine';
 import type { OutboxItem } from '../offline/db';
+import { useTranslation } from 'react-i18next';
 
 const { Text } = Typography;
 
@@ -38,7 +40,7 @@ const OutboxTable: React.FC<OutboxTableProps> = ({
   showActions = true,
   loading = false,
   emptyText = 'Nothing queued on this device.',
-}) => {
+}) => {const { t } = useTranslation('common'); 
   const [dismissing, setDismissing] = useState<OutboxItem | null>(null);
   const [reason, setReason] = useState('');
   const [busy, setBusy] = useState<string | null>(null);
@@ -49,7 +51,7 @@ const OutboxTable: React.FC<OutboxTableProps> = ({
     setBusy(item.mutationId);
     try {
       await requeueMutation(scopeOf(item), item.mutationId);
-      message.success('Queued to send again.');
+      message.success(t('queuedToSendAgain'));
       void requestFlush();
     } finally {
       setBusy(null);
@@ -66,7 +68,7 @@ const OutboxTable: React.FC<OutboxTableProps> = ({
     setBusy(dismissing.mutationId);
     try {
       await markDismissed(scopeOf(dismissing), dismissing.mutationId, reason.trim());
-      message.info('Record dismissed. Its details stay on this device.');
+      message.info(t('recordDismissedItsDetailsStayOnThisDevice'));
       closeDismiss();
     } finally {
       setBusy(null);
@@ -75,7 +77,7 @@ const OutboxTable: React.FC<OutboxTableProps> = ({
 
   const columns = [
     {
-      title: 'Record',
+      title: t('record2'),
       key: 'record',
       render: (_: unknown, item: OutboxItem) => (
         <Space direction="vertical" size={0}>
@@ -85,19 +87,19 @@ const OutboxTable: React.FC<OutboxTableProps> = ({
       ),
     },
     {
-      title: 'Taken',
+      title: t('taken'),
       key: 'occurredAt',
       render: (_: unknown, item: OutboxItem) => dayjs(item.occurredAt).format('YYYY-MM-DD HH:mm'),
     },
     {
-      title: 'Status',
+      title: t('status'),
       key: 'status',
       render: (_: unknown, item: OutboxItem) => (
-        <Tag color={OUTBOX_STATUS_COLORS[item.status]}>{OUTBOX_STATUS_LABELS[item.status]}</Tag>
+        <Tag color={OUTBOX_STATUS_COLORS[item.status]}>{outboxStatusLabel(t, item.status)}</Tag>
       ),
     },
     {
-      title: 'Message',
+      title: t('message'),
       key: 'message',
       render: (_: unknown, item: OutboxItem) => {
         // A dismissed record leads with the reason the user gave: that is the decision that
@@ -105,7 +107,7 @@ const OutboxTable: React.FC<OutboxTableProps> = ({
         if (item.status === 'dismissed') {
           return (
             <Text type="secondary">
-              {item.dismissedReason ? `Dismissed: ${item.dismissedReason}` : 'Dismissed'}
+              {item.dismissedReason ? `Dismissed: ${item.dismissedReason}` : t('dismissed')}
               {item.serverMessage ? ` (was: ${item.serverMessage})` : ''}
             </Text>
           );
@@ -120,7 +122,7 @@ const OutboxTable: React.FC<OutboxTableProps> = ({
 
   if (showActions) {
     columns.push({
-      title: 'Actions',
+      title: t('actions'),
       key: 'actions',
       render: (_: unknown, item: OutboxItem) => {
         if (item.status === 'pending' || item.status === 'applied') {
@@ -128,17 +130,17 @@ const OutboxTable: React.FC<OutboxTableProps> = ({
         }
         return (
           <Space size={4}>
-            <Tooltip title="Send this record again">
+            <Tooltip title={t('sendThisRecordAgain')}>
               <Button
                 size="small"
                 icon={<ReloadOutlined />}
                 loading={busy === item.mutationId}
                 onClick={() => void handleRetry(item)}
               >
-                Retry
+                {t('retry')}
               </Button>
             </Tooltip>
-            <Tooltip title="Keep the record on this device but stop trying to send it">
+            <Tooltip title={t('keepTheRecordOnThisDeviceButStop')}>
               <Button
                 size="small"
                 danger
@@ -149,7 +151,7 @@ const OutboxTable: React.FC<OutboxTableProps> = ({
                   setReason('');
                 }}
               >
-                Dismiss
+                {t('dismiss')}
               </Button>
             </Tooltip>
           </Space>
@@ -172,22 +174,21 @@ const OutboxTable: React.FC<OutboxTableProps> = ({
 
       <Modal
         open={dismissing !== null}
-        title="Dismiss this record?"
-        okText="Dismiss"
+        title={t('dismissThisRecord')}
+        okText={t('dismiss')}
         okButtonProps={{ danger: true, disabled: reason.trim() === '' }}
         onOk={() => void handleDismiss()}
         onCancel={closeDismiss}
       >
         <Text>
-          It will not be sent to the server, but it stays on this device with the details you
-          recorded. Say why, so the note means something later.
+          {t('itWillNotBeSentToTheServer')}
         </Text>
         <Input.TextArea
           style={{ marginTop: 12 }}
           rows={3}
           value={reason}
           maxLength={200}
-          placeholder="e.g. weighed the wrong animal"
+          placeholder={t('eGWeighedTheWrongAnimal')}
           onChange={(event) => setReason(event.target.value)}
         />
       </Modal>

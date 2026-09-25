@@ -8,8 +8,9 @@ import dayjs, { Dayjs } from 'dayjs';
 import { feedingSchedulesApi, feedingTasksApi, dietPlansApi } from '../../api/feed';
 import { getApiError } from '../../api/farmApi';
 import type { DietPlan, FeedingSchedule } from '../../types';
+import { useTranslation } from 'react-i18next';
 
-const FeedingSchedulesPage: React.FC = () => {
+const FeedingSchedulesPage: React.FC = () => {const { t } = useTranslation('feed'); 
   const [schedules, setSchedules] = useState<FeedingSchedule[]>([]);
   const [plans, setPlans] = useState<DietPlan[]>([]);
   const [loading, setLoading] = useState(false);
@@ -43,7 +44,7 @@ const FeedingSchedulesPage: React.FC = () => {
     try {
       const values = await form.validateFields();
       await feedingSchedulesApi.create(values);
-      message.success('Schedule created');
+      message.success(t('scheduleCreated'));
       setModalOpen(false);
       load();
     } catch (err) {
@@ -55,7 +56,7 @@ const FeedingSchedulesPage: React.FC = () => {
   const handleDelete = async (id: string) => {
     try {
       await feedingSchedulesApi.remove(id);
-      message.success('Schedule deleted');
+      message.success(t('scheduleDeleted'));
       load();
     } catch (err) {
       message.error(getApiError(err));
@@ -63,7 +64,7 @@ const FeedingSchedulesPage: React.FC = () => {
   };
 
   const handleGenerate = async () => {
-    if (!genDate) { message.warning('Pick a date'); return; }
+    if (!genDate) { message.warning(t('pickADate')); return; }
     setGenLoading(true);
     try {
       await feedingTasksApi.generate(genDate.format('YYYY-MM-DD'));
@@ -76,16 +77,16 @@ const FeedingSchedulesPage: React.FC = () => {
   };
 
   const columns: ColumnsType<FeedingSchedule> = [
-    { title: 'Diet Plan', dataIndex: 'dietPlanName' },
-    { title: 'Time', dataIndex: 'timeOfDay' },
-    { title: 'Label', dataIndex: 'label', render: (l?: string) => l ?? '-' },
+    { title: t('dietPlan'), dataIndex: 'dietPlanName' },
+    { title: t('time'), dataIndex: 'timeOfDay' },
+    { title: t('label'), dataIndex: 'label', render: (l?: string) => l ?? '-' },
     {
-      title: 'Active',
+      title: t('active'),
       dataIndex: 'isActive',
-      render: (v: boolean) => v ? <Tag color="green">Active</Tag> : <Tag>Inactive</Tag>,
+      render: (v: boolean) => v ? <Tag color="green">{t('active')}</Tag> : <Tag>{t('inactive')}</Tag>,
     },
     {
-      title: 'Actions',
+      title: t('actions'),
       render: (_, record) => (
         <Space>
           <Switch
@@ -100,8 +101,8 @@ const FeedingSchedulesPage: React.FC = () => {
               }
             }}
           />
-          <Popconfirm title="Delete this schedule?" onConfirm={() => handleDelete(record.id)}>
-            <Button size="small" danger>Delete</Button>
+          <Popconfirm title={t('deleteThisSchedule')} onConfirm={() => handleDelete(record.id)}>
+            <Button size="small" danger>{t('delete')}</Button>
           </Popconfirm>
         </Space>
       ),
@@ -110,7 +111,7 @@ const FeedingSchedulesPage: React.FC = () => {
 
   return (
     <Card
-      title="Feeding Schedules"
+      title={t('feedingSchedules')}
       extra={
         <Space>
           <Space>
@@ -120,26 +121,26 @@ const FeedingSchedulesPage: React.FC = () => {
               loading={genLoading}
               onClick={handleGenerate}
             >
-              Generate Tasks
+              {t('generateTasks')}
             </Button>
           </Space>
           <Button type="primary" icon={<PlusOutlined />} onClick={() => { form.resetFields(); setModalOpen(true); }}>
-            Add Schedule
+            {t('addSchedule')}
           </Button>
         </Space>
       }
     >
       <Table rowKey="id" columns={columns} dataSource={schedules} loading={loading} pagination={false} />
 
-      <Modal title="New Feeding Schedule" open={modalOpen} onOk={handleCreate} onCancel={() => setModalOpen(false)} destroyOnClose>
+      <Modal title={t('newFeedingSchedule')} open={modalOpen} onOk={handleCreate} onCancel={() => setModalOpen(false)} destroyOnClose>
         <Form form={form} layout="vertical">
-          <Form.Item name="dietPlanId" label="Diet Plan" rules={[{ required: true }]}>
+          <Form.Item name="dietPlanId" label={t('dietPlan')} rules={[{ required: true }]}>
             <Select options={plans.map((p) => ({ value: p.id, label: p.name }))} />
           </Form.Item>
-          <Form.Item name="timeOfDay" label="Time of Day" rules={[{ required: true }]}>
-            <Input placeholder="e.g. 07:00" />
+          <Form.Item name="timeOfDay" label={t('timeOfDay')} rules={[{ required: true }]}>
+            <Input placeholder={t('eG0700')} />
           </Form.Item>
-          <Form.Item name="label" label="Label">
+          <Form.Item name="label" label={t('label')}>
             <Input maxLength={100} />
           </Form.Item>
         </Form>

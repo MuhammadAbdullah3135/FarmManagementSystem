@@ -7,8 +7,22 @@ public class NotificationDto
     public Guid Id { get; set; }
     public string AlertType { get; set; } = string.Empty;
     public string Severity { get; set; } = string.Empty;
+    /// <summary>English, as dispatched: the client's fallback when it has no key.</summary>
     public string Title { get; set; } = string.Empty;
+
+    /// <inheritdoc cref="Title" />
     public string Message { get; set; } = string.Empty;
+
+    /// <summary>The title as a message key plus arguments, or null for a row stored before keys existed.</summary>
+    public string? TitleKey { get; set; }
+
+    public IReadOnlyDictionary<string, object?>? TitleArgs { get; set; }
+
+    /// <inheritdoc cref="TitleKey" />
+    public string? MessageKey { get; set; }
+
+    public IReadOnlyDictionary<string, object?>? MessageArgs { get; set; }
+
     public string? Link { get; set; }
     public DateTime? DueDate { get; set; }
     public DateTime CreatedAt { get; set; }

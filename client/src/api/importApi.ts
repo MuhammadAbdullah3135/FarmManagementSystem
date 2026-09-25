@@ -32,6 +32,10 @@ export interface ImportMapping {
 export interface ImportRowError {
   field: string;
   message: string;
+  /** The i18n key for `message`, when the server supplies one; renders in the active language. */
+  messageKey?: string | null;
+  /** Interpolation values for `messageKey` (e.g. a character cap). */
+  messageArgs?: Record<string, unknown> | null;
 }
 
 export interface ImportRow {

@@ -24,8 +24,10 @@ using FMS.Application.Performance;
 using FMS.Application.Employees;
 using FMS.Application.Employees.Import;
 using FMS.Application.Farm;
+using FMS.Application.Farm.Export;
 using FMS.Application.Feed;
 using FMS.Application.Finance;
+using FMS.Application.Finance.Import;
 using FMS.Application.Health;
 using FMS.Application.Inventory;
 using FMS.Application.Inventory.Import;
@@ -46,6 +48,7 @@ using FMS.Infrastructure.Performance;
 using FMS.Infrastructure.Employees;
 using FMS.Infrastructure.Tasks;
 using FMS.Infrastructure.Farm;
+using FMS.Infrastructure.Farm.Export;
 using FMS.Infrastructure.Feed;
 using FMS.Infrastructure.Files;
 using FMS.Infrastructure.Finance;
@@ -223,7 +226,7 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddScoped<IAnimalService, AnimalService>();
 
-// ── Bulk import: animals, employees, inventory ─────────────────────────
+// ── Bulk import: animals, employees, inventory, suppliers, customers, expenses, income ─
 // CSV and .xlsx are parsed server-side behind ISpreadsheetReader, so every client
 // (web, mobile, script) imports through one pipeline, and each row is validated with
 // the rules the single-record create endpoint already uses. The limits live in the
@@ -237,6 +240,22 @@ builder.Services.AddScoped<ISpreadsheetReader, SpreadsheetReader>();
 builder.Services.AddScoped<IAnimalImportService, AnimalImportService>();
 builder.Services.AddScoped<IInventoryImportService, InventoryImportService>();
 builder.Services.AddScoped<IEmployeeImportService, EmployeeImportService>();
+builder.Services.AddScoped<ISupplierImportService, SupplierImportService>();
+builder.Services.AddScoped<ICustomerImportService, CustomerImportService>();
+builder.Services.AddScoped<IExpenseImportService, ExpenseImportService>();
+builder.Services.AddScoped<IIncomeImportService, IncomeImportService>();
+
+// ── Full-farm export ───────────────────────────────────────────────────────
+// The other direction of the import pipeline: one request queues a background job that
+// writes every farm-scoped record into a single ZIP of per-entity CSVs, so a farm with
+// years of history is answered in one round trip rather than by holding the request open
+// for the whole build. The assembler is registered concrete because it is the job's own
+// collaboration, not a substitutable dependency.
+builder.Services.Configure<FarmExportOptions>(
+    builder.Configuration.GetSection(FarmExportOptions.SectionName));
+builder.Services.AddScoped<FarmExportAssembler>();
+builder.Services.AddScoped<IFarmExportService, FarmExportService>();
+builder.Services.AddScoped<IFarmExportQueue, HangfireFarmExportQueue>();
 builder.Services.AddScoped<IBreedingService, BreedingService>();
 builder.Services.AddScoped<IFeedService, FeedService>();
 builder.Services.AddScoped<IFinanceService, FinanceService>();
@@ -303,7 +322,14 @@ builder.Services.AddCors(options =>
     {
         var origins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
             ?? new[] { "http://localhost:3000" };
-        policy.WithOrigins(origins).AllowAnyHeader().AllowAnyMethod().AllowCredentials();
+        // The message-key header must be exposed explicitly: a browser on another origin
+        // (GitHub Pages frontend → Heroku API) cannot read a custom response header unless
+        // the server says so, and the client renders localised validation text from it.
+        policy.WithOrigins(origins)
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials()
+            .WithExposedHeaders(ApiMessageKeys.HeaderName);
     });
 });
 

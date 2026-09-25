@@ -8,13 +8,15 @@ import BreakdownPieChart from '../../components/BreakdownPieChart';
 import { financeReportsApi, type FinanceReportFilter } from '../../api/finance';
 import { getApiError } from '../../api/farmApi';
 import type { CategoryBreakdownItem, MonthlySummaryItem, ProfitLossReport } from '../../types';
+import { formatMoney } from '../../i18n/format';
+import { useTranslation } from 'react-i18next';
 
 const { RangePicker } = DatePicker;
 
-const formatCurrency = (amount: number) =>
-  `$${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+// Shared money formatter: `$` as always, separators per language (see `i18n/format.ts`).
+const formatCurrency = (amount: number) => formatMoney(amount);
 
-const FinanceReportsPage: React.FC = () => {
+const FinanceReportsPage: React.FC = () => {const { t } = useTranslation('finance'); 
   /* The two breakdown tables drop their `%` column on a phone (the pie already
      labels each wedge with its share), so the summary row has to drop its third
      cell with it — antd filters columns by breakpoint but never the summary. */
@@ -70,8 +72,8 @@ const FinanceReportsPage: React.FC = () => {
   }, [loadReports]);
 
   const breakdownColumns: ColumnsType<CategoryBreakdownItem> = [
-    { title: 'Category', dataIndex: 'categoryName' },
-    { title: 'Amount', dataIndex: 'total', align: 'right', render: (v: number) => formatCurrency(v) },
+    { title: t('category'), dataIndex: 'categoryName' },
+    { title: t('amount'), dataIndex: 'total', align: 'right', render: (v: number) => formatCurrency(v) },
     /* Hidden below 576px: inside a stacked full-width card the two remaining columns then fit without
        a sideways drag, and the pie above the table already prints each category's share. */
     { title: '%', dataIndex: 'percentage', align: 'right', width: 80, responsive: ['sm'], render: (v: number) => `${v}%` },
@@ -80,10 +82,10 @@ const FinanceReportsPage: React.FC = () => {
   const monthlyColumns: ColumnsType<MonthlySummaryItem> = [
     /* Pinned: on a phone the table is wider than its card, and the month is the
        only thing that identifies the row (Income/Expenses/Net are bare numbers). */
-    { title: 'Month', dataIndex: 'monthName', width: 120, fixed: 'start' },
-    { title: 'Income', dataIndex: 'income', align: 'right', render: (v: number) => <span style={{ color: '#52c41a' }}>{formatCurrency(v)}</span> },
-    { title: 'Expenses', dataIndex: 'expenses', align: 'right', render: (v: number) => <span style={{ color: '#ff4d4f' }}>{formatCurrency(v)}</span> },
-    { title: 'Net', dataIndex: 'net', align: 'right', render: (v: number) => (
+    { title: t('month'), dataIndex: 'monthName', width: 120, fixed: 'start' },
+    { title: t('income'), dataIndex: 'income', align: 'right', render: (v: number) => <span style={{ color: '#52c41a' }}>{formatCurrency(v)}</span> },
+    { title: t('expenses'), dataIndex: 'expenses', align: 'right', render: (v: number) => <span style={{ color: '#ff4d4f' }}>{formatCurrency(v)}</span> },
+    { title: t('net'), dataIndex: 'net', align: 'right', render: (v: number) => (
       <span style={{ color: v >= 0 ? '#52c41a' : '#ff4d4f', fontWeight: 'bold' }}>{formatCurrency(v)}</span>
     )},
   ];
@@ -122,7 +124,7 @@ const FinanceReportsPage: React.FC = () => {
         <Col xs={12} sm={8}>
           <Card loading={loading}>
             <Statistic
-              title="Total Income"
+              title={t('totalIncome')}
               value={plReport?.totalIncome ?? 0}
               precision={2}
               prefix={<ArrowUpOutlined />}
@@ -134,7 +136,7 @@ const FinanceReportsPage: React.FC = () => {
         <Col xs={12} sm={8}>
           <Card loading={loading}>
             <Statistic
-              title="Total Expenses"
+              title={t('totalExpenses')}
               value={plReport?.totalExpenses ?? 0}
               precision={2}
               prefix={<ArrowDownOutlined />}
@@ -146,7 +148,7 @@ const FinanceReportsPage: React.FC = () => {
         <Col xs={12} sm={8}>
           <Card loading={loading}>
             <Statistic
-              title="Net Profit"
+              title={t('netProfit')}
               value={plReport?.netProfit ?? 0}
               precision={2}
               prefix={<DollarOutlined />}
@@ -160,7 +162,7 @@ const FinanceReportsPage: React.FC = () => {
       {/* Breakdown Charts */}
       <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
         <Col xs={24} lg={12}>
-          <Card title="Expense Breakdown" loading={loading}>
+          <Card title={t('expenseBreakdown')} loading={loading}>
             {expenseBreakdown.length > 0 ? (
               /* The table below already lists every category with its share, so no legend here. */
               <BreakdownPieChart
@@ -178,7 +180,7 @@ const FinanceReportsPage: React.FC = () => {
               locale={{ emptyText: 'No expenses in this period' }}
               summary={() => expenseBreakdown.length > 0 ? (
                 <Table.Summary.Row>
-                  <Table.Summary.Cell index={0}><strong>Total</strong></Table.Summary.Cell>
+                  <Table.Summary.Cell index={0}><strong>{t('total')}</strong></Table.Summary.Cell>
                   <Table.Summary.Cell index={1} align="right"><strong>{formatCurrency(expenseGrandTotal)}</strong></Table.Summary.Cell>
                   {showPercentColumn && (
                     <Table.Summary.Cell index={2} align="right"><strong>100%</strong></Table.Summary.Cell>
@@ -189,7 +191,7 @@ const FinanceReportsPage: React.FC = () => {
           </Card>
         </Col>
         <Col xs={24} lg={12}>
-          <Card title="Income Breakdown" loading={loading}>
+          <Card title={t('incomeBreakdown')} loading={loading}>
             {incomeBreakdown.length > 0 ? (
               <BreakdownPieChart
                 data={incomeBreakdown.map(i => ({ name: i.categoryName, value: i.total }))}
@@ -206,7 +208,7 @@ const FinanceReportsPage: React.FC = () => {
               locale={{ emptyText: 'No income in this period' }}
               summary={() => incomeBreakdown.length > 0 ? (
                 <Table.Summary.Row>
-                  <Table.Summary.Cell index={0}><strong>Total</strong></Table.Summary.Cell>
+                  <Table.Summary.Cell index={0}><strong>{t('total')}</strong></Table.Summary.Cell>
                   <Table.Summary.Cell index={1} align="right"><strong>{formatCurrency(incomeGrandTotal)}</strong></Table.Summary.Cell>
                   {showPercentColumn && (
                     <Table.Summary.Cell index={2} align="right"><strong>100%</strong></Table.Summary.Cell>
@@ -249,7 +251,7 @@ const FinanceReportsPage: React.FC = () => {
             const totalNet = totalIncome - totalExpenses;
             return monthlySummary.length > 0 ? (
               <Table.Summary.Row>
-                <Table.Summary.Cell index={0}><strong>Year Total</strong></Table.Summary.Cell>
+                <Table.Summary.Cell index={0}><strong>{t('yearTotal')}</strong></Table.Summary.Cell>
                 <Table.Summary.Cell index={1} align="right"><strong style={{ color: '#52c41a' }}>{formatCurrency(totalIncome)}</strong></Table.Summary.Cell>
                 <Table.Summary.Cell index={2} align="right"><strong style={{ color: '#ff4d4f' }}>{formatCurrency(totalExpenses)}</strong></Table.Summary.Cell>
                 <Table.Summary.Cell index={3} align="right"><strong style={{ color: totalNet >= 0 ? '#52c41a' : '#ff4d4f' }}>{formatCurrency(totalNet)}</strong></Table.Summary.Cell>

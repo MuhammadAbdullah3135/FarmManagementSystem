@@ -1,0 +1,8 @@
+{
+  "es": {
+    "source": "machine-translation",
+    "reviewed": false,
+    "note": "Machine-translated from en/*.json. Keys mirror en exactly; the wording has not been reviewed by a translator. See locales/README.md for terminology.",
+    "translatedAt": "2026-09-24"
+  }
+}

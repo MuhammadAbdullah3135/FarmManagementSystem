@@ -1,7 +1,14 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ConfigProvider } from 'antd';
 import enUS from 'antd/locale/en_US';
+import esES from 'antd/locale/es_ES';
+import dayjs from 'dayjs';
+// Registers the Spanish month and day names with dayjs. Without this import
+// `dayjs.locale('es')` is a no-op and dates keep their English month abbreviations
+// ("3 Aug 2026") inside otherwise-Spanish screens.
+import 'dayjs/locale/es';
+import { useTranslation } from 'react-i18next';
 import ErrorBoundary from './components/ErrorBoundary';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
@@ -27,6 +34,8 @@ import ExpensesPage from './pages/finance/ExpensesPage';
 import IncomesPage from './pages/finance/IncomesPage';
 import FinanceReportsPage from './pages/finance/FinanceReportsPage';
 import CategoriesPage from './pages/finance/CategoriesPage';
+import ExpenseImportPage from './pages/finance/ExpenseImportPage';
+import IncomeImportPage from './pages/finance/IncomeImportPage';
 import TasksPage from './pages/TasksPage';
 import MedicalRecordsPage from './pages/health/MedicalRecordsPage';
 import MedicinesPage from './pages/health/MedicinesPage';
@@ -41,6 +50,8 @@ import AnimalDetailPage from './pages/animals/AnimalDetailPage';
 import AnimalImportPage from './pages/animals/AnimalImportPage';
 import EmployeeImportPage from './pages/hr/EmployeeImportPage';
 import InventoryImportPage from './pages/inventory/InventoryImportPage';
+import SupplierImportPage from './pages/inventory/SupplierImportPage';
+import CustomerImportPage from './pages/inventory/CustomerImportPage';
 import BreedingRecordsPage from './pages/breeding/BreedingRecordsPage';
 import GestationPage from './pages/breeding/GestationPage';
 import BirthRecordingPage from './pages/breeding/BirthRecordingPage';
@@ -63,12 +74,29 @@ import NotificationPreferencesPage from './pages/NotificationPreferencesPage';
 import RecordWeightPage from './pages/offline/RecordWeightPage';
 import SyncStatusPage from './pages/offline/SyncStatusPage';
 import ConfigurationPage from './pages/configuration/ConfigurationPage';
+import DataExportPage from './pages/configuration/DataExportPage';
+
+const ANTD_LOCALES = { en: enUS, es: esES } as const;
 
 const App: React.FC = () => {
+  // Subscribing here is what makes a language change reach the parts of antd the
+  // resources do not cover: its pagination, date pickers and the `Select` empty text
+  // come from `ConfigProvider locale`, not from i18next.
+  const { i18n } = useTranslation();
+  const language = i18n.language.split('-')[0];
+  const locale = language === 'es' ? 'es' : 'en';
+
+  // dayjs is a separate global from i18next and from antd's own locale bundle, so it is
+  // set here rather than in `i18n/index.ts` — this component is the one thing that
+  // re-renders on a language change and owns the provider the whole tree sits in.
+  useEffect(() => {
+    dayjs.locale(locale);
+  }, [locale]);
+
   return (
     <ErrorBoundary>
       <ConfigProvider
-      locale={enUS}
+      locale={ANTD_LOCALES[locale]}
       theme={{
         token: {
           colorPrimary: '#1677ff',
@@ -122,7 +150,9 @@ const App: React.FC = () => {
 
             {/* Finance */}
             <Route path="finance/expenses" element={<ExpensesPage />} />
+            <Route path="finance/expenses/import" element={<ExpenseImportPage />} />
             <Route path="finance/incomes" element={<IncomesPage />} />
+            <Route path="finance/income-records/import" element={<IncomeImportPage />} />
             <Route path="finance/reports" element={<FinanceReportsPage />} />
             <Route path="finance/categories" element={<CategoriesPage />} />
 
@@ -146,7 +176,9 @@ const App: React.FC = () => {
             <Route path="inventory/items/import" element={<InventoryImportPage />} />
             <Route path="inventory/movements" element={<InventoryMovementsPage />} />
             <Route path="inventory/suppliers" element={<SuppliersPage />} />
+            <Route path="inventory/suppliers/import" element={<SupplierImportPage />} />
             <Route path="inventory/customers" element={<CustomersPage />} />
+            <Route path="inventory/customers/import" element={<CustomerImportPage />} />
             <Route path="inventory/reports" element={<InventoryReportsPage />} />
 
             {/* Reports */}
@@ -168,6 +200,7 @@ const App: React.FC = () => {
 
             {/* Configuration */}
             <Route path="configuration" element={<ConfigurationPage />} />
+            <Route path="configuration/export" element={<DataExportPage />} />
 
             {/* Farm membership */}
             <Route path="farm/members" element={<MembersPage />} />

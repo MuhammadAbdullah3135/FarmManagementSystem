@@ -1,0 +1,50 @@
+{
+  "customer": {
+    "contactInfoMaxLength": "Contact information cannot exceed {{max}} characters",
+    "nameMaxLength": "Customer name cannot exceed {{max}} characters",
+    "nameRequired": "Customer name is required"
+  },
+  "employee": {
+    "addressMaxLength": "Address cannot exceed {{max}} characters",
+    "emailInvalid": "Email address is not valid",
+    "emailMaxLength": "Email cannot exceed {{max}} characters",
+    "firstNameMaxLength": "First name cannot exceed {{max}} characters",
+    "firstNameRequired": "First name is required",
+    "hireDateFuture": "Hire date cannot be in the future",
+    "lastNameMaxLength": "Last name cannot exceed {{max}} characters",
+    "lastNameRequired": "Last name is required",
+    "notesMaxLength": "Notes cannot exceed {{max}} characters",
+    "phoneMaxLength": "Phone cannot exceed {{max}} characters",
+    "salaryRateNegative": "Salary rate cannot be negative"
+  },
+  "expense": {
+    "amountPositive": "Amount must be greater than zero",
+    "dateNotFuture": "Expense date cannot be in the future",
+    "descriptionMaxLength": "Description cannot exceed {{max}} characters"
+  },
+  "income": {
+    "amountPositive": "Amount must be greater than zero",
+    "dateNotFuture": "Income date cannot be in the future",
+    "descriptionMaxLength": "Description cannot exceed {{max}} characters"
+  },
+  "inventoryItem": {
+    "categoryMaxLength": "Category cannot exceed {{max}} characters",
+    "locationMaxLength": "Location cannot exceed {{max}} characters",
+    "nameMaxLength": "Item name cannot exceed {{max}} characters",
+    "nameRequired": "Item name is required",
+    "quantityNegative": "Quantity cannot be negative",
+    "reorderLevelNegative": "Reorder level cannot be negative",
+    "unitCostNegative": "Unit cost cannot be negative",
+    "unitMaxLength": "Unit cannot exceed {{max}} characters",
+    "unitRequired": "Unit is required"
+  },
+  "locale": {
+    "unsupported": "Language '{{locale}}' is not one this app ships"
+  },
+  "supplier": {
+    "contactInfoMaxLength": "Contact information cannot exceed {{max}} characters",
+    "nameMaxLength": "Supplier name cannot exceed {{max}} characters",
+    "nameRequired": "Supplier name is required",
+    "productsSuppliedMaxLength": "Products supplied cannot exceed {{max}} characters"
+  }
+}

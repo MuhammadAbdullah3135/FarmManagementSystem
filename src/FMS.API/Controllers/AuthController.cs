@@ -107,19 +107,59 @@ public class AuthController : ControllerBase
 
     [Authorize]
     [HttpGet("me")]
-    public IActionResult Me()
+    public async Task<IActionResult> Me()
     {
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        var email = User.FindFirst(ClaimTypes.Email)?.Value;
-        var accountId = User.FindFirst("accountId")?.Value;
-        var roles = User.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
+
+        // The identity facts are read from the token, exactly as before, so this stays a
+        // cheap account-scoped read that cannot disagree with the caller's own claims. The
+        // language is the one thing the token does not carry, so it — and only it — comes
+        // from the database.
+        if (!Guid.TryParse(userId, out var parsed))
+            return Unauthorized();
+
+        var profile = await _authService.GetProfileAsync(parsed);
+        if (!profile.IsSuccess)
+            return MapError(profile.Error!);
 
         return Ok(new
         {
             userId,
-            email,
-            accountId,
-            roles
+            email = User.FindFirst(ClaimTypes.Email)?.Value,
+            accountId = User.FindFirst("accountId")?.Value,
+            roles = User.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList(),
+            locale = profile.Value!.Locale
         });
+    }
+
+    /// <summary>
+    /// Remembers the language for this account so the choice follows the user to another
+    /// device. Device-local storage already applied it; this is what makes it durable.
+    /// </summary>
+    [Authorize]
+    [HttpPut("me/locale")]
+    public async Task<IActionResult> SetLocale([FromBody] SetLocaleRequest request)
+    {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (!Guid.TryParse(userId, out var parsed))
+            return Unauthorized();
+
+        var result = await _authService.SetLocaleAsync(parsed, request.Locale);
+        if (!result.IsSuccess)
+            return MapError(result.Error!);
+
+        return Ok(new { locale = result.Value });
+    }
+
+    private IActionResult MapError(Error error)
+    {
+        ApiMessageKeys.Attach(Response, error);
+        return error.Code switch
+        {
+            "NotFound" => NotFound(error.Message),
+            "Validation" => BadRequest(error.Message),
+            "Unauthorized" => Unauthorized(error.Message),
+            _ => StatusCode(500, error.Message)
+        };
     }
 }

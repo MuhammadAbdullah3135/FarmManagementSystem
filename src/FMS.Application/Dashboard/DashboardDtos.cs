@@ -63,8 +63,26 @@ public class DashboardAlertDto
 {
     public string AlertType { get; set; } = string.Empty;
     public string Severity { get; set; } = string.Empty; // Critical, Warning, Info
+
+    /// <summary>English, as always: the email digest and the client's fallback use it.</summary>
     public string Title { get; set; } = string.Empty;
+
+    /// <inheritdoc cref="Title" />
     public string Message { get; set; } = string.Empty;
+
+    /// <summary>
+    /// The same title as a message key plus its arguments, so the client can render it in
+    /// the reader's language (see <c>AlertMessageKeys</c>). Null when there is no key.
+    /// </summary>
+    public string? TitleKey { get; set; }
+
+    public IReadOnlyDictionary<string, object?>? TitleArgs { get; set; }
+
+    /// <inheritdoc cref="TitleKey" />
+    public string? MessageKey { get; set; }
+
+    public IReadOnlyDictionary<string, object?>? MessageArgs { get; set; }
+
     public DateTime? DueDate { get; set; }
     public string? Link { get; set; }
 

@@ -9,13 +9,14 @@ import { lookupsApi } from '../../api/attendance';
 import { getApiError } from '../../api/farmApi';
 import LookupQuickAddSelect from '../../components/LookupQuickAddSelect';
 import type { VaccinationSchedule, VaccineTypeListItem } from '../../types';
+import { useTranslation } from 'react-i18next';
 
 interface AnimalTypeOption {
   id: string;
   name: string;
 }
 
-const VaccinationSchedulePage: React.FC = () => {
+const VaccinationSchedulePage: React.FC = () => {const { t } = useTranslation('health'); 
   const [schedules, setSchedules] = useState<VaccinationSchedule[]>([]);
   const [vaccineTypes, setVaccineTypes] = useState<VaccineTypeListItem[]>([]);
   const [animalTypes, setAnimalTypes] = useState<AnimalTypeOption[]>([]);
@@ -96,10 +97,10 @@ const VaccinationSchedulePage: React.FC = () => {
       };
       if (editing) {
         await vaccinationSchedulesApi.update(editing.id, data);
-        message.success('Schedule updated');
+        message.success(t('scheduleUpdated'));
       } else {
         await vaccinationSchedulesApi.create(data);
-        message.success('Schedule created');
+        message.success(t('scheduleCreated'));
       }
       setModalOpen(false);
       load(page);
@@ -112,7 +113,7 @@ const VaccinationSchedulePage: React.FC = () => {
   const handleDelete = async (id: string) => {
     try {
       await vaccinationSchedulesApi.remove(id);
-      message.success('Schedule deleted');
+      message.success(t('scheduleDeleted'));
       load(page);
     } catch (err) {
       message.error(getApiError(err));
@@ -120,36 +121,38 @@ const VaccinationSchedulePage: React.FC = () => {
   };
 
   const columns: ColumnsType<VaccinationSchedule> = [
-    { title: 'Vaccine', dataIndex: 'vaccineTypeName', ellipsis: true },
+    { title: t('vaccine'), dataIndex: 'vaccineTypeName', ellipsis: true },
     {
-      title: 'Animal Type',
+      title: t('animalType'),
       dataIndex: 'animalTypeName',
-      render: (n?: string) => n || <Tag>All Types</Tag>,
+      render: (n?: string) => n || <Tag>{t('allTypes')}</Tag>,
     },
     {
-      title: 'Interval',
+      title: t('interval'),
       dataIndex: 'recurrenceDays',
       width: 120,
+      // Counted in whole units for readability, and phrased by the reader's language
+      // (which also fixes the singular that used to read "1 year" and "1 days").
       render: (d: number) => {
-        if (d >= 365) return `${(d / 365).toFixed(1)} year`;
-        if (d >= 30) return `${Math.round(d / 30)} months`;
-        return `${d} days`;
+        if (d >= 365) return t('intervalYears', { count: Number((d / 365).toFixed(1)) });
+        if (d >= 30) return t('intervalMonths', { count: Math.round(d / 30) });
+        return t('intervalDays', { count: d });
       },
     },
     {
-      title: 'Active',
+      title: t('active'),
       dataIndex: 'isActive',
       width: 80,
-      render: (a: boolean) => <Tag color={a ? 'green' : 'default'}>{a ? 'Yes' : 'No'}</Tag>,
+      render: (a: boolean) => <Tag color={a ? 'green' : 'default'}>{a ? t('yes') : t('no')}</Tag>,
     },
     {
-      title: 'Actions',
+      title: t('actions'),
       width: 140,
       render: (_, r) => (
         <Space size={4}>
-          <Button size="small" onClick={() => openEdit(r)}>Edit</Button>
-          <Popconfirm title="Delete this schedule?" onConfirm={() => handleDelete(r.id)}>
-            <Button size="small" danger>Delete</Button>
+          <Button size="small" onClick={() => openEdit(r)}>{t('edit')}</Button>
+          <Popconfirm title={t('deleteThisSchedule')} onConfirm={() => handleDelete(r.id)}>
+            <Button size="small" danger>{t('delete')}</Button>
           </Popconfirm>
         </Space>
       ),
@@ -159,9 +162,9 @@ const VaccinationSchedulePage: React.FC = () => {
   return (
     <>
       <Card
-        title="Vaccination Schedules"
+        title={t('vaccinationSchedules')}
         extra={
-          <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>Add Schedule</Button>
+          <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>{t('addSchedule')}</Button>
         }
       >
         <Table
@@ -174,37 +177,37 @@ const VaccinationSchedulePage: React.FC = () => {
       </Card>
 
       <Modal
-        title={editing ? 'Edit Schedule' : 'Add Schedule'}
+        title={editing ? t('editSchedule') : t('addSchedule')}
         open={modalOpen}
         onOk={handleSave}
         onCancel={() => setModalOpen(false)}
         destroyOnClose
       >
         <Form form={form} layout="vertical">
-          <Form.Item name="vaccineTypeId" label="Vaccine Type" rules={[{ required: true, message: 'Select vaccine type' }]}>
+          <Form.Item name="vaccineTypeId" label={t('vaccineType2')} rules={[{ required: true, message: 'Select vaccine type' }]}>
             <LookupQuickAddSelect
               kind="vaccineType"
-              placeholder="Select vaccine"
+              placeholder={t('selectVaccine')}
               options={vaccineTypes.map((v) => ({ value: v.id, label: v.name }))}
               onCreated={() => loadOptions()}
             />
           </Form.Item>
-          <Form.Item name="animalTypeId" label="Animal Type (optional — blank = all)">
+          <Form.Item name="animalTypeId" label={t('animalTypeOptionalBlankAll')}>
             <LookupQuickAddSelect
               kind="animalType"
               allowClear
-              placeholder="All animal types"
+              placeholder={t('allAnimalTypes')}
               options={animalTypes.map((a) => ({ value: a.id, label: a.name }))}
               onCreated={() => loadOptions()}
             />
           </Form.Item>
-          <Form.Item name="recurrenceDays" label="Repeat Every (days)" rules={[{ required: true }]}>
-            <InputNumber min={1} style={{ width: '100%' }} placeholder="e.g. 180 for 6 months" />
+          <Form.Item name="recurrenceDays" label={t('repeatEveryDays')} rules={[{ required: true }]}>
+            <InputNumber min={1} style={{ width: '100%' }} placeholder={t('eG180For6Months')} />
           </Form.Item>
-          <Form.Item name="isActive" label="Active" valuePropName="checked">
+          <Form.Item name="isActive" label={t('active')} valuePropName="checked">
             <Switch />
           </Form.Item>
-          <Form.Item name="notes" label="Notes">
+          <Form.Item name="notes" label={t('notes')}>
             <Input.TextArea rows={2} maxLength={1000} />
           </Form.Item>
         </Form>

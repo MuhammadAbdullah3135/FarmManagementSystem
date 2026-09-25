@@ -5,6 +5,7 @@ import {
 } from 'antd';
 import { PlusOutlined, PlayCircleOutlined, CheckOutlined, StopOutlined, UndoOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
+import { formatDate } from '../i18n/format';
 import dayjs from 'dayjs';
 import { tasksApi } from '../api/tasks';
 import { employeesApi } from '../api/hr';
@@ -21,13 +22,14 @@ import { useOutboxItems } from '../offline/useOutbox';
 import { useAuthStore } from '../stores/authStore';
 import { useFarmStore } from '../stores/farmStore';
 import type { Employee, FarmTask, FarmTaskPriority, FarmTaskStatus } from '../types';
+import { useTranslation } from 'react-i18next';
 
 const { Text } = Typography;
 
 const PRIORITY_COLORS: Record<FarmTaskPriority, string> = { Low: 'default', Medium: 'blue', High: 'red' };
 const STATUS_COLORS: Record<FarmTaskStatus, string> = { Pending: 'gold', InProgress: 'processing', Completed: 'green', Cancelled: 'default' };
 
-const TasksPage: React.FC = () => {
+const TasksPage: React.FC = () => {const { t } = useTranslation('tasks'); 
   const [page, setPage] = useState(1);
   const [filters, setFilters] = useState<{
     status?: string;
@@ -146,10 +148,10 @@ const TasksPage: React.FC = () => {
       };
       if (editing) {
         await tasksApi.update(editing.id, data);
-        message.success('Task updated');
+        message.success(t('taskUpdated'));
       } else {
         await tasksApi.create(data);
-        message.success('Task created');
+        message.success(t('taskCreated'));
       }
       setModalOpen(false);
       tasksQuery.refresh();
@@ -162,7 +164,7 @@ const TasksPage: React.FC = () => {
   const handleDelete = async (id: string) => {
     try {
       await tasksApi.remove(id);
-      message.success('Task deleted');
+      message.success(t('taskDeleted'));
       tasksQuery.refresh();
     } catch (err) {
       message.error(getApiError(err));
@@ -178,7 +180,7 @@ const TasksPage: React.FC = () => {
    */
   const queueCompletion = async (taskId: string, notes: string) => {
     if (!scope) {
-      message.error('Select a farm first.');
+      message.error(t('selectAFarmFirst'));
       return;
     }
 
@@ -229,7 +231,7 @@ const TasksPage: React.FC = () => {
     // workflows, and pretending otherwise would queue a transition the server owns.
     try {
       await tasksApi.cancel(notesTarget.id, notesValue || undefined);
-      message.success('Task cancelled');
+      message.success(t('taskCancelled'));
       setNotesTarget(null);
       setNotesValue('');
       tasksQuery.refresh();
@@ -239,41 +241,41 @@ const TasksPage: React.FC = () => {
   };
 
   const columns: ColumnsType<FarmTask> = [
-    { title: 'Title', dataIndex: 'title', ellipsis: true },
+    { title: t('title'), dataIndex: 'title', ellipsis: true },
     {
-      title: 'Priority',
+      title: t('priority'),
       dataIndex: 'priority',
       width: 100,
       render: (p: FarmTaskPriority) => <Tag color={PRIORITY_COLORS[p]}>{p}</Tag>,
     },
     {
-      title: 'Status',
+      title: t('status'),
       dataIndex: 'status',
       width: 130,
       render: (s: FarmTaskStatus, r) => (
         <Space direction="vertical" size={2}>
           <Tag color={STATUS_COLORS[s]}>{s}</Tag>
-          {pendingCompletions.has(r.id) && <Tag color="blue">Waiting to sync</Tag>}
+          {pendingCompletions.has(r.id) && <Tag color="blue">{t('waitingToSync')}</Tag>}
         </Space>
       ),
     },
     {
-      title: 'Due',
+      title: t('due'),
       dataIndex: 'dueDate',
       render: (d: string, r) => (
         <span style={r.isOverdue ? { color: '#ff4d4f', fontWeight: 600 } : undefined}>
-          {dayjs(d).format('YYYY-MM-DD')}
+          {formatDate(d)}
           {r.isOverdue && ' (overdue)'}
         </span>
       ),
     },
-    { title: 'Assignee', dataIndex: 'assignedEmployeeName', render: (n?: string) => n ?? '-' },
+    { title: t('assignee'), dataIndex: 'assignedEmployeeName', render: (n?: string) => n ?? '-' },
     {
-      title: 'Actions',
+      title: t('actions'),
       render: (_, r) => (
         <Space size={4}>
           {r.status === 'Pending' && (
-            <Button size="small" icon={<PlayCircleOutlined />} aria-label="Start task"
+            <Button size="small" icon={<PlayCircleOutlined />} aria-label={t('startTask')}
               onClick={async () => { await tasksApi.start(r.id); tasksQuery.refresh(); }} />
           )}
           {(r.status === 'Pending' || r.status === 'InProgress') && (
@@ -281,20 +283,20 @@ const TasksPage: React.FC = () => {
               {/* A completion already queued for this task: it is the server's row now, so
                   there is nothing to send a second time. */}
               {!pendingCompletions.has(r.id) && (
-                <Button size="small" type="primary" icon={<CheckOutlined />} aria-label="Complete task"
+                <Button size="small" type="primary" icon={<CheckOutlined />} aria-label={t('completeTask')}
                   onClick={() => setNotesTarget({ id: r.id, action: 'complete' })} />
               )}
-              <Button size="small" danger icon={<StopOutlined />} aria-label="Cancel task"
+              <Button size="small" danger icon={<StopOutlined />} aria-label={t('cancelTask')}
                 onClick={() => setNotesTarget({ id: r.id, action: 'cancel' })} />
             </>
           )}
           {(r.status === 'Completed' || r.status === 'Cancelled') && (
-            <Button size="small" icon={<UndoOutlined />} aria-label="Reopen task"
+            <Button size="small" icon={<UndoOutlined />} aria-label={t('reopenTask')}
               onClick={async () => { await tasksApi.reopen(r.id); tasksQuery.refresh(); }} />
           )}
-          <Button size="small" onClick={() => openEdit(r)}>Edit</Button>
-          <Popconfirm title="Delete?" onConfirm={() => handleDelete(r.id)}>
-            <Button size="small" danger>Delete</Button>
+          <Button size="small" onClick={() => openEdit(r)}>{t('edit')}</Button>
+          <Popconfirm title={t('delete')} onConfirm={() => handleDelete(r.id)}>
+            <Button size="small" danger>{t('delete2')}</Button>
           </Popconfirm>
         </Space>
       ),
@@ -303,23 +305,23 @@ const TasksPage: React.FC = () => {
 
   return (
     <Card
-      title="Farm Tasks"
+      title={t('farmTasks')}
       extra={
         <Space wrap>
-          <Select allowClear placeholder="Status" style={{ width: 120 }} value={filters.status}
+          <Select allowClear placeholder={t('status')} style={{ width: 120 }} value={filters.status}
             onChange={(v) => setFilters((f) => ({ ...f, status: v }))}
             options={['Pending', 'InProgress', 'Completed', 'Cancelled'].map((s) => ({ value: s, label: s }))} />
-          <Select allowClear placeholder="Priority" style={{ width: 120 }} value={filters.priority}
+          <Select allowClear placeholder={t('priority')} style={{ width: 120 }} value={filters.priority}
             onChange={(v) => setFilters((f) => ({ ...f, priority: v }))}
             options={['Low', 'Medium', 'High'].map((p) => ({ value: p, label: p }))} />
-          <Select allowClear placeholder="Assignee" style={{ width: 180 }} value={filters.assignee}
+          <Select allowClear placeholder={t('assignee')} style={{ width: 180 }} value={filters.assignee}
             onChange={(v) => setFilters((f) => ({ ...f, assignee: v }))}
             options={employees.map((e) => ({ value: e.id, label: `${e.firstName} ${e.lastName}` }))} />
           <Checkbox checked={filters.overdueOnly}
             onChange={(e) => setFilters((f) => ({ ...f, overdueOnly: e.target.checked }))}>
-            Overdue only
+            {t('overdueOnly')}
           </Checkbox>
-          <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>New Task</Button>
+          <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>{t('newTask')}</Button>
         </Space>
       }
     >
@@ -335,8 +337,8 @@ const TasksPage: React.FC = () => {
           type="warning"
           showIcon
           style={{ marginBottom: 12 }}
-          message="You are offline"
-          description="Completing a task still works: it is stored on this device and sent when the connection is back."
+          message={t('youAreOffline')}
+          description={t('completingATaskStillWorksItIsStored')}
         />
       )}
 
@@ -346,7 +348,7 @@ const TasksPage: React.FC = () => {
           showIcon
           style={{ marginBottom: 12 }}
           message={`${quarantined.length} completion${quarantined.length === 1 ? '' : 's'} could not be saved`}
-          description="The server refused them — for example a task that was cancelled, or one somebody else completed with different notes. Each message below says which, and nothing is discarded."
+          description={t('theServerRefusedThemForExampleATask')}
         />
       )}
 
@@ -360,45 +362,45 @@ const TasksPage: React.FC = () => {
 
       <div style={{ marginTop: 16 }}>
         <Space style={{ marginBottom: 8 }}>
-          <Text strong>Recorded on this device</Text>
-          <Text type="secondary">Kept for a day after they sync.</Text>
+          <Text strong>{t('recordedOnThisDevice')}</Text>
+          <Text type="secondary">{t('keptForADayAfterTheySync')}</Text>
           <Button
             size="small"
             disabled={queueItems.length === 0}
             loading={isFlushing}
             onClick={() => void requestFlush({ force: true })}
           >
-            Sync now
+            {t('syncNow')}
           </Button>
         </Space>
         <OutboxTable
           items={queueItems}
           targetLabel={taskLabel}
-          emptyText="Completions you record show up here until the server has them."
+          emptyText={t('completionsYouRecordShowUpHereUntilThe')}
         />
       </div>
 
-      <Modal title={editing ? 'Edit Task' : 'New Task'} open={modalOpen} onOk={handleSave} onCancel={() => setModalOpen(false)} destroyOnClose>
+      <Modal title={editing ? t('editTask') : t('newTask')} open={modalOpen} onOk={handleSave} onCancel={() => setModalOpen(false)} destroyOnClose>
         <Form form={form} layout="vertical">
-          <Form.Item name="title" label="Title" rules={[{ required: true }]}>
+          <Form.Item name="title" label={t('title')} rules={[{ required: true }]}>
             <Input maxLength={200} />
           </Form.Item>
-          <Form.Item name="description" label="Description">
+          <Form.Item name="description" label={t('description')}>
             <Input.TextArea rows={2} maxLength={2000} />
           </Form.Item>
           <Row gutter={[16, 16]}>
             <Col xs={24} sm={12}>
-              <Form.Item name="priority" label="Priority" rules={[{ required: true }]}>
+              <Form.Item name="priority" label={t('priority')} rules={[{ required: true }]}>
                 <Select options={['Low', 'Medium', 'High'].map((p) => ({ value: p, label: p }))} style={{ width: '100%' }} />
               </Form.Item>
             </Col>
             <Col xs={24} sm={12}>
-              <Form.Item name="dueDate" label="Due Date" rules={[{ required: true }]}>
+              <Form.Item name="dueDate" label={t('dueDate')} rules={[{ required: true }]}>
                 <DatePicker style={{ width: '100%' }} />
               </Form.Item>
             </Col>
           </Row>
-          <Form.Item name="assignedEmployeeId" label="Assign to">
+          <Form.Item name="assignedEmployeeId" label={t('assignTo')}>
             <Select allowClear showSearch optionFilterProp="label"
               options={employees.map((e) => ({ value: e.id, label: `${e.firstName} ${e.lastName}` }))}
               style={{ width: '100%' }} popupMatchSelectWidth={false} />
@@ -407,12 +409,12 @@ const TasksPage: React.FC = () => {
       </Modal>
 
       <Modal
-        title={notesTarget?.action === 'complete' ? 'Complete Task' : 'Cancel Task'}
+        title={notesTarget?.action === 'complete' ? t('completeTask2') : t('cancelTask2')}
         open={!!notesTarget}
         onOk={handleAction}
         onCancel={() => setNotesTarget(null)}
       >
-        <p>{notesTarget?.action === 'complete' ? 'Completion notes (optional):' : 'Cancel reason (optional):'}</p>
+        <p>{notesTarget?.action === 'complete' ? t('completionNotesOptional') : t('cancelReasonOptional')}</p>
         <Input.TextArea value={notesValue} onChange={(e) => setNotesValue(e.target.value)} rows={3} maxLength={1000} />
       </Modal>
     </Card>

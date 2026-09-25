@@ -8,8 +8,9 @@ import { vaccineTypesApi, medicinesApi } from '../../api/health';
 import { getApiError } from '../../api/farmApi';
 import LookupQuickAddSelect from '../../components/LookupQuickAddSelect';
 import type { VaccineTypeListItem, MedicineListItem } from '../../types';
+import { useTranslation } from 'react-i18next';
 
-const VaccineTypesPage: React.FC = () => {
+const VaccineTypesPage: React.FC = () => {const { t } = useTranslation('health'); 
   const [types, setTypes] = useState<VaccineTypeListItem[]>([]);
   const [medicines, setMedicines] = useState<MedicineListItem[]>([]);
   const [total, setTotal] = useState(0);
@@ -87,10 +88,10 @@ const VaccineTypesPage: React.FC = () => {
       };
       if (editing) {
         await vaccineTypesApi.update(editing.id, data);
-        message.success('Vaccine type updated');
+        message.success(t('vaccineTypeUpdated'));
       } else {
         await vaccineTypesApi.create(data);
-        message.success('Vaccine type created');
+        message.success(t('vaccineTypeCreated'));
       }
       setModalOpen(false);
       load(page);
@@ -103,7 +104,7 @@ const VaccineTypesPage: React.FC = () => {
   const handleDelete = async (id: string) => {
     try {
       await vaccineTypesApi.remove(id);
-      message.success('Vaccine type deleted');
+      message.success(t('vaccineTypeDeleted'));
       load(page);
     } catch (err) {
       message.error(getApiError(err));
@@ -111,22 +112,22 @@ const VaccineTypesPage: React.FC = () => {
   };
 
   const columns: ColumnsType<VaccineTypeListItem> = [
-    { title: 'Name', dataIndex: 'name', ellipsis: true },
-    { title: 'Default Dosage', dataIndex: 'defaultDosage', render: (d?: string) => d || '-' },
+    { title: t('name'), dataIndex: 'name', ellipsis: true },
+    { title: t('defaultDosage'), dataIndex: 'defaultDosage', render: (d?: string) => d || '-' },
     {
-      title: 'Linked Medicine',
+      title: t('linkedMedicine'),
       dataIndex: 'linkedMedicineName',
       render: (n?: string) => n || '-',
     },
-    { title: 'Vaccinations', dataIndex: 'vaccinationCount', width: 110 },
+    { title: t('vaccinations'), dataIndex: 'vaccinationCount', width: 110 },
     {
-      title: 'Actions',
+      title: t('actions'),
       width: 140,
       render: (_, r) => (
         <Space size={4}>
-          <Button size="small" onClick={() => openEdit(r)}>Edit</Button>
-          <Popconfirm title="Delete this vaccine type?" onConfirm={() => handleDelete(r.id)}>
-            <Button size="small" danger>Delete</Button>
+          <Button size="small" onClick={() => openEdit(r)}>{t('edit')}</Button>
+          <Popconfirm title={t('deleteThisVaccineType')} onConfirm={() => handleDelete(r.id)}>
+            <Button size="small" danger>{t('delete')}</Button>
           </Popconfirm>
         </Space>
       ),
@@ -136,16 +137,16 @@ const VaccineTypesPage: React.FC = () => {
   return (
     <>
       <Card
-        title="Vaccine Types"
+        title={t('vaccineTypes')}
         extra={
           <Space>
             <Input.Search
-              placeholder="Search vaccines..."
+              placeholder={t('searchVaccines')}
               allowClear
               onSearch={(v) => setSearch(v)}
               style={{ width: 220 }}
             />
-            <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>Add Vaccine Type</Button>
+            <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>{t('addVaccineType')}</Button>
           </Space>
         }
       >
@@ -159,29 +160,29 @@ const VaccineTypesPage: React.FC = () => {
       </Card>
 
       <Modal
-        title={editing ? 'Edit Vaccine Type' : 'Add Vaccine Type'}
+        title={editing ? t('editVaccineType') : t('addVaccineType')}
         open={modalOpen}
         onOk={handleSave}
         onCancel={() => setModalOpen(false)}
         destroyOnClose
       >
         <Form form={form} layout="vertical">
-          <Form.Item name="name" label="Name" rules={[{ required: true, message: 'Vaccine name is required' }]}>
-            <Input maxLength={200} placeholder="e.g. FMD Vaccine" />
+          <Form.Item name="name" label={t('name')} rules={[{ required: true, message: 'Vaccine name is required' }]}>
+            <Input maxLength={200} placeholder={t('eGFmdVaccine')} />
           </Form.Item>
-          <Form.Item name="defaultDosage" label="Default Dosage">
-            <Input maxLength={200} placeholder="e.g. 5ml" />
+          <Form.Item name="defaultDosage" label={t('defaultDosage')}>
+            <Input maxLength={200} placeholder={t('eG5ml')} />
           </Form.Item>
-          <Form.Item name="linkedMedicineId" label="Linked Medicine (optional)">
+          <Form.Item name="linkedMedicineId" label={t('linkedMedicineOptional')}>
             <LookupQuickAddSelect
               kind="medicine"
               allowClear
-              placeholder="Select medicine for stock tracking"
+              placeholder={t('selectMedicineForStockTracking')}
               options={medicines.map((m) => ({ value: m.id, label: m.name }))}
               onCreated={() => loadMedicines()}
             />
           </Form.Item>
-          <Form.Item name="notes" label="Notes">
+          <Form.Item name="notes" label={t('notes')}>
             <Input.TextArea rows={2} maxLength={1000} />
           </Form.Item>
         </Form>

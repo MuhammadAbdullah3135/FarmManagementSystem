@@ -5,10 +5,12 @@ import {
 import { ArrowLeftOutlined, SaveOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { useNavigate } from 'react-router-dom';
-import { notificationsApi, alertTypeLabel } from '../api/notifications';
+import { notificationsApi } from '../api/notifications';
+import { alertTypeLabel, severityLabel } from '../i18n/vocabulary';
 import type { NotificationPreference } from '../api/notifications';
 import { getApiError } from '../api/farmApi';
 import { useFarmStore } from '../stores/farmStore';
+import { useTranslation } from 'react-i18next';
 
 const { Title, Paragraph, Text } = Typography;
 
@@ -23,7 +25,7 @@ const { Title, Paragraph, Text } = Typography;
  * One row per alert type per farm — a user can care about breeding on one farm and
  * not another, and shared staff accounts would otherwise need a global setting.
  */
-const NotificationPreferencesPage: React.FC = () => {
+const NotificationPreferencesPage: React.FC = () => {const { t } = useTranslation('notifications'); 
   const navigate = useNavigate();
   const { activeFarm } = useFarmStore();
 
@@ -65,7 +67,7 @@ const NotificationPreferencesPage: React.FC = () => {
       const response = await notificationsApi.updatePreferences(preferences);
       setPreferences(response.data.preferences);
       setDirty(false);
-      message.success('Notification preferences saved.');
+      message.success(t('notificationPreferencesSaved'));
     } catch (err) {
       message.error(getApiError(err));
     } finally {
@@ -75,32 +77,32 @@ const NotificationPreferencesPage: React.FC = () => {
 
   const columns: ColumnsType<NotificationPreference> = [
     {
-      title: 'Alert type',
+      title: t('alertType'),
       dataIndex: 'alertType',
       key: 'alertType',
-      render: (alertType: string) => alertTypeLabel(alertType),
+      render: (alertType: string) => alertTypeLabel(t, alertType),
     },
     {
-      title: 'In-app',
+      title: t('inApp'),
       dataIndex: 'inAppEnabled',
       key: 'inAppEnabled',
       width: 120,
       render: (enabled: boolean, record) => (
         <Switch
-          aria-label={`In-app notifications for ${alertTypeLabel(record.alertType)}`}
+          aria-label={t('ariaInAppNotificationsFor', { alertType: alertTypeLabel(t, record.alertType) })}
           checked={enabled}
           onChange={(checked) => update(record.alertType, { inAppEnabled: checked })}
         />
       ),
     },
     {
-      title: 'Email',
+      title: t('email'),
       dataIndex: 'emailEnabled',
       key: 'emailEnabled',
       width: 120,
       render: (enabled: boolean, record) => (
         <Switch
-          aria-label={`Email notifications for ${alertTypeLabel(record.alertType)}`}
+          aria-label={t('ariaEmailNotificationsFor', { alertType: alertTypeLabel(t, record.alertType) })}
           checked={enabled}
           onChange={(checked) => update(record.alertType, { emailEnabled: checked })}
         />
@@ -112,15 +114,14 @@ const NotificationPreferencesPage: React.FC = () => {
     <div>
       <Space style={{ width: '100%', justifyContent: 'space-between', marginBottom: 8 }} align="start">
         <div>
-          <Title level={3} style={{ marginBottom: 0 }}>Notification Preferences</Title>
+          <Title level={3} style={{ marginBottom: 0 }}>{t('notificationPreferences')}</Title>
           <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-            Choose which alerts reach you for {activeFarm?.name ?? 'this farm'}, and on which channel.
-            These settings apply to your account only.
+            {t('chooseWhichAlertsReachYouFor')} {activeFarm?.name ?? 'this farm'}{t('andOnWhichChannelTheseSettingsApplyTo')}
           </Paragraph>
         </div>
         <Space>
           <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/dashboard/notifications')}>
-            Back
+            {t('back')}
           </Button>
           <Button
             type="primary"
@@ -129,7 +130,7 @@ const NotificationPreferencesPage: React.FC = () => {
             disabled={!dirty}
             onClick={() => void handleSave()}
           >
-            Save
+            {t('save')}
           </Button>
         </Space>
       </Space>
@@ -138,18 +139,15 @@ const NotificationPreferencesPage: React.FC = () => {
         type="info"
         showIcon
         style={{ marginBottom: 16 }}
-        title="Email is reserved for what matters by default"
+        title={t('emailIsReservedForWhatMattersByDefault')}
         description={
           <>
-            Alerts at <Tag color="red">{minEmailSeverity}</Tag> severity or above are emailed by default,
-            because emailing everything is how a channel gets ignored. Turn email on per alert type below
-            if you want more, and off entirely if you would rather just use the notification center.
-            Push and SMS delivery are not implemented yet.
+            {t('alertsAt')} <Tag color="red">{severityLabel(t, minEmailSeverity)}</Tag> {t('severityOrAboveAreEmailedByDefaultBecause')}
           </>
         }
       />
 
-      <Card extra={<Text type="secondary">{preferences.length} alert type(s)</Text>}>
+      <Card extra={<Text type="secondary">{preferences.length} {t('alertTypeS')}</Text>}>
         <Table<NotificationPreference>
           rowKey="alertType"
           size="small"

@@ -1,0 +1,50 @@
+{
+  "customer": {
+    "contactInfoMaxLength": "La información de contacto no puede superar los {{max}} caracteres",
+    "nameMaxLength": "El nombre del cliente no puede superar los {{max}} caracteres",
+    "nameRequired": "El nombre del cliente es obligatorio"
+  },
+  "employee": {
+    "addressMaxLength": "La dirección no puede superar los {{max}} caracteres",
+    "emailInvalid": "La dirección de correo electrónico no es válida",
+    "emailMaxLength": "El correo electrónico no puede superar los {{max}} caracteres",
+    "firstNameMaxLength": "El nombre no puede superar los {{max}} caracteres",
+    "firstNameRequired": "El nombre es obligatorio",
+    "hireDateFuture": "La fecha de contratación no puede ser futura",
+    "lastNameMaxLength": "Los apellidos no pueden superar los {{max}} caracteres",
+    "lastNameRequired": "Los apellidos son obligatorios",
+    "notesMaxLength": "Las notas no pueden superar los {{max}} caracteres",
+    "phoneMaxLength": "El teléfono no puede superar los {{max}} caracteres",
+    "salaryRateNegative": "La tarifa salarial no puede ser negativa"
+  },
+  "expense": {
+    "amountPositive": "El importe debe ser mayor que cero",
+    "dateNotFuture": "La fecha del gasto no puede ser futura",
+    "descriptionMaxLength": "La descripción no puede superar los {{max}} caracteres"
+  },
+  "income": {
+    "amountPositive": "El importe debe ser mayor que cero",
+    "dateNotFuture": "La fecha del ingreso no puede ser futura",
+    "descriptionMaxLength": "La descripción no puede superar los {{max}} caracteres"
+  },
+  "inventoryItem": {
+    "categoryMaxLength": "La categoría no puede superar los {{max}} caracteres",
+    "locationMaxLength": "La ubicación no puede superar los {{max}} caracteres",
+    "nameMaxLength": "El nombre del artículo no puede superar los {{max}} caracteres",
+    "nameRequired": "El nombre del artículo es obligatorio",
+    "quantityNegative": "La cantidad no puede ser negativa",
+    "reorderLevelNegative": "El nivel de reposición no puede ser negativo",
+    "unitCostNegative": "El costo unitario no puede ser negativo",
+    "unitMaxLength": "La unidad no puede superar los {{max}} caracteres",
+    "unitRequired": "La unidad es obligatoria"
+  },
+  "locale": {
+    "unsupported": "El idioma «{{locale}}» no está disponible en esta aplicación"
+  },
+  "supplier": {
+    "contactInfoMaxLength": "La información de contacto no puede superar los {{max}} caracteres",
+    "nameMaxLength": "El nombre del proveedor no puede superar los {{max}} caracteres",
+    "nameRequired": "El nombre del proveedor es obligatorio",
+    "productsSuppliedMaxLength": "Los productos suministrados no pueden superar los {{max}} caracteres"
+  }
+}

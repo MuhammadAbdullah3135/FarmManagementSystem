@@ -10,13 +10,15 @@ import DateRangeFilter from '../../components/DateRangeFilter';
 import ExportButton from '../../components/ExportButton';
 import { reportsApi, type MedicalReport, type MedicalByVet } from '../../api/reports';
 import { getApiError } from '../../api/farmApi';
+import { formatMoney } from '../../i18n/format';
+import { useTranslation } from 'react-i18next';
 
 const { Text } = Typography;
 
 const formatCurrency = (v: number) =>
-  `$${v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  formatMoney(v);
 
-const MedicalReportsPage: React.FC = () => {
+const MedicalReportsPage: React.FC = () => {const { t } = useTranslation('reports'); 
   const [report, setReport] = useState<MedicalReport | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -38,9 +40,9 @@ const MedicalReportsPage: React.FC = () => {
   }, [loadData]);
 
   const vetColumns: ColumnsType<MedicalByVet> = [
-    { title: 'Veterinarian', dataIndex: 'vetName' },
-    { title: 'Cases', dataIndex: 'caseCount', align: 'right' },
-    { title: 'Total Cost', dataIndex: 'totalCost', align: 'right', render: (v: number) => formatCurrency(v) },
+    { title: t('veterinarian'), dataIndex: 'vetName' },
+    { title: t('cases'), dataIndex: 'caseCount', align: 'right' },
+    { title: t('totalCost2'), dataIndex: 'totalCost', align: 'right', render: (v: number) => formatCurrency(v) },
   ];
 
   const statusData = report?.byStatus?.map(s => ({ name: s.status, value: s.count })) ?? [];
@@ -48,21 +50,21 @@ const MedicalReportsPage: React.FC = () => {
 
   return (
     <div>
-      <Card style={{ marginBottom: 16 }} extra={<div style={{ display: 'flex', gap: 8 }}><DateRangeFilter onChange={(from, to) => void loadData(from, to)} /><ExportButton filename="medical-report" title="Medical Report" headers={['Vet', 'Cases', 'Cost']} rows={(report?.byVet ?? []).map(v => [v.vetName, v.caseCount, v.totalCost])} /></div>}>
-        <Text type="secondary">Treatment cases, costs by veterinarian, medicine usage</Text>
+      <Card style={{ marginBottom: 16 }} extra={<div style={{ display: 'flex', gap: 8 }}><DateRangeFilter onChange={(from, to) => void loadData(from, to)} /><ExportButton filename="medical-report" title={t('medicalReport')} headers={['Vet', 'Cases', 'Cost']} rows={(report?.byVet ?? []).map(v => [v.vetName, v.caseCount, v.totalCost])} /></div>}>
+        <Text type="secondary">{t('treatmentCasesCostsByVeterinarianMedicineUsage')}</Text>
       </Card>
 
       <Spin spinning={loading}>
         <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-          <Col xs={12} sm={8}><Card><Statistic title="Total Cases" value={report?.totalCases ?? 0} /></Card></Col>
-          <Col xs={12} sm={8}><Card><Statistic title="Total Cost" value={report?.totalCost ?? 0} precision={2} prefix="$" /></Card></Col>
-          <Col xs={12} sm={8}><Card><Statistic title="Veterinarians" value={report?.byVet?.length ?? 0} /></Card></Col>
+          <Col xs={12} sm={8}><Card><Statistic title={t('totalCases')} value={report?.totalCases ?? 0} /></Card></Col>
+          <Col xs={12} sm={8}><Card><Statistic title={t('totalCost2')} value={report?.totalCost ?? 0} precision={2} prefix="$" /></Card></Col>
+          <Col xs={12} sm={8}><Card><Statistic title={t('veterinarians')} value={report?.byVet?.length ?? 0} /></Card></Col>
         </Row>
 
         <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
           {/* Monthly Trend */}
           <Col xs={24} lg={12}>
-            <Card title="Cases & Cost Trend" size="small">
+            <Card title={t('casesCostTrend')} size="small">
               {report?.monthlyTrend && report.monthlyTrend.length > 0 ? (
                 <ResponsiveContainer width="100%" height={260}>
                   <BarChart data={report.monthlyTrend}>
@@ -76,16 +78,16 @@ const MedicalReportsPage: React.FC = () => {
                     <Bar yAxisId="right" dataKey="cost" name="Cost" fill="#52c41a" />
                   </BarChart>
                 </ResponsiveContainer>
-              ) : <Empty description="No data" />}
+              ) : <Empty description={t('noData')} />}
             </Card>
           </Col>
 
           {/* Costs by Vet */}
           <Col xs={24} lg={12}>
-            <Card title="Cost by Veterinarian" size="small">
+            <Card title={t('costByVeterinarian')} size="small">
               {vetData.length > 0 ? (
                 <BreakdownPieChart data={vetData} valueFormatter={formatCurrency} />
-              ) : <Empty description="No data" />}
+              ) : <Empty description={t('noData')} />}
             </Card>
           </Col>
         </Row>
@@ -93,7 +95,7 @@ const MedicalReportsPage: React.FC = () => {
         {/* Status Breakdown */}
         <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
           <Col xs={24} lg={12}>
-            <Card title="By Status" size="small">
+            <Card title={t('byStatus')} size="small">
               {statusData.length > 0 ? (
                 <ResponsiveContainer width="100%" height={200}>
                   <BarChart data={statusData} layout="vertical">
@@ -104,13 +106,13 @@ const MedicalReportsPage: React.FC = () => {
                     <Bar dataKey="value" name="Count" fill="#1677ff" />
                   </BarChart>
                 </ResponsiveContainer>
-              ) : <Empty description="No data" />}
+              ) : <Empty description={t('noData')} />}
             </Card>
           </Col>
         </Row>
 
         {/* Data Table */}
-        <Card title="Costs by Veterinarian" size="small">
+        <Card title={t('costsByVeterinarian')} size="small">
           <Table rowKey="vetName" columns={vetColumns} dataSource={report?.byVet ?? []} pagination={false} size="small" />
         </Card>
       </Spin>

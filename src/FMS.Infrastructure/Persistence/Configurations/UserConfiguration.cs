@@ -14,6 +14,9 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.FirstName).IsRequired().HasMaxLength(100);
         builder.Property(u => u.LastName).IsRequired().HasMaxLength(100);
         builder.Property(u => u.IsActive).HasDefaultValue(true);
+        // Nullable on purpose: "never chose" is a real state and must stay distinguishable
+        // from "chose English".
+        builder.Property(u => u.Locale).HasMaxLength(FMS.Application.Common.SupportedLocales.MaxLength);
 
         builder.HasIndex(u => u.Email).IsUnique();
 

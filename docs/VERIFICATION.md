@@ -34,6 +34,8 @@ item could be verified for real.
 | `Initialize_OnRealPostgres_IsIdempotentAcrossRestarts` | same | same |
 | `AppliedButUnrecordedMutation_IsRefusedByTheUniqueIndex_AndReportedAsAlreadyApplied` | `tests/FMS.Domain.Tests/E2E/IdempotencyIndexPostgresIntegrationTests.cs` | same (added in 5.3) |
 | `LiveRecordingsWithoutAMutationId_Coexist_UnderTheFilteredIndex` | same | same (added in 5.3) |
+| `Export_OnRealPostgres_BuildsTheWholeArchiveAndTheRequestStaysFast` | `tests/FMS.Domain.Tests/Export/FarmExportLargeFarmPostgresTests.cs` | same (added in 6.2) |
+| `EveryRewrittenPath_IssuesTheSameHandfulOfQueries_OnRealPostgres` | `tests/FMS.Domain.Tests/Reports/ReportQueryCountPostgresTests.cs` | same (added in 6.3) |
 
 The three new ones close a gap the scheduler's own tests name explicitly:
 `BackgroundJobsSetupTests` can only reach the container wiring, because "the job
@@ -706,6 +708,118 @@ marker is moved instead — it is one record in one store, and this is what it i
 - Anything the banner showed that was not true (a count, an age, or a promise about saving).
 - After 6d step 6, the exact server-side timestamps of the three weights versus the device
   capture times — this is the one claim a jsdom run cannot make for you.
+
+---
+
+## 7. Report query counts — measured here, one timer handed off
+
+### What was wrong
+
+Four health/feeding methods asked the database one question per *(schedule × animal)* pair. The
+cost therefore grew with the size of the farm rather than staying put. The clearest of them,
+`ReportService.GetVaccinationReportAsync`, was flagged in review; the audit that followed found
+the same shape in three more places, two of which run on a schedule:
+
+| Method | Reached from | Cadence |
+|---|---|---|
+| `ReportService.GetVaccinationReportAsync` | `GET /reports/vaccinations` | on demand |
+| `VaccineService.ComputeVaccinationStatusesAsync` | dashboard summary, alerts, `GET /vaccines/status`, `GET /vaccines/overdue` | **hourly** per farm (health-status job) |
+| `WeightCheckScheduleService.ComputeWeightCheckStatusesAsync` | dashboard alerts, weight-check status/overdue, health-status job | **every 15 minutes** per farm (notification dispatch), and it writes as it goes |
+| `FeedService.GenerateTasksAsync` | feeding-task generation job | daily per farm |
+
+### Measured before and after
+
+The counts below are read round trips to a real relational database, from the fixed fixture in
+`ReportPerfFixture` (two vaccination schedules and two weight-check schedules, each matching every
+animal, so the pair count is the worst case). "Before" was recorded by running the counting
+harness against the unmodified methods.
+
+| Method | 25 animals | 400 animals | Formula before | After |
+|---|---|---|---|---|
+| `GetVaccinationReportAsync` | 53 | 803 | `3 + pairs` | **4** |
+| `GetVaccinationStatusAsync` | 52 | 802 | `2 + pairs` | **3** |
+| `GetWeightCheckStatusAsync` | 55 | 1,273 | `2 + pairs + due/overdue` | **4** |
+| `GenerateTasksAsync` | 5 | 5 | already constant | **5** |
+
+The write side is unchanged, and that is asserted rather than assumed: at 400 animals the
+weight-check path still stages 471 task rows, because the existence check it replaced could not
+see the tasks the same call had staged but not yet saved either. Deduplicating that is a behaviour
+change with its own decision, not a side effect of this one.
+
+### How the counts are guarded without a database
+
+The suite's usual provider cannot see this class of defect: EF InMemory evaluates LINQ in memory
+and issues no commands at all, so there is nothing to count. `ReportQueryCountTests` therefore runs
+the four methods on **SQLite** through a command interceptor, asserts the constant at two farm
+sizes, and asserts that each path costs fewer round trips than the farm has animals — so a
+reintroduced per-animal query fails on the number rather than passing because the fixture was
+small. `ReportOutputGoldenTests` compares each method's output against a golden **recorded from the
+pre-rewrite implementation** (`Reports/GoldenOutput`), which is what makes this a before/after proof
+of unchanged output rather than a snapshot of whatever the code does now.
+
+Two of those goldens are compared as a sorted set rather than a sequence, and that is a finding:
+recorded twice from the *unmodified* code, both status lists produced the same entries in a
+different order, because neither orders its animals and the provider may return rows in any order it
+likes. The one ordering the vaccination status does define — soonest due first — is asserted
+directly. The report and the task list are ordered by their own code, so those two are compared
+exactly.
+
+### Runbook — the timings on a real server
+
+`EveryRewrittenPath_IssuesTheSameHandfulOfQueries_OnRealPostgres` asserts the *same four constants*
+against PostgreSQL, which makes them a property of the code rather than of a provider, and prints
+seeding and per-report durations. It **skips** here: no server and no Docker in this environment.
+
+Prerequisites are the same as the rest of the suite (a writable PostgreSQL 14+ server; the test
+creates and drops its own `fms_perf_<guid>` database, so the role needs `CREATEDB`):
+
+```bash
+export FMS_TEST_POSTGRES="Host=localhost;Port=5432;Database=postgres;Username=postgres;Password=postgres"
+
+dotnet test tests/FMS.Domain.Tests/FMS.Domain.Tests.csproj \
+  --filter "FullyQualifiedName~Reports.ReportQueryCountPostgresTests" \
+  --logger "console;verbosity=detailed"
+```
+
+Expected: `Passed: 1`, `Skipped: 0`, and four query counts of 4 / 3 / 4 / 5 for a 500-animal farm.
+A run that still reports a skip has not connected to anything and proves nothing.
+
+### What to report back
+
+- The verbatim summary line, and the printed block of durations (seed, and each of the four calls).
+- Whether the four query counts were exactly 4 / 3 / 4 / 5. If any is higher, the number names the
+  path, and a count that scales with `AnimalCount` means a loop came back.
+- The weight-check write count (expected 471 at 400 animals, and one per due-or-overdue entry).
+
+### Flagged in 6.3 but deliberately not fixed
+
+Each of these was found while rewriting the loops and is **preserved**, not resolved — they are
+behaviour questions rather than performance ones, so each needs its own decision and its own
+evidence. None of them is a regression, and none is registered anywhere else.
+
+1. **The weight-check path stages duplicate task rows.** When two schedules match one animal, the
+   per-pair existence check cannot see the tasks the same call has staged but not yet saved, so the
+   animal gets one task per matching schedule — 471 rows for 239 distinct animals at 400 animals.
+   The rewrite reproduces this exactly (`ReportQueryCountTests` asserts writes equal the count of
+   due-or-overdue entries), because deduplicating changes how many rows a farm receives.
+2. **The two health status lists have no defined order.** `GetWeightCheckStatusAsync` returns the
+   entries in whatever order the provider returns the animals, and `GetVaccinationStatusAsync`
+   orders only by `DaysUntilDue`, leaving ties in that same undefined order. Recorded twice from the
+   *unmodified* code, both produced the same entries in a different order — so this is pre-existing,
+   and it is why their golden comparisons are order-insensitive. It is also why a client paging
+   through them can see a row move between pages.
+3. **`ComputeVaccinationStatusesAsync` counts soft-deleted animals; its siblings do not.** The
+   dashboard and notification path includes them; the vaccination report and the weight-check path
+   exclude them, so the same animal can be present on one surface and absent from another. This was
+   preserved as agreed; changing it changes dashboard counts and dispatched notifications.
+4. **`FeedService.GetStockByFeedTypeAsync` loads the whole farm's stock to return one row**, and
+   **`GetCostSummaryAsync` loads every movement and feed type into memory.** Both are bounded by
+   farm rather than by loop count, which is why they were not part of this rewrite, but they scale
+   with a farm's history and deserve the same treatment.
+5. **`WeightRecords` has no usable unfiltered `FarmId` index.** The only `FarmId` index on that
+   table is the filtered unique one on `ClientMutationId`, so the batched read scopes through
+   `Animal` instead, which the existing `(AnimalId, RecordedAt)` index serves. If the runbook above
+   shows that join is slow on real data, `(FarmId, RecordedAt)` is the query-backed follow-up.
 
 ---
 

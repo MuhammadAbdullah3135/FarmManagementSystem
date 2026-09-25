@@ -224,6 +224,13 @@ public class DashboardService : IDashboardService
                     Severity = NotificationSeverity.Critical,
                     Title = $"Overdue: {v.VaccineTypeName}",
                     Message = $"Animal {v.AnimalTagNumber} is overdue for {v.VaccineTypeName} (due {v.NextDueDate:MMM dd, yyyy})",
+                    TitleKey = AlertMessageKeys.OverdueVaccinationTitle,
+                    TitleArgs = AlertMessageKeys.Args(("vaccineType", v.VaccineTypeName)),
+                    MessageKey = AlertMessageKeys.OverdueVaccinationMessage,
+                    MessageArgs = AlertMessageKeys.Args(
+                        ("tag", v.AnimalTagNumber),
+                        ("vaccineType", v.VaccineTypeName),
+                        ("dueDate", v.NextDueDate)),
                     DueDate = v.NextDueDate,
                     Link = "/dashboard/health/vaccinations",
                     SourceKey = NotificationAlertTypes.SourceKeys.ForOverdueVaccination(v.AnimalId, v.VaccineTypeId)
@@ -248,6 +255,16 @@ public class DashboardService : IDashboardService
                     Severity = NotificationSeverity.Warning,
                     Title = $"Weight check due: {w.AnimalTagNumber}",
                     Message = $"Last recorded: {(w.LastWeightDate?.ToString("MMM dd, yyyy") ?? "Never")}. Next due: {w.NextDueDate:MMM dd, yyyy}",
+                    TitleKey = AlertMessageKeys.OverdueWeightCheckTitle,
+                    TitleArgs = AlertMessageKeys.Args(("tag", w.AnimalTagNumber)),
+                    // Two keys rather than a nullable argument: "Never" is a word the reader
+                    // needs translated, and a null would just interpolate as nothing.
+                    MessageKey = w.LastWeightDate is null
+                        ? AlertMessageKeys.OverdueWeightCheckMessageNever
+                        : AlertMessageKeys.OverdueWeightCheckMessage,
+                    MessageArgs = AlertMessageKeys.Args(
+                        ("lastDate", w.LastWeightDate),
+                        ("nextDue", w.NextDueDate)),
                     DueDate = w.NextDueDate,
                     Link = "/dashboard/health/weight-schedules",
                     SourceKey = NotificationAlertTypes.SourceKeys.ForOverdueWeightCheck(w.AnimalId)
@@ -273,6 +290,20 @@ public class DashboardService : IDashboardService
                     AlertType = NotificationAlertTypes.Medicine, Severity = severity,
                     Title = $"{a.AlertTypeName}: {a.MedicineName}",
                     Message = $"Batch {a.BatchNumber} — {a.CurrentQuantity} {a.Unit} remaining (threshold: {a.LowStockThreshold}). Expires {a.ExpiryDate:MMM dd, yyyy}.",
+                    TitleKey = a.AlertType switch
+                    {
+                        MedicineAlertType.Expired => AlertMessageKeys.MedicineExpiredTitle,
+                        MedicineAlertType.ExpiringSoon => AlertMessageKeys.MedicineExpiringSoonTitle,
+                        _ => AlertMessageKeys.MedicineLowStockTitle,
+                    },
+                    TitleArgs = AlertMessageKeys.Args(("medicine", a.MedicineName)),
+                    MessageKey = AlertMessageKeys.MedicineMessage,
+                    MessageArgs = AlertMessageKeys.Args(
+                        ("batch", a.BatchNumber),
+                        ("quantity", a.CurrentQuantity),
+                        ("unit", a.Unit),
+                        ("threshold", a.LowStockThreshold),
+                        ("expiryDate", a.ExpiryDate)),
                     DueDate = a.ExpiryDate, Link = "/dashboard/health/medicines/alerts",
                     SourceKey = NotificationAlertTypes.SourceKeys.ForMedicine(a.MedicineId, a.StockId, a.AlertType.ToString())
                 });
@@ -297,6 +328,14 @@ public class DashboardService : IDashboardService
                     Title = $"Overdue: {t.Title}",
                     Message = $"Task was due {t.DueDate:MMM dd, yyyy}" +
                               (t.AssignedEmployeeName != null ? $" — assigned to {t.AssignedEmployeeName}" : ""),
+                    TitleKey = AlertMessageKeys.OverdueTaskTitle,
+                    TitleArgs = AlertMessageKeys.Args(("title", t.Title)),
+                    MessageKey = t.AssignedEmployeeName is null
+                        ? AlertMessageKeys.OverdueTaskMessage
+                        : AlertMessageKeys.OverdueTaskMessageAssigned,
+                    MessageArgs = AlertMessageKeys.Args(
+                        ("dueDate", t.DueDate),
+                        ("employee", t.AssignedEmployeeName)),
                     DueDate = t.DueDate, Link = "/dashboard/tasks",
                     SourceKey = NotificationAlertTypes.SourceKeys.ForOverdueTask(t.Id)
                 });
@@ -323,6 +362,16 @@ public class DashboardService : IDashboardService
                     Severity = g.DaysUntilDue <= 3 ? NotificationSeverity.Critical : NotificationSeverity.Warning,
                     Title = $"Birth due: {g.AnimalTagNumber}",
                     Message = $"Expected {g.ExpectedDeliveryDate:MMM dd, yyyy} ({g.DaysUntilDue} days). Stage: {g.CurrentStage}.",
+                    TitleKey = AlertMessageKeys.DueBirthTitle,
+                    TitleArgs = AlertMessageKeys.Args(("tag", g.AnimalTagNumber)),
+                    MessageKey = AlertMessageKeys.DueBirthMessage,
+                    // The stage is a server-owned value ("Early", "Late"), so it travels as an
+                    // argument and reads as itself in either language — recorded as a remaining
+                    // value vocabulary in docs/I18N.md.
+                    MessageArgs = AlertMessageKeys.Args(
+                        ("expectedDate", g.ExpectedDeliveryDate),
+                        ("days", g.DaysUntilDue),
+                        ("stage", g.CurrentStage)),
                     DueDate = g.ExpectedDeliveryDate, Link = "/dashboard/breeding/gestation",
                     SourceKey = NotificationAlertTypes.SourceKeys.ForDueBirth(g.Id)
                 });
@@ -342,6 +391,14 @@ public class DashboardService : IDashboardService
                     AlertType = NotificationAlertTypes.LowInventory, Severity = NotificationSeverity.Warning,
                     Title = $"Low stock: {item.ItemName}",
                     Message = $"{item.Quantity} {item.Unit} remaining (reorder level: {item.ReorderLevel}). Shortfall: {item.Shortfall} {item.Unit}.",
+                    TitleKey = AlertMessageKeys.LowInventoryTitle,
+                    TitleArgs = AlertMessageKeys.Args(("item", item.ItemName)),
+                    MessageKey = AlertMessageKeys.LowInventoryMessage,
+                    MessageArgs = AlertMessageKeys.Args(
+                        ("quantity", item.Quantity),
+                        ("unit", item.Unit),
+                        ("reorderLevel", item.ReorderLevel),
+                        ("shortfall", item.Shortfall)),
                     Link = "/dashboard/inventory/reports",
                     SourceKey = NotificationAlertTypes.SourceKeys.ForLowInventory(item.InventoryItemId)
                 });

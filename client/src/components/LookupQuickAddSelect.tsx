@@ -9,6 +9,7 @@ import {
   type QuickAddFieldSpec,
   type QuickAddVariant,
 } from './lookupQuickAdd';
+import { useTranslation } from 'react-i18next';
 
 export type { QuickAddFieldSpec } from './lookupQuickAdd';
 
@@ -83,7 +84,7 @@ const LookupQuickAddSelect = ({
   allowClear = false,
   popupMatchSelectWidth,
   style,
-}: LookupQuickAddSelectProps) => {
+}: LookupQuickAddSelectProps) => {const { t } = useTranslation('common'); 
   const [modalOpen, setModalOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [form] = Form.useForm();
@@ -173,7 +174,7 @@ const LookupQuickAddSelect = ({
                   onClick={openModal}
                   data-testid={`quick-add-${resolvedLabel}`}
                 >
-                  Add {resolvedLabel}
+                  {t('add')} {resolvedLabel}
                 </Button>
               ) : (
                 <span style={{ color: '#999', fontSize: 12 }}>{hint}</span>

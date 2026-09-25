@@ -6,13 +6,15 @@ import { birthsApi, gestationApi, breedingRecordsApi, type CreateBirthRecordPayl
 import { lookupsApi } from '../../api/attendance';
 import { getApiError } from '../../api/farmApi';
 import LookupQuickAddSelect from '../../components/LookupQuickAddSelect';
-import dayjs from 'dayjs';
+import { formatDate } from '../../i18n/format';
+
 import type { BirthRecord, GestationRecord, BreedingRecord } from '../../types';
+import { useTranslation } from 'react-i18next';
 
 const OUTCOME_LABELS: Record<number, string> = { 0: 'Alive', 1: 'Stillborn', 2: 'Weak' };
 const OUTCOME_COLORS: Record<number, string> = { 0: 'green', 1: 'red', 2: 'orange' };
 
-export default function BirthRecordingPage() {
+export default function BirthRecordingPage() {const { t } = useTranslation('breeding'); 
   const [data, setData] = useState<BirthRecord[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -124,7 +126,7 @@ export default function BirthRecordingPage() {
       };
 
       await birthsApi.create(payload);
-      message.success('Birth record created successfully');
+      message.success(t('birthRecordCreatedSuccessfully'));
       setModalOpen(false);
       load(1);
     } catch (err) {
@@ -138,7 +140,7 @@ export default function BirthRecordingPage() {
   const handleDelete = async (id: string) => {
     try {
       await birthsApi.delete(id);
-      message.success('Birth record deleted');
+      message.success(t('birthRecordDeleted'));
       load(page);
     } catch (err) {
       message.error(getApiError(err));
@@ -152,7 +154,7 @@ export default function BirthRecordingPage() {
 
   const columns: ColumnsType<BirthRecord> = [
     {
-      title: 'Dam',
+      title: t('dam'),
       key: 'dam',
       render: (_, record) => (
         <span>
@@ -162,37 +164,37 @@ export default function BirthRecordingPage() {
       ),
     },
     {
-      title: 'Birth Date',
+      title: t('birthDate'),
       dataIndex: 'birthDate',
       key: 'birthDate',
-      render: (text: string) => dayjs(text).format('YYYY-MM-DD'),
+      render: (text: string) => formatDate(text),
     },
     {
-      title: 'Offspring',
+      title: t('offspring'),
       dataIndex: 'offspringCount',
       key: 'offspringCount',
       render: (val: number) => <Tag>{val}</Tag>,
     },
     {
-      title: 'Alive',
+      title: t('alive'),
       dataIndex: 'aliveCount',
       key: 'aliveCount',
       render: (val: number) => <Tag color="green">{val}</Tag>,
     },
     {
-      title: 'Vet',
+      title: t('vet'),
       dataIndex: 'vetName',
       key: 'vetName',
       render: (text: string) => text || '-',
     },
     {
-      title: 'Actions',
+      title: t('actions'),
       key: 'actions',
       width: 120,
       render: (_, record) => (
         <Space>
           <Button size="small" icon={<EyeOutlined />} onClick={() => showDetail(record)} />
-          <Popconfirm title="Delete this birth record?" onConfirm={() => handleDelete(record.id)}>
+          <Popconfirm title={t('deleteThisBirthRecord')} onConfirm={() => handleDelete(record.id)}>
             <Button size="small" danger icon={<DeleteOutlined />} />
           </Popconfirm>
         </Space>
@@ -205,10 +207,10 @@ export default function BirthRecordingPage() {
   return (
     <>
       <Card
-        title="Birth Records"
+        title={t('birthRecords')}
         extra={
           <Button type="primary" icon={<PlusOutlined />} onClick={openCreateModal}>
-            Record Birth
+            {t('recordBirth')}
           </Button>
         }
       >
@@ -223,20 +225,20 @@ export default function BirthRecordingPage() {
 
       {/* Create Birth Record Modal */}
       <Modal
-        title="Record Birth"
+        title={t('recordBirth')}
         open={modalOpen}
         onOk={handleSubmit}
         onCancel={() => setModalOpen(false)}
         width={800}
         destroyOnClose
         confirmLoading={submitting}
-        okText="Save"
+        okText={t('save')}
       >
         <Form form={form} layout="vertical">
-          <Form.Item name="damId" label="Dam" rules={[{ required: true, message: 'Select the dam' }]}>
+          <Form.Item name="damId" label={t('dam')} rules={[{ required: true, message: 'Select the dam' }]}>
             <Select
               showSearch
-              placeholder="Select dam"
+              placeholder={t('selectDam')}
               optionFilterProp="label"
               onChange={handleDamChange}
               options={animals.map(a => ({ value: a.id, label: `${a.tagNumber} - ${a.name || 'Unnamed'}` }))}
@@ -245,20 +247,20 @@ export default function BirthRecordingPage() {
 
           {selectedDamTag && (
             <div style={{ marginBottom: 16, padding: '8px 12px', background: '#f6f8fa', borderRadius: 6, border: '1px solid #d9d9d9' }}>
-              <span style={{ color: '#666' }}>Offspring tags will be generated as: </span>
+              <span style={{ color: '#666' }}>{t('offspringTagsWillBeGeneratedAs')} </span>
               <strong>{selectedDamTag}-1</strong>, <strong>{selectedDamTag}-2</strong>, ...
             </div>
           )}
 
           <Row gutter={[16, 16]}>
             <Col xs={24} sm={12}>
-              <Form.Item name="gestationRecordId" label="Gestation Record (optional)">
+              <Form.Item name="gestationRecordId" label={t('gestationRecordOptional')}>
                 <Select
                   allowClear
-                  placeholder="Link to gestation record"
+                  placeholder={t('linkToGestationRecord')}
                   options={pendingGestations.map(g => ({
                     value: g.id,
-                    label: `${dayjs(g.breedingDate).format('YYYY-MM-DD')} | ${g.animalTagNumber} (${g.daysUntilDue}d to due)`,
+                    label: `${formatDate(g.breedingDate)} | ${g.animalTagNumber} (${g.daysUntilDue}d to due)`,
                   }))}
                   style={{ width: '100%' }}
                   popupMatchSelectWidth={false}
@@ -266,13 +268,13 @@ export default function BirthRecordingPage() {
               </Form.Item>
             </Col>
             <Col xs={24} sm={12}>
-              <Form.Item name="breedingRecordId" label="Breeding Record (optional)">
+              <Form.Item name="breedingRecordId" label={t('breedingRecordOptional')}>
                 <Select
                   allowClear
-                  placeholder="Link to breeding record"
+                  placeholder={t('linkToBreedingRecord')}
                   options={pendingBreedingRecords.map(r => ({
                     value: r.id,
-                    label: `${dayjs(r.breedingDate).format('YYYY-MM-DD')} | ${r.sireTagNumber} x ${r.damTagNumber}`,
+                    label: `${formatDate(r.breedingDate)} | ${r.sireTagNumber} x ${r.damTagNumber}`,
                   }))}
                   style={{ width: '100%' }}
                   popupMatchSelectWidth={false}
@@ -281,15 +283,15 @@ export default function BirthRecordingPage() {
             </Col>
           </Row>
 
-          <Form.Item name="birthDate" label="Birth Date" rules={[{ required: true, message: 'Select birth date' }]}>
+          <Form.Item name="birthDate" label={t('birthDate')} rules={[{ required: true, message: 'Select birth date' }]}>
             <DatePicker style={{ width: '100%' }} />
           </Form.Item>
 
-          <Form.Item name="vetName" label="Veterinarian">
-            <Input maxLength={200} placeholder="Vet name (optional)" />
+          <Form.Item name="vetName" label={t('veterinarian')}>
+            <Input maxLength={200} placeholder={t('vetNameOptional')} />
           </Form.Item>
 
-          <Form.Item name="notes" label="Notes">
+          <Form.Item name="notes" label={t('notes')}>
             <Input.TextArea rows={2} maxLength={2000} />
           </Form.Item>
 
@@ -300,7 +302,7 @@ export default function BirthRecordingPage() {
             style={{ marginBottom: 16 }}
             extra={
               <Button size="small" icon={<PlusOutlined />} onClick={handleAddOffspring}>
-                Add Offspring
+                {t('addOffspring')}
               </Button>
             }
           >
@@ -311,10 +313,10 @@ export default function BirthRecordingPage() {
                 style={{ marginBottom: 8 }}
                 title={
                   <span>
-                    Offspring #{index + 1}
+                    {t('offspring2')}{index + 1}
                     {selectedDamTag && (
                       <Tag style={{ marginLeft: 8 }} color="blue">
-                        Tag: {selectedDamTag}-{index + 1}
+                        {t('tag')} {selectedDamTag}-{index + 1}
                       </Tag>
                     )}
                   </span>
@@ -329,12 +331,12 @@ export default function BirthRecordingPage() {
                   <Col xs={24} sm={12} md={6}>
                     <Form.Item
                       name={[index, 'sexOptionId']}
-                      label="Sex"
+                      label={t('sex')}
                       rules={[{ required: true, message: 'Required' }]}
                     >
                       <LookupQuickAddSelect
                         kind="sexOption"
-                        placeholder="Select sex"
+                        placeholder={t('selectSex')}
                         options={sexOptions.map(s => ({ value: s.id, label: s.value }))}
                         onCreated={() => loadSexOptions()}
                       />
@@ -344,32 +346,32 @@ export default function BirthRecordingPage() {
                   <Col xs={24} sm={12} md={6}>
                     <Form.Item
                       name={[index, 'outcome']}
-                      label="Outcome"
+                      label={t('outcome')}
                       initialValue={0}
                     >
                       <Select style={{ width: '100%' }}>
-                        <Select.Option value={0}>Alive</Select.Option>
-                        <Select.Option value={1}>Stillborn</Select.Option>
-                        <Select.Option value={2}>Weak</Select.Option>
+                        <Select.Option value={0}>{t('alive')}</Select.Option>
+                        <Select.Option value={1}>{t('stillborn')}</Select.Option>
+                        <Select.Option value={2}>{t('weak')}</Select.Option>
                       </Select>
                     </Form.Item>
                   </Col>
 
                   <Col xs={24} sm={12} md={6}>
-                    <Form.Item name={[index, 'birthWeightKg']} label="Weight (kg)">
+                    <Form.Item name={[index, 'birthWeightKg']} label={t('weightKg')}>
                       <InputNumber min={0} precision={2} style={{ width: '100%' }} />
                     </Form.Item>
                   </Col>
 
                   <Col xs={24} sm={12} md={6}>
-                    <Form.Item name={[index, 'name']} label="Name">
-                      <Input maxLength={200} placeholder="Optional name" />
+                    <Form.Item name={[index, 'name']} label={t('name')}>
+                      <Input maxLength={200} placeholder={t('optionalName')} />
                     </Form.Item>
                   </Col>
                 </Row>
 
-                <Form.Item name={[index, 'notes']} label="Notes">
-                  <Input maxLength={500} placeholder="Optional notes" />
+                <Form.Item name={[index, 'notes']} label={t('notes')}>
+                  <Input maxLength={500} placeholder={t('optionalNotes')} />
                 </Form.Item>
               </Card>
             ))}
@@ -379,7 +381,7 @@ export default function BirthRecordingPage() {
 
       {/* Detail Drawer */}
       <Modal
-        title={selectedRecord ? `Birth Record - ${selectedRecord.damTagNumber}` : 'Birth Record'}
+        title={selectedRecord ? `Birth Record - ${selectedRecord.damTagNumber}` : t('birthRecord')}
         open={detailOpen}
         onCancel={() => setDetailOpen(false)}
         footer={null}
@@ -388,17 +390,17 @@ export default function BirthRecordingPage() {
         {selectedRecord && (
           <>
             <Descriptions bordered size="small" column={2} style={{ marginBottom: 16 }}>
-              <Descriptions.Item label="Dam">{selectedRecord.damTagNumber} {selectedRecord.damName}</Descriptions.Item>
-              <Descriptions.Item label="Birth Date">{dayjs(selectedRecord.birthDate).format('YYYY-MM-DD')}</Descriptions.Item>
-              <Descriptions.Item label="Total Offspring">{selectedRecord.offspringCount}</Descriptions.Item>
-              <Descriptions.Item label="Alive"><Tag color="green">{selectedRecord.aliveCount}</Tag></Descriptions.Item>
-              <Descriptions.Item label="Vet">{selectedRecord.vetName || '-'}</Descriptions.Item>
-              <Descriptions.Item label="Notes">{selectedRecord.notes || '-'}</Descriptions.Item>
+              <Descriptions.Item label={t('dam')}>{selectedRecord.damTagNumber} {selectedRecord.damName}</Descriptions.Item>
+              <Descriptions.Item label={t('birthDate')}>{formatDate(selectedRecord.birthDate)}</Descriptions.Item>
+              <Descriptions.Item label={t('totalOffspring')}>{selectedRecord.offspringCount}</Descriptions.Item>
+              <Descriptions.Item label={t('alive')}><Tag color="green">{selectedRecord.aliveCount}</Tag></Descriptions.Item>
+              <Descriptions.Item label={t('vet')}>{selectedRecord.vetName || '-'}</Descriptions.Item>
+              <Descriptions.Item label={t('notes')}>{selectedRecord.notes || '-'}</Descriptions.Item>
             </Descriptions>
 
-            <Card title="Offspring" size="small">
+            <Card title={t('offspring')} size="small">
               {selectedRecord.offspring.length === 0 ? (
-                <Empty description="No offspring recorded" />
+                <Empty description={t('noOffspringRecorded')} />
               ) : (
                 <Table
                   rowKey="id"

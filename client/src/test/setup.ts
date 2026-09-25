@@ -1,4 +1,8 @@
 import '@testing-library/jest-dom/vitest';
+// Initialises i18next for every test, exactly as main.tsx does for the app. Without it
+// `useTranslation` would return raw keys and every text assertion would fail; with it,
+// the suite asserts the very English copy the app ships.
+import '../i18n';
 import { cleanup } from '@testing-library/react';
 import { afterEach } from 'vitest';
 import { Modal, message, notification } from 'antd';

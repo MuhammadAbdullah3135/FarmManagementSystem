@@ -7,6 +7,7 @@ import type { ColumnsType } from 'antd/es/table';
 import { expenseCategoriesApi, incomeCategoriesApi, paymentMethodsApi } from '../../api/finance';
 import { getApiError } from '../../api/farmApi';
 import type { ExpenseCategory, IncomeCategory, PaymentMethod } from '../../types';
+import { useTranslation } from 'react-i18next';
 
 interface LookupFormValues {
   name: string;
@@ -20,7 +21,7 @@ interface LookupRecord {
   usageCount: number;
 }
 
-const CategoriesPage: React.FC = () => {
+const CategoriesPage: React.FC = () => {const { t } = useTranslation('finance'); 
   const [categories, setCategories] = useState<ExpenseCategory[]>([]);
   const [incomeCats, setIncomeCats] = useState<IncomeCategory[]>([]);
   const [methods, setMethods] = useState<PaymentMethod[]>([]);
@@ -97,10 +98,10 @@ const CategoriesPage: React.FC = () => {
       const values = (await categoryForm.validateFields()) as LookupFormValues;
       if (editingCategory) {
         await expenseCategoriesApi.update(editingCategory.id, values);
-        message.success('Category updated');
+        message.success(t('categoryUpdated'));
       } else {
         await expenseCategoriesApi.create(values);
-        message.success('Category created');
+        message.success(t('categoryCreated'));
       }
       setCategoryModal(false);
       load();
@@ -115,10 +116,10 @@ const CategoriesPage: React.FC = () => {
       const values = (await incomeCatForm.validateFields()) as LookupFormValues;
       if (editingIncomeCat) {
         await incomeCategoriesApi.update(editingIncomeCat.id, values);
-        message.success('Income category updated');
+        message.success(t('incomeCategoryUpdated'));
       } else {
         await incomeCategoriesApi.create(values);
-        message.success('Income category created');
+        message.success(t('incomeCategoryCreated'));
       }
       setIncomeCatModal(false);
       load();
@@ -133,10 +134,10 @@ const CategoriesPage: React.FC = () => {
       const values = (await methodForm.validateFields()) as LookupFormValues;
       if (editingMethod) {
         await paymentMethodsApi.update(editingMethod.id, values);
-        message.success('Payment method updated');
+        message.success(t('paymentMethodUpdated'));
       } else {
         await paymentMethodsApi.create(values);
-        message.success('Payment method created');
+        message.success(t('paymentMethodCreated'));
       }
       setMethodModal(false);
       load();
@@ -149,7 +150,7 @@ const CategoriesPage: React.FC = () => {
   const handleDeleteCategory = async (id: string) => {
     try {
       await expenseCategoriesApi.remove(id);
-      message.success('Category deleted');
+      message.success(t('categoryDeleted'));
       load();
     } catch (err) {
       message.error(getApiError(err));
@@ -159,7 +160,7 @@ const CategoriesPage: React.FC = () => {
   const handleDeleteIncomeCat = async (id: string) => {
     try {
       await incomeCategoriesApi.remove(id);
-      message.success('Income category deleted');
+      message.success(t('incomeCategoryDeleted'));
       load();
     } catch (err) {
       message.error(getApiError(err));
@@ -169,7 +170,7 @@ const CategoriesPage: React.FC = () => {
   const handleDeleteMethod = async (id: string) => {
     try {
       await paymentMethodsApi.remove(id);
-      message.success('Payment method deleted');
+      message.success(t('paymentMethodDeleted'));
       load();
     } catch (err) {
       message.error(getApiError(err));
@@ -192,11 +193,11 @@ const CategoriesPage: React.FC = () => {
     onEdit: (id: string) => void,
     countLabel: string
   ): ColumnsType<LookupRecord> => [
-    { title: 'Name', dataIndex: 'name' },
+    { title: t('name'), dataIndex: 'name' },
     // A description is the widest column and the least critical one, so it is the one that
     // gives way on a phone: Name + usage count + actions then fit a full-width card with
     // no horizontal scrolling. Back from 768px up, and always visible in the Edit modal.
-    { title: 'Description', dataIndex: 'description', render: (d?: string) => d ?? '-', responsive: ['md'] },
+    { title: t('description'), dataIndex: 'description', render: (d?: string) => d ?? '-', responsive: ['md'] },
     { title: countLabel, dataIndex: 'usageCount', align: 'center' },
     {
       title: '',
@@ -204,11 +205,11 @@ const CategoriesPage: React.FC = () => {
       render: (_, r) => (
         <Space>
           <Button size="small" onClick={() => onEdit(r.id)}>
-            Edit
+            {t('edit')}
           </Button>
-          <Popconfirm title="Delete this entry?" onConfirm={() => onDelete(r.id)}>
+          <Popconfirm title={t('deleteThisEntry')} onConfirm={() => onDelete(r.id)}>
             <Button size="small" danger disabled={r.usageCount > 0}>
-              Delete
+              {t('delete')}
             </Button>
           </Popconfirm>
         </Space>
@@ -220,10 +221,10 @@ const CategoriesPage: React.FC = () => {
     <Row gutter={[16, 16]}>
       <Col xs={24} md={8}>
         <Card
-          title="Expense Categories"
+          title={t('expenseCategories')}
           extra={
             <Button size="small" icon={<PlusOutlined />} onClick={() => openCategoryModal()}>
-              Add
+              {t('add')}
             </Button>
           }
         >
@@ -242,10 +243,10 @@ const CategoriesPage: React.FC = () => {
       </Col>
       <Col xs={24} md={8}>
         <Card
-          title="Income Categories"
+          title={t('incomeCategories')}
           extra={
             <Button size="small" icon={<PlusOutlined />} onClick={() => openIncomeCatModal()}>
-              Add
+              {t('add')}
             </Button>
           }
         >
@@ -264,10 +265,10 @@ const CategoriesPage: React.FC = () => {
       </Col>
       <Col xs={24} md={8}>
         <Card
-          title="Payment Methods"
+          title={t('paymentMethods')}
           extra={
             <Button size="small" icon={<PlusOutlined />} onClick={() => openMethodModal()}>
-              Add
+              {t('add')}
             </Button>
           }
         >
@@ -286,51 +287,51 @@ const CategoriesPage: React.FC = () => {
       </Col>
 
       <Modal
-        title={editingCategory ? 'Edit Category' : 'New Category'}
+        title={editingCategory ? t('editCategory') : t('newCategory')}
         open={categoryModal}
         onOk={handleSaveCategory}
         onCancel={() => setCategoryModal(false)}
         destroyOnClose
       >
         <Form form={categoryForm} layout="vertical">
-          <Form.Item name="name" label="Name" rules={[{ required: true }]}>
-            <Input maxLength={100} placeholder="e.g. Feed, Utilities, Medicine, Equipment" />
+          <Form.Item name="name" label={t('name')} rules={[{ required: true }]}>
+            <Input maxLength={100} placeholder={t('eGFeedUtilitiesMedicineEquipment')} />
           </Form.Item>
-          <Form.Item name="description" label="Description">
+          <Form.Item name="description" label={t('description')}>
             <Input maxLength={500} />
           </Form.Item>
         </Form>
       </Modal>
 
       <Modal
-        title={editingIncomeCat ? 'Edit Income Category' : 'New Income Category'}
+        title={editingIncomeCat ? t('editIncomeCategory') : t('newIncomeCategory')}
         open={incomeCatModal}
         onOk={handleSaveIncomeCat}
         onCancel={() => setIncomeCatModal(false)}
         destroyOnClose
       >
         <Form form={incomeCatForm} layout="vertical">
-          <Form.Item name="name" label="Name" rules={[{ required: true }]}>
-            <Input maxLength={100} placeholder="e.g. Crop Sales, Livestock Sales, Dairy" />
+          <Form.Item name="name" label={t('name')} rules={[{ required: true }]}>
+            <Input maxLength={100} placeholder={t('eGCropSalesLivestockSalesDairy')} />
           </Form.Item>
-          <Form.Item name="description" label="Description">
+          <Form.Item name="description" label={t('description')}>
             <Input maxLength={500} />
           </Form.Item>
         </Form>
       </Modal>
 
       <Modal
-        title={editingMethod ? 'Edit Payment Method' : 'New Payment Method'}
+        title={editingMethod ? t('editPaymentMethod') : t('newPaymentMethod')}
         open={methodModal}
         onOk={handleSaveMethod}
         onCancel={() => setMethodModal(false)}
         destroyOnClose
       >
         <Form form={methodForm} layout="vertical">
-          <Form.Item name="name" label="Name" rules={[{ required: true }]}>
-            <Input maxLength={100} placeholder="e.g. Cash, Bank Transfer, Mobile Money, Check" />
+          <Form.Item name="name" label={t('name')} rules={[{ required: true }]}>
+            <Input maxLength={100} placeholder={t('eGCashBankTransferMobileMoneyCheck')} />
           </Form.Item>
-          <Form.Item name="description" label="Description">
+          <Form.Item name="description" label={t('description')}>
             <Input maxLength={500} />
           </Form.Item>
         </Form>

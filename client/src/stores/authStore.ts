@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware';
 import api from '../api/axios';
 import { getApiError } from '../api/farmApi';
 import { clearOfflineDataOnSignOut } from '../offline/offlineData';
+import { reconcileLocaleOnSignIn } from '../i18n/localeSync';
 import { useFarmStore } from './farmStore';
 import type { AuthResponse, User, LoginRequest, RegisterRequest, ResetPasswordRequest, ConfirmResetPasswordRequest } from '../types';
 
@@ -31,7 +32,7 @@ export const useAuthStore = create<AuthState>()(
         set({ isLoading: true, error: null });
         try {
           const response = await api.post<AuthResponse>('/auth/login', request);
-          const { accessToken, refreshToken, userId, accountId, email, firstName, lastName, roles } = response.data;
+          const { accessToken, refreshToken, userId, accountId, email, firstName, lastName, roles, locale } = response.data;
 
           localStorage.setItem('accessToken', accessToken);
           localStorage.setItem('refreshToken', refreshToken);
@@ -43,10 +44,17 @@ export const useAuthStore = create<AuthState>()(
             firstName,
             lastName,
             roles: roles ?? [],
+            locale: locale ?? null,
           };
 
           localStorage.setItem('user', JSON.stringify(user));
           set({ user, isAuthenticated: true, isLoading: false });
+
+          // Deliberately not awaited, and after the session is usable: the account's
+          // language arrives with the session, and a slow or unreachable preferences
+          // endpoint must not hold up signing in.
+          void reconcileLocaleOnSignIn(locale);
+
           return true;
         } catch (error: any) {
           const message = getApiError(error, 'Login failed');
@@ -59,7 +67,7 @@ export const useAuthStore = create<AuthState>()(
         set({ isLoading: true, error: null });
         try {
           const response = await api.post<AuthResponse>('/auth/register', request);
-          const { accessToken, refreshToken, userId, accountId, email, firstName, lastName, roles } = response.data;
+          const { accessToken, refreshToken, userId, accountId, email, firstName, lastName, roles, locale } = response.data;
 
           localStorage.setItem('accessToken', accessToken);
           localStorage.setItem('refreshToken', refreshToken);
@@ -71,10 +79,16 @@ export const useAuthStore = create<AuthState>()(
             firstName,
             lastName,
             roles: roles ?? [],
+            locale: locale ?? null,
           };
 
           localStorage.setItem('user', JSON.stringify(user));
           set({ user, isAuthenticated: true, isLoading: false });
+
+          // A brand-new account is exactly the case where adopting the device's language
+          // matters: it has no preference to disagree with.
+          void reconcileLocaleOnSignIn(locale);
+
           return true;
         } catch (error: any) {
           const message = getApiError(error, 'Registration failed');
