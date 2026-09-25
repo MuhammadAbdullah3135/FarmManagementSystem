@@ -1,3 +1,4 @@
+using FMS.Domain.Enums;
 using FMS.Infrastructure.Dashboard;
 using FMS.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -81,5 +82,91 @@ public class NpgsqlQueryTranslationTests
 
         // ...but ordering the grouped result by that label is not.
         Assert.Throws<InvalidOperationException>(() => labelOnly.OrderBy(t => t.Month).ToQueryString());
+    }
+
+    // ── The batched loads that replaced the per-pair loops ────────
+    //
+    // Each of these stands in for thousands of small queries, so each is now on the hot path of
+    // the dashboard, the fifteen-minute dispatcher and the daily feeding-task job. They are
+    // compiled against Npgsql here rather than trusted, for the reason above: this family of code
+    // has twice shipped an expression PostgreSQL could not translate, and both times the only
+    // visible symptom was a 500 in production and a panel that read "No data".
+    //
+    // The assertions are deliberately about what the translation *is*, not just that it succeeded:
+    // a filter silently evaluated in memory would also return rows, while quietly reading every
+    // farm's history to do it.
+
+    [Fact]
+    public void VaccinationHistoryBatch_TranslatesForNpgsql()
+    {
+        using var db = CreateNpgsqlContext();
+        var farmId = Guid.NewGuid();
+
+        var sql = db.VaccinationRecords
+            .AsNoTracking()
+            .Where(vr => vr.Animal.FarmId == farmId)
+            .Select(vr => new { vr.AnimalId, vr.VaccineTypeId, vr.DateGiven })
+            .ToQueryString();
+
+        // Scoped through the animal, so this has to be a join.
+        Assert.Contains("JOIN", sql, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("DateGiven", sql, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void LatestWeightPerAnimalBatch_TranslatesForNpgsql()
+    {
+        using var db = CreateNpgsqlContext();
+        var farmId = Guid.NewGuid();
+
+        var sql = db.WeightRecords
+            .AsNoTracking()
+            .Where(w => w.Animal.FarmId == farmId)
+            .Select(w => new { w.AnimalId, w.RecordedAt, w.ModifiedAt, w.CreatedAt })
+            .ToQueryString();
+
+        Assert.Contains("JOIN", sql, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("RecordedAt", sql, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void OpenTaskBatch_WithAnEnumInequality_TranslatesForNpgsql()
+    {
+        using var db = CreateNpgsqlContext();
+        var farmId = Guid.NewGuid();
+
+        var sql = db.FarmTasks
+            .AsNoTracking()
+            .Where(t => t.FarmId == farmId
+                && t.AnimalId != null
+                && t.Title != null
+                && t.Status != FarmTaskStatus.Completed
+                && t.Status != FarmTaskStatus.Cancelled)
+            .Select(t => new { t.AnimalId, t.Title })
+            .ToQueryString();
+
+        // The status is stored as an integer, so the comparison has to be a numeric inequality
+        // rather than a string one against the enum name.
+        Assert.Contains("<>", sql, StringComparison.Ordinal);
+        Assert.DoesNotContain("Completed", sql, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void CandidateAnimalWeightsBatch_WithAListOfIds_TranslatesForNpgsql()
+    {
+        using var db = CreateNpgsqlContext();
+        var ids = new[] { Guid.NewGuid(), Guid.NewGuid() };
+
+        var sql = db.WeightRecords
+            .AsNoTracking()
+            .Where(w => ids.Contains(w.AnimalId))
+            .OrderBy(w => w.RecordedAt)
+            .Select(w => new { w.AnimalId, w.WeightKg })
+            .ToQueryString();
+
+        // Npgsql renders the membership test as an array comparison; either form is fine, but it
+        // must be a server-side one and the ordering must stay in SQL.
+        Assert.Matches(@"= ANY|IN \(", sql);
+        Assert.Contains("ORDER BY", sql, StringComparison.OrdinalIgnoreCase);
     }
 }

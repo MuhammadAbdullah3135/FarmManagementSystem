@@ -13,6 +13,10 @@
     <PackageReference Include="coverlet.collector" Version="6.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="8.0.*" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="8.0.*" />
+    <!-- Relational provider used only to count SQL round trips: InMemory issues no commands,
+         so it cannot show that a report's cost is independent of farm size. See
+         Reports/SqliteQueryCounter.cs. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="8.0.*" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
     <!-- Npgsql flows transitively from FMS.Infrastructure (Npgsql.EntityFrameworkCore.PostgreSQL) -->
     <PackageReference Include="Xunit.SkippableFact" Version="1.5.25" />

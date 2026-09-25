@@ -286,6 +286,37 @@ public class WeightCheckScheduleService : IWeightCheckScheduleService
             .Where(a => a.FarmId == farmId && !a.IsDeleted)
             .ToListAsync();
 
+        // The latest weight per animal, loaded once. It used to be a query per
+        // (schedule × animal) pair, but the answer is a property of the animal, not of the pair:
+        // every pair an animal takes part in needs the same newest row.
+        var latestWeightByAnimal = (await _context.WeightRecords
+                .AsNoTracking()
+                .Where(w => w.Animal.FarmId == farmId)
+                .Select(w => new { w.AnimalId, w.RecordedAt, w.ModifiedAt, w.CreatedAt })
+                .ToListAsync())
+            .GroupBy(w => w.AnimalId)
+            .ToDictionary(g => g.Key, g => g.OrderBy(w => w.RecordedAt).Last());
+
+        // The farm's open weight-check tasks, loaded once so the existence check below is a set
+        // lookup instead of a query per pair.
+        //
+        // Read before the loop and never added to while it runs, which is what keeps this
+        // equivalent to the per-pair query it replaces: that query could not see the tasks this
+        // same call had just staged but not yet saved either, so two schedules matching one
+        // animal still stage one task each. Deduplicating here would quietly change how many
+        // task rows a farm gets, which is not this change's business.
+        var openTaskKeys = (await _context.FarmTasks
+                .AsNoTracking()
+                .Where(t => t.FarmId == farmId
+                    && t.AnimalId != null
+                    && t.Title != null
+                    && t.Status != FarmTaskStatus.Completed
+                    && t.Status != FarmTaskStatus.Cancelled)
+                .Select(t => new { t.AnimalId, t.Title })
+                .ToListAsync())
+            .Select(t => (t.AnimalId!.Value, t.Title!))
+            .ToHashSet();
+
         var results = new List<ComputedWeightCheck>();
         var today = DateTime.UtcNow.Date;
         var userId = _currentUser.GetUserId();
@@ -302,11 +333,8 @@ public class WeightCheckScheduleService : IWeightCheckScheduleService
 
             foreach (var animal in matchingAnimals)
             {
-                var lastRecord = await _context.WeightRecords
-                    .AsNoTracking()
-                    .Where(wr => wr.AnimalId == animal.Id)
-                    .OrderByDescending(wr => wr.RecordedAt)
-                    .FirstOrDefaultAsync();
+                var lastRecord = latestWeightByAnimal
+                    .TryGetValue(animal.Id, out var latestWeight) ? latestWeight : null;
 
                 var animalChangedAt = animal.ModifiedAt ?? animal.CreatedAt;
                 var lastDate = lastRecord?.RecordedAt;
@@ -346,13 +374,7 @@ public class WeightCheckScheduleService : IWeightCheckScheduleService
                 if (status == WeightCheckStatusType.Due || status == WeightCheckStatusType.Overdue)
                 {
                     var taskTitle = "Weight check due: " + animal.TagNumber;
-                    var existingTask = await _context.FarmTasks
-                        .AnyAsync(t =>
-                            t.FarmId == farmId &&
-                            t.AnimalId == animal.Id &&
-                            t.Title == taskTitle &&
-                            t.Status != FarmTaskStatus.Completed &&
-                            t.Status != FarmTaskStatus.Cancelled);
+                    var existingTask = openTaskKeys.Contains((animal.Id, taskTitle));
 
                     if (!existingTask)
                     {

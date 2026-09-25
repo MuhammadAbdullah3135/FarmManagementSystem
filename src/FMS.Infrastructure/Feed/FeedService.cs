@@ -837,7 +837,16 @@ public class FeedService : IFeedService
         var now = DateTime.UtcNow;
         var created = new List<FeedingTask>();
 
-        foreach (var schedule in schedules.Where(s => !existingScheduleIds.Contains(s.Id)))
+        var schedulesToCreate = schedules.Where(s => !existingScheduleIds.Contains(s.Id)).ToList();
+
+        // One pass for every plan in play, rather than the per-schedule count this used to do.
+        // Two schedules can share a plan, and every plan's candidates come from the same rows,
+        // so asking per schedule repeated the same work — and each answer cost a query, plus
+        // another for the animals' weights whenever the plan had a weight range.
+        var targetCountsByPlan = await CountMatchingAnimalsByPlanAsync(
+            farmId, schedulesToCreate.Select(s => s.DietPlan).DistinctBy(plan => plan.Id).ToList());
+
+        foreach (var schedule in schedulesToCreate)
         {
             var task = new FeedingTask
             {
@@ -848,7 +857,7 @@ public class FeedService : IFeedService
                 TaskDate = date,
                 TimeOfDay = schedule.TimeOfDay,
                 Status = FeedingTaskStatus.Pending,
-                TargetAnimalCount = await CountMatchingAnimalsAsync(farmId, schedule.DietPlan),
+                TargetAnimalCount = targetCountsByPlan[schedule.DietPlanId],
                 CreatedAt = now,
                 CreatedBy = userId
             };
@@ -1197,39 +1206,69 @@ public class FeedService : IFeedService
         return null;
     }
 
-    private async Task<int> CountMatchingAnimalsAsync(Guid farmId, DietPlan plan)
+    /// <summary>
+    /// How many animals each plan targets, for every plan in a single pass over the farm.
+    ///
+    /// <para>
+    /// Replaces a per-plan count. The candidates and their latest weights are the same rows for
+    /// every plan, so they are loaded once and each plan's filtering is done in memory — the
+    /// same predicate, the same result, one query instead of one per plan.
+    /// </para>
+    /// </summary>
+    private async Task<Dictionary<Guid, int>> CountMatchingAnimalsByPlanAsync(
+        Guid farmId, IReadOnlyList<DietPlan> plans)
     {
-        var query = _context.Animals.AsNoTracking()
-            .Where(a => a.FarmId == farmId && !a.IsDeleted);
+        var counts = new Dictionary<Guid, int>();
+        if (plans.Count == 0)
+            return counts;
 
-        if (plan.AnimalTypeId.HasValue)
-            query = query.Where(a => a.AnimalTypeId == plan.AnimalTypeId.Value);
-        if (plan.BreedId.HasValue)
-            query = query.Where(a => a.BreedId == plan.BreedId.Value);
-        if (plan.AgeCategoryId.HasValue)
-            query = query.Where(a => a.AgeCategoryId == plan.AgeCategoryId.Value);
-
-        var candidates = await query.Select(a => new { a.Id }).ToListAsync();
-        if (candidates.Count == 0)
-            return 0;
-
-        if (!plan.MinWeightKg.HasValue && !plan.MaxWeightKg.HasValue)
-            return candidates.Count;
-
-        var ids = candidates.Select(c => c.Id).ToList();
-        var weights = await _context.WeightRecords.AsNoTracking()
-            .Where(w => ids.Contains(w.AnimalId))
-            .OrderBy(w => w.RecordedAt)
-            .Select(w => new { w.AnimalId, w.WeightKg })
+        var candidates = await _context.Animals.AsNoTracking()
+            .Where(a => a.FarmId == farmId && !a.IsDeleted)
+            .Select(a => new { a.Id, a.AnimalTypeId, a.BreedId, a.AgeCategoryId })
             .ToListAsync();
 
-        var latestByAnimal = weights.GroupBy(w => w.AnimalId)
-            .ToDictionary(g => g.Key, g => g.Last().WeightKg);
+        // Only fetched when a plan actually asks about weight, so a farm whose plans have no
+        // weight range still takes no extra round trip.
+        var latestWeightByAnimal = new Dictionary<Guid, decimal>();
+        if (candidates.Count > 0 && plans.Any(p => p.MinWeightKg.HasValue || p.MaxWeightKg.HasValue))
+        {
+            var ids = candidates.Select(c => c.Id).ToList();
 
-        return candidates.Count(c =>
-            latestByAnimal.ContainsKey(c.Id) &&
-            (!plan.MinWeightKg.HasValue || latestByAnimal[c.Id] >= plan.MinWeightKg.Value) &&
-            (!plan.MaxWeightKg.HasValue || latestByAnimal[c.Id] <= plan.MaxWeightKg.Value));
+            latestWeightByAnimal = (await _context.WeightRecords.AsNoTracking()
+                    .Where(w => ids.Contains(w.AnimalId))
+                    .OrderBy(w => w.RecordedAt)
+                    .Select(w => new { w.AnimalId, w.WeightKg })
+                    .ToListAsync())
+                .GroupBy(w => w.AnimalId)
+                .ToDictionary(g => g.Key, g => g.Last().WeightKg);
+        }
+
+        foreach (var plan in plans)
+        {
+            var matching = candidates.Where(a =>
+                (!plan.AnimalTypeId.HasValue || a.AnimalTypeId == plan.AnimalTypeId.Value) &&
+                (!plan.BreedId.HasValue || a.BreedId == plan.BreedId.Value) &&
+                (!plan.AgeCategoryId.HasValue || a.AgeCategoryId == plan.AgeCategoryId.Value)).ToList();
+
+            if (matching.Count == 0)
+            {
+                counts[plan.Id] = 0;
+                continue;
+            }
+
+            if (!plan.MinWeightKg.HasValue && !plan.MaxWeightKg.HasValue)
+            {
+                counts[plan.Id] = matching.Count;
+                continue;
+            }
+
+            counts[plan.Id] = matching.Count(c =>
+                latestWeightByAnimal.ContainsKey(c.Id) &&
+                (!plan.MinWeightKg.HasValue || latestWeightByAnimal[c.Id] >= plan.MinWeightKg.Value) &&
+                (!plan.MaxWeightKg.HasValue || latestWeightByAnimal[c.Id] <= plan.MaxWeightKg.Value));
+        }
+
+        return counts;
     }
 
     private async Task<Dictionary<Guid, List<DietPlanItem>>> LoadPlanItemsAsync(List<Guid> planIds)

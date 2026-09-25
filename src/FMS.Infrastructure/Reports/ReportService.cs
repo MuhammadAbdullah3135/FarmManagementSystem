@@ -226,17 +226,35 @@ public class ReportService : IReportService
         var animals = await _db.Animals
             .Where(a => a.FarmId == farmId && !a.IsDeleted)
             .ToListAsync();
+
+        // Due/upcoming is worked out from one load of the farm's vaccination history instead of
+        // a query per (schedule × animal) pair — the shape that made this report cost thousands
+        // of round trips on a farm with real history. The map holds, per pair, the same value the
+        // old OrderByDescending/First asked for one pair at a time: the latest date given.
+        //
+        // Deliberately NOT reused from the range-filtered query above. "When was this animal
+        // last vaccinated" is a question about all time, while that query is bounded by the
+        // report's dates; deriving one from the other would silently change the counts whenever
+        // a date range is supplied.
+        var latestVaccinationByAnimalAndVaccine = (await _db.VaccinationRecords
+                .AsNoTracking()
+                .Where(v => v.Animal.FarmId == farmId && !v.Animal.IsDeleted)
+                .Select(v => new { v.AnimalId, v.VaccineTypeId, v.DateGiven })
+                .ToListAsync())
+            .GroupBy(v => (v.AnimalId, v.VaccineTypeId))
+            .ToDictionary(g => g.Key, g => g.Max(v => v.DateGiven));
+
         var overdueCount = 0;
         var upcomingCount = 0;
         foreach (var schedule in schedules)
         {
             foreach (var animal in animals.Where(a => (!schedule.AnimalTypeId.HasValue || a.AnimalTypeId == schedule.AnimalTypeId) && (!schedule.BreedId.HasValue || a.BreedId == schedule.BreedId)))
             {
-                var lastDate = await _db.VaccinationRecords
-                    .Where(v => v.AnimalId == animal.Id && v.VaccineTypeId == schedule.VaccineTypeId)
-                    .OrderByDescending(v => v.DateGiven)
-                    .Select(v => (DateTime?)v.DateGiven)
-                    .FirstOrDefaultAsync();
+                var lastDate = latestVaccinationByAnimalAndVaccine
+                    .TryGetValue((animal.Id, schedule.VaccineTypeId), out var lastGivenAt)
+                        ? lastGivenAt
+                        : (DateTime?)null;
+
                 var dueDate = lastDate?.AddDays(schedule.RecurrenceDays).Date ?? today;
                 if (dueDate < today) overdueCount++; else upcomingCount++;
             }

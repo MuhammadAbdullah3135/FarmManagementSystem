@@ -750,12 +750,29 @@ public class VaccineService : IVaccineService
             .Include(s => s.VaccineType)
             .ToListAsync();
 
-        var animals = _context.Animals
+        // Soft-deleted animals stay in scope here on purpose: this list feeds the dashboard
+        // counts and the notification dispatcher, and both have always included them. Excluding
+        // them is a behaviour change with its own evidence to produce, not a side effect of this
+        // rewrite — which is why the filter is absent rather than merely forgotten.
+        var animalList = await _context.Animals
             .AsNoTracking()
-            .Where(a => a.FarmId == farmId);
+            .Where(a => a.FarmId == farmId)
+            .ToListAsync();
 
-        // Filter by animal type/breed if schedule specifies them
-        var animalList = await animals.ToListAsync();
+        // One pass over the farm's vaccination history, reduced to the latest date per
+        // (animal, vaccine type). The previous shape asked the database this question once per
+        // (schedule × animal) pair — thousands of round trips on a farm with real history —
+        // while the answer it needs is one date per pair, which is exactly what this map holds.
+        //
+        // Scoped through the animal rather than the record's own FarmId so the set is defined
+        // by the same rule as the loop it replaces: the records of this farm's animals.
+        var latestVaccinationByAnimalAndVaccine = (await _context.VaccinationRecords
+                .AsNoTracking()
+                .Where(vr => vr.Animal.FarmId == farmId)
+                .Select(vr => new { vr.AnimalId, vr.VaccineTypeId, vr.DateGiven })
+                .ToListAsync())
+            .GroupBy(vr => (vr.AnimalId, vr.VaccineTypeId))
+            .ToDictionary(g => g.Key, g => g.Max(vr => vr.DateGiven));
 
         var results = new List<VaccinationStatusDto>();
         var today = DateTime.UtcNow.Date;
@@ -770,14 +787,13 @@ public class VaccineService : IVaccineService
 
             foreach (var animal in matchingAnimals)
             {
-                // Get last vaccination for this animal + vaccine type
-                var lastRecord = await _context.VaccinationRecords
-                    .AsNoTracking()
-                    .Where(vr => vr.AnimalId == animal.Id && vr.VaccineTypeId == schedule.VaccineTypeId)
-                    .OrderByDescending(vr => vr.DateGiven)
-                    .FirstOrDefaultAsync();
+                // Last vaccination for this animal + vaccine type, from the loaded map: the
+                // maximum DateGiven is the same value the previous OrderByDescending/First read.
+                var lastDate = latestVaccinationByAnimalAndVaccine
+                    .TryGetValue((animal.Id, schedule.VaccineTypeId), out var lastGivenAt)
+                        ? lastGivenAt
+                        : (DateTime?)null;
 
-                var lastDate = lastRecord?.DateGiven;
                 var nextDue = lastDate.HasValue
                     ? lastDate.Value.AddDays(schedule.RecurrenceDays)
                     : today; // Never vaccinated = due now
