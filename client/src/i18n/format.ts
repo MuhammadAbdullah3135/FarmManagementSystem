@@ -24,7 +24,10 @@ import type { Locale } from './locale';
  * ## Currency is not localised, on purpose
  *
  * `formatMoney` prefixes the same bare `$` the app has always shown and localises only
- * the *number*: Spanish gets `$1.234,57`, not `1.234,57 $` or `€`. The farm has no
+ * the *number*: Spanish gets `$1234,57` and `$43.016,00`, never `1234,57 $`, `€` or a
+ * reformatted amount. (Spanish groups only from five digits up — CLDR's
+ * `minimumGroupingDigits` for `es` — so a four-figure amount has no thousands separator in
+ * Spanish. That is the locale's own rule, not a missing separator.) The farm has no
  * currency setting yet, so inventing a symbol or a position would be a guess; recording it
  * as a real setting is tracked as separate work. What this module fixes is that the
  * decimal and thousands separators now agree with the language.

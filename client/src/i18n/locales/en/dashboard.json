@@ -15,6 +15,7 @@
   "pregnant": "Pregnant",
   "seeThemAll": "see them all",
   "selectAFarmFromTheDropdownInThe": "Select a farm from the dropdown in the header to start managing your operations.",
+  "currentlyManaging": "Currently managing: {{name}}",
   "selectAFarmToGetStarted": "Select a farm to get started",
   "sick": "Sick",
   "totalAnimals": "Total Animals",

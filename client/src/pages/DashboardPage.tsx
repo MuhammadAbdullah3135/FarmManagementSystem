@@ -108,7 +108,7 @@ const DashboardPage: React.FC = () => {const { t } = useTranslation('dashboard')
     <div>
       <Title level={3}>{t('welcome')} {user?.firstName}!</Title>
       <Text type="secondary">
-        {activeFarm ? `Currently managing: ${activeFarm.name}` : t('selectAFarmToGetStarted')}
+        {activeFarm ? t('currentlyManaging', { name: activeFarm.name }) : t('selectAFarmToGetStarted')}
       </Text>
 
       {/* ── Summary Cards ──────────────────────────────────── */}

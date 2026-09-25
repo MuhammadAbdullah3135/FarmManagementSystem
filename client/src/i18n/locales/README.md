@@ -16,9 +16,17 @@ same `\n` line breaks — so a missing or extra key is a bug the coverage test c
 The *wording* has never been read by a native speaker. It is good enough to ship a
 usable Spanish UI, and it must be reviewed before it is treated as final copy.
 
-That is recorded in `es/_meta.json` so the state is visible from the app's own tree
-rather than only in this document, and `npm run lint` fails if a Spanish file drifts
-away from the English key set.
+That is recorded in `translation-status.json` next to this file, so the state is visible from
+the app's own tree rather than only in this document:
+
+```json
+{ "es": { "source": "machine-translation", "reviewed": false, ... } }
+```
+
+`npm run lint` runs `tools/i18n/check-locale-coverage.mjs`, which fails if any locale drifts
+away from the English key set (a missing key, an invented one, a blank value, a renamed
+`{{placeholder}}`), and fails as well on a value left identical to English unless it is listed
+in `untranslated-allowlist.json` with a written reason.
 
 ## Terminology (keep these consistent when reviewing)
 
@@ -56,6 +64,11 @@ Deliberately **not** translated: the currency symbol (`$` is a bare literal in t
 UI — see `docs/I18N.md`), the technical values used by parsers (`yyyy-MM-dd`), and
 farm-owned lookup data seeded by `FarmDefaultsSeeder` (breed names, location names,
 statuses, payment methods), which the user edits per farm.
+
+Values that are legitimately identical in both languages (true cognates such as *animal*,
+*total* and *no*, the unit symbol `kg`, the acronym *FMS*) are listed in
+`untranslated-allowlist.json` with a reason each, so "untouched" is a reviewed decision rather
+than something a coverage check has to guess at.
 
 ## Adding a namespace or key
 

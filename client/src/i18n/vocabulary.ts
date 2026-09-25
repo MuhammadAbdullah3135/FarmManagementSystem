@@ -34,6 +34,10 @@ const ALERT_TYPE_KEYS: Record<string, string> = {
   OverdueTask: 'notifications:alertTypeOverdueTask',
   DueBirth: 'notifications:alertTypeDueBirth',
   LowInventory: 'notifications:alertTypeLowInventory',
+  // Not a dashboard condition — the export job writes this notice itself — but it lands in
+  // the same list, so it needs a label of its own or a Spanish reader sees the raw
+  // `ExportReady` value beside their translated alerts.
+  ExportReady: 'notifications:alertTypeExportReady',
 };
 
 export const alertTypeLabel = (t: TFunction, alertType: string): string =>

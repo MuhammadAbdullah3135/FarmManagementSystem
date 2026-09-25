@@ -57,6 +57,23 @@ public static class AlertMessageKeys
     public const string LowInventoryMessage = "notifications.alertLowInventoryMessage";
 
     /// <summary>
+    /// The one notice that is not a dashboard condition: the full-farm export finishing.
+    ///
+    /// <para>
+    /// Written directly by the export job rather than by the dispatcher (see
+    /// <c>NotificationAlertTypes.ExportReady</c> for why it lives outside the dashboard's
+    /// alert vocabulary), but it is read by the same notification centre and was the last
+    /// user-visible notice still arriving in English. Its <c>size</c> argument is the
+    /// server-formatted figure including its unit — the job decides "1.7 MB" and the reader's
+    /// language decides the sentence around it.
+    /// </para>
+    /// </summary>
+    public const string ExportReadyTitle = "notifications.alertExportReadyTitle";
+
+    /// <inheritdoc cref="ExportReadyTitle" />
+    public const string ExportReadyMessage = "notifications.alertExportReadyMessage";
+
+    /// <summary>
     /// Builds an argument bag. Named rather than positional so a template's placeholders can
     /// be reordered in translation without touching this side.
     /// </summary>
@@ -108,7 +125,10 @@ public static class MessageArgsJson
             args[name] = element.ValueKind switch
             {
                 JsonValueKind.String => element.GetString(),
-                JsonValueKind.Number => element.TryGetInt64(out var whole) ? whole : element.GetDouble(),
+                // Cast to object explicitly: without it the conditional's common type is
+                // `double`, and a whole number would come back as 12.0 — the same digits on
+                // screen, but no longer the integer the template was given.
+                JsonValueKind.Number => element.TryGetInt64(out var whole) ? (object)whole : element.GetDouble(),
                 JsonValueKind.True => true,
                 JsonValueKind.False => false,
                 JsonValueKind.Null => null,

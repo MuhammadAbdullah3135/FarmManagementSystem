@@ -1,6 +1,8 @@
 {
   "alertDueBirthMessage": "Expected {{expectedDate}} ({{days}} days). Stage: {{stage}}.",
   "alertDueBirthTitle": "Birth due: {{tag}}",
+  "alertExportReadyMessage": "The full export of {{farm}} is ready to download ({{size}}, {{rows}} rows across {{files}} files).",
+  "alertExportReadyTitle": "Your farm export is ready",
   "alertLowInventoryMessage": "{{quantity}} {{unit}} remaining (reorder level: {{reorderLevel}}). Shortfall: {{shortfall}} {{unit}}.",
   "alertLowInventoryTitle": "Low stock: {{item}}",
   "alertMedicineExpiredTitle": "Expired: {{medicine}}",
@@ -13,6 +15,7 @@
   "alertOverdueVaccinationMessage": "Animal {{tag}} is overdue for {{vaccineType}} (due {{dueDate}})",
   "alertOverdueVaccinationTitle": "Overdue: {{vaccineType}}",
   "alertTypeDueBirth": "Upcoming births",
+  "alertTypeExportReady": "Export ready",
   "alertTypeLowInventory": "Low inventory stock",
   "alertTypeMedicine": "Medicine (expiry & low stock)",
   "alertTypeOverdueTask": "Overdue farm tasks",

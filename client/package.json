@@ -6,8 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "lint": "oxlint && node tools/i18n/check-hardcoded-strings.mjs",
-    "lint:i18n": "node tools/i18n/check-hardcoded-strings.mjs",
+    "lint": "oxlint && node tools/i18n/check-hardcoded-strings.mjs && node tools/i18n/check-locale-coverage.mjs",
+    "lint:i18n": "node tools/i18n/check-hardcoded-strings.mjs && node tools/i18n/check-locale-coverage.mjs",
     "i18n:extract": "node tools/i18n/extract.mjs",
     "test": "vitest run",
     "preview": "vite preview"

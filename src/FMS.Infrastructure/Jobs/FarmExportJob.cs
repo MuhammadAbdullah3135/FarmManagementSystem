@@ -120,6 +120,17 @@ public class FarmExportJob
                 Title = "Your farm export is ready",
                 Message = $"The full export of {farmName} is ready to download "
                     + $"({FormatSize(sizeBytes)}, {manifest.TotalRowCount} rows across {manifest.Files.Count} files).",
+                // The localisable half of the pair above, stored beside it: the English text is
+                // what the digest email sends and what the client falls back to, and the key is
+                // what lets the notification centre render this notice in Spanish.
+                TitleKey = AlertMessageKeys.ExportReadyTitle,
+                TitleArgsJson = MessageArgsJson.Serialize(AlertMessageKeys.Args(("farm", farmName))),
+                MessageKey = AlertMessageKeys.ExportReadyMessage,
+                MessageArgsJson = MessageArgsJson.Serialize(AlertMessageKeys.Args(
+                    ("farm", farmName),
+                    ("size", FormatSize(sizeBytes)),
+                    ("rows", manifest.TotalRowCount),
+                    ("files", manifest.Files.Count))),
                 Link = NotificationAlertTypes.ExportReadyLink,
                 CreatedAt = export.CompletedAtUtc.Value
             });

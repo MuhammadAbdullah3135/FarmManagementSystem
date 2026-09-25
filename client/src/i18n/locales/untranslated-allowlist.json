@@ -1,0 +1,80 @@
+{
+  "note": "Values that are deliberately identical to English. Every entry needs a reason a reviewer can check; the checker fails on a missing reason, on an entry that is no longer identical (stale), and when the list grows past 30. Anything here that is really an untranslated string must be translated instead.",
+  "entries": [
+    {
+      "key": "common:fms",
+      "value": "FMS",
+      "reason": "The product's own acronym. It is the app's name in both languages, not copy to translate."
+    },
+    {
+      "key": "breeding:kg",
+      "value": "kg",
+      "reason": "SI unit symbol, identical in Spanish. Capitals and spelling are fixed by the unit, not by the language."
+    },
+    {
+      "key": "feed:kg",
+      "value": "kg",
+      "reason": "SI unit symbol, identical in Spanish. Used as the unit suffix beside a number."
+    },
+    {
+      "key": "breeding:x",
+      "value": "x",
+      "reason": "A multiplication symbol joining two figures in a chart label, not a word."
+    },
+    {
+      "key": "configuration:no",
+      "value": "No",
+      "reason": "Spanish for \"no\" is also \"no\", so the answer to a yes/no question is the same word."
+    },
+    {
+      "key": "health:no",
+      "value": "No",
+      "reason": "Spanish for \"no\" is also \"no\"; this is the value shown for a false condition."
+    },
+    {
+      "key": "health:stock",
+      "value": "Stock",
+      "reason": "Kept in English on purpose per the glossary in locales/README.md: \"stock\" is understood across Latin America and is shorter than \"existencias\"."
+    },
+    {
+      "key": "finance:total",
+      "value": "Total",
+      "reason": "A true cognate: the Spanish word for a column total is also \"total\", with the same spelling."
+    },
+    {
+      "key": "health:total",
+      "value": "Total",
+      "reason": "A true cognate: the Spanish word for a column total is also \"total\", with the same spelling."
+    },
+    {
+      "key": "breeding:animal",
+      "value": "Animal",
+      "reason": "A true cognate: the Spanish word for a single animal is also \"animal\", with the same spelling."
+    },
+    {
+      "key": "feed:animal",
+      "value": "Animal",
+      "reason": "A true cognate: the Spanish word for a single animal is also \"animal\", with the same spelling."
+    },
+    {
+      "key": "finance:animal",
+      "value": "Animal",
+      "reason": "A true cognate: the Spanish word for a single animal is also \"animal\", with the same spelling."
+    },
+    {
+      "key": "health:animal",
+      "value": "Animal",
+      "reason": "A true cognate: the Spanish word for a single animal is also \"animal\", with the same spelling."
+    },
+    {
+      "key": "offline:animal",
+      "value": "Animal",
+      "reason": "A true cognate: the Spanish word for a single animal is also \"animal\", with the same spelling."
+    },
+    {
+      "key": "imports:yyyyMmDd",
+      "value": "yyyy-MM-dd",
+      "reason": "A technical date pattern the import parser matches literally. Translating it would change which spreadsheet cells are accepted."
+    }
+  ]
+}

@@ -1,6 +1,8 @@
 {
   "alertDueBirthMessage": "Previsto para el {{expectedDate}} ({{days}} días). Etapa: {{stage}}.",
   "alertDueBirthTitle": "Parto previsto: {{tag}}",
+  "alertExportReadyMessage": "La exportación completa de {{farm}} está lista para descargar ({{size}}, {{rows}} filas en {{files}} archivos).",
+  "alertExportReadyTitle": "Tu exportación de la granja está lista",
   "alertLowInventoryMessage": "Quedan {{quantity}} {{unit}} (nivel de reposición: {{reorderLevel}}). Faltan {{shortfall}} {{unit}}.",
   "alertLowInventoryTitle": "Stock bajo: {{item}}",
   "alertMedicineExpiredTitle": "Caducado: {{medicine}}",
@@ -13,6 +15,7 @@
   "alertOverdueVaccinationMessage": "El animal {{tag}} tiene vencida la vacuna {{vaccineType}} (vencimiento: {{dueDate}})",
   "alertOverdueVaccinationTitle": "Vencida: {{vaccineType}}",
   "alertTypeDueBirth": "Próximos partos",
+  "alertTypeExportReady": "Exportación lista",
   "alertTypeLowInventory": "Stock de inventario bajo",
   "alertTypeMedicine": "Medicamentos (caducidad y stock bajo)",
   "alertTypeOverdueTask": "Tareas de la granja vencidas",
