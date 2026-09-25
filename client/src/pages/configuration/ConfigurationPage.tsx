@@ -10,6 +10,8 @@ import type {
 } from '../../api/configuration';
 import { getApiError } from '../../api/farmApi';
 import LookupQuickAddSelect from '../../components/LookupQuickAddSelect';
+import { DirectionalGlyph } from '../../i18n/DirectionalIcon';
+import { useTranslation } from 'react-i18next';
 
 type ModalType =
   | 'animalType'
@@ -37,7 +39,7 @@ const flattenLocationTree = (nodes: Location[], depth = 0): FlatLocation[] =>
     ...flattenLocationTree(n.childLocations ?? [], depth + 1),
   ]);
 
-const ConfigurationPage: React.FC = () => {
+const ConfigurationPage: React.FC = () => {const { t: translate } = useTranslation('configuration'); 
   const [animalTypes, setAnimalTypes] = useState<AnimalType[]>([]);
   const [breeds, setBreeds] = useState<Breed[]>([]);
   const [sexOptions, setSexOptions] = useState<SexOption[]>([]);
@@ -109,7 +111,7 @@ const ConfigurationPage: React.FC = () => {
       switch (modalType) {
         case 'animalType':
           await configurationApi.createAnimalType({ name: values.name });
-          message.success('Animal type created');
+          message.success(translate('animalTypeCreated'));
           break;
         case 'breed':
           await configurationApi.createBreed({
@@ -117,11 +119,11 @@ const ConfigurationPage: React.FC = () => {
             animalTypeId: values.animalTypeId,
             averageGestationDays: values.averageGestationDays ?? 283,
           });
-          message.success('Breed created');
+          message.success(translate('breedCreated'));
           break;
         case 'sexOption':
           await configurationApi.createSexOption({ value: values.value });
-          message.success('Sex option created');
+          message.success(translate('sexOptionCreated'));
           break;
         case 'ageCategory':
           await configurationApi.createAgeCategory({
@@ -129,7 +131,7 @@ const ConfigurationPage: React.FC = () => {
             minDays: values.minDays,
             maxDays: values.maxDays,
           });
-          message.success('Age category created');
+          message.success(translate('ageCategoryCreated'));
           break;
         case 'status':
           await configurationApi.createStatus({
@@ -137,11 +139,11 @@ const ConfigurationPage: React.FC = () => {
             isActive: values.isActive,
             category: values.category,
           });
-          message.success('Status created');
+          message.success(translate('statusCreated'));
           break;
         case 'locationType':
           await configurationApi.createLocationType({ name: values.name });
-          message.success('Location type created');
+          message.success(translate('locationTypeCreated'));
           break;
         case 'location':
           await configurationApi.createLocation({
@@ -149,7 +151,7 @@ const ConfigurationPage: React.FC = () => {
             locationTypeId: values.locationTypeId,
             parentLocationId: values.parentLocationId || undefined,
           });
-          message.success('Location created');
+          message.success(translate('locationCreated'));
           break;
       }
       setModalOpen(false);
@@ -163,13 +165,13 @@ const ConfigurationPage: React.FC = () => {
   const handleDelete = async (type: ModalType, id: string) => {
     try {
       switch (type) {
-        case 'animalType': await configurationApi.deleteAnimalType(id); message.success('Animal type deleted'); break;
-        case 'breed': await configurationApi.deleteBreed(id); message.success('Breed deleted'); break;
-        case 'sexOption': await configurationApi.deleteSexOption(id); message.success('Sex option deleted'); break;
-        case 'ageCategory': await configurationApi.deleteAgeCategory(id); message.success('Age category deleted'); break;
-        case 'status': await configurationApi.deleteStatus(id); message.success('Status deleted'); break;
-        case 'locationType': await configurationApi.deleteLocationType(id); message.success('Location type deleted'); break;
-        case 'location': await configurationApi.deleteLocation(id); message.success('Location deleted'); break;
+        case 'animalType': await configurationApi.deleteAnimalType(id); message.success(translate('animalTypeDeleted')); break;
+        case 'breed': await configurationApi.deleteBreed(id); message.success(translate('breedDeleted')); break;
+        case 'sexOption': await configurationApi.deleteSexOption(id); message.success(translate('sexOptionDeleted')); break;
+        case 'ageCategory': await configurationApi.deleteAgeCategory(id); message.success(translate('ageCategoryDeleted')); break;
+        case 'status': await configurationApi.deleteStatus(id); message.success(translate('statusDeleted')); break;
+        case 'locationType': await configurationApi.deleteLocationType(id); message.success(translate('locationTypeDeleted')); break;
+        case 'location': await configurationApi.deleteLocation(id); message.success(translate('locationDeleted')); break;
       }
       void load();
     } catch (err) {
@@ -194,100 +196,100 @@ const ConfigurationPage: React.FC = () => {
   const addToolbar = (type: ModalType, label: string) => (
     <div style={{ marginBottom: 12 }}>
       <Button type="primary" size="small" icon={<PlusOutlined />} onClick={() => openAdd(type)}>
-        Add {label}
+        {translate('add')} {label}
       </Button>
     </div>
   );
 
   const typeColumns: ColumnsType<AnimalType> = [
-    { title: 'Name', dataIndex: 'name' },
-    { title: 'Breeds', dataIndex: 'breeds', width: 100, render: (b: Breed[]) => <Tag>{b.length}</Tag> },
+    { title: translate('name'), dataIndex: 'name' },
+    { title: translate('breeds'), dataIndex: 'breeds', width: 100, render: (b: Breed[]) => <Tag>{b.length}</Tag> },
     {
       title: '', width: 90,
       render: (_, r) => (
         <Popconfirm
-          title="Delete this animal type?"
-          description="Its breeds will also be removed."
+          title={translate('deleteThisAnimalType')}
+          description={translate('itsBreedsWillAlsoBeRemoved')}
           onConfirm={() => handleDelete('animalType', r.id)}
         >
-          <Button size="small" danger>Delete</Button>
+          <Button size="small" danger>{translate('delete')}</Button>
         </Popconfirm>
       ),
     },
   ];
 
   const breedColumns: ColumnsType<Breed> = [
-    { title: 'Name', dataIndex: 'name' },
-    { title: 'Animal Type', dataIndex: 'animalTypeId', render: (id: string) => breedTypeMap.get(id) ?? '-' },
-    { title: 'Avg Gestation (days)', dataIndex: 'averageGestationDays', width: 170 },
+    { title: translate('name'), dataIndex: 'name' },
+    { title: translate('animalType'), dataIndex: 'animalTypeId', render: (id: string) => breedTypeMap.get(id) ?? '-' },
+    { title: translate('avgGestationDays'), dataIndex: 'averageGestationDays', width: 170 },
     {
       title: '', width: 90,
       render: (_, r) => (
-        <Popconfirm title="Delete this breed?" onConfirm={() => handleDelete('breed', r.id)}>
-          <Button size="small" danger>Delete</Button>
+        <Popconfirm title={translate('deleteThisBreed')} onConfirm={() => handleDelete('breed', r.id)}>
+          <Button size="small" danger>{translate('delete')}</Button>
         </Popconfirm>
       ),
     },
   ];
 
   const sexColumns: ColumnsType<SexOption> = [
-    { title: 'Value', dataIndex: 'value' },
+    { title: translate('value'), dataIndex: 'value' },
     {
       title: '', width: 90,
       render: (_, r) => (
-        <Popconfirm title="Delete this sex option?" onConfirm={() => handleDelete('sexOption', r.id)}>
-          <Button size="small" danger>Delete</Button>
+        <Popconfirm title={translate('deleteThisSexOption')} onConfirm={() => handleDelete('sexOption', r.id)}>
+          <Button size="small" danger>{translate('delete')}</Button>
         </Popconfirm>
       ),
     },
   ];
 
   const ageColumns: ColumnsType<AgeCategory> = [
-    { title: 'Name', dataIndex: 'name' },
+    { title: translate('name'), dataIndex: 'name' },
     {
-      title: 'Age Range (days)', dataIndex: 'minDays', width: 160,
+      title: translate('ageRangeDays'), dataIndex: 'minDays', width: 160,
       render: (_, r) => `${r.minDays}–${r.maxDays >= MAX_DAYS_SENTINEL ? '∞' : r.maxDays}`,
     },
     {
       title: '', width: 90,
       render: (_, r) => (
-        <Popconfirm title="Delete this age category?" onConfirm={() => handleDelete('ageCategory', r.id)}>
-          <Button size="small" danger>Delete</Button>
+        <Popconfirm title={translate('deleteThisAgeCategory')} onConfirm={() => handleDelete('ageCategory', r.id)}>
+          <Button size="small" danger>{translate('delete')}</Button>
         </Popconfirm>
       ),
     },
   ];
 
   const statusColumns: ColumnsType<AnimalStatus> = [
-    { title: 'Name', dataIndex: 'name' },
+    { title: translate('name'), dataIndex: 'name' },
     {
-      title: 'Category', dataIndex: 'category', width: 120,
+      title: translate('category'), dataIndex: 'category', width: 120,
       render: (c: number) => <Tag color={STATUS_CATEGORY_COLORS[c]}>{STATUS_CATEGORY_LABELS[c] ?? c}</Tag>,
     },
     {
-      title: 'Active', dataIndex: 'isActive', width: 90,
-      render: (a: boolean) => (a ? <Tag color="green">Yes</Tag> : <Tag>No</Tag>),
+      title: translate('active'), dataIndex: 'isActive', width: 90,
+      render: (a: boolean) => (a ? <Tag color="green">{translate('yes')}</Tag> : <Tag>{translate('no')}</Tag>),
     },
     {
       title: '', width: 90,
       render: (_, r) =>
         r.isSystemDefined ? (
-          <Tag>System</Tag>
+          <Tag>{translate('system')}</Tag>
         ) : (
-          <Popconfirm title="Delete this status?" onConfirm={() => handleDelete('status', r.id)}>
-            <Button size="small" danger>Delete</Button>
+          <Popconfirm title={translate('deleteThisStatus')} onConfirm={() => handleDelete('status', r.id)}>
+            <Button size="small" danger>{translate('delete')}</Button>
           </Popconfirm>
         ),
     },
   ];
 
   const locationTypeColumns: ColumnsType<LocationType> = [
-    { title: 'Name', dataIndex: 'name' },
+    { title: translate('name'), dataIndex: 'name' },
     {
       title: '', width: 90,
       render: (_, r) => (
-        <Popconfirm title="Delete this location type?" onConfirm={() => handleDelete('locationType', r.id)}>
-          <Button size="small" danger>Delete</Button>
+        <Popconfirm title={translate('deleteThisLocationType')} onConfirm={() => handleDelete('locationType', r.id)}>
+          <Button size="small" danger>{translate('delete')}</Button>
         </Popconfirm>
       ),
     },
@@ -295,23 +297,27 @@ const ConfigurationPage: React.FC = () => {
 
   const locationColumns: ColumnsType<FlatLocation> = [
     {
-      title: 'Name', dataIndex: 'name',
+      title: translate('name'), dataIndex: 'name',
       render: (name: string, r) => (
-        <span style={{ paddingLeft: r.depth * 20 }}>
-          {r.depth > 0 && <span style={{ color: '#999' }}>↳ </span>}
+        <span style={{ paddingInlineStart: r.depth * 20 }}>
+          {r.depth > 0 && (
+            <span style={{ color: '#999' }}>
+              <DirectionalGlyph mark="tree-branch" />{' '}
+            </span>
+          )}
           {name}
         </span>
       ),
     },
     {
-      title: 'Type', dataIndex: 'locationTypeId', width: 140,
+      title: translate('type'), dataIndex: 'locationTypeId', width: 140,
       render: (id: string) => locationTypeMap.get(id) ?? '-',
     },
     {
       title: '', width: 90,
       render: (_, r) => (
-        <Popconfirm title="Delete this location?" onConfirm={() => handleDelete('location', r.id)}>
-          <Button size="small" danger>Delete</Button>
+        <Popconfirm title={translate('deleteThisLocation')} onConfirm={() => handleDelete('location', r.id)}>
+          <Button size="small" danger>{translate('delete')}</Button>
         </Popconfirm>
       ),
     },
@@ -334,43 +340,43 @@ const ConfigurationPage: React.FC = () => {
   const items = [
     {
       key: 'animalTypes',
-      label: 'Animal Types',
+      label: translate('animalTypes'),
       children: tabTable('animalType', 'Animal Type', typeColumns as ColumnsType<never>, animalTypes),
     },
     {
       key: 'breeds',
-      label: 'Breeds',
+      label: translate('breeds'),
       children: tabTable('breed', 'Breed', breedColumns as ColumnsType<never>, breeds),
     },
     {
       key: 'sexOptions',
-      label: 'Sex Options',
+      label: translate('sexOptions'),
       children: tabTable('sexOption', 'Sex Option', sexColumns as ColumnsType<never>, sexOptions),
     },
     {
       key: 'ageCategories',
-      label: 'Age Categories',
+      label: translate('ageCategories'),
       children: tabTable('ageCategory', 'Age Category', ageColumns as ColumnsType<never>, ageCategories),
     },
     {
       key: 'statuses',
-      label: 'Animal Statuses',
+      label: translate('animalStatuses'),
       children: tabTable('status', 'Status', statusColumns as ColumnsType<never>, statuses),
     },
     {
       key: 'locationTypes',
-      label: 'Location Types',
+      label: translate('locationTypes'),
       children: tabTable('locationType', 'Location Type', locationTypeColumns as ColumnsType<never>, locationTypes),
     },
     {
       key: 'locations',
-      label: 'Locations',
+      label: translate('locations'),
       children: tabTable('location', 'Location', locationColumns as ColumnsType<never>, flatLocations),
     },
   ];
 
   return (
-    <Card title="Configuration">
+    <Card title={translate('configuration')}>
       <Tabs items={items} />
 
       <Modal
@@ -383,49 +389,49 @@ const ConfigurationPage: React.FC = () => {
       >
         <Form form={form} layout="vertical">
           {modalType === 'animalType' && (
-            <Form.Item name="name" label="Name" rules={[{ required: true, message: 'Name is required' }]}>
-              <Input maxLength={100} placeholder="e.g. Cattle" />
+            <Form.Item name="name" label={translate('name')} rules={[{ required: true, message: 'Name is required' }]}>
+              <Input maxLength={100} placeholder={translate('eGCattle')} />
             </Form.Item>
           )}
 
           {modalType === 'breed' && (
             <>
-              <Form.Item name="name" label="Name" rules={[{ required: true, message: 'Name is required' }]}>
-                <Input maxLength={100} placeholder="e.g. Sahiwal" />
+              <Form.Item name="name" label={translate('name')} rules={[{ required: true, message: 'Name is required' }]}>
+                <Input maxLength={100} placeholder={translate('eGSahiwal')} />
               </Form.Item>
-              <Form.Item name="animalTypeId" label="Animal Type" rules={[{ required: true, message: 'Animal type is required' }]}>
+              <Form.Item name="animalTypeId" label={translate('animalType')} rules={[{ required: true, message: 'Animal type is required' }]}>
                 <LookupQuickAddSelect
                   kind="animalType"
                   options={animalTypes.map((t) => ({ value: t.id, label: t.name }))}
-                  placeholder="Select animal type"
+                  placeholder={translate('selectAnimalType')}
                   onCreated={() => load()}
                 />
               </Form.Item>
-              <Form.Item name="averageGestationDays" label="Average Gestation (days)">
+              <Form.Item name="averageGestationDays" label={translate('averageGestationDays')}>
                 <InputNumber min={1} max={999} style={{ width: '100%' }} />
               </Form.Item>
             </>
           )}
 
           {modalType === 'sexOption' && (
-            <Form.Item name="value" label="Value" rules={[{ required: true, message: 'Value is required' }]}>
-              <Input maxLength={50} placeholder="e.g. Male" />
+            <Form.Item name="value" label={translate('value')} rules={[{ required: true, message: 'Value is required' }]}>
+              <Input maxLength={50} placeholder={translate('eGMale')} />
             </Form.Item>
           )}
 
           {modalType === 'ageCategory' && (
             <>
-              <Form.Item name="name" label="Name" rules={[{ required: true, message: 'Name is required' }]}>
-                <Input maxLength={100} placeholder="e.g. Calf" />
+              <Form.Item name="name" label={translate('name')} rules={[{ required: true, message: 'Name is required' }]}>
+                <Input maxLength={100} placeholder={translate('eGCalf')} />
               </Form.Item>
               <Row gutter={[16, 16]}>
                 <Col xs={24} sm={12}>
-                  <Form.Item name="minDays" label="Min Age (days)" rules={[{ required: true }]}>
+                  <Form.Item name="minDays" label={translate('minAgeDays')} rules={[{ required: true }]}>
                     <InputNumber min={0} style={{ width: '100%' }} />
                   </Form.Item>
                 </Col>
                 <Col xs={24} sm={12}>
-                  <Form.Item name="maxDays" label="Max Age (days)" rules={[{ required: true }]}>
+                  <Form.Item name="maxDays" label={translate('maxAgeDays')} rules={[{ required: true }]}>
                     <InputNumber min={0} style={{ width: '100%' }} />
                   </Form.Item>
                 </Col>
@@ -435,10 +441,10 @@ const ConfigurationPage: React.FC = () => {
 
           {modalType === 'status' && (
             <>
-              <Form.Item name="name" label="Name" rules={[{ required: true, message: 'Name is required' }]}>
-                <Input maxLength={100} placeholder="e.g. Quarantine" />
+              <Form.Item name="name" label={translate('name')} rules={[{ required: true, message: 'Name is required' }]}>
+                <Input maxLength={100} placeholder={translate('eGQuarantine')} />
               </Form.Item>
-              <Form.Item name="category" label="Category" rules={[{ required: true }]}>
+              <Form.Item name="category" label={translate('category')} rules={[{ required: true }]}>
                 <Select
                   options={(Object.keys(STATUS_CATEGORY_LABELS) as unknown as number[]).map((k) => ({
                     value: Number(k),
@@ -447,32 +453,32 @@ const ConfigurationPage: React.FC = () => {
                   style={{ width: '100%' }}
                 />
               </Form.Item>
-              <Form.Item name="isActive" label="Active" valuePropName="checked">
+              <Form.Item name="isActive" label={translate('active')} valuePropName="checked">
                 <Switch />
               </Form.Item>
             </>
           )}
 
           {modalType === 'locationType' && (
-            <Form.Item name="name" label="Name" rules={[{ required: true, message: 'Name is required' }]}>
-              <Input maxLength={100} placeholder="e.g. Shed" />
+            <Form.Item name="name" label={translate('name')} rules={[{ required: true, message: 'Name is required' }]}>
+              <Input maxLength={100} placeholder={translate('eGShed')} />
             </Form.Item>
           )}
 
           {modalType === 'location' && (
             <>
-              <Form.Item name="name" label="Name" rules={[{ required: true, message: 'Name is required' }]}>
-                <Input maxLength={200} placeholder="e.g. Shed A" />
+              <Form.Item name="name" label={translate('name')} rules={[{ required: true, message: 'Name is required' }]}>
+                <Input maxLength={200} placeholder={translate('eGShedA')} />
               </Form.Item>
-              <Form.Item name="locationTypeId" label="Location Type" rules={[{ required: true, message: 'Location type is required' }]}>
+              <Form.Item name="locationTypeId" label={translate('locationType')} rules={[{ required: true, message: 'Location type is required' }]}>
                 <LookupQuickAddSelect
                   kind="locationType"
                   options={locationTypes.map((lt) => ({ value: lt.id, label: lt.name }))}
-                  placeholder="Select location type"
+                  placeholder={translate('selectLocationType')}
                   onCreated={() => load()}
                 />
               </Form.Item>
-              <Form.Item name="parentLocationId" label="Parent Location (optional)">
+              <Form.Item name="parentLocationId" label={translate('parentLocationOptional')}>
                 <LookupQuickAddSelect
                   kind="location"
                   ctx={{
@@ -487,7 +493,7 @@ const ConfigurationPage: React.FC = () => {
                     value: l.id,
                     label: `${'\u00A0\u00A0'.repeat(l.depth)}${l.name}`,
                   }))}
-                  placeholder="None (top level)"
+                  placeholder={translate('noneTopLevel')}
                   onCreated={() => load()}
                 />
               </Form.Item>

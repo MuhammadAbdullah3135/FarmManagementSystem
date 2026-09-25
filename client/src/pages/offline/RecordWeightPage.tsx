@@ -13,6 +13,7 @@ import { useOfflineStore } from '../../offline/connectivity';
 import { useOutboxItems } from '../../offline/useOutbox';
 import { useAuthStore } from '../../stores/authStore';
 import { useFarmStore } from '../../stores/farmStore';
+import { useTranslation } from 'react-i18next';
 
 const { Text, Title } = Typography;
 
@@ -29,7 +30,7 @@ const { Text, Title } = Typography;
  * The animal can only be one the device holds: the picker reads the cached farm lookup, so
  * there is no way to type a tag number that might resolve to a different animal at sync time.
  */
-const RecordWeightPage: React.FC = () => {
+const RecordWeightPage: React.FC = () => {const { t } = useTranslation('offline'); 
   const [searchParams] = useSearchParams();
   const [form] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
@@ -69,7 +70,7 @@ const RecordWeightPage: React.FC = () => {
 
   const handleSubmit = async (values: { animalId: string; weightKg: number; notes?: string }) => {
     if (!scope) {
-      message.error('Select a farm first.');
+      message.error(t('selectAFarmFirst'));
       return;
     }
 
@@ -121,7 +122,7 @@ const RecordWeightPage: React.FC = () => {
   return (
     <Space direction="vertical" size={16} style={{ width: '100%' }}>
       <div>
-        <Title level={4} style={{ marginBottom: 0 }}>Record weight</Title>
+        <Title level={4} style={{ marginBottom: 0 }}>{t('recordWeight')}</Title>
         <Text type="secondary">
           Saved on this device first, then sent to the server. The time recorded is this device&apos;s
           clock at the moment you save.
@@ -132,8 +133,8 @@ const RecordWeightPage: React.FC = () => {
         <Alert
           type="warning"
           showIcon
-          message="You are offline"
-          description="Recording still works: the weights are stored on this device and sent when the connection is back."
+          message={t('youAreOffline')}
+          description={t('recordingStillWorksTheWeightsAreStoredOn')}
         />
       )}
 
@@ -142,7 +143,7 @@ const RecordWeightPage: React.FC = () => {
           type="error"
           showIcon
           message={`${quarantined.length} record${quarantined.length === 1 ? '' : 's'} could not be saved`}
-          description="The server refused them. Each message below says why — fix and retry, or dismiss."
+          description={t('theServerRefusedThemEachMessageBelowSays')}
         />
       )}
 
@@ -155,17 +156,17 @@ const RecordWeightPage: React.FC = () => {
         >
           <Form.Item
             name="animalId"
-            label="Animal"
+            label={t('animal')}
             rules={[{ required: true, message: 'Choose an animal' }]}
             extra={
               !isOnline && !hasCachedAnimals
-                ? 'No animals are stored on this device yet. Open the animal list once while online.'
+                ? t('noAnimalsAreStoredOnThisDeviceYet')
                 : undefined
             }
           >
             <Select
               showSearch
-              placeholder={hasCachedAnimals ? 'Search by tag number or name' : 'No animals available'}
+              placeholder={hasCachedAnimals ? t('searchByTagNumberOrName') : t('noAnimalsAvailable')}
               optionFilterProp="label"
               disabled={!hasCachedAnimals && !isOnline}
               options={animalsQuery.rows.map((animal) => ({
@@ -183,7 +184,7 @@ const RecordWeightPage: React.FC = () => {
 
           <Form.Item
             name="weightKg"
-            label="Weight"
+            label={t('weight')}
             rules={[
               { required: true, message: 'Enter a weight' },
               {
@@ -196,39 +197,38 @@ const RecordWeightPage: React.FC = () => {
             <InputNumber style={{ width: 200 }} min={0} step={0.1} addonAfter="kg" />
           </Form.Item>
 
-          <Form.Item name="notes" label="Notes">
-            <Input.TextArea rows={2} maxLength={500} placeholder="Optional" />
+          <Form.Item name="notes" label={t('notes')}>
+            <Input.TextArea rows={2} maxLength={500} placeholder={t('optional')} />
           </Form.Item>
 
           <Space>
             <Button type="primary" htmlType="submit" loading={submitting}>
-              Save weight
+              {t('saveWeight')}
             </Button>
             <Button
               disabled={items.length === 0}
               loading={isFlushing}
               onClick={() => void requestFlush({ force: true })}
             >
-              Sync now
+              {t('syncNow')}
             </Button>
           </Space>
         </Form>
       </Card>
 
       <Card
-        title="Recorded on this device"
-        extra={<Text type="secondary">Kept for a day after they sync.</Text>}
+        title={t('recordedOnThisDevice')}
+        extra={<Text type="secondary">{t('keptForADayAfterTheySync')}</Text>}
       >
         <OutboxTable
           items={items}
           targetLabel={labelFor}
-          emptyText="Weights you record show up here until the server has them."
+          emptyText={t('weightsYouRecordShowUpHereUntilThe')}
         />
       </Card>
 
       <Text type="secondary">
-        Queued records are sent oldest first, and a record that reaches the server keeps the
-        time it was taken on this device — not the time it was uploaded.
+        {t('queuedRecordsAreSentOldestFirstAndA')}
       </Text>
     </Space>
   );

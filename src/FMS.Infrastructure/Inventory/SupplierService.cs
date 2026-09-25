@@ -43,11 +43,13 @@ public class SupplierService : ISupplierService
 
     public async Task<Result<SupplierDto>> CreateSupplierAsync(Guid farmId, CreateSupplierRequest request)
     {
-        var error = ValidateSupplier(request);
-        if (error != null) return Result<SupplierDto>.Validation(error);
+        // One supplier, the endpoint's own path: the rules come from SupplierRules,
+        // shared with the bulk import, and the answer is still the first message.
+        var errors = SupplierRules.Validate(request.Name, request.ContactInfo, request.ProductsSupplied);
+        if (errors.Count > 0) return Result<SupplierDto>.Validation(errors[0].Message, errors[0].MessageKey, errors[0].MessageArgs);
         var name = request.Name.Trim();
-        if (await _context.Suppliers.AnyAsync(s => s.FarmId == farmId && s.Name == name)) return Result<SupplierDto>.Conflict("A supplier with this name already exists");
-        var supplier = new Supplier { FarmId = farmId, Name = name, ContactInfo = Clean(request.ContactInfo), ProductsSupplied = Clean(request.ProductsSupplied), CreatedBy = _currentUser.GetUserId() };
+        if (await _context.Suppliers.AnyAsync(s => s.FarmId == farmId && s.Name == name)) return Result<SupplierDto>.Conflict(SupplierRules.DuplicateNameMessage);
+        var supplier = SupplierRules.Build(farmId, request, _currentUser.GetUserId());
         _context.Suppliers.Add(supplier);
         await _context.SaveChangesAsync();
         return await GetSupplierAsync(farmId, supplier.Id);
@@ -57,11 +59,11 @@ public class SupplierService : ISupplierService
     {
         var supplier = await _context.Suppliers.FirstOrDefaultAsync(s => s.FarmId == farmId && s.Id == id);
         if (supplier == null) return Result<SupplierDto>.NotFound("Supplier not found");
-        var error = ValidateSupplier(request);
-        if (error != null) return Result<SupplierDto>.Validation(error);
+        var errors = SupplierRules.Validate(request.Name, request.ContactInfo, request.ProductsSupplied);
+        if (errors.Count > 0) return Result<SupplierDto>.Validation(errors[0].Message, errors[0].MessageKey, errors[0].MessageArgs);
         var name = request.Name.Trim();
-        if (await _context.Suppliers.AnyAsync(s => s.FarmId == farmId && s.Id != id && s.Name == name)) return Result<SupplierDto>.Conflict("A supplier with this name already exists");
-        supplier.Name = name; supplier.ContactInfo = Clean(request.ContactInfo); supplier.ProductsSupplied = Clean(request.ProductsSupplied); supplier.ModifiedAt = DateTime.UtcNow; supplier.ModifiedBy = _currentUser.GetUserId();
+        if (await _context.Suppliers.AnyAsync(s => s.FarmId == farmId && s.Id != id && s.Name == name)) return Result<SupplierDto>.Conflict(SupplierRules.DuplicateNameMessage);
+        supplier.Name = name; supplier.ContactInfo = SupplierRules.Clean(request.ContactInfo); supplier.ProductsSupplied = SupplierRules.Clean(request.ProductsSupplied); supplier.ModifiedAt = DateTime.UtcNow; supplier.ModifiedBy = _currentUser.GetUserId();
         await _context.SaveChangesAsync();
         return await GetSupplierAsync(farmId, id);
     }
@@ -72,6 +74,108 @@ public class SupplierService : ISupplierService
         if (supplier == null) return Result.NotFound("Supplier not found");
         if (await _context.SupplierPurchases.AnyAsync(p => p.SupplierId == id)) return Result.Conflict("Cannot delete a supplier with purchase history");
         _context.Suppliers.Remove(supplier); await _context.SaveChangesAsync(); return Result.Success();
+    }
+
+    /// <summary>
+    /// Validates a batch without writing it, using the same rules and the same duplicate
+    /// check as <see cref="CreateSupplierAsync"/>, so what this predicts is what
+    /// <see cref="CreateSuppliersAsync"/> does.
+    /// </summary>
+    public Task<Result<BulkCreateResultDto>> ValidateSuppliersAsync(
+        Guid farmId, IReadOnlyList<CreateSupplierRequest> requests) =>
+        CheckBatchAsync(farmId, requests);
+
+    /// <summary>
+    /// Creates every supplier in a single SaveChanges, which EF wraps in one transaction
+    /// — so a batch is atomic: either every supplier is written or none is.
+    /// </summary>
+    public async Task<Result<BulkCreateResultDto>> CreateSuppliersAsync(
+        Guid farmId, IReadOnlyList<CreateSupplierRequest> requests)
+    {
+        var checkedBatch = await CheckBatchAsync(farmId, requests);
+        if (!checkedBatch.IsSuccess)
+            return checkedBatch;
+
+        if (checkedBatch.Value!.Failures.Count > 0)
+            return checkedBatch;
+
+        var userId = _currentUser.GetUserId();
+
+        foreach (var request in requests)
+            _context.Suppliers.Add(SupplierRules.Build(farmId, request, userId));
+
+        await _context.SaveChangesAsync();
+
+        return Result<BulkCreateResultDto>.Success(new BulkCreateResultDto
+        {
+            RequestedCount = requests.Count,
+            SuccessCount = requests.Count,
+            Failures = new List<BulkCreateFailureDto>()
+        });
+    }
+
+    /// <summary>
+    /// The batch's own checks: every field rule per row, then the name uniqueness the
+    /// unique index on (FarmId, Name) would otherwise enforce with an exception.
+    ///
+    /// Names already in the farm are loaded in one query rather than one per row, and the
+    /// batch's own names are compared against each other too — without that second check
+    /// a file naming the same supplier twice would reach SaveChanges and fail the whole
+    /// batch with a database error instead of a row-level message.
+    /// </summary>
+    private async Task<Result<BulkCreateResultDto>> CheckBatchAsync(
+        Guid farmId, IReadOnlyList<CreateSupplierRequest> requests)
+    {
+        var failures = new List<BulkCreateFailureDto>();
+        var names = requests
+            .Where(request => !string.IsNullOrWhiteSpace(request.Name))
+            .Select(request => request.Name.Trim())
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+
+        // Case-sensitive, matching the endpoint's `s.Name == name` and the index itself.
+        var existing = names.Count == 0
+            ? new HashSet<string>(StringComparer.Ordinal)
+            : (await _context.Suppliers
+                .Where(supplier => supplier.FarmId == farmId && names.Contains(supplier.Name))
+                .Select(supplier => supplier.Name)
+                .ToListAsync())
+                .ToHashSet(StringComparer.Ordinal);
+
+        var seenInBatch = new HashSet<string>(StringComparer.Ordinal);
+
+        for (var index = 0; index < requests.Count; index++)
+        {
+            var request = requests[index];
+            var errors = SupplierRules.Validate(request.Name, request.ContactInfo, request.ProductsSupplied);
+
+            if (errors.Count > 0)
+            {
+                failures.Add(new BulkCreateFailureDto { Index = index, Message = errors[0].Message });
+                continue;
+            }
+
+            var name = request.Name.Trim();
+
+            if (existing.Contains(name))
+            {
+                failures.Add(new BulkCreateFailureDto { Index = index, Message = SupplierRules.DuplicateNameMessage });
+                continue;
+            }
+
+            if (!seenInBatch.Add(name))
+            {
+                failures.Add(new BulkCreateFailureDto
+                    { Index = index, Message = $"The batch contains the same supplier name '{name}' twice" });
+            }
+        }
+
+        return Result<BulkCreateResultDto>.Success(new BulkCreateResultDto
+        {
+            RequestedCount = requests.Count,
+            SuccessCount = requests.Count - failures.Count,
+            Failures = failures
+        });
     }
 
     public async Task<Result<PagedResult<SupplierPurchaseDto>>> GetPurchasesAsync(Guid farmId, SupplierPurchaseListFilter filter)
@@ -111,15 +215,13 @@ public class SupplierService : ISupplierService
             expense = new Expense { FarmId = farmId, ExpenseDate = date, Amount = Math.Round(request.TotalCost, 2), ExpenseCategoryId = request.ExpenseCategoryId.Value, PaymentMethodId = request.PaymentMethodId!.Value, Description = $"Purchase from {supplier.Name}: {item.Name}", CreatedBy = userId };
             _context.Expenses.Add(expense);
         }
-        var purchase = new SupplierPurchase { FarmId = farmId, SupplierId = supplier.Id, InventoryItemId = item.Id, Quantity = request.Quantity, TotalCost = request.TotalCost, PurchaseDate = date, StockMovementId = movement.Id, Expense = expense, Notes = Clean(request.Notes), CreatedBy = userId };        purchase.StockMovement = movement;
+        var purchase = new SupplierPurchase { FarmId = farmId, SupplierId = supplier.Id, InventoryItemId = item.Id, Quantity = request.Quantity, TotalCost = request.TotalCost, PurchaseDate = date, StockMovementId = movement.Id, Expense = expense, Notes = SupplierRules.Clean(request.Notes), CreatedBy = userId };        purchase.StockMovement = movement;
         _context.SupplierPurchases.Add(purchase);
 
         await _context.SaveChangesAsync(); await transaction.CommitAsync();
         return Result<SupplierPurchaseDto>.Success(ToDto(purchase, supplier, item, unitCost));
     }
 
-    private static string? ValidateSupplier(CreateSupplierRequest request) { if (string.IsNullOrWhiteSpace(request.Name)) return "Supplier name is required"; if (request.Name.Trim().Length > 200) return "Supplier name cannot exceed 200 characters"; if (request.ContactInfo?.Length > 1000) return "Contact information cannot exceed 1000 characters"; if (request.ProductsSupplied?.Length > 2000) return "Products supplied cannot exceed 2000 characters"; return null; }
-    private static string? Clean(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
     private static SupplierPurchaseDto ToDto(SupplierPurchase p) => ToDto(p, p.Supplier, p.InventoryItem, p.Quantity == 0 ? 0 : p.TotalCost / p.Quantity);
     private static SupplierPurchaseDto ToDto(SupplierPurchase p, Supplier s, InventoryItem i, decimal unitCost) => new() { Id = p.Id, SupplierId = s.Id, SupplierName = s.Name, InventoryItemId = i.Id, InventoryItemName = i.Name, Unit = i.Unit, Quantity = p.Quantity, TotalCost = p.TotalCost, UnitCost = unitCost, PurchaseDate = p.PurchaseDate, StockMovementId = p.StockMovementId, ExpenseId = p.ExpenseId, Notes = p.Notes };
 }

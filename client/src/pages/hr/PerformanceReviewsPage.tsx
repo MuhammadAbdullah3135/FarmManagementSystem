@@ -4,13 +4,15 @@ import {
 } from 'antd';
 import { PlusOutlined, StarFilled } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
+import { formatDate } from '../../i18n/format';
 import dayjs from 'dayjs';
 import { performanceReviewsApi } from '../../api/attendance';
 import { employeesApi } from '../../api/hr';
 import { getApiError } from '../../api/farmApi';
 import type { Employee, PerformanceReview } from '../../types';
+import { useTranslation } from 'react-i18next';
 
-const PerformanceReviewsPage: React.FC = () => {
+const PerformanceReviewsPage: React.FC = () => {const { t } = useTranslation('hr'); 
   const [reviews, setReviews] = useState<PerformanceReview[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [total, setTotal] = useState(0);
@@ -81,10 +83,10 @@ const PerformanceReviewsPage: React.FC = () => {
       };
       if (editing) {
         await performanceReviewsApi.update(editing.id, data);
-        message.success('Review updated');
+        message.success(t('reviewUpdated'));
       } else {
         await performanceReviewsApi.create(data);
-        message.success('Review created');
+        message.success(t('reviewCreated'));
       }
       setModalOpen(false);
       load(page);
@@ -97,7 +99,7 @@ const PerformanceReviewsPage: React.FC = () => {
   const handleDelete = async (id: string) => {
     try {
       await performanceReviewsApi.remove(id);
-      message.success('Review deleted');
+      message.success(t('reviewDeleted'));
       load(page);
     } catch (err) {
       message.error(getApiError(err));
@@ -105,9 +107,9 @@ const PerformanceReviewsPage: React.FC = () => {
   };
 
   const columns: ColumnsType<PerformanceReview> = [
-    { title: 'Employee', dataIndex: 'employeeName' },
+    { title: t('employee'), dataIndex: 'employeeName' },
     {
-      title: 'Rating',
+      title: t('rating'),
       dataIndex: 'rating',
       render: (r: number) => (
         <Space>
@@ -117,17 +119,17 @@ const PerformanceReviewsPage: React.FC = () => {
         </Space>
       ),
     },
-    { title: 'Date', dataIndex: 'reviewDate', render: (d: string) => dayjs(d).format('YYYY-MM-DD') },
-    { title: 'Period', render: (_, r) => r.periodStart && r.periodEnd ? `${dayjs(r.periodStart).format('MMM D')} – ${dayjs(r.periodEnd).format('MMM D, YYYY')}` : '-' },
-    { title: 'Strengths', dataIndex: 'strengths', ellipsis: true },
-    { title: 'Comments', dataIndex: 'comments', ellipsis: true },
+    { title: t('date'), dataIndex: 'reviewDate', render: (d: string) => formatDate(d) },
+    { title: t('period'), render: (_, r) => r.periodStart && r.periodEnd ? `${dayjs(r.periodStart).format('MMM D')} – ${dayjs(r.periodEnd).format('MMM D, YYYY')}` : '-' },
+    { title: t('strengths'), dataIndex: 'strengths', ellipsis: true },
+    { title: t('comments'), dataIndex: 'comments', ellipsis: true },
     {
-      title: 'Actions',
+      title: t('actions'),
       render: (_, r) => (
         <Space>
-          <Button size="small" onClick={() => openEdit(r)}>Edit</Button>
-          <Popconfirm title="Delete this review?" onConfirm={() => handleDelete(r.id)}>
-            <Button size="small" danger>Delete</Button>
+          <Button size="small" onClick={() => openEdit(r)}>{t('edit')}</Button>
+          <Popconfirm title={t('deleteThisReview')} onConfirm={() => handleDelete(r.id)}>
+            <Button size="small" danger>{t('delete')}</Button>
           </Popconfirm>
         </Space>
       ),
@@ -136,19 +138,19 @@ const PerformanceReviewsPage: React.FC = () => {
 
   return (
     <Card
-      title="Performance Reviews"
+      title={t('performanceReviews')}
       extra={
         <Space>
           <Select
             allowClear
-            placeholder="Filter by employee"
+            placeholder={t('filterByEmployee')}
             style={{ width: 200 }}
             value={empFilter}
             onChange={setEmpFilter}
             options={employees.map((e) => ({ value: e.id, label: `${e.firstName} ${e.lastName}` }))}
           />
           <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
-            New Review
+            {t('newReview')}
           </Button>
         </Space>
       }
@@ -162,7 +164,7 @@ const PerformanceReviewsPage: React.FC = () => {
       />
 
       <Modal
-        title={editing ? 'Edit Review' : 'New Review'}
+        title={editing ? t('editReview') : t('newReview')}
         open={modalOpen}
         onOk={handleSave}
         onCancel={() => setModalOpen(false)}
@@ -170,7 +172,7 @@ const PerformanceReviewsPage: React.FC = () => {
         width={640}
       >
         <Form form={form} layout="vertical">
-          <Form.Item name="employeeId" label="Employee" rules={[{ required: true }]}>
+          <Form.Item name="employeeId" label={t('employee')} rules={[{ required: true }]}>
             <Select
               showSearch
               optionFilterProp="label"
@@ -179,31 +181,31 @@ const PerformanceReviewsPage: React.FC = () => {
               popupMatchSelectWidth={false}
             />
           </Form.Item>
-          <Form.Item name="rating" label="Rating (1–5)" rules={[{ required: true }]}>
+          <Form.Item name="rating" label={t('rating15')} rules={[{ required: true }]}>
             <InputNumber min={1} max={5} style={{ width: '100%' }} />
           </Form.Item>
-          <Form.Item name="reviewDate" label="Review Date" rules={[{ required: true }]}>
+          <Form.Item name="reviewDate" label={t('reviewDate')} rules={[{ required: true }]}>
             <DatePicker style={{ width: '100%' }} />
           </Form.Item>
           <Row gutter={[16, 16]}>
             <Col xs={24} sm={12}>
-              <Form.Item name="periodStart" label="Period Start">
+              <Form.Item name="periodStart" label={t('periodStart')}>
                 <DatePicker style={{ width: '100%' }} />
               </Form.Item>
             </Col>
             <Col xs={24} sm={12}>
-              <Form.Item name="periodEnd" label="Period End">
+              <Form.Item name="periodEnd" label={t('periodEnd')}>
                 <DatePicker style={{ width: '100%' }} />
               </Form.Item>
             </Col>
           </Row>
-          <Form.Item name="strengths" label="Strengths">
+          <Form.Item name="strengths" label={t('strengths')}>
             <Input.TextArea rows={2} maxLength={2000} />
           </Form.Item>
-          <Form.Item name="areasForImprovement" label="Areas for Improvement">
+          <Form.Item name="areasForImprovement" label={t('areasForImprovement')}>
             <Input.TextArea rows={2} maxLength={2000} />
           </Form.Item>
-          <Form.Item name="comments" label="Comments">
+          <Form.Item name="comments" label={t('comments')}>
             <Input.TextArea rows={2} maxLength={2000} />
           </Form.Item>
         </Form>

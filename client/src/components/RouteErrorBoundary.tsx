@@ -1,6 +1,7 @@
 import React from 'react';
 import { Button, Result, Typography } from 'antd';
 import { Link } from 'react-router-dom';
+import i18n from '../i18n';
 
 const { Paragraph, Text } = Typography;
 
@@ -46,6 +47,10 @@ class RouteErrorBoundary extends React.Component<RouteErrorBoundaryProps, RouteE
 
   render() {
     const { error } = this.state;
+    // Same reason as the root ErrorBoundary: a class component reads the current language
+    // from the instance. This one keeps the app shell, so it re-renders on navigation and
+    // picks the language up again each time.
+    const t = i18n.getFixedT(null, 'errors');
     if (!error) {
       return this.props.children;
     }
@@ -53,13 +58,10 @@ class RouteErrorBoundary extends React.Component<RouteErrorBoundaryProps, RouteE
     return (
       <Result
         status="error"
-        title="This screen hit an error"
+        title={t('screenFailed')}
         subTitle={
           <>
-            <Paragraph style={{ marginBottom: 8 }}>
-              The rest of the app is still working — pick another screen from the menu, or try
-              this one again.
-            </Paragraph>
+            <Paragraph style={{ marginBottom: 8 }}>{t('restOfAppStillWorks')}</Paragraph>
             <Paragraph style={{ marginBottom: 0 }}>
               <Text type="secondary" style={{ fontSize: 12 }}>
                 {this.props.routePath} · {error.message || String(error)}
@@ -69,10 +71,10 @@ class RouteErrorBoundary extends React.Component<RouteErrorBoundaryProps, RouteE
         }
         extra={[
           <Button key="retry" type="primary" onClick={this.handleTryAgain}>
-            Try again
+            {t('tryAgain')}
           </Button>,
           <Link key="dashboard" to="/dashboard">
-            <Button>Back to dashboard</Button>
+            <Button>{t('backToDashboard')}</Button>
           </Link>,
         ]}
       />

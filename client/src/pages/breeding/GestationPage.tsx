@@ -4,13 +4,15 @@ import type { ColumnsType } from 'antd/es/table';
 import { PlusOutlined, CloseCircleOutlined, HeartOutlined } from '@ant-design/icons';
 import { gestationApi, breedingRecordsApi, type ConfirmPregnancyPayload, type LogHealthCheckPayload } from '../../api/breeding';
 import { getApiError } from '../../api/farmApi';
-import dayjs from 'dayjs';
+import { formatDate } from '../../i18n/format';
+
 import type { GestationRecord, GestationHealthCheck, BreedingRecord } from '../../types';
+import { useTranslation } from 'react-i18next';
 
 const STAGE_LABELS: Record<number, string> = { 0: 'Early', 1: 'Mid', 2: 'Late', 3: 'Overdue' };
 const STAGE_COLORS: Record<number, string> = { 0: 'blue', 1: 'green', 2: 'orange', 3: 'red' };
 
-export default function GestationPage() {
+export default function GestationPage() {const { t } = useTranslation('breeding'); 
   const [data, setData] = useState<GestationRecord[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -71,7 +73,7 @@ export default function GestationPage() {
         weightKg: values.weightKg,
       };
       await gestationApi.logHealthCheck(selectedGestation.id, payload);
-      message.success('Health check logged');
+      message.success(t('healthCheckLogged'));
       healthForm.resetFields();
       // Reload health checks
       const res = await gestationApi.getHealthChecks(selectedGestation.id);
@@ -102,7 +104,7 @@ export default function GestationPage() {
         confirmedDate: values.confirmedDate.toISOString(),
       };
       await gestationApi.confirm(payload);
-      message.success('Pregnancy confirmed');
+      message.success(t('pregnancyConfirmed'));
       setConfirmModalOpen(false);
       load(1);
     } catch (err) {
@@ -114,7 +116,7 @@ export default function GestationPage() {
   const handleRevert = async (record: GestationRecord) => {
     try {
       await gestationApi.revert(record.id, 'Pregnancy reverted by user');
-      message.success('Pregnancy reverted');
+      message.success(t('pregnancyReverted'));
       load(page);
     } catch (err) {
       message.error(getApiError(err));
@@ -130,7 +132,7 @@ export default function GestationPage() {
 
   const columns: ColumnsType<GestationRecord> = [
     {
-      title: 'Animal',
+      title: t('animal'),
       key: 'animal',
       render: (_, record) => (
         <span>
@@ -140,34 +142,34 @@ export default function GestationPage() {
       ),
     },
     {
-      title: 'Sire',
+      title: t('sire'),
       key: 'sire',
       render: (_, record) => record.sireTagNumber,
     },
     {
-      title: 'Breeding Date',
+      title: t('breedingDate'),
       dataIndex: 'breedingDate',
       key: 'breedingDate',
-      render: (text: string) => dayjs(text).format('YYYY-MM-DD'),
+      render: (text: string) => formatDate(text),
     },
     {
-      title: 'Days Elapsed',
+      title: t('daysElapsed'),
       dataIndex: 'daysElapsed',
       key: 'daysElapsed',
       render: (val: number) => `${val} days`,
     },
     {
-      title: 'Expected Due',
+      title: t('expectedDue'),
       dataIndex: 'expectedDeliveryDate',
       key: 'expectedDelivery',
       render: (text: string, record) => (
         <span style={{ color: getDueColor(record.daysUntilDue), fontWeight: 'bold' }}>
-          {dayjs(text).format('YYYY-MM-DD')}
+          {formatDate(text)}
         </span>
       ),
     },
     {
-      title: 'Days Until Due',
+      title: t('daysUntilDue'),
       dataIndex: 'daysUntilDue',
       key: 'daysUntilDue',
       sorter: (a, b) => a.daysUntilDue - b.daysUntilDue,
@@ -183,28 +185,28 @@ export default function GestationPage() {
       },
     },
     {
-      title: 'Stage',
+      title: t('stage'),
       dataIndex: 'currentStage',
       key: 'currentStage',
       render: (val: number) => <Tag color={STAGE_COLORS[val]}>{STAGE_LABELS[val]}</Tag>,
     },
     {
-      title: 'Health Checks',
+      title: t('healthChecks'),
       dataIndex: 'healthCheckCount',
       key: 'healthCheckCount',
       render: (val: number) => val,
     },
     {
-      title: 'Actions',
+      title: t('actions'),
       key: 'actions',
       width: 150,
       render: (_, record) => (
         <Space>
           <Button size="small" icon={<HeartOutlined />} onClick={() => openHealthDrawer(record)}>
-            Health
+            {t('health')}
           </Button>
           <Button size="small" danger icon={<CloseCircleOutlined />} onClick={() => handleRevert(record)}>
-            Revert
+            {t('revert')}
           </Button>
         </Space>
       ),
@@ -215,10 +217,10 @@ export default function GestationPage() {
   return (
     <>
       <Card
-        title="Active Pregnancies"
+        title={t('activePregnancies')}
         extra={
           <Button type="primary" icon={<PlusOutlined />} onClick={openConfirmModal}>
-            Confirm Pregnancy
+            {t('confirmPregnancy')}
           </Button>
         }
       >
@@ -227,7 +229,7 @@ export default function GestationPage() {
           <Card size="small" style={{ flex: 1 }}>
             <div style={{ textAlign: 'center' }}>
               <div style={{ fontSize: 24, fontWeight: 'bold', color: '#1677ff' }}>{total}</div>
-              <div style={{ color: '#999' }}>Active Pregnancies</div>
+              <div style={{ color: '#999' }}>{t('activePregnancies')}</div>
             </div>
           </Card>
           <Card size="small" style={{ flex: 1 }}>
@@ -235,7 +237,7 @@ export default function GestationPage() {
               <div style={{ fontSize: 24, fontWeight: 'bold', color: '#ff4d4f' }}>
                 {data.filter(d => d.daysUntilDue <= 15).length}
               </div>
-              <div style={{ color: '#999' }}>Due Within 15 Days</div>
+              <div style={{ color: '#999' }}>{t('dueWithin15Days')}</div>
             </div>
           </Card>
           <Card size="small" style={{ flex: 1 }}>
@@ -243,7 +245,7 @@ export default function GestationPage() {
               <div style={{ fontSize: 24, fontWeight: 'bold', color: '#faad14' }}>
                 {data.filter(d => d.currentStage === 3).length}
               </div>
-              <div style={{ color: '#999' }}>Overdue</div>
+              <div style={{ color: '#999' }}>{t('overdue')}</div>
             </div>
           </Card>
         </div>
@@ -259,7 +261,7 @@ export default function GestationPage() {
 
       {/* Health Check Drawer */}
       <Drawer
-        title={selectedGestation ? `Health Checks - ${selectedGestation.animalTagNumber}` : 'Health Checks'}
+        title={selectedGestation ? `Health Checks - ${selectedGestation.animalTagNumber}` : t('healthChecks')}
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
         width={500}
@@ -267,60 +269,60 @@ export default function GestationPage() {
         {selectedGestation && (
           <>
             <Descriptions bordered size="small" column={1} style={{ marginBottom: 16 }}>
-              <Descriptions.Item label="Animal">{selectedGestation.animalTagNumber} {selectedGestation.animalName}</Descriptions.Item>
-              <Descriptions.Item label="Expected Delivery">{dayjs(selectedGestation.expectedDeliveryDate).format('YYYY-MM-DD')}</Descriptions.Item>
-              <Descriptions.Item label="Days Until Due">
+              <Descriptions.Item label={t('animal')}>{selectedGestation.animalTagNumber} {selectedGestation.animalName}</Descriptions.Item>
+              <Descriptions.Item label={t('expectedDelivery')}>{formatDate(selectedGestation.expectedDeliveryDate)}</Descriptions.Item>
+              <Descriptions.Item label={t('daysUntilDue')}>
                 <span style={{ color: getDueColor(selectedGestation.daysUntilDue), fontWeight: 'bold' }}>
-                  {selectedGestation.daysUntilDue} days
+                  {selectedGestation.daysUntilDue} {t('days')}
                 </span>
               </Descriptions.Item>
-              <Descriptions.Item label="Stage">
+              <Descriptions.Item label={t('stage')}>
                 <Tag color={STAGE_COLORS[selectedGestation.currentStage]}>
                   {STAGE_LABELS[selectedGestation.currentStage]}
                 </Tag>
               </Descriptions.Item>
             </Descriptions>
 
-            <Card title="Log Health Check" size="small" style={{ marginBottom: 16 }}>
+            <Card title={t('logHealthCheck')} size="small" style={{ marginBottom: 16 }}>
               <Form form={healthForm} layout="vertical" size="small">
-                <Form.Item name="checkDate" label="Check Date" rules={[{ required: true }]}>
+                <Form.Item name="checkDate" label={t('checkDate')} rules={[{ required: true }]}>
                   <DatePicker style={{ width: '100%' }} />
                 </Form.Item>
                 <Row gutter={[16, 16]}>
                   <Col xs={24} sm={12}>
-                    <Form.Item name="performedBy" label="Performed By">
+                    <Form.Item name="performedBy" label={t('performedBy')}>
                       <Input maxLength={200} />
                     </Form.Item>
                   </Col>
                   <Col xs={24} sm={12}>
-                    <Form.Item name="weightKg" label="Weight (kg)">
+                    <Form.Item name="weightKg" label={t('weightKg')}>
                       <InputNumber min={0} precision={2} style={{ width: '100%' }} />
                     </Form.Item>
                   </Col>
                 </Row>
-                <Form.Item name="notes" label="Notes">
+                <Form.Item name="notes" label={t('notes')}>
                   <Input.TextArea rows={2} maxLength={2000} />
                 </Form.Item>
                 <Button type="primary" icon={<PlusOutlined />} onClick={handleLogHealthCheck}>
-                  Log Check
+                  {t('logCheck')}
                 </Button>
               </Form>
             </Card>
 
-            <Card title="Health Check History" size="small">
+            <Card title={t('healthCheckHistory')} size="small">
               {healthCheckLoading ? (
-                <Empty description="Loading..." />
+                <Empty description={t('loading')} />
               ) : healthChecks.length === 0 ? (
-                <Empty description="No health checks recorded" />
+                <Empty description={t('noHealthChecksRecorded')} />
               ) : (
                 <div>
                   {healthChecks.map(check => (
                     <Card key={check.id} size="small" style={{ marginBottom: 8 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                        <strong>{dayjs(check.checkDate).format('YYYY-MM-DD')}</strong>
-                        {check.weightKg && <Tag>{check.weightKg} kg</Tag>}
+                        <strong>{formatDate(check.checkDate)}</strong>
+                        {check.weightKg && <Tag>{check.weightKg} {t('kg')}</Tag>}
                       </div>
-                      {check.performedBy && <div style={{ color: '#999', marginBottom: 4 }}>By: {check.performedBy}</div>}
+                      {check.performedBy && <div style={{ color: '#999', marginBottom: 4 }}>{t('by')} {check.performedBy}</div>}
                       {check.notes && <div>{check.notes}</div>}
                     </Card>
                   ))}
@@ -333,7 +335,7 @@ export default function GestationPage() {
 
       {/* Confirm Pregnancy Modal */}
       <Modal
-        title="Confirm Pregnancy"
+        title={t('confirmPregnancy')}
         open={confirmModalOpen}
         onOk={handleConfirmPregnancy}
         onCancel={() => setConfirmModalOpen(false)}
@@ -341,17 +343,17 @@ export default function GestationPage() {
         destroyOnClose
       >
         <Form form={confirmForm} layout="vertical">
-          <Form.Item name="breedingRecordId" label="Breeding Record (Pending)" rules={[{ required: true }]}>
+          <Form.Item name="breedingRecordId" label={t('breedingRecordPending')} rules={[{ required: true }]}>
             <select style={{ width: '100%', padding: 8 }}>
-              <option value="">Select a pending breeding record</option>
+              <option value="">{t('selectAPendingBreedingRecord')}</option>
               {pendingBreedingRecords.map(r => (
                 <option key={r.id} value={r.id}>
-                  {dayjs(r.breedingDate).format('YYYY-MM-DD')} | {r.sireTagNumber} x {r.damTagNumber}
+                  {formatDate(r.breedingDate)} | {r.sireTagNumber} {t('x')} {r.damTagNumber}
                 </option>
               ))}
             </select>
           </Form.Item>
-          <Form.Item name="confirmedDate" label="Confirmation Date" rules={[{ required: true }]}>
+          <Form.Item name="confirmedDate" label={t('confirmationDate')} rules={[{ required: true }]}>
             <DatePicker style={{ width: '100%' }} />
           </Form.Item>
         </Form>

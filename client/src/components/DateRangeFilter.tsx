@@ -2,13 +2,14 @@ import React from 'react';
 import { DatePicker, Space, Button } from 'antd';
 import { ReloadOutlined } from '@ant-design/icons';
 import dayjs, { Dayjs } from 'dayjs';
+import { useTranslation } from 'react-i18next';
 
 interface DateRangeFilterProps {
   onChange: (from?: string, to?: string) => void;
   defaultValue?: [Dayjs | null, Dayjs | null];
 }
 
-const DateRangeFilter: React.FC<DateRangeFilterProps> = ({ onChange, defaultValue }) => {
+const DateRangeFilter: React.FC<DateRangeFilterProps> = ({ onChange, defaultValue }) => {const { t } = useTranslation('common'); 
   const [range, setRange] = React.useState<[Dayjs | null, Dayjs | null]>(
     defaultValue || [dayjs().subtract(30, 'day'), dayjs()]
   );
@@ -37,7 +38,7 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({ onChange, defaultValu
         placeholder={['From', 'To']}
       />
       <Button icon={<ReloadOutlined />} onClick={handleReset}>
-        Reset
+        {t('reset')}
       </Button>
     </Space>
   );

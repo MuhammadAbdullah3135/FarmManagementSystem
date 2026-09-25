@@ -80,6 +80,9 @@ public class FmsDbContext : DbContext
     public DbSet<CustomerSale> CustomerSales => Set<CustomerSale>();
     public DbSet<Domain.Entities.AuditLog> AuditLogs => Set<Domain.Entities.AuditLog>();
 
+    /// <summary>The full-farm export's request/outcome record (see <c>FarmExport</c>).</summary>
+    public DbSet<FarmExport> FarmExports => Set<FarmExport>();
+
     /// <summary>The idempotency ledger for queued offline mutations (see <c>ProcessedMutation</c>).</summary>
     public DbSet<ProcessedMutation> ProcessedMutations => Set<ProcessedMutation>();
 

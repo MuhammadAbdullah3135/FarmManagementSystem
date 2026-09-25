@@ -153,8 +153,11 @@ public class AttendanceTests
         var seed = await SeedAsync(context);
         var service = CreateService(context);
 
+        // Anchored to yesterday, not to an hour of today. The server refuses a device time
+        // more than five minutes ahead of its own clock, so a timestamp built from today plus
+        // an hour was only ever accepted when the suite happened to run late in the UTC day.
         var first = await service.CheckInAsync(seed.FarmId, seed.AliId,
-            new CheckInRequest { OccurredAt = DateTime.UtcNow.Date.AddHours(6) });
+            new CheckInRequest { OccurredAt = DateTime.UtcNow.Date.AddDays(-1).AddHours(6) });
         var storedTime = first.Value!.CheckInAt!.Value;
 
         var queued = await service.CheckInAsync(seed.FarmId, seed.AliId,
@@ -180,7 +183,9 @@ public class AttendanceTests
         var seed = await SeedAsync(context);
         var service = CreateService(context);
 
-        var date = DateTime.UtcNow.Date;
+        // Yesterday, for the reason given above: a future device time is refused outright,
+        // which made this test fail for the first nine hours of every UTC day.
+        var date = DateTime.UtcNow.Date.AddDays(-1);
         await service.UpsertAttendanceAsync(seed.FarmId, new UpsertAttendanceRequest
         {
             EmployeeId = seed.AliId,

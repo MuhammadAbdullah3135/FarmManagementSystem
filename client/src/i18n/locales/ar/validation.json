@@ -1,0 +1,50 @@
+{
+  "customer": {
+    "contactInfoMaxLength": "لا يمكن أن تتجاوز معلومات التواصل {{max}} حرفًا",
+    "nameMaxLength": "لا يمكن أن يتجاوز اسم العميل {{max}} حرفًا",
+    "nameRequired": "اسم العميل مطلوب"
+  },
+  "employee": {
+    "addressMaxLength": "لا يمكن أن يتجاوز العنوان {{max}} حرفًا",
+    "emailInvalid": "عنوان البريد الإلكتروني غير صالح",
+    "emailMaxLength": "لا يمكن أن يتجاوز البريد الإلكتروني {{max}} حرفًا",
+    "firstNameMaxLength": "لا يمكن أن يتجاوز الاسم الأول {{max}} حرفًا",
+    "firstNameRequired": "الاسم الأول مطلوب",
+    "hireDateFuture": "لا يمكن أن يكون تاريخ التعيين في المستقبل",
+    "lastNameMaxLength": "لا يمكن أن يتجاوز اسم العائلة {{max}} حرفًا",
+    "lastNameRequired": "اسم العائلة مطلوب",
+    "notesMaxLength": "لا يمكن أن تتجاوز الملاحظات {{max}} حرفًا",
+    "phoneMaxLength": "لا يمكن أن يتجاوز رقم الهاتف {{max}} حرفًا",
+    "salaryRateNegative": "لا يمكن أن يكون معدل الراتب سالبًا"
+  },
+  "expense": {
+    "amountPositive": "يجب أن يكون المبلغ أكبر من صفر",
+    "dateNotFuture": "لا يمكن أن يكون تاريخ المصروف في المستقبل",
+    "descriptionMaxLength": "لا يمكن أن يتجاوز الوصف {{max}} حرفًا"
+  },
+  "income": {
+    "amountPositive": "يجب أن يكون المبلغ أكبر من صفر",
+    "dateNotFuture": "لا يمكن أن يكون تاريخ الإيراد في المستقبل",
+    "descriptionMaxLength": "لا يمكن أن يتجاوز الوصف {{max}} حرفًا"
+  },
+  "inventoryItem": {
+    "categoryMaxLength": "لا يمكن أن تتجاوز الفئة {{max}} حرفًا",
+    "locationMaxLength": "لا يمكن أن يتجاوز الموقع {{max}} حرفًا",
+    "nameMaxLength": "لا يمكن أن يتجاوز اسم الصنف {{max}} حرفًا",
+    "nameRequired": "اسم الصنف مطلوب",
+    "quantityNegative": "لا يمكن أن تكون الكمية سالبة",
+    "reorderLevelNegative": "لا يمكن أن يكون حد إعادة الطلب سالبًا",
+    "unitCostNegative": "لا يمكن أن تكون تكلفة الوحدة سالبة",
+    "unitMaxLength": "لا يمكن أن تتجاوز الوحدة {{max}} حرفًا",
+    "unitRequired": "الوحدة مطلوبة"
+  },
+  "locale": {
+    "unsupported": "اللغة «{{locale}}» ليست من اللغات التي يدعمها هذا التطبيق"
+  },
+  "supplier": {
+    "contactInfoMaxLength": "لا يمكن أن تتجاوز معلومات التواصل {{max}} حرفًا",
+    "nameMaxLength": "لا يمكن أن يتجاوز اسم المورد {{max}} حرفًا",
+    "nameRequired": "اسم المورد مطلوب",
+    "productsSuppliedMaxLength": "لا يمكن أن تتجاوز المنتجات المورّدة {{max}} حرفًا"
+  }
+}

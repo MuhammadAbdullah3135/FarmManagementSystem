@@ -20,6 +20,7 @@ import { useFarmStore } from '../../stores/farmStore';
 import type { AnimalLookupRow } from '../../api/attendance';
 import type { Employee, FarmTask } from '../../types';
 import type { OutboxItem } from '../../offline/db';
+import { useTranslation } from 'react-i18next';
 
 const { Text, Title } = Typography;
 
@@ -35,7 +36,7 @@ const { Text, Title } = Typography;
  * Nothing here can lose a record: a refused item is shown with the server's own message, and
  * dismissing one asks for a reason and keeps it on the device.
  */
-const SyncStatusPage: React.FC = () => {
+const SyncStatusPage: React.FC = () => {const { t } = useTranslation('offline'); 
   const accountId = useAuthStore((state) => state.user?.accountId ?? null);
   const farms = useFarmStore((state) => state.farms);
   const isOnline = useOfflineStore((store) => store.isOnline);
@@ -133,7 +134,7 @@ const SyncStatusPage: React.FC = () => {
     await requestFlush({ force: true });
     await refresh();
     if (useSyncStore.getState().pendingCount === 0) {
-      message.success('Everything on this device has been sent.');
+      message.success(t('everythingOnThisDeviceHasBeenSent'));
     }
   };
 
@@ -142,8 +143,7 @@ const SyncStatusPage: React.FC = () => {
       <div>
         <Title level={4} style={{ marginBottom: 0 }}>Offline &amp; sync</Title>
         <Text type="secondary">
-          Work recorded on this device is sent oldest first. Nothing is removed until the server
-          has accepted it.
+          {t('workRecordedOnThisDeviceIsSentOldest')}
         </Text>
       </div>
 
@@ -151,8 +151,8 @@ const SyncStatusPage: React.FC = () => {
         <Alert
           type="error"
           showIcon
-          message="Your session expired before these records could be sent"
-          description="They are safe on this device. Sign in again and they will be sent."
+          message={t('yourSessionExpiredBeforeTheseRecordsCouldBe')}
+          description={t('theyAreSafeOnThisDeviceSignIn')}
         />
       )}
 
@@ -160,7 +160,7 @@ const SyncStatusPage: React.FC = () => {
         <Alert
           type={isOnline ? 'warning' : 'info'}
           showIcon
-          message={isOnline ? 'Sending paused' : 'Offline'}
+          message={isOnline ? t('sendingPaused') : t('offline')}
           description={lastError}
         />
       )}
@@ -175,8 +175,8 @@ const SyncStatusPage: React.FC = () => {
           type={sessionStatus === 'blocked' ? 'error' : 'warning'}
           showIcon
           message={sessionStatus === 'blocked'
-            ? 'This device has gone too long without reaching the server'
-            : 'This session is getting old'}
+            ? t('thisDeviceHasGoneTooLongWithoutReaching')
+            : t('thisSessionIsGettingOld')}
           description={sessionStatus === 'blocked'
             ? sessionBlockedMessage(daysSinceServerContact ?? 0)
             : sessionWarningMessage(daysSinceServerContact ?? 0)}
@@ -184,28 +184,28 @@ const SyncStatusPage: React.FC = () => {
       )}
 
       {capacity.full ? (
-        <Alert type="error" showIcon message="This device cannot hold any more unsynced records" description={queueFullMessage()} />
+        <Alert type="error" showIcon message={t('thisDeviceCannotHoldAnyMoreUnsyncedRecords')} description={queueFullMessage()} />
       ) : capacity.warning ? (
-        <Alert type="warning" showIcon message="The queue is nearly full" description={queueWarningMessage(capacity.remaining)} />
+        <Alert type="warning" showIcon message={t('theQueueIsNearlyFull')} description={queueWarningMessage(capacity.remaining)} />
       ) : null}
 
       <Card>
         <Row gutter={[16, 16]}>
           <Col xs={12} md={6}>
-            <Statistic title="Waiting to sync" value={pendingCount} />
+            <Statistic title={t('waitingToSync')} value={pendingCount} />
           </Col>
           <Col xs={12} md={6}>
             <Statistic
-              title="Needs attention"
+              title={t('needsAttention')}
               value={quarantinedCount}
               valueStyle={quarantinedCount > 0 ? { color: '#cf1322' } : undefined}
             />
           </Col>
           <Col xs={12} md={6}>
-            <Statistic title="Oldest waiting" value={pendingCount > 0 ? formatSyncAge(oldestQueuedAt) : '—'} />
+            <Statistic title={t('oldestWaiting')} value={pendingCount > 0 ? formatSyncAge(oldestQueuedAt) : '—'} />
           </Col>
           <Col xs={12} md={6}>
-            <Statistic title="Last sent" value={formatSyncAge(lastFlushAt)} />
+            <Statistic title={t('lastSent')} value={formatSyncAge(lastFlushAt)} />
           </Col>
         </Row>
 
@@ -216,16 +216,16 @@ const SyncStatusPage: React.FC = () => {
             loading={isFlushing}
             onClick={() => void handleSyncNow()}
           >
-            Sync now
+            {t('syncNow')}
           </Button>
-          <Button onClick={() => void refresh()}>Refresh</Button>
-          {!isOnline && <Tag>Offline — sending resumes when the connection is back</Tag>}
+          <Button onClick={() => void refresh()}>{t('refresh')}</Button>
+          {!isOnline && <Tag>{t('offlineSendingResumesWhenTheConnectionIsBack')}</Tag>}
         </Space>
       </Card>
 
       {items.length === 0 ? (
         <Card>
-          <Empty description="Nothing is waiting on this device." />
+          <Empty description={t('nothingIsWaitingOnThisDevice')} />
         </Card>
       ) : (
         Array.from(byFarm.entries()).map(([farmId, farmItems]) => (
@@ -234,8 +234,8 @@ const SyncStatusPage: React.FC = () => {
             title={farmName(farmId)}
             extra={
               <Text type="secondary">
-                {farmItems.filter((item) => item.status === 'pending').length} waiting ·{' '}
-                {farmItems.filter((item) => item.status === 'quarantined').length} refused
+                {farmItems.filter((item) => item.status === 'pending').length} {t('waiting')}{' '}
+                {farmItems.filter((item) => item.status === 'quarantined').length} {t('refused')}
               </Text>
             }
           >
@@ -251,8 +251,7 @@ const SyncStatusPage: React.FC = () => {
       )}
 
       <Text type="secondary">
-        Records stay here for a day after they sync, so you can see what went through. Dismissing
-        one keeps its details and the reason you gave.
+        {t('recordsStayHereForADayAfterThey')}
       </Text>
     </Space>
   );

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, within, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
 import SuppliersPage from './SuppliersPage';
 import { inventoryApi } from '../../api/inventory';
 import { suppliersApi } from '../../api/suppliers';
@@ -71,7 +72,7 @@ const optionLabels = () =>
 describe('SuppliersPage purchase form', () => {
   it('loads the configurable fields instead of rendering empty selects', async () => {
     const user = userEvent.setup();
-    render(<SuppliersPage />);
+    render(<MemoryRouter><SuppliersPage /></MemoryRouter>);
     const modal = await purchaseModal(user);
 
     // Both lists used to be rendered with `options={[]}`, so the two fields were
@@ -88,7 +89,7 @@ describe('SuppliersPage purchase form', () => {
 
   it('lets a missing supplier, category or payment method be created from the purchase form', async () => {
     const user = userEvent.setup();
-    render(<SuppliersPage />);
+    render(<MemoryRouter><SuppliersPage /></MemoryRouter>);
     const modal = await purchaseModal(user);
 
     await user.click(within(formItem(modal, 'Supplier')).getByRole('combobox'));

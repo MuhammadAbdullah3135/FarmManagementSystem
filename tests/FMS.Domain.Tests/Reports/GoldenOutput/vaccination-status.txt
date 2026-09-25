@@ -1,0 +1,16 @@
+status|animal-00|RP-0000|Cow 0|vaccine-type-0|FMD Vaccine|last=null|due=0|Due|Due
+status|animal-00|RP-0000|Cow 0|vaccine-type-1|Brucellosis Vaccine|last=0|due=31|Upcoming|Upcoming
+status|animal-01|RP-0001|Cow 1|vaccine-type-0|FMD Vaccine|last=-11|due=19|Upcoming|Upcoming
+status|animal-01|RP-0001|Cow 1|vaccine-type-1|Brucellosis Vaccine|last=null|due=0|Due|Due
+status|animal-02|RP-0002|Cow 2|vaccine-type-0|FMD Vaccine|last=-22|due=8|Upcoming|Upcoming
+status|animal-02|RP-0002|Cow 2|vaccine-type-1|Brucellosis Vaccine|last=null|due=0|Due|Due
+status|animal-03|RP-0003|Cow 3|vaccine-type-0|FMD Vaccine|last=null|due=0|Due|Due
+status|animal-03|RP-0003|Cow 3|vaccine-type-1|Brucellosis Vaccine|last=-33|due=-2|Overdue|Overdue
+status|animal-04|RP-0004|Cow 4|vaccine-type-0|FMD Vaccine|last=-44|due=-14|Overdue|Overdue
+status|animal-04|RP-0004|Cow 4|vaccine-type-1|Brucellosis Vaccine|last=null|due=0|Due|Due
+status|animal-05|RP-0005|Cow 5|vaccine-type-0|FMD Vaccine|last=-55|due=-25|Overdue|Overdue
+status|animal-05|RP-0005|Cow 5|vaccine-type-1|Brucellosis Vaccine|last=null|due=0|Due|Due
+status|animal-06|RP-0006|Cow 6|vaccine-type-0|FMD Vaccine|last=null|due=0|Due|Due
+status|animal-06|RP-0006|Cow 6|vaccine-type-1|Brucellosis Vaccine|last=-66|due=-35|Overdue|Overdue
+status|animal-07|RP-0007|Cow 7|vaccine-type-0|FMD Vaccine|last=-77|due=-47|Overdue|Overdue
+status|animal-07|RP-0007|Cow 7|vaccine-type-1|Brucellosis Vaccine|last=null|due=0|Due|Due

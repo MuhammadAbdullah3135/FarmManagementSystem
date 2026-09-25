@@ -7,6 +7,8 @@ export interface AuthResponse {
   firstName: string;
   lastName: string;
   roles: string[];
+  /** The language stored for this account, or null/absent when it has never chosen one. */
+  locale?: string | null;
 }
 
 export interface User {
@@ -16,6 +18,8 @@ export interface User {
   firstName: string;
   lastName: string;
   roles: string[];
+  /** Carried from the sign-in response so a later device can adopt the account's language. */
+  locale?: string | null;
 }
 
 export interface Farm {

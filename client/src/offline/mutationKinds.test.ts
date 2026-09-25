@@ -4,7 +4,6 @@ import {
   ATTENDANCE_CHECK_OUT,
   MUTATION_KINDS,
   OUTBOX_STATUS_COLORS,
-  OUTBOX_STATUS_LABELS,
   TASK_COMPLETE,
   WEIGHT_RECORD,
   describeItem,
@@ -12,6 +11,8 @@ import {
   kindLabel,
 } from './mutationKinds';
 import type { OutboxItem, OutboxStatus } from './db';
+import i18n from '../i18n';
+import { outboxStatusKey } from '../i18n/vocabulary';
 
 const item = <TPayload>(kind: string, payload: TPayload, targetId = 'target-1'): OutboxItem<TPayload> => ({
   accountId: 'acct-1',
@@ -152,11 +153,15 @@ describe('mutation kinds', () => {
     expect(kindLabel('animal.create')).toBe('animal.create');
   });
 
-  it('has wording and a colour for every status the queue can be in', () => {
+  it('has a translation key and a colour for every status the queue can be in', () => {
     const statuses: OutboxStatus[] = ['pending', 'applied', 'quarantined', 'dismissed'];
 
     for (const status of statuses) {
-      expect(OUTBOX_STATUS_LABELS[status]).toBeTruthy();
+      // The wording itself lives in the resources now; what this module must guarantee is
+      // that every status has a key to look up and a colour to render.
+      const key = outboxStatusKey(status);
+      expect(key).toBeTruthy();
+      expect(i18n.exists(key!, { ns: 'offline' })).toBe(true);
       expect(OUTBOX_STATUS_COLORS[status]).toBeTruthy();
     }
   });

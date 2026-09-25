@@ -9,13 +9,14 @@ import { lookupsApi } from '../../api/attendance';
 import { getApiError } from '../../api/farmApi';
 import LookupQuickAddSelect from '../../components/LookupQuickAddSelect';
 import type { DietPlan, DietPlanItem, FeedType } from '../../types';
+import { useTranslation } from 'react-i18next';
 
 interface LookupOption {
   id: string;
   name: string;
 }
 
-const DietPlansPage: React.FC = () => {
+const DietPlansPage: React.FC = () => {const { t: translate } = useTranslation('feed'); 
   const [plans, setPlans] = useState<DietPlan[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
@@ -82,10 +83,10 @@ const DietPlansPage: React.FC = () => {
       const values = await form.validateFields();
       if (editing) {
         await dietPlansApi.update(editing.id, values);
-        message.success('Diet plan updated');
+        message.success(translate('dietPlanUpdated'));
       } else {
         await dietPlansApi.create(values);
-        message.success('Diet plan created');
+        message.success(translate('dietPlanCreated'));
       }
       setModalOpen(false);
       loadPlans();
@@ -98,7 +99,7 @@ const DietPlansPage: React.FC = () => {
   const handleDelete = async (id: string) => {
     try {
       await dietPlansApi.remove(id);
-      message.success('Diet plan deleted');
+      message.success(translate('dietPlanDeleted'));
       loadPlans();
     } catch (err) {
       message.error(getApiError(err));
@@ -110,7 +111,7 @@ const DietPlansPage: React.FC = () => {
     try {
       const values = await itemForm.validateFields();
       await dietPlansApi.addItem(itemsTarget.id, values);
-      message.success('Item added');
+      message.success(translate('itemAdded'));
       itemForm.resetFields();
       loadPlans();
     } catch (err) {
@@ -123,7 +124,7 @@ const DietPlansPage: React.FC = () => {
     if (!itemsTarget) return;
     try {
       await dietPlansApi.removeItem(itemsTarget.id, itemId);
-      message.success('Item removed');
+      message.success(translate('itemRemoved'));
       loadPlans();
     } catch (err) {
       message.error(getApiError(err));
@@ -131,9 +132,9 @@ const DietPlansPage: React.FC = () => {
   };
 
   const columns: ColumnsType<DietPlan> = [
-    { title: 'Name', dataIndex: 'name' },
+    { title: translate('name'), dataIndex: 'name' },
     {
-      title: 'Targets',
+      title: translate('targets'),
       render: (_, record) => (
         <Space size={4} wrap>
           {record.animalTypeName && <Tag>{record.animalTypeName}</Tag>}
@@ -141,30 +142,30 @@ const DietPlansPage: React.FC = () => {
           {record.ageCategoryName && <Tag>{record.ageCategoryName}</Tag>}
           {(record.minWeightKg || record.maxWeightKg) && (
             <Tag>
-              {record.minWeightKg ?? 0}–{record.maxWeightKg ?? '∞'} kg
+              {record.minWeightKg ?? 0}–{record.maxWeightKg ?? '∞'} {translate('kg')}
             </Tag>
           )}
           {!record.animalTypeName && !record.breedName && !record.ageCategoryName &&
-            !record.minWeightKg && !record.maxWeightKg && <span>All animals</span>}
+            !record.minWeightKg && !record.maxWeightKg && <span>{translate('allAnimals')}</span>}
         </Space>
       ),
     },
-    { title: 'Items', dataIndex: 'items', render: (items: DietPlanItem[]) => items.length },
-    { title: 'Schedules', dataIndex: 'scheduleCount', align: 'center' },
+    { title: translate('items'), dataIndex: 'items', render: (items: DietPlanItem[]) => items.length },
+    { title: translate('schedules'), dataIndex: 'scheduleCount', align: 'center' },
     {
-      title: 'Active',
+      title: translate('active'),
       dataIndex: 'isActive',
       render: (active: boolean) =>
-        active ? <Tag color="green">Active</Tag> : <Tag color="default">Inactive</Tag>,
+        active ? <Tag color="green">{translate('active')}</Tag> : <Tag color="default">{translate('inactive')}</Tag>,
     },
     {
-      title: 'Actions',
+      title: translate('actions'),
       render: (_, record) => (
         <Space>
-          <Button size="small" onClick={() => setItemsTarget(record)}>Items</Button>
-          <Button size="small" onClick={() => openEdit(record)}>Edit</Button>
-          <Popconfirm title="Delete this diet plan?" onConfirm={() => handleDelete(record.id)}>
-            <Button size="small" danger>Delete</Button>
+          <Button size="small" onClick={() => setItemsTarget(record)}>{translate('items')}</Button>
+          <Button size="small" onClick={() => openEdit(record)}>{translate('edit')}</Button>
+          <Popconfirm title={translate('deleteThisDietPlan')} onConfirm={() => handleDelete(record.id)}>
+            <Button size="small" danger>{translate('delete')}</Button>
           </Popconfirm>
         </Space>
       ),
@@ -172,17 +173,17 @@ const DietPlansPage: React.FC = () => {
   ];
 
   const itemColumns: ColumnsType<DietPlanItem> = [
-    { title: 'Feed Type', dataIndex: 'feedTypeName' },
+    { title: translate('feedType'), dataIndex: 'feedTypeName' },
     {
-      title: 'Quantity per Feeding',
+      title: translate('quantityPerFeeding'),
       dataIndex: 'quantityPerFeeding',
       render: (v: number, r) => `${v} ${r.unitName}`,
     },
     {
       title: '',
       render: (_, record) => (
-        <Popconfirm title="Remove this item?" onConfirm={() => handleRemoveItem(record.id)}>
-          <Button size="small" danger>Remove</Button>
+        <Popconfirm title={translate('removeThisItem')} onConfirm={() => handleRemoveItem(record.id)}>
+          <Button size="small" danger>{translate('remove')}</Button>
         </Popconfirm>
       ),
     },
@@ -190,62 +191,62 @@ const DietPlansPage: React.FC = () => {
 
   return (
     <Card
-      title="Diet Plans"
+      title={translate('dietPlans')}
       extra={
         <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
-          New Diet Plan
+          {translate('newDietPlan')}
         </Button>
       }
     >
       <Table rowKey="id" columns={columns} dataSource={plans} loading={loading} pagination={false} />
 
       <Modal
-        title={editing ? 'Edit Diet Plan' : 'New Diet Plan'}
+        title={editing ? translate('editDietPlan') : translate('newDietPlan')}
         open={modalOpen}
         onOk={handleSave}
         onCancel={() => setModalOpen(false)}
         destroyOnClose
       >
         <Form form={form} layout="vertical">
-          <Form.Item name="name" label="Name" rules={[{ required: true, message: 'Name is required' }]}>
+          <Form.Item name="name" label={translate('name')} rules={[{ required: true, message: 'Name is required' }]}>
             <Input maxLength={100} />
           </Form.Item>
-          <Form.Item name="animalTypeId" label="Animal Type">
+          <Form.Item name="animalTypeId" label={translate('animalType')}>
             <LookupQuickAddSelect
               kind="animalType"
               allowClear
-              placeholder="Any"
+              placeholder={translate('any')}
               options={animalTypes.map((t) => ({ value: t.id, label: t.name }))}
               onCreated={() => loadOptions()}
             />
           </Form.Item>
-          <Form.Item name="ageCategoryId" label="Age Category">
+          <Form.Item name="ageCategoryId" label={translate('ageCategory')}>
             <LookupQuickAddSelect
               kind="ageCategory"
               allowClear
-              placeholder="Any"
+              placeholder={translate('any')}
               options={ageCategories.map((c) => ({ value: c.id, label: c.name }))}
               onCreated={() => loadOptions()}
             />
           </Form.Item>
           <Row gutter={[16, 16]}>
             <Col xs={24} sm={12}>
-              <Form.Item name="minWeightKg" label="Min Weight (kg)">
+              <Form.Item name="minWeightKg" label={translate('minWeightKg')}>
                 <InputNumber min={0} style={{ width: '100%' }} />
               </Form.Item>
             </Col>
             <Col xs={24} sm={12}>
-              <Form.Item name="maxWeightKg" label="Max Weight (kg)">
+              <Form.Item name="maxWeightKg" label={translate('maxWeightKg')}>
                 <InputNumber min={0} style={{ width: '100%' }} />
               </Form.Item>
             </Col>
           </Row>
           {editing && (
-            <Form.Item name="isActive" label="Active" valuePropName="checked">
+            <Form.Item name="isActive" label={translate('active')} valuePropName="checked">
               <Switch />
             </Form.Item>
           )}
-          <Form.Item name="notes" label="Notes">
+          <Form.Item name="notes" label={translate('notes')}>
             <Input.TextArea rows={2} maxLength={500} />
           </Form.Item>
         </Form>
@@ -262,17 +263,17 @@ const DietPlansPage: React.FC = () => {
           <Form.Item name="feedTypeId" rules={[{ required: true, message: 'Required' }]}>
             <LookupQuickAddSelect
               kind="feedType"
-              placeholder="Feed type"
+              placeholder={translate('feedType2')}
               style={{ width: 180 }}
               options={feedTypes.map((t) => ({ value: t.id, label: `${t.name} (${t.unitName})` }))}
               onCreated={() => loadOptions()}
             />
           </Form.Item>
           <Form.Item name="quantityPerFeeding" rules={[{ required: true, message: 'Required' }]}>
-            <InputNumber min={0.01} placeholder="Qty" />
+            <InputNumber min={0.01} placeholder={translate('qty')} />
           </Form.Item>
           <Button type="primary" icon={<PlusOutlined />} onClick={handleAddItem}>
-            Add
+            {translate('add')}
           </Button>
         </Form>
       </Drawer>

@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import type { ReactNode } from 'react';
 import { Alert, Button, Card, Input, Select, Space, Steps, Table, Tag, Typography, Upload, message } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { DownloadOutlined, InboxOutlined } from '@ant-design/icons';
@@ -6,6 +7,8 @@ import { useNavigate } from 'react-router-dom';
 import type { ImportApi, ImportCommit, ImportFieldMap, ImportMapping, ImportPreview, ImportRow } from '../api/importApi';
 import { getApiError } from '../api/farmApi';
 import { exportCsv } from '../utils/export';
+import { useTranslation } from 'react-i18next';
+import { renderKeyedMessage } from '../i18n/serverMessage';
 
 /** Where a field's value comes from, as the mapping table models it. */
 type Source = 'ignore' | 'constant' | `col:${number}`;
@@ -80,6 +83,12 @@ export interface ImportWizardProps {
   templateHeaders: readonly string[];
   templateExampleRow: readonly string[];
   api: ImportApi;
+  /**
+   * An entity-specific limitation shown on the review step, before commit. It exists for
+   * the expense and income importers, which have no duplicate rule because their entity
+   * has no identifier — a disclosure rather than a per-entity copy of this component.
+   */
+  notice?: ReactNode;
 }
 
 const ImportWizard: React.FC<ImportWizardProps> = ({
@@ -91,7 +100,8 @@ const ImportWizard: React.FC<ImportWizardProps> = ({
   templateHeaders,
   templateExampleRow,
   api,
-}) => {
+  notice,
+}) => {const { t } = useTranslation('imports'); 
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
   const [file, setFile] = useState<File | null>(null);
@@ -166,7 +176,7 @@ const ImportWizard: React.FC<ImportWizardProps> = ({
       if (response.data.importedCount > 0) {
         message.success(`Imported ${response.data.importedCount} ${countLabel}`);
       } else {
-        message.warning('Nothing was imported — see the rows below');
+        message.warning(t('nothingWasImportedSeeTheRowsBelow'));
       }
     } catch (err) {
       setError(getApiError(err));
@@ -186,9 +196,9 @@ const ImportWizard: React.FC<ImportWizardProps> = ({
   };
 
   const invalidColumns: ColumnsType<ImportRow> = [
-    { title: 'Row', dataIndex: 'rowNumber', key: 'rowNumber', width: 80 },
+    { title: t('row'), dataIndex: 'rowNumber', key: 'rowNumber', width: 80 },
     {
-      title: 'Field',
+      title: t('field'),
       key: 'field',
       width: 180,
       render: (_, row) => (
@@ -200,12 +210,12 @@ const ImportWizard: React.FC<ImportWizardProps> = ({
       ),
     },
     {
-      title: 'Problem',
+      title: t('problem'),
       key: 'problem',
       render: (_, row) => (
-        <ul style={{ margin: 0, paddingLeft: 18 }}>
+        <ul style={{ margin: 0, paddingInlineStart: 18 }}>
           {row.errors.map((rowError, index) => (
-            <li key={index}>{rowError.message}</li>
+            <li key={index}>{renderKeyedMessage(rowError.messageKey, rowError.messageArgs, rowError.message)}</li>
           ))}
         </ul>
       ),
@@ -213,7 +223,7 @@ const ImportWizard: React.FC<ImportWizardProps> = ({
   ];
 
   const sampleColumns: ColumnsType<ImportRow> = [
-    { title: 'Row', dataIndex: 'rowNumber', key: 'rowNumber', width: 80 },
+    { title: t('row'), dataIndex: 'rowNumber', key: 'rowNumber', width: 80 },
     ...(preview?.fields ?? [])
       .filter((field) => field.required)
       .map((field) => ({
@@ -226,7 +236,7 @@ const ImportWizard: React.FC<ImportWizardProps> = ({
   return (
     <Card
       title={title}
-      extra={<Button icon={<DownloadOutlined />} onClick={() => exportCsv(templateFileName, [...templateHeaders], [[...templateExampleRow]])}>Download CSV template</Button>}
+      extra={<Button icon={<DownloadOutlined />} onClick={() => exportCsv(templateFileName, [...templateHeaders], [[...templateExampleRow]])}>{t('downloadCsvTemplate')}</Button>}
     >
       <Steps
         current={step}
@@ -254,17 +264,16 @@ const ImportWizard: React.FC<ImportWizardProps> = ({
             }}
           >
             <p className="ant-upload-drag-icon"><InboxOutlined /></p>
-            <p className="ant-upload-text">Click or drag a CSV or Excel file here</p>
+            <p className="ant-upload-text">{t('clickOrDragACsvOrExcelFile')}</p>
             <p className="ant-upload-hint">
-              Nothing is imported until you review the file. Your spreadsheet does not need
+              {t('nothingIsImportedUntilYouReviewTheFile')}
               {' '}
-              the same column names as this app — the next step maps them.
+              {t('theSameColumnNamesAsThisAppThe')}
             </p>
           </Upload.Dragger>
 
           <Typography.Text type="secondary">
-            Not sure what a file should look like? Download the template above: it opens in
-            Excel and can be uploaded again unchanged.
+            {t('notSureWhatAFileShouldLookLike')}
           </Typography.Text>
         </Space>
       )}
@@ -280,6 +289,9 @@ const ImportWizard: React.FC<ImportWizardProps> = ({
 
           <Space direction="vertical" style={{ width: '100%' }} size="small">
             {preview.fields.map((field) => {
+              // `'ignore'` is the *value* the mapping is built from, not copy: translating it
+              // here produced a source the Select could not match and `toMapping` could not
+              // recognise, so an untouched field stopped being sent as explicitly ignored.
               const value = draft[field.key] ?? { source: 'ignore' as Source, constant: '' };
               const suggestions = preview.lookups[field.key];
 
@@ -288,7 +300,7 @@ const ImportWizard: React.FC<ImportWizardProps> = ({
                   <div style={{ width: 230 }}>
                     <Space size={4}>
                       <Typography.Text strong>{field.label}</Typography.Text>
-                      {field.required && <Tag color="red">required</Tag>}
+                      {field.required && <Tag color="red">{t('required')}</Tag>}
                     </Space>
                     <div style={{ color: '#8c8c8c', fontSize: 12 }}>{field.hint}</div>
                   </div>
@@ -304,12 +316,12 @@ const ImportWizard: React.FC<ImportWizardProps> = ({
                       }))
                     }
                     options={[
-                      { value: 'ignore', label: 'Ignore' },
+                      { value: 'ignore', label: t('ignore') },
                       ...preview.headers.map((header, index) => ({
                         value: `col:${index}` as Source,
-                        label: `Column ${index + 1}: ${header}`,
+                        label: t('columnNumber', { number: index + 1, header }),
                       })),
-                      { value: 'constant', label: 'Same value for every row' },
+                      { value: 'constant', label: t('sameValueForEveryRow') },
                     ]}
                   />
 
@@ -317,7 +329,7 @@ const ImportWizard: React.FC<ImportWizardProps> = ({
                     <Input
                       aria-label={`constant-${field.key}`}
                       style={{ width: 240 }}
-                      placeholder={suggestions?.length ? `e.g. ${suggestions.slice(0, 3).join(', ')}` : 'Value for every row'}
+                      placeholder={suggestions?.length ? `e.g. ${suggestions.slice(0, 3).join(', ')}` : t('valueForEveryRow')}
                       value={value.constant}
                       onChange={(event) =>
                         setDraft((previous) => ({
@@ -333,37 +345,41 @@ const ImportWizard: React.FC<ImportWizardProps> = ({
           </Space>
 
           <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-            <Typography.Text strong>Date format</Typography.Text>
+            <Typography.Text strong>{t('dateFormat')}</Typography.Text>
             <Input
               aria-label="date-format"
               style={{ width: 200 }}
-              placeholder="yyyy-MM-dd"
+              placeholder={t('yyyyMmDd')}
               value={dateFormat}
               onChange={(event) => setDateFormat(event.target.value)}
             />
             <Typography.Text type="secondary">
-              Only needed if your dates are ambiguous, such as 01/02/2023.
+              {t('onlyNeededIfYourDatesAreAmbiguousSuch')}
             </Typography.Text>
           </div>
 
           <Space>
             <Button type="primary" loading={checking} onClick={() => void handleCheck()}>
-              Check file
+              {t('checkFile')}
             </Button>
-            <Button onClick={() => setStep(0)}>Choose another file</Button>
+            <Button onClick={() => setStep(0)}>{t('chooseAnotherFile')}</Button>
           </Space>
         </Space>
       )}
 
       {step === 2 && preview && (
         <Space direction="vertical" style={{ width: '100%' }} size="large">
+          {notice && (
+            <Alert type="info" showIcon message={t('beforeYouImport')} description={notice} />
+          )}
+
           <Alert
             type={preview.invalidRowCount > 0 ? 'warning' : 'success'}
             showIcon
             message={`${preview.totalRows} row(s): ${preview.validRowCount} valid, ${preview.invalidRowCount} with problems`}
             description={
               preview.invalidRowCount > 0
-                ? 'The import is all-or-nothing, so nothing will be written until every row is valid. Correct these rows in your file and upload it again.'
+                ? t('theImportIsAllOrNothingSoNothing')
                 : `Everything checks out. Importing writes all of these ${plural} together.`
             }
           />
@@ -380,13 +396,13 @@ const ImportWizard: React.FC<ImportWizardProps> = ({
 
           {preview.truncated && (
             <Typography.Text type="secondary">
-              Only the first {preview.invalidRows.length} problem rows are listed — fix these and re-check.
+              {t('onlyTheFirst')} {preview.invalidRows.length} {t('problemRowsAreListedFixTheseAndRe')}
             </Typography.Text>
           )}
 
           {preview.sampleValidRows.length > 0 && (
             <>
-              <Typography.Text strong>Ready to import (first {preview.sampleValidRows.length})</Typography.Text>
+              <Typography.Text strong>{t('readyToImportFirst')} {preview.sampleValidRows.length})</Typography.Text>
               <Table rowKey="rowNumber" size="small" columns={sampleColumns} dataSource={preview.sampleValidRows} pagination={false} />
             </>
           )}
@@ -398,9 +414,9 @@ const ImportWizard: React.FC<ImportWizardProps> = ({
               disabled={preview.invalidRowCount > 0 || preview.validRowCount === 0}
               onClick={() => void handleCommit()}
             >
-              Import {preview.validRowCount} {countLabel}
+              {t('import')} {preview.validRowCount} {countLabel}
             </Button>
-            <Button onClick={() => setStep(1)}>Adjust mapping</Button>
+            <Button onClick={() => setStep(1)}>{t('adjustMapping')}</Button>
           </Space>
         </Space>
       )}
@@ -413,12 +429,12 @@ const ImportWizard: React.FC<ImportWizardProps> = ({
             message={
               result.importedCount > 0
                 ? `Imported ${result.importedCount} ${countLabel}`
-                : 'Nothing was imported'
+                : t('nothingWasImported')
             }
             description={
               result.importedCount > 0
                 ? `Every ${entityName} in the file was created exactly as the add form would have created it.`
-                : 'The file no longer passes validation. The rows below say why — nothing was written.'
+                : t('theFileNoLongerPassesValidationTheRows')
             }
           />
 
@@ -428,7 +444,7 @@ const ImportWizard: React.FC<ImportWizardProps> = ({
 
           <Space>
             <Button type="primary" onClick={() => navigate(listPath)}>{listLabel}</Button>
-            <Button onClick={restart}>Import another file</Button>
+            <Button onClick={restart}>{t('importAnotherFile')}</Button>
           </Space>
         </Space>
       )}

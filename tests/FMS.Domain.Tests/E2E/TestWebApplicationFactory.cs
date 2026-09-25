@@ -135,6 +135,8 @@ public class TestWebApplicationFactory : IDisposable
                     // Register all application services needed by controllers
                     services.AddScoped<FMS.Application.Common.ICurrentUserService, FMS.Infrastructure.Auth.CurrentUserService>();
                     services.AddScoped<FMS.Application.Inventory.IInventoryService, FMS.Infrastructure.Inventory.InventoryService>();
+                    services.AddScoped<FMS.Application.Inventory.ISupplierService, FMS.Infrastructure.Inventory.SupplierService>();
+                    services.AddScoped<FMS.Application.Inventory.ICustomerService, FMS.Infrastructure.Inventory.CustomerService>();
                     services.AddScoped<FMS.Application.Feed.IFeedService, FMS.Infrastructure.Feed.FeedService>();
                     services.AddScoped<FMS.Application.Finance.IFinanceService, FMS.Infrastructure.Finance.FinanceService>();
                     services.AddScoped<FMS.Application.Health.IVaccineService, FMS.Infrastructure.Health.VaccineService>();
@@ -181,6 +183,20 @@ public class TestWebApplicationFactory : IDisposable
                     services.AddScoped<FMS.Infrastructure.Jobs.HealthStatusRecalculationJob>();
                     services.AddSingleton<FMS.Application.Jobs.IJobStatusProvider, Jobs.FakeJobStatusProvider>();
 
+                    // Full-farm export (phase 6.2). The request path needs a job client to
+                    // enqueue with, and the test host runs no Hangfire server, so the
+                    // recording stand-in is registered as the container's implementation:
+                    // tests assert what was enqueued, then invoke the job directly — the
+                    // same entry point Hangfire would call.
+                    services.AddSingleton<Hangfire.IBackgroundJobClient, Jobs.RecordingBackgroundJobClient>();
+                    services.Configure<FMS.Application.Farm.Export.FarmExportOptions>(_ => { });
+                    services.AddScoped<FMS.Infrastructure.Farm.Export.FarmExportAssembler>();
+                    services.AddScoped<FMS.Application.Farm.Export.IFarmExportQueue,
+                        FMS.API.Jobs.HangfireFarmExportQueue>();
+                    services.AddScoped<FMS.Application.Farm.Export.IFarmExportService,
+                        FMS.Infrastructure.Farm.Export.FarmExportService>();
+                    services.AddScoped<FMS.Infrastructure.Jobs.FarmExportJob>();
+
                     // Notifications. The dispatcher is a plain DI-resolvable class
                     // (Hangfire activates it the same way), so tests can invoke it
                     // directly and then exercise the HTTP surface over the result.
@@ -206,6 +222,14 @@ public class TestWebApplicationFactory : IDisposable
                         FMS.Infrastructure.Import.InventoryImportService>();
                     services.AddScoped<FMS.Application.Employees.Import.IEmployeeImportService,
                         FMS.Infrastructure.Import.EmployeeImportService>();
+                    services.AddScoped<FMS.Application.Inventory.Import.ISupplierImportService,
+                        FMS.Infrastructure.Import.SupplierImportService>();
+                    services.AddScoped<FMS.Application.Inventory.Import.ICustomerImportService,
+                        FMS.Infrastructure.Import.CustomerImportService>();
+                    services.AddScoped<FMS.Application.Finance.Import.IExpenseImportService,
+                        FMS.Infrastructure.Import.ExpenseImportService>();
+                    services.AddScoped<FMS.Application.Finance.Import.IIncomeImportService,
+                        FMS.Infrastructure.Import.IncomeImportService>();
                     services.AddScoped<FluentValidation.IValidator<FMS.Application.Animal.CreateAnimalRequest>,
                         FMS.API.Validation.Animals.CreateAnimalRequestValidator>();
 

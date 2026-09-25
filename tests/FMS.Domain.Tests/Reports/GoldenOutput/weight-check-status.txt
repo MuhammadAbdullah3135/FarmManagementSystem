@@ -1,0 +1,16 @@
+status|animal-00|RP-0000|Cow 0|last=0|due=30|Upcoming|Upcoming
+status|animal-00|RP-0000|Cow 0|last=0|due=31|Upcoming|Upcoming
+status|animal-01|RP-0001|Cow 1|last=-12|due=18|Upcoming|Upcoming
+status|animal-01|RP-0001|Cow 1|last=-12|due=19|Upcoming|Upcoming
+status|animal-02|RP-0002|Cow 2|last=-24|due=6|Due|Due
+status|animal-02|RP-0002|Cow 2|last=-24|due=7|Due|Due
+status|animal-03|RP-0003|Cow 3|last=-36|due=-5|Overdue|Overdue
+status|animal-03|RP-0003|Cow 3|last=-36|due=-6|Overdue|Overdue
+status|animal-04|RP-0004|Cow 4|last=-48|due=-17|Overdue|Overdue
+status|animal-04|RP-0004|Cow 4|last=-48|due=-18|Overdue|Overdue
+status|animal-05|RP-0005|Cow 5|last=-60|due=-29|Overdue|Overdue
+status|animal-05|RP-0005|Cow 5|last=-60|due=-30|Overdue|Overdue
+status|animal-06|RP-0006|Cow 6|last=-72|due=-41|Overdue|Overdue
+status|animal-06|RP-0006|Cow 6|last=-72|due=-42|Overdue|Overdue
+status|animal-07|RP-0007|Cow 7|last=-84|due=-53|Overdue|Overdue
+status|animal-07|RP-0007|Cow 7|last=-84|due=-54|Overdue|Overdue

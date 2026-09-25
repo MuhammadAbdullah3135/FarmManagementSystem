@@ -1,6 +1,8 @@
 import { Empty, Space, Typography } from 'antd';
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 import type { PieLabelRenderProps } from 'recharts';
+import { useTranslation } from 'react-i18next';
+import { formatNumber } from '../i18n/format';
 
 const { Text } = Typography;
 
@@ -46,15 +48,19 @@ export default function BreakdownPieChart({
   colors = PIE_COLORS,
   valueFormatter,
   showLegend = true,
-  emptyText = 'No data',
+  emptyText,
 }: BreakdownPieChartProps) {
+  // A chart's empty state is copy like any other: the default comes from the shared
+  // `common` namespace so it is translated even when a caller passes no override.
+  const { t } = useTranslation('common');
+  const emptyLabel = emptyText ?? t('noData');
   // Colour is resolved against the original position, so dropping an empty slice cannot shift the palette.
   const slices = data.map((d, i) => ({ ...d, color: d.color ?? colors[i % colors.length] }));
   const total = slices.reduce((sum, d) => sum + d.value, 0);
   const percentOf = (value: number) => (total === 0 ? 0 : Math.round((value / total) * 100));
-  const formatValue = (value: number) => (valueFormatter ? valueFormatter(value) : value.toLocaleString());
+  const formatValue = (value: number) => (valueFormatter ? valueFormatter(value) : formatNumber(value));
 
-  if (total <= 0) return <Empty description={emptyText} />;
+  if (total <= 0) return <Empty description={emptyLabel} />;
 
   // Zero-value slices are dropped rather than handed to recharts: it hides their arc but still draws a
   // label at the collapsed mid-angle, which printed two categories' text on top of each other.
@@ -107,7 +113,7 @@ export default function BreakdownPieChart({
         <Space size="large" wrap style={{ width: '100%', justifyContent: 'center', marginTop: 8 }}>
           {slices.map(d => (
             <Text key={d.name} style={{ fontSize: 12, whiteSpace: 'nowrap' }}>
-              <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: d.color, marginRight: 6 }} />
+              <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: d.color, marginInlineEnd: 6 }} />
               {`${d.name} ${formatValue(d.value)} (${percentOf(d.value)}%)`}
             </Text>
           ))}

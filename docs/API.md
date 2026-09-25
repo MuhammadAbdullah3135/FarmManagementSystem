@@ -48,13 +48,17 @@ Configuration (`Notifications` section): `EmailMinSeverityOnByDefault` (default 
 
 ## Bulk import
 
-One pipeline serves three entities — animals, **employees** and **inventory items** — over the same two endpoints per entity. Only the route prefix and the field vocabulary differ; the mapping, validation, duplicate and commit behaviour below is identical for all three, because the differences live in the importer's own row rules rather than in the wire shape.
+One pipeline serves seven entities — animals, **employees**, **inventory items**, **suppliers**, **customers**, **expenses** and **income records** — over the same two endpoints per entity. Only the route prefix and the field vocabulary differ; the mapping, validation, duplicate and commit behaviour below is identical for all of them, because the differences live in the importer's own row rules rather than in the wire shape. (Expenses and income records are the one deliberate exception to the duplicate rule — see below.)
 
 | Entity | Route prefix | Authorized exactly like |
 |---|---|---|
 | Animals | `/api/farm/{farmId}/animals/import` | `POST /api/farm/{farmId}/animals` |
 | Employees | `/api/farm/{farmId}/employees/import` | `POST /api/farm/{farmId}/employees` |
 | Inventory items | `/api/farm/{farmId}/inventory-items/import` | `POST /api/farm/{farmId}/inventory-items` |
+| Suppliers | `/api/farm/{farmId}/inventory/suppliers/import` | `POST /api/farm/{farmId}/inventory/suppliers` |
+| Customers | `/api/farm/{farmId}/inventory/customers/import` | `POST /api/farm/{farmId}/inventory/customers` |
+| Expenses | `/api/farm/{farmId}/finance/expenses/import` | `POST /api/farm/{farmId}/finance/expenses` |
+| Income records | `/api/farm/{farmId}/finance/income-records/import` | `POST /api/farm/{farmId}/finance/income-records` |
 
 Importing therefore never becomes a way around a role that creating is subject to. Every route is farm-scoped like its single-record counterpart (X-Farm-Id header, membership enforced, route/header farm match). Both endpoints accept `multipart/form-data` with the file (`file`) and an optional JSON column mapping (`mapping`); CSV and `.xlsx` are parsed server-side, so any client imports through the same pipeline. `.xls` is rejected with a message asking for `.xlsx` or CSV.
 
@@ -68,16 +72,46 @@ What each importer resolves against the farm:
 - **Animals** — animal type, breed, sex, status and location by name; *sire tag* and *dam tag* resolve to an existing animal in the farm or to another row of the same file. The identifier is the tag number.
 - **Employees** — the department and the employee role by name (a name matching nothing, or more than one record, is a row error naming what was in the file), and the salary type, which must be one of `Monthly`, `Weekly`, `Daily`, `Hourly`. The identifier is the email address; an employee with no email is unidentified and can never be a duplicate.
 - **Inventory items** — nothing: category and location are free text on an item rather than shared records. The identifier is the item name, which the unique index on `(FarmId, Name)` also backs.
+- **Suppliers** — nothing: contact information and the products supplied are free text. The identifier is the supplier name, which the unique index on `(FarmId, Name)` also backs.
+- **Customers** — nothing to resolve; the identifier is the customer name, backed by the same unique index on `(FarmId, Name)`.
+- **Expenses** — the expense category and the payment method by name (each must match exactly one record in the farm), plus an optional location by name and an optional *animal tag* that resolves to an animal in the farm for cost traceability.
+- **Income records** — the same shape against the income vocabulary: income category and payment method by name, plus an optional location and animal tag.
 
 `mapping` shape: `{ "fields": { "tagNumber": { "column": 0 }, "status": { "constant": "Active" } }, "dateFormat": "dd/MM/yyyy" }`. Dates are read from ISO-8601 or a real Excel date cell; a slashed date is accepted only when it cannot be read two ways, otherwise the row is reported as ambiguous so the caller can set `dateFormat` instead of the import guessing.
 
-Row validation reuses the create endpoint's own rules — the same rule function the single-record service runs (`AnimalRules`/`AnimalService`, `EmployeeRules`/`EmployeeService`, `InventoryItemRules`/`InventoryService`) — so a row cannot be accepted here that a hand-entered record would be rejected for, and the error text is the endpoint's own sentence rather than a parallel copy of it. An identifier already used in the farm is an error (never a silent skip and never an overwrite), as is one repeated inside the file.
+Row validation reuses the create endpoint's own rules — the same rule function the single-record service runs (`AnimalRules`/`AnimalService`, `EmployeeRules`/`EmployeeService`, `InventoryItemRules`/`InventoryService`, `SupplierRules`/`SupplierService`, `CustomerRules`/`CustomerService`, `ExpenseRules`/`FinanceService`, `IncomeRules`/`FinanceService`) — so a row cannot be accepted here that a hand-entered record would be rejected for, and the error text is the endpoint's own sentence rather than a parallel copy of it. An identifier already used in the farm is an error (never a silent skip and never an overwrite), as is one repeated inside the file.
 
 Employee imports additionally enforce the field's length caps (a 30-character phone, 200-character email, 500-character address, 1000-character note) and email uniqueness in **both** paths: an import that may create what `POST /employees` refuses is not parity, it is a bypass.
+
+**Duplicate policy.** Where an entity has an identifier, a duplicate is an error: an animal's tag number, an inventory item's name, an employee's email, and a supplier's or customer's name. A financial record has no such identifier — there is no code column, and two expenses (or two income records) of the same amount on the same day are legitimately distinct transactions — and `POST /finance/expenses` and `POST /finance/income-records` enforce no duplicate. The expense and income importers therefore perform **no duplicate detection**: inventing a heuristic key (date + amount + category) would reject legitimate rows and make a file stricter than the add form. This is a disclosed limitation rather than an oversight, and the wizard shows it on the review step before commit.
 
 `commit` re-reads and re-validates the uploaded file rather than trusting a preview, then writes the whole batch in one `SaveChanges` — one transaction — so `importedCount` is either `0` or `totalRows`. A file with any invalid row answers **200** with `importedCount: 0` plus the problem rows (the shape `POST /animals/bulk/status` already uses); file-level problems (missing file, oversized file, unreadable mapping, unsupported format, required field unmapped) answer **400**.
 
 Limits (`Import` section): `MaxRows` (5000), `MaxFileBytes` (10 MB), `MaxReportedRows` (500 — how many problem rows a response carries, not how many exist), `SampleValidRows` (10). Before this subphase the same keys lived in an `AnimalImport` section; that spelling is still read for any key the `Import` section leaves unset, so a deployment that had raised `MaxRows` keeps its raised limit. `Import` wins whenever both are present, and the base `appsettings.json` deliberately defines neither — a default there would set the keys the fallback tests for.
+
+## Full-farm export
+
+`POST /api/farm/{farmId}/export` — queue an export of the farm's whole dataset.
+`GET /api/farm/{farmId}/export` — the export's state plus the archive's manifest (200 with a null body when the farm has never been exported).
+`GET /api/farm/{farmId}/export/download` — the archive: a redirect to a short-lived presigned URL on object storage, streamed from this endpoint on local disk. Never publicly addressable, and the path always comes from the requesting farm's own record.
+
+Farm-scoped like every other `/api/farm/{farmId}/…` route (X-Farm-Id header, membership enforced, route/header farm match), and authorized exactly as farm administration is: `SystemOwner` and `FarmManager`. The archive is every record the farm holds at once — finance, payroll, health, inventory — so it sits behind the same farm-admin boundary as member management, and it is the single most sensitive read in the application.
+
+**Format: one ZIP of per-entity CSVs**, UTF-8 with a BOM and `\n` line endings — the same byte shape the app's own exports produce and its own import reader accepts. Not a multi-sheet workbook: CSV is what the importers already read, so the seven re-importable files are a format the app consumes rather than a second representation to keep in step, and a ZIP deflates as it goes, so a farm with years of history costs a streaming read rather than a workbook object graph held in memory.
+
+**Built by the background job subsystem, not inside the request.** The request records the export, hands it to the job queue and answers — one round trip regardless of how much history the farm holds, which is what makes a timeout structurally impossible rather than merely unlikely. The job assembles the archive, stores it, records the outcome and writes an in-app `ExportReady` notification to whoever asked. With `Jobs:Enabled = false` nothing would ever run it, so the request refuses with **503** and a message naming the setting rather than accepting work nobody will do.
+
+**What is in it.** The seven entities that have an importer come first, exported in that importer's own column vocabulary — the labels, in the importer's own order — so each file re-imports with no column mapping at all. Every other farm-scoped record table follows as its own CSV: the lookups that give those records their meaning (animal types, breeds, statuses, locations, categories, payment methods, …) and the transactional tables no importer covers (weight records, feed records, medical records, tasks, attendance, payroll, breeding, audit log, notifications, membership, …). Ids are kept alongside the resolved names, so a file is both readable and unambiguous. Soft-deleted rows are **included**, with their `isDeleted`/`deletedAt`/`deletedBy` values: an archive that quietly drops history is not a full archive.
+
+Deliberately excluded, each with its reason in the manifest: derived data (the health-status snapshot, and every report endpoint including cost per animal — reproducible from these files, while the reverse is not true), credentials (`RefreshToken`, `PasswordResetToken`), the offline-sync idempotency ledger (`ProcessedMutation`), the account and its members' sign-in records, and the **bytes** of uploaded files — animal images and documents appear as their metadata rows with their storage paths, but the files themselves are not in the archive.
+
+`manifest.json` carries the farm id and name, the generation time, the format, every file's row count and column list, the exclusions with their reasons, and the disclosed limitations. `README.txt` is the same information in prose. Both travel inside the ZIP; the manifest is also stored on the record so the status endpoint can report it without opening the archive.
+
+**Lifecycle.** One record per farm (a unique index): `Queued` → `Running` → `Completed`/`Failed`. A second request while a build is in flight answers with the same export instead of queueing another; a request after a build re-queues it, and the previously built archive stays downloadable meanwhile — a failed rebuild never takes away the copy the farm already had. On completion an in-app notification links to `/dashboard/configuration/export`, where the archive can be downloaded. That notification type is deliberately **not** in `NotificationAlertTypes.All`, which is the dashboard's alert vocabulary and the dispatcher's auto-resolve set: adding it there would have the scheduled dispatch resolve it as a cleared condition minutes after it arrived.
+
+Limits (`Export` section): `MaxArchiveBytes` (512 MB — an export that silently produced a truncated file would look complete to whoever downloaded it, so it is refused instead), `IncludeFarmNameInFileName` (true). Re-exporting replaces the previous archive, so a farm's storage cost is bounded to one file without a retention job.
+
+Re-importing the money files deserves the warning it already carries on the import side: expenses and income records have no identifier, so these importers perform no duplicate detection. Importing `expenses.csv` or `income-records.csv` into a farm that already holds those records will create them a second time.
 
 ## Cost per animal report
 

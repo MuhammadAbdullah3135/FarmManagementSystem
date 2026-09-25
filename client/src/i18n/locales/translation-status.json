@@ -1,0 +1,14 @@
+{
+  "es": {
+    "source": "machine-translation",
+    "reviewed": false,
+    "note": "Machine-translated from en/*.json. Keys mirror en exactly; the wording has not been reviewed by a translator. See locales/README.md for terminology.",
+    "translatedAt": "2026-09-24"
+  },
+  "ar": {
+    "source": "machine-translation",
+    "reviewed": false,
+    "note": "Machine-translated from en/*.json, then adapted for the plural forms Arabic needs (zero, one, two, few, many, other) where English has only one and other. The wording has not been reviewed by a translator, and the six plural forms in particular are the part a native reviewer should check first. See locales/README.md for terminology.",
+    "translatedAt": "2026-09-25"
+  }
+}

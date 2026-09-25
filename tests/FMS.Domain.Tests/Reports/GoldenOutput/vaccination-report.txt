@@ -1,0 +1,6 @@
+totals|vaccinations=7|cost=116|overdue=7|upcoming=9
+trend|2019-11|count=2|cost=31
+trend|2019-12|count=3|cost=54
+trend|2020-01|count=2|cost=31
+vaccine|FMD Vaccine|count=4|cost=67
+vaccine|Brucellosis Vaccine|count=3|cost=49

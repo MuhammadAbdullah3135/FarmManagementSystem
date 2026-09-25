@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, within, waitFor, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
 import ExpensesPage from './ExpensesPage';
 import { expensesApi, expenseCategoriesApi, paymentMethodsApi } from '../../api/finance';
 import { lookupsApi } from '../../api/attendance';
@@ -73,7 +74,7 @@ describe('ExpensesPage inline quick-add', () => {
       .mockResolvedValueOnce(res([{ id: 'ec-1', name: 'Veterinary Services' }]));
 
     const user = userEvent.setup();
-    render(<ExpensesPage />);
+    render(<MemoryRouter><ExpensesPage /></MemoryRouter>);
     const modal = await addExpenseModal(user);
 
     // The category list is empty, so the field's own footer is the way in.
@@ -114,7 +115,7 @@ describe('ExpensesPage inline quick-add', () => {
 
   it('offers inline creation on every configured field of the expense form', async () => {
     const user = userEvent.setup();
-    render(<ExpensesPage />);
+    render(<MemoryRouter><ExpensesPage /></MemoryRouter>);
     const modal = await addExpenseModal(user);
 
     await openSelect(user, modal, 'Category');

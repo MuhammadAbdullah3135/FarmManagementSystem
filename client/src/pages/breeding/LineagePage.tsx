@@ -5,11 +5,13 @@ import { lineageApi } from '../../api/breeding';
 import { lookupsApi } from '../../api/attendance';
 import { getApiError } from '../../api/farmApi';
 import type { LineageNode, LineageResponse } from '../../types';
-import dayjs from 'dayjs';
+import { formatDate } from '../../i18n/format';
+
+import { useTranslation } from 'react-i18next';
 
 const { Text } = Typography;
 
-function LineageCard({ node, side }: { node: LineageNode; side?: 'sire' | 'dam' | 'child' }) {
+function LineageCard({ node, side }: { node: LineageNode; side?: 'sire' | 'dam' | 'child' }) {const { t } = useTranslation('breeding'); 
   const borderColors: Record<string, string> = {
     sire: '#1677ff',
     dam: '#eb2f96',
@@ -26,15 +28,15 @@ function LineageCard({ node, side }: { node: LineageNode; side?: 'sire' | 'dam' 
         style={{
           width: 220,
           marginBottom: 8,
-          borderLeft: `4px solid ${borderColor}`,
+          borderInlineStart: `4px solid ${borderColor}`,
           background: bgColor,
           boxShadow: node.isRoot ? '0 2px 8px rgba(0,0,0,0.15)' : 'none',
         }}
       >
         <div style={{ marginBottom: 4 }}>
           <strong style={{ fontSize: 13 }}>{node.tagNumber}</strong>
-          {node.name && <Text type="secondary" style={{ marginLeft: 6, fontSize: 12 }}>({node.name})</Text>}
-          {node.isRoot && <Tag color="gold" style={{ marginLeft: 6 }}>ROOT</Tag>}
+          {node.name && <Text type="secondary" style={{ marginInlineStart: 6, fontSize: 12 }}>({node.name})</Text>}
+          {node.isRoot && <Tag color="gold" style={{ marginInlineStart: 6 }}>{t('root')}</Tag>}
         </div>
         <div style={{ fontSize: 12, color: '#666' }}>
           <Tag color={tagColor} style={{ fontSize: 11 }}>{node.sex}</Tag>
@@ -43,7 +45,7 @@ function LineageCard({ node, side }: { node: LineageNode; side?: 'sire' | 'dam' 
         </div>
         {node.dateOfBirth && (
           <div style={{ fontSize: 11, color: '#999', marginTop: 4 }}>
-            DOB: {dayjs(node.dateOfBirth).format('YYYY-MM-DD')}
+            {t('dob')} {formatDate(node.dateOfBirth)}
           </div>
         )}
       </Card>
@@ -96,7 +98,7 @@ function DescendantTree({ nodes, depth }: { nodes: LineageNode[]; depth: number 
   );
 }
 
-export default function LineagePage() {
+export default function LineagePage() {const { t } = useTranslation('breeding'); 
   const [animals, setAnimals] = useState<{ id: string; tagNumber: string; name?: string }[]>([]);
   const [selectedAnimalId, setSelectedAnimalId] = useState<string | null>(null);
   const [lineage, setLineage] = useState<LineageResponse | null>(null);
@@ -110,7 +112,7 @@ export default function LineagePage() {
 
   const handleSearch = async () => {
     if (!selectedAnimalId) {
-      message.warning('Select an animal first');
+      message.warning(t('selectAnAnimalFirst'));
       return;
     }
     setLoading(true);
@@ -126,11 +128,11 @@ export default function LineagePage() {
   };
 
   return (
-    <Card title="Parentage & Lineage View">
+    <Card title={t('parentageLineageView')}>
       <Space style={{ marginBottom: 24 }} wrap>
         <Select
           showSearch
-          placeholder="Select animal to view lineage"
+          placeholder={t('selectAnimalToViewLineage')}
           optionFilterProp="label"
           style={{ width: 350 }}
           value={selectedAnimalId}
@@ -141,15 +143,15 @@ export default function LineagePage() {
           }))}
         />
         <Space>
-          <span>Ancestors:</span>
+          <span>{t('ancestors')}</span>
           <InputNumber min={1} max={10} value={ancestorDepth} onChange={v => setAncestorDepth(v || 5)} />
         </Space>
         <Space>
-          <span>Descendants:</span>
+          <span>{t('descendants')}</span>
           <InputNumber min={1} max={10} value={descendantDepth} onChange={v => setDescendantDepth(v || 3)} />
         </Space>
         <Button type="primary" icon={<SearchOutlined />} onClick={handleSearch} loading={loading}>
-          View Lineage
+          {t('viewLineage')}
         </Button>
       </Space>
 
@@ -160,7 +162,7 @@ export default function LineagePage() {
       )}
 
       {!loading && !lineage && (
-        <Empty description="Select an animal and click 'View Lineage' to see the family tree" />
+        <Empty description={t('selectAnAnimalAndClickViewLineageTo')} />
       )}
 
       {!loading && lineage && (
@@ -179,7 +181,7 @@ export default function LineagePage() {
             <DescendantTree nodes={lineage.root.offspring} depth={lineage.descendantDepth} />
 
             {lineage.root.offspring.length === 0 && (
-              <Text type="secondary" style={{ marginTop: 16 }}>No offspring recorded</Text>
+              <Text type="secondary" style={{ marginTop: 16 }}>{t('noOffspringRecorded')}</Text>
             )}
           </div>
         </div>

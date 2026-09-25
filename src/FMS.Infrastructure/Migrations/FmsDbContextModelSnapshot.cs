@@ -1454,6 +1454,61 @@ namespace FMS.Infrastructure.Migrations
                     b.ToTable("FarmConfigurations");
                 });
 
+            modelBuilder.Entity("FMS.Domain.Entities.FarmExport", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("CompletedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Error")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<Guid>("FarmId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("FileName")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<string>("ManifestJson")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("ModifiedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("RequestedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<long?>("SizeBytes")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("StartedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("StoragePath")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FarmId")
+                        .IsUnique();
+
+                    b.ToTable("FarmExports");
+                });
+
             modelBuilder.Entity("FMS.Domain.Entities.FarmHealthStatusSnapshot", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1630,6 +1685,8 @@ namespace FMS.Infrastructure.Migrations
                     b.HasIndex("AssignedEmployeeId");
 
                     b.HasIndex("LocationId");
+
+                    b.HasIndex("FarmId", "AnimalId");
 
                     b.HasIndex("FarmId", "AssignedEmployeeId");
 
@@ -2570,6 +2627,12 @@ namespace FMS.Infrastructure.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)");
 
+                    b.Property<string>("MessageArgsJson")
+                        .HasColumnType("text");
+
+                    b.Property<string>("MessageKey")
+                        .HasColumnType("text");
+
                     b.Property<DateTime?>("ModifiedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -2596,6 +2659,12 @@ namespace FMS.Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(300)
                         .HasColumnType("character varying(300)");
+
+                    b.Property<string>("TitleArgsJson")
+                        .HasColumnType("text");
+
+                    b.Property<string>("TitleKey")
+                        .HasColumnType("text");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid");
@@ -3174,6 +3243,10 @@ namespace FMS.Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
+
+                    b.Property<string>("Locale")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
 
                     b.Property<DateTime?>("ModifiedAt")
                         .HasColumnType("timestamp with time zone");
@@ -4044,6 +4117,17 @@ namespace FMS.Infrastructure.Migrations
                 {
                     b.HasOne("FMS.Domain.Entities.Farm", "Farm")
                         .WithMany("Configurations")
+                        .HasForeignKey("FarmId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Farm");
+                });
+
+            modelBuilder.Entity("FMS.Domain.Entities.FarmExport", b =>
+                {
+                    b.HasOne("FMS.Domain.Entities.Farm", "Farm")
+                        .WithMany()
                         .HasForeignKey("FarmId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();

@@ -5,8 +5,10 @@ import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { breedingRecordsApi, type BreedingRecordListFilter, type CreateBreedingRecordPayload, type UpdateBreedingRecordPayload } from '../../api/breeding';
 import { lookupsApi } from '../../api/attendance';
 import { getApiError } from '../../api/farmApi';
+import { formatDate } from '../../i18n/format';
 import dayjs from 'dayjs';
 import type { BreedingRecord } from '../../types';
+import { useTranslation } from 'react-i18next';
 
 interface AnimalOption {
   id: string;
@@ -18,7 +20,7 @@ const METHOD_LABELS: Record<number, string> = { 0: 'Natural', 1: 'AI' };
 const RESULT_LABELS: Record<number, string> = { 0: 'Pending', 1: 'Confirmed', 2: 'Failed' };
 const RESULT_COLORS: Record<number, string> = { 0: 'orange', 1: 'green', 2: 'red' };
 
-export default function BreedingRecordsPage() {
+export default function BreedingRecordsPage() {const { t } = useTranslation('breeding'); 
   const [data, setData] = useState<BreedingRecord[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -111,7 +113,7 @@ export default function BreedingRecordsPage() {
           notes: values.notes,
         };
         await breedingRecordsApi.update(editing.id, payload);
-        message.success('Breeding record updated');
+        message.success(t('breedingRecordUpdated'));
       } else {
         const payload: CreateBreedingRecordPayload = {
           sireId: values.sireId,
@@ -122,7 +124,7 @@ export default function BreedingRecordsPage() {
           notes: values.notes,
         };
         await breedingRecordsApi.create(payload);
-        message.success('Breeding record created');
+        message.success(t('breedingRecordCreated'));
       }
       setModalOpen(false);
       load(1);
@@ -135,7 +137,7 @@ export default function BreedingRecordsPage() {
   const handleDelete = async (id: string) => {
     try {
       await breedingRecordsApi.delete(id);
-      message.success('Breeding record deleted');
+      message.success(t('breedingRecordDeleted'));
       load(page);
     } catch (err) {
       message.error(getApiError(err));
@@ -147,47 +149,47 @@ export default function BreedingRecordsPage() {
 
   const columns: ColumnsType<BreedingRecord> = [
     {
-      title: 'Date',
+      title: t('date'),
       dataIndex: 'breedingDate',
       key: 'breedingDate',
-      render: (text: string) => dayjs(text).format('YYYY-MM-DD'),
+      render: (text: string) => formatDate(text),
     },
     {
-      title: 'Sire',
+      title: t('sire'),
       key: 'sire',
       render: (_, record) => animalLabel({ tagNumber: record.sireTagNumber, name: record.sireName }),
     },
     {
-      title: 'Dam',
+      title: t('dam'),
       key: 'dam',
       render: (_, record) => animalLabel({ tagNumber: record.damTagNumber, name: record.damName }),
     },
     {
-      title: 'Method',
+      title: t('method'),
       dataIndex: 'method',
       key: 'method',
       render: (val: number) => METHOD_LABELS[val] || 'Unknown',
     },
     {
-      title: 'Result',
+      title: t('result'),
       dataIndex: 'result',
       key: 'result',
       render: (val: number) => <Tag color={RESULT_COLORS[val]}>{RESULT_LABELS[val]}</Tag>,
     },
     {
-      title: 'Vet',
+      title: t('vet'),
       dataIndex: 'vetName',
       key: 'vetName',
       render: (text: string) => text || '-',
     },
     {
-      title: 'Actions',
+      title: t('actions'),
       key: 'actions',
       width: 100,
       render: (_, record) => (
         <Space>
           <Button size="small" icon={<EditOutlined />} onClick={() => openEdit(record)} />
-          <Popconfirm title="Delete this record?" onConfirm={() => handleDelete(record.id)}>
+          <Popconfirm title={t('deleteThisRecord')} onConfirm={() => handleDelete(record.id)}>
             <Button size="small" danger icon={<DeleteOutlined />} />
           </Popconfirm>
         </Space>
@@ -198,8 +200,8 @@ export default function BreedingRecordsPage() {
   return (
     <>
       <Card
-        title="Breeding Records"
-        extra={<Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>Add Record</Button>}
+        title={t('breedingRecords')}
+        extra={<Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>{t('addRecord')}</Button>}
       >
         <Table
           rowKey="id"
@@ -211,7 +213,7 @@ export default function BreedingRecordsPage() {
       </Card>
 
       <Modal
-        title={editing ? 'Edit Breeding Record' : 'Add Breeding Record'}
+        title={editing ? t('editBreedingRecord') : t('addBreedingRecord')}
         open={modalOpen}
         onOk={handleSave}
         onCancel={() => setModalOpen(false)}
@@ -221,24 +223,24 @@ export default function BreedingRecordsPage() {
         <Form form={form} layout="vertical">
           <Row gutter={[16, 16]}>
             <Col xs={24} sm={12}>
-              <Form.Item name="sireId" label="Sire (Male)" rules={[{ required: true }]}>
+              <Form.Item name="sireId" label={t('sireMale')} rules={[{ required: true }]}>
                 <Select
                   options={males.map(a => ({ value: a.id, label: animalLabel(a) }))}
                   showSearch
                   optionFilterProp="label"
-                  placeholder="Select sire"
+                  placeholder={t('selectSire')}
                   style={{ width: '100%' }}
                   popupMatchSelectWidth={false}
                 />
               </Form.Item>
             </Col>
             <Col xs={24} sm={12}>
-              <Form.Item name="damId" label="Dam (Female)" rules={[{ required: true }]}>
+              <Form.Item name="damId" label={t('damFemale')} rules={[{ required: true }]}>
                 <Select
                   options={females.map(a => ({ value: a.id, label: animalLabel(a) }))}
                   showSearch
                   optionFilterProp="label"
-                  placeholder="Select dam"
+                  placeholder={t('selectDam')}
                   style={{ width: '100%' }}
                   popupMatchSelectWidth={false}
                 />
@@ -247,12 +249,12 @@ export default function BreedingRecordsPage() {
           </Row>
           <Row gutter={[16, 16]}>
             <Col xs={24} sm={12}>
-              <Form.Item name="breedingDate" label="Breeding Date" rules={[{ required: true }]}>
+              <Form.Item name="breedingDate" label={t('breedingDate')} rules={[{ required: true }]}>
                 <DatePicker style={{ width: '100%' }} />
               </Form.Item>
             </Col>
             <Col xs={24} sm={12}>
-              <Form.Item name="method" label="Method" rules={[{ required: true }]}>
+              <Form.Item name="method" label={t('method')} rules={[{ required: true }]}>
                 <Select
                   options={[
                     { value: 0, label: 'Natural' },
@@ -265,7 +267,7 @@ export default function BreedingRecordsPage() {
             </Col>
           </Row>
           {editing && (
-            <Form.Item name="result" label="Result" rules={[{ required: true }]}>
+            <Form.Item name="result" label={t('result')} rules={[{ required: true }]}>
               <Select
                 options={[
                   { value: 0, label: 'Pending' },
@@ -275,10 +277,10 @@ export default function BreedingRecordsPage() {
               />
             </Form.Item>
           )}
-          <Form.Item name="vetName" label="Veterinarian">
-            <Input maxLength={200} placeholder="Vet name" />
+          <Form.Item name="vetName" label={t('veterinarian')}>
+            <Input maxLength={200} placeholder={t('vetName')} />
           </Form.Item>
-          <Form.Item name="notes" label="Notes">
+          <Form.Item name="notes" label={t('notes')}>
             <Input.TextArea rows={2} maxLength={2000} />
           </Form.Item>
         </Form>

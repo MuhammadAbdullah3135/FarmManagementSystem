@@ -1,10 +1,12 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Card, Table, Tag, message } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
+import { formatDate } from '../../i18n/format';
 import dayjs from 'dayjs';
 import { medicinesApi } from '../../api/health';
 import { getApiError } from '../../api/farmApi';
 import type { MedicineAlert, MedicineAlertType } from '../../types';
+import { useTranslation } from 'react-i18next';
 
 const ALERT_COLORS: Record<MedicineAlertType, string> = {
   Expired: 'red',
@@ -12,7 +14,7 @@ const ALERT_COLORS: Record<MedicineAlertType, string> = {
   LowStock: 'gold',
 };
 
-const MedicineAlertsPage: React.FC = () => {
+const MedicineAlertsPage: React.FC = () => {const { t: translate } = useTranslation('health'); 
   const [alerts, setAlerts] = useState<MedicineAlert[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -35,14 +37,14 @@ const MedicineAlertsPage: React.FC = () => {
 
   const columns: ColumnsType<MedicineAlert> = [
     {
-      title: 'Alert',
+      title: translate('alert'),
       dataIndex: 'alertType',
       width: 130,
-      render: (t: MedicineAlertType) => <Tag color={ALERT_COLORS[t]}>{t === 'LowStock' ? 'LOW STOCK' : t === 'ExpiringSoon' ? 'EXPIRING SOON' : 'EXPIRED'}</Tag>,
+      render: (t: MedicineAlertType) => <Tag color={ALERT_COLORS[t]}>{t === 'LowStock' ? translate('lowStock') : t === 'ExpiringSoon' ? translate('expiringSoon') : translate('expired')}</Tag>,
     },
-    { title: 'Medicine', dataIndex: 'medicineName', ellipsis: true },
+    { title: translate('medicine2'), dataIndex: 'medicineName', ellipsis: true },
     {
-      title: 'Stock',
+      title: translate('stock'),
       width: 120,
       render: (_, r) => (
         <span>
@@ -53,9 +55,9 @@ const MedicineAlertsPage: React.FC = () => {
         </span>
       ),
     },
-    { title: 'Batch', dataIndex: 'batchNumber', width: 120 },
+    { title: translate('batch'), dataIndex: 'batchNumber', width: 120 },
     {
-      title: 'Expiry Date',
+      title: translate('expiryDate'),
       dataIndex: 'expiryDate',
       width: 130,
       render: (d: string, r) => {
@@ -63,7 +65,7 @@ const MedicineAlertsPage: React.FC = () => {
         const isExpired = dayjs(d).isBefore(dayjs(), 'day');
         return (
           <span style={isExpired ? { color: '#ff4d4f', fontWeight: 600 } : { color: '#fa8c16' }}>
-            {dayjs(d).format('YYYY-MM-DD')}
+            {formatDate(d)}
           </span>
         );
       },
@@ -76,12 +78,12 @@ const MedicineAlertsPage: React.FC = () => {
 
   return (
     <Card
-      title="Medicine Alerts"
+      title={translate('medicineAlerts')}
       extra={
         <div style={{ display: 'flex', gap: 16 }}>
-          {expiredCount > 0 && <Tag color="red">Expired: {expiredCount}</Tag>}
-          {expiringSoonCount > 0 && <Tag color="orange">Expiring Soon: {expiringSoonCount}</Tag>}
-          {lowStockCount > 0 && <Tag color="gold">Low Stock: {lowStockCount}</Tag>}
+          {expiredCount > 0 && <Tag color="red">{translate('expired2')} {expiredCount}</Tag>}
+          {expiringSoonCount > 0 && <Tag color="orange">{translate('expiringSoon2')} {expiringSoonCount}</Tag>}
+          {lowStockCount > 0 && <Tag color="gold">{translate('lowStock2')} {lowStockCount}</Tag>}
         </div>
       }
     >

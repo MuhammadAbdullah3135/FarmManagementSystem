@@ -11,6 +11,7 @@ import {
   queueWarningMessage,
   type OfflineSessionState,
 } from '../offline/offlinePolicy';
+import { useTranslation } from 'react-i18next';
 
 const { Text } = Typography;
 
@@ -33,7 +34,7 @@ export interface OfflineBannerProps {
  * one thing an offline banner must never do is imply a save that will not happen. It also names
  * the records the server has refused, since those need a person, not a connection.
  */
-const OfflineBanner: React.FC<OfflineBannerProps> = ({ state, queue, session }) => {
+const OfflineBanner: React.FC<OfflineBannerProps> = ({ state, queue, session }) => {const { t } = useTranslation('common'); 
   // Subscribed field by field on purpose: zustand v5 compares selector results by
   // reference, so a selector that builds a fresh object would re-render on every store
   // update and never settle.
@@ -68,18 +69,18 @@ const OfflineBanner: React.FC<OfflineBannerProps> = ({ state, queue, session }) 
       type="warning"
       showIcon
       style={{ marginBottom: 16 }}
-      message="Offline"
+      message={t('offline')}
       description={
         <>
-          Changes are saved on this device and sent when the connection is back.
+          {t('changesAreSavedOnThisDeviceAndSent')}
           {pendingCount > 0 && (
-            <> <Text strong>{pendingCount} waiting to sync.</Text></>
+            <> <Text strong>{pendingCount} {t('waitingToSync')}</Text></>
           )}
           {quarantinedCount > 0 && (
             <>
               {' '}
               <Text type="danger">
-                {quarantinedCount} record{quarantinedCount === 1 ? '' : 's'} could not be sent — see
+                {quarantinedCount} {t('record')}{quarantinedCount === 1 ? '' : 's'} could not be sent — see
                 “Offline &amp; sync”.
               </Text>
             </>

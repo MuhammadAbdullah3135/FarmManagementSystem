@@ -1,0 +1,9 @@
+{
+  "backToDashboard": "Back to dashboard",
+  "reloadApp": "Reload app",
+  "restOfAppStillWorks": "The rest of the app is still working — pick another screen from the menu, or try this one again.",
+  "screenFailed": "This screen hit an error",
+  "somethingWentWrong": "Something went wrong",
+  "tryAgain": "Try again",
+  "unexpectedRenderError": "The app hit an unexpected error and had to stop rendering this screen."
+}

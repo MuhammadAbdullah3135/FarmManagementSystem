@@ -46,6 +46,10 @@ export const MODULE_ROLES: Record<string, readonly AppRole[]> = {
   // activeFarm.userFarmRole), so this entry follows the member's farm role.
   // src/FMS.Infrastructure/Farm/FarmMembershipService.cs
   'farm.members': ['SystemOwner', 'FarmManager'],
+  // src/FMS.API/Controllers/FarmExportController.cs:34
+  // The archive is every record in the farm at once — finance, payroll, health —
+  // so it sits behind the same farm-admin boundary as member management.
+  'data.export': ['SystemOwner', 'FarmManager'],
 };
 
 /**
@@ -65,10 +69,15 @@ export const canAccessModule = (
 /**
  * A navigation entry before it is handed to antd. `requiredModule` links the
  * entry to a {@link MODULE_ROLES} key; entries without one are visible to all.
+ *
+ * The tree is deliberately language-free: it carries a `labelKey` into the `nav`
+ * namespace (e.g. `nav:tasks`) and the caller resolves it, so the same structure
+ * serves every locale and the role filter can be reasoned about without strings.
  */
 export interface AppMenuItem {
   key: string;
-  label: ReactNode;
+  labelKey: string;
+  label?: ReactNode;
   icon?: ReactNode;
   requiredModule?: string;
   children?: AppMenuItem[];

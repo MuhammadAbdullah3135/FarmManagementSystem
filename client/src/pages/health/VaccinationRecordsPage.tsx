@@ -4,12 +4,14 @@ import {
 } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
+import { formatDate, formatMoney } from '../../i18n/format';
 import dayjs from 'dayjs';
 import { vaccinationRecordsApi, vaccineTypesApi } from '../../api/health';
 import { lookupsApi } from '../../api/attendance';
 import { getApiError } from '../../api/farmApi';
 import LookupQuickAddSelect from '../../components/LookupQuickAddSelect';
 import type { VaccinationRecordListItem, VaccineTypeListItem } from '../../types';
+import { useTranslation } from 'react-i18next';
 
 interface AnimalOption {
   id: string;
@@ -17,7 +19,7 @@ interface AnimalOption {
   name?: string;
 }
 
-const VaccinationRecordsPage: React.FC = () => {
+const VaccinationRecordsPage: React.FC = () => {const { t } = useTranslation('health'); 
   const [records, setRecords] = useState<VaccinationRecordListItem[]>([]);
   const [animals, setAnimals] = useState<AnimalOption[]>([]);
   const [vaccineTypes, setVaccineTypes] = useState<VaccineTypeListItem[]>([]);
@@ -108,10 +110,10 @@ const VaccinationRecordsPage: React.FC = () => {
       };
       if (editing) {
         await vaccinationRecordsApi.update(editing.id, data);
-        message.success('Vaccination record updated');
+        message.success(t('vaccinationRecordUpdated'));
       } else {
         await vaccinationRecordsApi.create(data);
-        message.success('Vaccination recorded');
+        message.success(t('vaccinationRecorded'));
       }
       setModalOpen(false);
       load(page);
@@ -124,7 +126,7 @@ const VaccinationRecordsPage: React.FC = () => {
   const handleDelete = async (id: string) => {
     try {
       await vaccinationRecordsApi.remove(id);
-      message.success('Vaccination record deleted');
+      message.success(t('vaccinationRecordDeleted'));
       load(page);
     } catch (err) {
       message.error(getApiError(err));
@@ -133,7 +135,7 @@ const VaccinationRecordsPage: React.FC = () => {
 
   const columns: ColumnsType<VaccinationRecordListItem> = [
     {
-      title: 'Animal',
+      title: t('animal'),
       render: (_, r) => (
         <span>
           {r.animalTagNumber}
@@ -141,29 +143,29 @@ const VaccinationRecordsPage: React.FC = () => {
         </span>
       ),
     },
-    { title: 'Vaccine', dataIndex: 'vaccineTypeName', ellipsis: true },
+    { title: t('vaccine'), dataIndex: 'vaccineTypeName', ellipsis: true },
     {
-      title: 'Date Given',
+      title: t('dateGiven'),
       dataIndex: 'dateGiven',
       width: 120,
-      render: (d: string) => dayjs(d).format('YYYY-MM-DD'),
+      render: (d: string) => formatDate(d),
     },
-    { title: 'Vet', dataIndex: 'vetName', render: (v?: string) => v || '-' },
-    { title: 'Batch', dataIndex: 'batchNumber', render: (b?: string) => b || '-' },
+    { title: t('vet'), dataIndex: 'vetName', render: (v?: string) => v || '-' },
+    { title: t('batch'), dataIndex: 'batchNumber', render: (b?: string) => b || '-' },
     {
-      title: 'Cost',
+      title: t('cost'),
       dataIndex: 'cost',
       width: 100,
-      render: (c: number) => c > 0 ? `$${c.toFixed(2)}` : '-',
+      render: (c: number) => c > 0 ? formatMoney(c) : '-',
     },
     {
-      title: 'Actions',
+      title: t('actions'),
       width: 140,
       render: (_, r) => (
         <Space size={4}>
-          <Button size="small" onClick={() => openEdit(r)}>Edit</Button>
-          <Popconfirm title="Delete this record?" onConfirm={() => handleDelete(r.id)}>
-            <Button size="small" danger>Delete</Button>
+          <Button size="small" onClick={() => openEdit(r)}>{t('edit')}</Button>
+          <Popconfirm title={t('deleteThisRecord')} onConfirm={() => handleDelete(r.id)}>
+            <Button size="small" danger>{t('delete')}</Button>
           </Popconfirm>
         </Space>
       ),
@@ -173,19 +175,19 @@ const VaccinationRecordsPage: React.FC = () => {
   return (
     <>
       <Card
-        title="Vaccination Records"
+        title={t('vaccinationRecords')}
         extra={
           <Space wrap>
             <Select
               allowClear
-              placeholder="Vaccine type"
+              placeholder={t('vaccineType')}
               style={{ width: 180 }}
               value={filters.vaccineTypeId}
               onChange={(v) => setFilters((f) => ({ ...f, vaccineTypeId: v }))}
               options={vaccineTypes.map((v) => ({ value: v.id, label: v.name }))}
             />
             <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
-              Record Vaccination
+              {t('recordVaccination')}
             </Button>
           </Space>
         }
@@ -200,7 +202,7 @@ const VaccinationRecordsPage: React.FC = () => {
       </Card>
 
       <Modal
-        title={editing ? 'Edit Vaccination' : 'Record Vaccination'}
+        title={editing ? t('editVaccination') : t('recordVaccination')}
         open={modalOpen}
         onOk={handleSave}
         onCancel={() => setModalOpen(false)}
@@ -208,44 +210,44 @@ const VaccinationRecordsPage: React.FC = () => {
         width={520}
       >
         <Form form={form} layout="vertical">
-          <Form.Item name="animalId" label="Animal" rules={[{ required: true, message: 'Select an animal' }]}>
+          <Form.Item name="animalId" label={t('animal')} rules={[{ required: true, message: 'Select an animal' }]}>
             <Select
               showSearch
               optionFilterProp="label"
-              placeholder="Select animal"
+              placeholder={t('selectAnimal')}
               options={animals.map((a) => ({
                 value: a.id,
                 label: `${a.tagNumber}${a.name ? ` - ${a.name}` : ''}`,
               }))}
             />
           </Form.Item>
-          <Form.Item name="vaccineTypeId" label="Vaccine Type" rules={[{ required: true, message: 'Select vaccine type' }]}>
+          <Form.Item name="vaccineTypeId" label={t('vaccineType2')} rules={[{ required: true, message: 'Select vaccine type' }]}>
             <LookupQuickAddSelect
               kind="vaccineType"
-              placeholder="Select vaccine"
+              placeholder={t('selectVaccine')}
               options={vaccineTypes.map((v) => ({ value: v.id, label: v.name }))}
               onCreated={() => loadVaccineTypes()}
             />
           </Form.Item>
-          <Form.Item name="dateGiven" label="Date Given" rules={[{ required: true }]}>
+          <Form.Item name="dateGiven" label={t('dateGiven')} rules={[{ required: true }]}>
             <DatePicker style={{ width: '100%' }} />
           </Form.Item>
           <Row gutter={[16, 16]}>
             <Col xs={24} sm={12}>
-              <Form.Item name="vetName" label="Veterinarian">
-                <Input maxLength={200} placeholder="Vet name" />
+              <Form.Item name="vetName" label={t('veterinarian')}>
+                <Input maxLength={200} placeholder={t('vetName')} />
               </Form.Item>
             </Col>
             <Col xs={24} sm={12}>
-              <Form.Item name="batchNumber" label="Batch Number">
-                <Input maxLength={100} placeholder="Vaccine batch" />
+              <Form.Item name="batchNumber" label={t('batchNumber')}>
+                <Input maxLength={100} placeholder={t('vaccineBatch')} />
               </Form.Item>
             </Col>
           </Row>
-          <Form.Item name="cost" label="Cost ($)">
+          <Form.Item name="cost" label={t('cost2')}>
             <InputNumber min={0} precision={2} style={{ width: '100%' }} placeholder="0.00" />
           </Form.Item>
-          <Form.Item name="notes" label="Notes">
+          <Form.Item name="notes" label={t('notes')}>
             <Input.TextArea rows={2} maxLength={1000} />
           </Form.Item>
         </Form>

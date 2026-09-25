@@ -9,12 +9,13 @@ import { lookupsApi } from '../../api/attendance';
 import { getApiError } from '../../api/farmApi';
 import LookupQuickAddSelect from '../../components/LookupQuickAddSelect';
 import type { WeightCheckSchedule } from '../../types';
+import { useTranslation } from 'react-i18next';
 
 interface AnimalTypeOption { id: string; name: string; }
 interface BreedOption { id: string; name: string; animalTypeId: string; }
 interface AgeCategoryOption { id: string; name: string; }
 const PRESET_DAYS = [7, 14, 30, 45, 90];
-const WeightCheckSchedulePage: React.FC = () => {
+const WeightCheckSchedulePage: React.FC = () => {const { t } = useTranslation('health'); 
   const [schedules, setSchedules] = useState<WeightCheckSchedule[]>([]);
   const [animalTypes, setAnimalTypes] = useState<AnimalTypeOption[]>([]);
   const [breeds, setBreeds] = useState<BreedOption[]>([]);
@@ -106,10 +107,10 @@ const WeightCheckSchedulePage: React.FC = () => {
       };
       if (editing) {
         await weightCheckSchedulesApi.update(editing.id, data);
-        message.success('Schedule updated');
+        message.success(t('scheduleUpdated'));
       } else {
         await weightCheckSchedulesApi.create(data);
-        message.success('Schedule created');
+        message.success(t('scheduleCreated'));
       }
       setModalOpen(false);
       load(page);
@@ -122,7 +123,7 @@ const WeightCheckSchedulePage: React.FC = () => {
   const handleDelete = async (id: string) => {
     try {
       await weightCheckSchedulesApi.remove(id);
-      message.success('Schedule deleted');
+      message.success(t('scheduleDeleted'));
       load(page);
     } catch (err) {
       message.error(getApiError(err));
@@ -130,33 +131,34 @@ const WeightCheckSchedulePage: React.FC = () => {
   };
 
   const columns: ColumnsType<WeightCheckSchedule> = [
-    { title: 'Animal Type', dataIndex: 'animalTypeName', render: (n?: string) => n || 'All Types' },
-    { title: 'Breed', dataIndex: 'breedName', render: (n?: string) => n || 'All Breeds' },
-    { title: 'Age Category', dataIndex: 'ageCategoryName', render: (n?: string) => n || 'All Ages' },
+    { title: t('animalType'), dataIndex: 'animalTypeName', render: (n?: string) => n || 'All Types' },
+    { title: t('breed'), dataIndex: 'breedName', render: (n?: string) => n || 'All Breeds' },
+    { title: t('ageCategory'), dataIndex: 'ageCategoryName', render: (n?: string) => n || 'All Ages' },
     {
-      title: 'Interval',
+      title: t('interval'),
       dataIndex: 'recurrenceDays',
       width: 120,
+      // See VaccinationSchedulePage: same phrasing, same fix for the singular.
       render: (d: number) => {
-        if (d >= 365) return `${(d / 365).toFixed(1)} year`;
-        if (d >= 30) return `${Math.round(d / 30)} months`;
-        return `${d} days`;
+        if (d >= 365) return t('intervalYears', { count: Number((d / 365).toFixed(1)) });
+        if (d >= 30) return t('intervalMonths', { count: Math.round(d / 30) });
+        return t('intervalDays', { count: d });
       },
     },
     {
-      title: 'Active',
+      title: t('active'),
       dataIndex: 'isActive',
       width: 80,
-      render: (a: boolean) => <Tag color={a ? 'green' : 'default'}>{a ? 'Yes' : 'No'}</Tag>,
+      render: (a: boolean) => <Tag color={a ? 'green' : 'default'}>{a ? t('yes') : t('no')}</Tag>,
     },
     {
-      title: 'Actions',
+      title: t('actions'),
       width: 140,
       render: (_, r) => (
         <Space size={4}>
-          <Button size="small" onClick={() => openEdit(r)}>Edit</Button>
-          <Popconfirm title="Delete this schedule?" onConfirm={() => handleDelete(r.id)}>
-            <Button size="small" danger>Delete</Button>
+          <Button size="small" onClick={() => openEdit(r)}>{t('edit')}</Button>
+          <Popconfirm title={t('deleteThisSchedule')} onConfirm={() => handleDelete(r.id)}>
+            <Button size="small" danger>{t('delete')}</Button>
           </Popconfirm>
         </Space>
       ),
@@ -166,9 +168,9 @@ const WeightCheckSchedulePage: React.FC = () => {
   return (
     <>
       <Card
-        title="Weight Check Schedules"
+        title={t('weightCheckSchedules')}
         extra={
-          <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>Add Schedule</Button>
+          <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>{t('addSchedule')}</Button>
         }
       >
         <Table
@@ -181,57 +183,57 @@ const WeightCheckSchedulePage: React.FC = () => {
       </Card>
 
       <Modal
-        title={editing ? 'Edit Schedule' : 'Add Schedule'}
+        title={editing ? t('editSchedule') : t('addSchedule')}
         open={modalOpen}
         onOk={handleSave}
         onCancel={() => setModalOpen(false)}
         destroyOnClose
       >
         <Form form={form} layout="vertical">
-          <Form.Item name="animalTypeId" label="Animal Type (optional)">
+          <Form.Item name="animalTypeId" label={t('animalTypeOptional')}>
             <LookupQuickAddSelect
               kind="animalType"
               allowClear
-              placeholder="All animal types"
+              placeholder={t('allAnimalTypes')}
               options={animalTypes.map(a => ({ value: a.id, label: a.name }))}
               onValueSelected={(val) => { setSelectedAnimalType(val); form.setFieldsValue({ breedId: undefined }); }}
               onCreated={() => loadOptions()}
             />
           </Form.Item>
-          <Form.Item name="breedId" label="Breed (optional)">
+          <Form.Item name="breedId" label={t('breedOptional')}>
             <LookupQuickAddSelect
               kind="breed"
               ctx={{ animalTypeId: selectedAnimalType }}
               allowClear
-              placeholder="All breeds"
+              placeholder={t('allBreeds')}
               options={filteredBreeds.map(b => ({ value: b.id, label: b.name }))}
               onCreated={() => loadOptions()}
             />
           </Form.Item>
-          <Form.Item name="ageCategoryId" label="Age Category (optional)">
+          <Form.Item name="ageCategoryId" label={t('ageCategoryOptional')}>
             <LookupQuickAddSelect
               kind="ageCategory"
               allowClear
-              placeholder="All age categories"
+              placeholder={t('allAgeCategories')}
               options={ageCategories.map(a => ({ value: a.id, label: a.name }))}
               onCreated={() => loadOptions()}
             />
           </Form.Item>
-          <Form.Item name="recurrenceDays" label="Remind every ___ days" rules={[{ required: true }]}>
-            <InputNumber min={1} style={{ width: '100%' }} placeholder="e.g. 7, 30, 45, 90" />
+          <Form.Item name="recurrenceDays" label={t('remindEveryDays')} rules={[{ required: true }]}>
+            <InputNumber min={1} style={{ width: '100%' }} placeholder={t('eG7304590')} />
           </Form.Item>
           <div style={{ marginBottom: 16 }}>
-            <span style={{ marginRight: 8, fontSize: 12, color: '#999' }}>Quick select:</span>
+            <span style={{ marginInlineEnd: 8, fontSize: 12, color: '#999' }}>{t('quickSelect')}</span>
             <Space size={4}>
               {PRESET_DAYS.map(d => (
-                <Tag key={d} style={{ cursor: 'pointer' }} onClick={() => form.setFieldsValue({ recurrenceDays: d })}>{d} days</Tag>
+                <Tag key={d} style={{ cursor: 'pointer' }} onClick={() => form.setFieldsValue({ recurrenceDays: d })}>{d} {t('days')}</Tag>
               ))}
             </Space>
           </div>
-          <Form.Item name="isActive" label="Active" valuePropName="checked">
+          <Form.Item name="isActive" label={t('active')} valuePropName="checked">
             <Switch />
           </Form.Item>
-          <Form.Item name="notes" label="Notes">
+          <Form.Item name="notes" label={t('notes')}>
             <Input.TextArea rows={2} maxLength={1000} />
           </Form.Item>
         </Form>

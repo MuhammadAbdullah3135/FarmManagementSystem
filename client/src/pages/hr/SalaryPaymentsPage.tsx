@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { formatDate, formatMoney } from '../../i18n/format';
 import {
   Button, Card, DatePicker, Form, Input, InputNumber, Modal, Popconfirm, Row, Col, Select, Space, Statistic, Table, message,
 } from 'antd';
@@ -8,8 +9,9 @@ import dayjs, { Dayjs } from 'dayjs';
 import { salaryPaymentsApi, payrollApi, employeesApi } from '../../api/hr';
 import { getApiError } from '../../api/farmApi';
 import type { Employee, PayrollReport, SalaryPayment } from '../../types';
+import { useTranslation } from 'react-i18next';
 
-const SalaryPaymentsPage: React.FC = () => {
+const SalaryPaymentsPage: React.FC = () => {const { t } = useTranslation('hr'); 
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [selectedEmp, setSelectedEmp] = useState<string>('');
   const [payments, setPayments] = useState<SalaryPayment[]>([]);
@@ -77,7 +79,7 @@ const SalaryPaymentsPage: React.FC = () => {
         paymentDate: values.paymentDate?.toISOString(),
         notes: values.notes,
       });
-      message.success('Payment recorded');
+      message.success(t('paymentRecorded'));
       setModalOpen(false);
       loadPayments(selectedEmp, paymentPage);
     } catch (err) {
@@ -89,7 +91,7 @@ const SalaryPaymentsPage: React.FC = () => {
   const handleDeletePayment = async (paymentId: string) => {
     try {
       await salaryPaymentsApi.remove(selectedEmp, paymentId);
-      message.success('Payment deleted');
+      message.success(t('paymentDeleted'));
       loadPayments(selectedEmp, paymentPage);
     } catch (err) {
       message.error(getApiError(err));
@@ -97,15 +99,15 @@ const SalaryPaymentsPage: React.FC = () => {
   };
 
   const payCols: ColumnsType<SalaryPayment> = [
-    { title: 'Date', dataIndex: 'paymentDate', render: (d: string) => dayjs(d).format('YYYY-MM-DD') },
-    { title: 'Amount', dataIndex: 'amount', align: 'right', render: (v: number) => `$${v.toLocaleString()}` },
-    { title: 'Type', dataIndex: 'salaryTypeName' },
-    { title: 'Notes', dataIndex: 'notes', render: (n?: string) => n ?? '-' },
+    { title: t('date'), dataIndex: 'paymentDate', render: (d: string) => formatDate(d) },
+    { title: t('amount'), dataIndex: 'amount', align: 'right', render: (v: number) => formatMoney(v) },
+    { title: t('type'), dataIndex: 'salaryTypeName' },
+    { title: t('notes'), dataIndex: 'notes', render: (n?: string) => n ?? '-' },
     {
       title: '',
       render: (_, r) => (
-        <Popconfirm title="Delete payment?" onConfirm={() => handleDeletePayment(r.id)}>
-          <Button size="small" danger>Delete</Button>
+        <Popconfirm title={t('deletePayment')} onConfirm={() => handleDeletePayment(r.id)}>
+          <Button size="small" danger>{t('delete')}</Button>
         </Popconfirm>
       ),
     },
@@ -125,12 +127,12 @@ const SalaryPaymentsPage: React.FC = () => {
 
       <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
         <Col xs={24} lg={16}>
-          <Card title="Salary Payments" extra={
+          <Card title={t('salaryPayments')} extra={
             <Space>
               <Select
                 showSearch
                 optionFilterProp="label"
-                placeholder="Select employee"
+                placeholder={t('selectEmployee')}
                 style={{ width: 220 }}
                 value={selectedEmp || undefined}
                 onChange={setSelectedEmp}
@@ -141,7 +143,7 @@ const SalaryPaymentsPage: React.FC = () => {
               />
               {selectedEmp && (
                 <Button type="primary" icon={<PlusOutlined />} onClick={() => { form.resetFields(); form.setFieldsValue({ paymentDate: dayjs() }); setModalOpen(true); }}>
-                  Record Payment
+                  {t('recordPayment')}
                 </Button>
               )}
             </Space>
@@ -155,52 +157,52 @@ const SalaryPaymentsPage: React.FC = () => {
                 pagination={{ current: paymentPage, total: paymentTotal, pageSize: 10, onChange: (p) => loadPayments(selectedEmp, p) }}
               />
             ) : (
-              <p style={{ color: '#999' }}>Select an employee to view payment history.</p>
+              <p style={{ color: '#999' }}>{t('selectAnEmployeeToViewPaymentHistory')}</p>
             )}
           </Card>
         </Col>
         <Col xs={24} lg={8}>
           <Card
-            title="Payroll Report"
-            extra={<Button size="small" onClick={loadReport}>Refresh</Button>}
+            title={t('payrollReport')}
+            extra={<Button size="small" onClick={loadReport}>{t('refresh')}</Button>}
           >
             {report ? (
               <>
                 <Row gutter={16}>
-                  <Col span={12}><Statistic title="Total Paid" value={report.totalPaid} prefix="$" precision={2} /></Col>
-                  <Col span={12}><Statistic title="Payments" value={report.paymentCount} /></Col>
+                  <Col span={12}><Statistic title={t('totalPaid')} value={report.totalPaid} prefix="$" precision={2} /></Col>
+                  <Col span={12}><Statistic title={t('payments')} value={report.paymentCount} /></Col>
                 </Row>
                 <Row gutter={16} style={{ marginTop: 16 }}>
-                  <Col span={24}><Statistic title="Expected Monthly Payroll" value={report.expectedMonthlyPayroll} prefix="$" precision={2} /></Col>
+                  <Col span={24}><Statistic title={t('expectedMonthlyPayroll')} value={report.expectedMonthlyPayroll} prefix="$" precision={2} /></Col>
                 </Row>
                 <Table
                   rowKey="employeeId"
                   size="small"
                   style={{ marginTop: 16 }}
                   columns={[
-                    { title: 'Employee', dataIndex: 'employeeName' },
-                    { title: 'Paid', dataIndex: 'totalPaid', align: 'right', render: (v: number) => `$${v.toLocaleString()}` },
+                    { title: t('employee'), dataIndex: 'employeeName' },
+                    { title: t('totalPaid'), dataIndex: 'totalPaid', align: 'right', render: (v: number) => formatMoney(v) },
                   ]}
                   dataSource={report.byEmployee}
                   pagination={false}
                 />
               </>
             ) : (
-              <p style={{ color: '#999' }}>Loading...</p>
+              <p style={{ color: '#999' }}>{t('loading')}</p>
             )}
           </Card>
         </Col>
       </Row>
 
-      <Modal title="Record Payment" open={modalOpen} onOk={handleRecord} onCancel={() => setModalOpen(false)} destroyOnClose>
+      <Modal title={t('recordPayment')} open={modalOpen} onOk={handleRecord} onCancel={() => setModalOpen(false)} destroyOnClose>
         <Form form={form} layout="vertical">
-          <Form.Item name="amount" label="Amount" rules={[{ required: true }]}>
+          <Form.Item name="amount" label={t('amount')} rules={[{ required: true }]}>
             <InputNumber min={0.01} style={{ width: '100%' }} prefix="$" />
           </Form.Item>
-          <Form.Item name="paymentDate" label="Payment Date">
+          <Form.Item name="paymentDate" label={t('paymentDate')}>
             <DatePicker style={{ width: '100%' }} />
           </Form.Item>
-          <Form.Item name="notes" label="Notes">
+          <Form.Item name="notes" label={t('notes')}>
             <Input.TextArea rows={2} maxLength={1000} />
           </Form.Item>
         </Form>

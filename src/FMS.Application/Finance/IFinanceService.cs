@@ -20,6 +20,17 @@ public interface IFinanceService
     Task<Result<ExpenseDto>> GetExpenseByIdAsync(Guid farmId, Guid id);
     Task<Result<PagedResult<ExpenseDto>>> GetExpensesAsync(Guid farmId, ExpenseListFilter filter);
     Task<Result<ExpenseDto>> CreateExpenseAsync(Guid farmId, CreateExpenseRequest request);
+
+    /// <summary>
+    /// Validates a batch of expenses without writing it, using the same rules and the
+    /// same reference checks as <see cref="CreateExpenseAsync"/>. There is deliberately
+    /// no duplicate check: an expense has no identifier and the create path enforces
+    /// none, so the bulk path must not be stricter than the endpoint.
+    /// </summary>
+    Task<Result<BulkCreateResultDto>> ValidateExpensesAsync(Guid farmId, IReadOnlyList<CreateExpenseRequest> requests);
+
+    /// <summary>Creates the whole batch in one SaveChanges, so it is atomic.</summary>
+    Task<Result<BulkCreateResultDto>> CreateExpensesAsync(Guid farmId, IReadOnlyList<CreateExpenseRequest> requests);
     Task<Result<ExpenseDto>> UpdateExpenseAsync(Guid farmId, Guid id, UpdateExpenseRequest request);
     Task<Result> DeleteExpenseAsync(Guid farmId, Guid id);
 
@@ -33,6 +44,17 @@ public interface IFinanceService
     Task<Result<IncomeRecordDto>> GetIncomeRecordByIdAsync(Guid farmId, Guid id);
     Task<Result<PagedResult<IncomeRecordDto>>> GetIncomeRecordsAsync(Guid farmId, IncomeRecordListFilter filter);
     Task<Result<IncomeRecordDto>> CreateIncomeRecordAsync(Guid farmId, CreateIncomeRecordRequest request);
+
+    /// <summary>
+    /// Validates a batch of income records without writing it, using the same rules and
+    /// the same reference checks as <see cref="CreateIncomeRecordAsync"/>. There is
+    /// deliberately no duplicate check: an income record has no identifier and the
+    /// create path enforces none.
+    /// </summary>
+    Task<Result<BulkCreateResultDto>> ValidateIncomeRecordsAsync(Guid farmId, IReadOnlyList<CreateIncomeRecordRequest> requests);
+
+    /// <summary>Creates the whole batch in one SaveChanges, so it is atomic.</summary>
+    Task<Result<BulkCreateResultDto>> CreateIncomeRecordsAsync(Guid farmId, IReadOnlyList<CreateIncomeRecordRequest> requests);
     Task<Result<IncomeRecordDto>> UpdateIncomeRecordAsync(Guid farmId, Guid id, UpdateIncomeRecordRequest request);
     Task<Result> DeleteIncomeRecordAsync(Guid farmId, Guid id);
 

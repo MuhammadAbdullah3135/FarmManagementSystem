@@ -7,8 +7,9 @@ import type { ColumnsType } from 'antd/es/table';
 import { departmentsApi, employeeRolesApi } from '../../api/hr';
 import { getApiError } from '../../api/farmApi';
 import type { Department, EmployeeRole } from '../../types';
+import { useTranslation } from 'react-i18next';
 
-const DepartmentsRolesPage: React.FC = () => {
+const DepartmentsRolesPage: React.FC = () => {const { t } = useTranslation('hr'); 
   const [departments, setDepartments] = useState<Department[]>([]);
   const [roles, setRoles] = useState<EmployeeRole[]>([]);
   const [loading, setLoading] = useState(false);
@@ -39,7 +40,7 @@ const DepartmentsRolesPage: React.FC = () => {
     try {
       const values = await deptForm.validateFields();
       await departmentsApi.create(values);
-      message.success('Department created');
+      message.success(t('departmentCreated'));
       setDeptModal(false);
       load();
     } catch (err) {
@@ -51,7 +52,7 @@ const DepartmentsRolesPage: React.FC = () => {
   const handleDeleteDept = async (id: string) => {
     try {
       await departmentsApi.remove(id);
-      message.success('Department deleted');
+      message.success(t('departmentDeleted'));
       load();
     } catch (err) {
       message.error(getApiError(err));
@@ -62,7 +63,7 @@ const DepartmentsRolesPage: React.FC = () => {
     try {
       const values = await roleForm.validateFields();
       await employeeRolesApi.create(values);
-      message.success('Role created');
+      message.success(t('roleCreated'));
       setRoleModal(false);
       load();
     } catch (err) {
@@ -74,7 +75,7 @@ const DepartmentsRolesPage: React.FC = () => {
   const handleDeleteRole = async (id: string) => {
     try {
       await employeeRolesApi.remove(id);
-      message.success('Role deleted');
+      message.success(t('roleDeleted'));
       load();
     } catch (err) {
       message.error(getApiError(err));
@@ -85,28 +86,28 @@ const DepartmentsRolesPage: React.FC = () => {
   // the least critical, so hiding it below 768px lets Name + Employees + Delete fit a stacked
   // full-width card without horizontal scrolling. It returns from md up.
   const deptColumns: ColumnsType<Department> = [
-    { title: 'Name', dataIndex: 'name' },
-    { title: 'Description', dataIndex: 'description', render: (d?: string) => d ?? '-', responsive: ['md'] },
-    { title: 'Employees', dataIndex: 'employeeCount', align: 'center' },
+    { title: t('name'), dataIndex: 'name' },
+    { title: t('description'), dataIndex: 'description', render: (d?: string) => d ?? '-', responsive: ['md'] },
+    { title: t('employees'), dataIndex: 'employeeCount', align: 'center' },
     {
       title: '',
       render: (_, r) => (
-        <Popconfirm title="Delete this department?" onConfirm={() => handleDeleteDept(r.id)}>
-          <Button size="small" danger>Delete</Button>
+        <Popconfirm title={t('deleteThisDepartment')} onConfirm={() => handleDeleteDept(r.id)}>
+          <Button size="small" danger>{t('delete')}</Button>
         </Popconfirm>
       ),
     },
   ];
 
   const roleColumns: ColumnsType<EmployeeRole> = [
-    { title: 'Name', dataIndex: 'name' },
-    { title: 'Description', dataIndex: 'description', render: (d?: string) => d ?? '-', responsive: ['md'] },
-    { title: 'Employees', dataIndex: 'employeeCount', align: 'center' },
+    { title: t('name'), dataIndex: 'name' },
+    { title: t('description'), dataIndex: 'description', render: (d?: string) => d ?? '-', responsive: ['md'] },
+    { title: t('employees'), dataIndex: 'employeeCount', align: 'center' },
     {
       title: '',
       render: (_, r) => (
-        <Popconfirm title="Delete this role?" onConfirm={() => handleDeleteRole(r.id)}>
-          <Button size="small" danger>Delete</Button>
+        <Popconfirm title={t('deleteThisRole')} onConfirm={() => handleDeleteRole(r.id)}>
+          <Button size="small" danger>{t('delete')}</Button>
         </Popconfirm>
       ),
     },
@@ -116,10 +117,10 @@ const DepartmentsRolesPage: React.FC = () => {
     <Row gutter={[16, 16]}>
       <Col xs={24} md={12}>
         <Card
-          title="Departments"
+          title={t('departments')}
           extra={
             <Button size="small" icon={<PlusOutlined />} onClick={() => { deptForm.resetFields(); setDeptModal(true); }}>
-              Add
+              {t('add')}
             </Button>
           }
         >
@@ -128,10 +129,10 @@ const DepartmentsRolesPage: React.FC = () => {
       </Col>
       <Col xs={24} md={12}>
         <Card
-          title="Employee Roles"
+          title={t('employeeRoles')}
           extra={
             <Button size="small" icon={<PlusOutlined />} onClick={() => { roleForm.resetFields(); setRoleModal(true); }}>
-              Add
+              {t('add')}
             </Button>
           }
         >
@@ -139,23 +140,23 @@ const DepartmentsRolesPage: React.FC = () => {
         </Card>
       </Col>
 
-      <Modal title="New Department" open={deptModal} onOk={handleCreateDept} onCancel={() => setDeptModal(false)} destroyOnClose>
+      <Modal title={t('newDepartment')} open={deptModal} onOk={handleCreateDept} onCancel={() => setDeptModal(false)} destroyOnClose>
         <Form form={deptForm} layout="vertical">
-          <Form.Item name="name" label="Name" rules={[{ required: true }]}>
+          <Form.Item name="name" label={t('name')} rules={[{ required: true }]}>
             <Input maxLength={100} />
           </Form.Item>
-          <Form.Item name="description" label="Description">
+          <Form.Item name="description" label={t('description')}>
             <Input maxLength={500} />
           </Form.Item>
         </Form>
       </Modal>
 
-      <Modal title="New Role" open={roleModal} onOk={handleCreateRole} onCancel={() => setRoleModal(false)} destroyOnClose>
+      <Modal title={t('newRole')} open={roleModal} onOk={handleCreateRole} onCancel={() => setRoleModal(false)} destroyOnClose>
         <Form form={roleForm} layout="vertical">
-          <Form.Item name="name" label="Name" rules={[{ required: true }]}>
+          <Form.Item name="name" label={t('name')} rules={[{ required: true }]}>
             <Input maxLength={100} />
           </Form.Item>
-          <Form.Item name="description" label="Description">
+          <Form.Item name="description" label={t('description')}>
             <Input maxLength={500} />
           </Form.Item>
         </Form>

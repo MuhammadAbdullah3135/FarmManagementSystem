@@ -18,6 +18,15 @@ export interface DashboardSummary {
 }
 
 export interface DashboardAlert {
+  /**
+   * The alert as a message key plus its arguments, when the server generated it from a
+   * template (see `AlertMessageKeys` on the server). Render these in preference to the
+   * English `title`/`message`, which stay as the fallback.
+   */
+  titleKey?: string | null;
+  titleArgs?: Record<string, unknown> | null;
+  messageKey?: string | null;
+  messageArgs?: Record<string, unknown> | null;
   alertType: string;
   severity: string;
   title: string;

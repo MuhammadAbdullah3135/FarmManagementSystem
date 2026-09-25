@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { formatMoney } from '../../i18n/format';
 import { Card, Col, DatePicker, Row, Statistic, Table, Tag, message } from 'antd';
 import { DollarOutlined, MedicineBoxOutlined, ExperimentOutlined, TeamOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
@@ -6,10 +7,11 @@ import dayjs from 'dayjs';
 import { healthCostsApi } from '../../api/health';
 import { getApiError } from '../../api/farmApi';
 import type { HealthCostSummary, HealthCostByVet, HealthCostByAnimal, HealthCostByMonth } from '../../types';
+import { useTranslation } from 'react-i18next';
 
 const { RangePicker } = DatePicker;
 
-const VetCostsPage: React.FC = () => {
+const VetCostsPage: React.FC = () => {const { t } = useTranslation('health'); 
   const [summary, setSummary] = useState<HealthCostSummary | null>(null);
   const [byVet, setByVet] = useState<HealthCostByVet[]>([]);
   const [byAnimal, setByAnimal] = useState<HealthCostByAnimal[]>([]);
@@ -51,19 +53,19 @@ const VetCostsPage: React.FC = () => {
   };
 
   const vetColumns: ColumnsType<HealthCostByVet> = [
-    { title: 'Vet Name', dataIndex: 'vetName' },
-    { title: 'Records', dataIndex: 'recordCount', width: 100 },
+    { title: t('vetName2'), dataIndex: 'vetName' },
+    { title: t('records'), dataIndex: 'recordCount', width: 100 },
     {
-      title: 'Total Cost',
+      title: t('totalCost'),
       dataIndex: 'totalCost',
       width: 140,
-      render: (c: number) => <Tag color="green">${c.toFixed(2)}</Tag>,
+      render: (c: number) => <Tag color="green">{formatMoney(c)}</Tag>,
     },
   ];
 
   const animalColumns: ColumnsType<HealthCostByAnimal> = [
     {
-      title: 'Animal',
+      title: t('animal'),
       render: (_, r) => (
         <span>
           {r.tagNumber}
@@ -71,34 +73,34 @@ const VetCostsPage: React.FC = () => {
         </span>
       ),
     },
-    { title: 'Records', dataIndex: 'recordCount', width: 100 },
+    { title: t('records'), dataIndex: 'recordCount', width: 100 },
     {
-      title: 'Total Cost',
+      title: t('totalCost'),
       dataIndex: 'totalCost',
       width: 140,
-      render: (c: number) => <Tag color="green">${c.toFixed(2)}</Tag>,
+      render: (c: number) => <Tag color="green">{formatMoney(c)}</Tag>,
     },
   ];
 
   const monthColumns: ColumnsType<HealthCostByMonth> = [
-    { title: 'Month', dataIndex: 'monthName' },
+    { title: t('month'), dataIndex: 'monthName' },
     {
-      title: 'Medical',
+      title: t('medical'),
       dataIndex: 'medicalCost',
       width: 120,
-      render: (c: number) => c > 0 ? `$${c.toFixed(2)}` : '-',
+      render: (c: number) => c > 0 ? formatMoney(c) : '-',
     },
     {
-      title: 'Vaccination',
+      title: t('vaccination'),
       dataIndex: 'vaccinationCost',
       width: 120,
-      render: (c: number) => c > 0 ? `$${c.toFixed(2)}` : '-',
+      render: (c: number) => c > 0 ? formatMoney(c) : '-',
     },
     {
-      title: 'Total',
+      title: t('total'),
       dataIndex: 'total',
       width: 120,
-      render: (c: number) => <strong>{c > 0 ? `$${c.toFixed(2)}` : '-'}</strong>,
+      render: (c: number) => <strong>{c > 0 ? formatMoney(c) : '-'}</strong>,
     },
   ];
 
@@ -108,7 +110,7 @@ const VetCostsPage: React.FC = () => {
         <Col xs={24} sm={12} lg={6}>
           <Card loading={loading}>
             <Statistic
-              title="Total Vet Cost"
+              title={t('totalVetCost')}
               value={summary?.grandTotal ?? 0}
               precision={2}
               prefix={<DollarOutlined />}
@@ -119,7 +121,7 @@ const VetCostsPage: React.FC = () => {
         <Col xs={24} sm={12} lg={6}>
           <Card loading={loading}>
             <Statistic
-              title="Medical Costs"
+              title={t('medicalCosts')}
               value={summary?.totalMedicalCost ?? 0}
               precision={2}
               prefix={<MedicineBoxOutlined />}
@@ -130,7 +132,7 @@ const VetCostsPage: React.FC = () => {
         <Col xs={24} sm={12} lg={6}>
           <Card loading={loading}>
             <Statistic
-              title="Vaccination Costs"
+              title={t('vaccinationCosts')}
               value={summary?.totalVaccinationCost ?? 0}
               precision={2}
               prefix={<ExperimentOutlined />}
@@ -141,7 +143,7 @@ const VetCostsPage: React.FC = () => {
         <Col xs={24} sm={12} lg={6}>
           <Card loading={loading}>
             <Statistic
-              title="Records with Cost"
+              title={t('recordsWithCost')}
               value={(summary?.medicalRecordCount ?? 0) + (summary?.vaccinationRecordCount ?? 0)}
               prefix={<TeamOutlined />}
             />
@@ -150,7 +152,7 @@ const VetCostsPage: React.FC = () => {
       </Row>
 
       <Card
-        title="Cost Breakdown by Vet"
+        title={t('costBreakdownByVet')}
         style={{ marginTop: 16 }}
         extra={<RangePicker onChange={handleRangeChange} />}
       >
@@ -164,7 +166,7 @@ const VetCostsPage: React.FC = () => {
         />
       </Card>
 
-      <Card title="Cost Breakdown by Animal" style={{ marginTop: 16 }}>
+      <Card title={t('costBreakdownByAnimal')} style={{ marginTop: 16 }}>
         <Table
           rowKey="animalId"
           columns={animalColumns}
@@ -175,7 +177,7 @@ const VetCostsPage: React.FC = () => {
         />
       </Card>
 
-      <Card title="Monthly Costs (This Year)" style={{ marginTop: 16 }}>
+      <Card title={t('monthlyCostsThisYear')} style={{ marginTop: 16 }}>
         <Table
           rowKey="month"
           columns={monthColumns}

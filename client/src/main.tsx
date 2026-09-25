@@ -1,6 +1,9 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
+// Initialises i18next (and the React binding) before the first render. Bundled resources
+// mean this is synchronous, so nothing renders an untranslated or key-shaped string.
+import './i18n'
 import { initOfflineMonitoring } from './offline/connectivity'
 import { initSyncEngine } from './offline/syncEngine'
 import { registerOfflineShell } from './offline/registerServiceWorker'

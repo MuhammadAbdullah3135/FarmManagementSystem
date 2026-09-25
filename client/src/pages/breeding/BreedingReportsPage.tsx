@@ -6,8 +6,10 @@ import BreakdownPieChart from '../../components/BreakdownPieChart';
 import { breedingReportsApi, type BreedingReportFilter } from '../../api/breeding';
 import { getApiError } from '../../api/farmApi';
 import { message } from 'antd';
+import { formatDate } from '../../i18n/format';
 import dayjs from 'dayjs';
 import type { BreedingSummaryReport, BreedingTrendEntry, MethodDistributionEntry, SirePerformanceEntry, CalendarEventEntry } from '../../types';
+import { useTranslation } from 'react-i18next';
 
 const { RangePicker } = DatePicker;
 const { Text } = Typography;
@@ -18,7 +20,7 @@ const PRIORITY_COLORS: Record<string, string> = {
   Normal: 'blue',
 };
 
-export default function BreedingReportsPage() {
+export default function BreedingReportsPage() {const { t } = useTranslation('breeding'); 
   const [, setFilter] = useState<BreedingReportFilter>({});
   const [summary, setSummary] = useState<BreedingSummaryReport | null>(null);
   const [trend, setTrend] = useState<BreedingTrendEntry[]>([]);
@@ -69,38 +71,38 @@ export default function BreedingReportsPage() {
   };
 
   const sireColumns: ColumnsType<SirePerformanceEntry> = [
-    { title: 'Sire', key: 'sire', render: (_, r) => <><strong>{r.sireTagNumber}</strong>{r.sireName && <Text type="secondary"> ({r.sireName})</Text>}</> },
-    { title: 'Breedings', dataIndex: 'totalBreedings', key: 'totalBreedings' },
-    { title: 'Confirmed', dataIndex: 'confirmed', key: 'confirmed', render: (v: number) => <Tag color="green">{v}</Tag> },
-    { title: 'Failed', dataIndex: 'failed', key: 'failed', render: (v: number) => <Tag color="red">{v}</Tag> },
-    { title: 'Pending', dataIndex: 'pending', key: 'pending', render: (v: number) => <Tag>{v}</Tag> },
-    { title: 'Success Rate', dataIndex: 'successRate', key: 'successRate', render: (v: number) => <span style={{ color: v >= 60 ? '#52c41a' : v >= 30 ? '#faad14' : '#ff4d4f', fontWeight: 'bold' }}>{v}%</span> },
-    { title: 'Offspring', dataIndex: 'totalOffspring', key: 'totalOffspring' },
+    { title: t('sire'), key: 'sire', render: (_, r) => <><strong>{r.sireTagNumber}</strong>{r.sireName && <Text type="secondary"> ({r.sireName})</Text>}</> },
+    { title: t('breedings'), dataIndex: 'totalBreedings', key: 'totalBreedings' },
+    { title: t('confirmed'), dataIndex: 'confirmed', key: 'confirmed', render: (v: number) => <Tag color="green">{v}</Tag> },
+    { title: t('failed'), dataIndex: 'failed', key: 'failed', render: (v: number) => <Tag color="red">{v}</Tag> },
+    { title: t('pending'), dataIndex: 'pending', key: 'pending', render: (v: number) => <Tag>{v}</Tag> },
+    { title: t('successRate'), dataIndex: 'successRate', key: 'successRate', render: (v: number) => <span style={{ color: v >= 60 ? '#52c41a' : v >= 30 ? '#faad14' : '#ff4d4f', fontWeight: 'bold' }}>{v}%</span> },
+    { title: t('offspring'), dataIndex: 'totalOffspring', key: 'totalOffspring' },
   ];
 
   const calendarColumns: ColumnsType<CalendarEventEntry> = [
     {
-      title: 'Date',
+      title: t('date'),
       dataIndex: 'eventDate',
       key: 'eventDate',
-      render: (text: string) => dayjs(text).format('YYYY-MM-DD'),
+      render: (text: string) => formatDate(text),
       sorter: (a, b) => dayjs(a.eventDate).unix() - dayjs(b.eventDate).unix(),
       defaultSortOrder: 'ascend',
     },
     {
-      title: 'Event',
+      title: t('event'),
       dataIndex: 'eventType',
       key: 'eventType',
       render: (text: string) => <Tag>{text}</Tag>,
     },
     {
-      title: 'Animal',
+      title: t('animal'),
       key: 'animal',
       render: (_, r) => <><strong>{r.animalTag}</strong>{r.animalName && <Text type="secondary"> ({r.animalName})</Text>}</>,
     },
-    { title: 'Details', dataIndex: 'details', key: 'details', render: (text: string) => text || '-' },
+    { title: t('details'), dataIndex: 'details', key: 'details', render: (text: string) => text || '-' },
     {
-      title: 'Priority',
+      title: t('priority'),
       dataIndex: 'priority',
       key: 'priority',
       render: (text: string) => <Tag color={PRIORITY_COLORS[text] || 'default'}>{text}</Tag>,
@@ -120,7 +122,7 @@ export default function BreedingReportsPage() {
     <Spin spinning={loading}>
       <Space style={{ marginBottom: 16 }}>
         <RangePicker onChange={handleDateChange} />
-        <Text type="secondary">Filter by date range (leave empty for all time)</Text>
+        <Text type="secondary">{t('filterByDateRangeLeaveEmptyForAll')}</Text>
       </Space>
 
       {/* Summary Stats */}
@@ -128,32 +130,32 @@ export default function BreedingReportsPage() {
         <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
           <Col xs={12} sm={6} md={4}>
             <Card size="small">
-              <Statistic title="Total Breedings" value={summary.totalBreedingRecords} />
+              <Statistic title={t('totalBreedings')} value={summary.totalBreedingRecords} />
             </Card>
           </Col>
           <Col xs={12} sm={6} md={4}>
             <Card size="small">
-              <Statistic title="Confirmation Rate" value={summary.confirmationRate} suffix="%" valueStyle={{ color: summary.confirmationRate >= 50 ? '#52c41a' : '#ff4d4f' }} />
+              <Statistic title={t('confirmationRate')} value={summary.confirmationRate} suffix="%" valueStyle={{ color: summary.confirmationRate >= 50 ? '#52c41a' : '#ff4d4f' }} />
             </Card>
           </Col>
           <Col xs={12} sm={6} md={4}>
             <Card size="small">
-              <Statistic title="Active Pregnancies" value={summary.activePregnancies} valueStyle={{ color: '#1677ff' }} />
+              <Statistic title={t('activePregnancies')} value={summary.activePregnancies} valueStyle={{ color: '#1677ff' }} />
             </Card>
           </Col>
           <Col xs={12} sm={6} md={4}>
             <Card size="small">
-              <Statistic title="Total Births" value={summary.totalBirths} />
+              <Statistic title={t('totalBirths')} value={summary.totalBirths} />
             </Card>
           </Col>
           <Col xs={12} sm={6} md={4}>
             <Card size="small">
-              <Statistic title="Alive Offspring" value={summary.aliveOffspring} valueStyle={{ color: '#52c41a' }} />
+              <Statistic title={t('aliveOffspring')} value={summary.aliveOffspring} valueStyle={{ color: '#52c41a' }} />
             </Card>
           </Col>
           <Col xs={12} sm={6} md={4}>
             <Card size="small">
-              <Statistic title="Avg Gestation" value={summary.averageGestationDays} suffix="days" />
+              <Statistic title={t('avgGestation')} value={summary.averageGestationDays} suffix="days" />
             </Card>
           </Col>
         </Row>
@@ -162,9 +164,9 @@ export default function BreedingReportsPage() {
       <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
         {/* Monthly Trend Chart */}
         <Col xs={24} lg={14}>
-          <Card title="Monthly Breeding Trend" size="small">
+          <Card title={t('monthlyBreedingTrend')} size="small">
             {trend.length === 0 ? (
-              <Empty description="No data" />
+              <Empty description={t('noData')} />
             ) : (
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={trend}>
@@ -184,9 +186,9 @@ export default function BreedingReportsPage() {
 
         {/* Method Distribution Pie Chart */}
         <Col xs={24} lg={10}>
-          <Card title="Breeding Method Distribution" size="small">
+          <Card title={t('breedingMethodDistribution')} size="small">
             {methods.length === 0 ? (
-              <Empty description="No data" />
+              <Empty description={t('noData')} />
             ) : (
               <BreakdownPieChart data={pieData} height={300} outerRadius={100} />
             )}
@@ -197,7 +199,7 @@ export default function BreedingReportsPage() {
       <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
         {/* Sire Performance */}
         <Col xs={24} lg={14}>
-          <Card title="Sire Performance" size="small">
+          <Card title={t('sirePerformance')} size="small">
             <Table
               rowKey="sireId"
               columns={sireColumns}
@@ -210,7 +212,7 @@ export default function BreedingReportsPage() {
 
         {/* Result Distribution Donut */}
         <Col xs={24} lg={10}>
-          <Card title="Result Distribution" size="small">
+          <Card title={t('resultDistribution')} size="small">
             {/* Zero counts are dropped from the ring but kept in the legend, so "Failed 0 (0%)" stays visible. */}
             <BreakdownPieChart data={resultData} height={220} innerRadius={60} outerRadius={90} />
           </Card>
@@ -218,7 +220,7 @@ export default function BreedingReportsPage() {
       </Row>
 
       {/* Calendar Events */}
-      <Card title="Upcoming Events (60 days)" size="small" style={{ marginBottom: 24 }}>
+      <Card title={t('upcomingEvents60Days')} size="small" style={{ marginBottom: 24 }}>
         <Table
           rowKey="id"
           columns={calendarColumns}

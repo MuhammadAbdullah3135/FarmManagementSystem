@@ -6,6 +6,7 @@ import dayjs from 'dayjs';
 import { auditLogsApi } from '../../api/auditLogs';
 import type { AuditLogEntry, PagedResult } from '../../api/auditLogs';
 import { useFarmStore } from '../../stores/farmStore';
+import { useTranslation } from 'react-i18next';
 
 const { RangePicker } = DatePicker;
 const { Text } = Typography;
@@ -24,7 +25,7 @@ const entityTypes = [
   'AttendanceRecord', 'PerformanceReview',
 ];
 
-const AuditLogPage: React.FC = () => {
+const AuditLogPage: React.FC = () => {const { t: translate } = useTranslation('admin'); 
   const { activeFarm } = useFarmStore();
   const [data, setData] = useState<PagedResult<AuditLogEntry> | null>(null);
   const [loading, setLoading] = useState(false);
@@ -60,34 +61,34 @@ const AuditLogPage: React.FC = () => {
 
   const columns: ColumnsType<AuditLogEntry> = [
     {
-      title: 'Timestamp',
+      title: translate('timestamp'),
       dataIndex: 'timestamp',
       key: 'timestamp',
       width: 180,
       render: (v: string) => dayjs(v).format('YYYY-MM-DD HH:mm:ss'),
     },
     {
-      title: 'User',
+      title: translate('user'),
       dataIndex: 'userEmail',
       key: 'userEmail',
       width: 180,
-      render: (v: string | null) => v || <Text type="secondary">System</Text>,
+      render: (v: string | null) => v || <Text type="secondary">{translate('system')}</Text>,
     },
     {
-      title: 'Action',
+      title: translate('action'),
       dataIndex: 'action',
       key: 'action',
       width: 100,
       render: (v: string) => <Tag color={actionColors[v] || 'default'}>{v}</Tag>,
     },
     {
-      title: 'Entity Type',
+      title: translate('entityType'),
       dataIndex: 'entityType',
       key: 'entityType',
       width: 150,
     },
     {
-      title: 'Entity ID',
+      title: translate('entityId'),
       dataIndex: 'entityId',
       key: 'entityId',
       width: 120,
@@ -107,15 +108,15 @@ const AuditLogPage: React.FC = () => {
       ...Object.keys(newValues || {}),
     ]);
 
-    if (allKeys.size === 0) return <Text type="secondary">No value details</Text>;
+    if (allKeys.size === 0) return <Text type="secondary">{translate('noValueDetails')}</Text>;
 
     return (
       <table style={{ width: '100%', fontSize: 13, borderCollapse: 'collapse' }}>
         <thead>
           <tr style={{ borderBottom: '1px solid #f0f0f0' }}>
-            <th style={{ textAlign: 'left', padding: '4px 8px' }}>Field</th>
-            <th style={{ textAlign: 'left', padding: '4px 8px' }}>Old Value</th>
-            <th style={{ textAlign: 'left', padding: '4px 8px' }}>New Value</th>
+            <th style={{ textAlign: 'start', padding: '4px 8px' }}>{translate('field')}</th>
+            <th style={{ textAlign: 'start', padding: '4px 8px' }}>{translate('oldValue')}</th>
+            <th style={{ textAlign: 'start', padding: '4px 8px' }}>{translate('newValue')}</th>
           </tr>
         </thead>
         <tbody>
@@ -136,12 +137,12 @@ const AuditLogPage: React.FC = () => {
   };
 
   return (
-    <Card title="Audit Log" extra={
-      <Button icon={<ReloadOutlined />} onClick={fetchData}>Refresh</Button>
+    <Card title={translate('auditLog')} extra={
+      <Button icon={<ReloadOutlined />} onClick={fetchData}>{translate('refresh')}</Button>
     }>
       <Space wrap style={{ marginBottom: 16 }}>
         <Select
-          placeholder="Entity Type"
+          placeholder={translate('entityType')}
           allowClear
           style={{ width: 180 }}
           value={entityType}
@@ -149,7 +150,7 @@ const AuditLogPage: React.FC = () => {
           options={entityTypes.map(t => ({ label: t, value: t }))}
         />
         <Select
-          placeholder="Action"
+          placeholder={translate('action')}
           allowClear
           style={{ width: 120 }}
           value={action}
@@ -161,7 +162,7 @@ const AuditLogPage: React.FC = () => {
           ]}
         />
         <Input
-          placeholder="Search..."
+          placeholder={translate('search')}
           prefix={<SearchOutlined />}
           style={{ width: 200 }}
           value={search}

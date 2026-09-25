@@ -11,6 +11,7 @@ import { flattenLocations } from '../../api/configuration';
 import { getApiError } from '../../api/farmApi';
 import LookupQuickAddSelect from '../../components/LookupQuickAddSelect';
 import type { FeedRecord, FeedType } from '../../types';
+import { useTranslation } from 'react-i18next';
 
 interface AnimalOption {
   id: string;
@@ -23,7 +24,7 @@ interface LocationOption {
   name: string;
 }
 
-const FeedRecordsPage: React.FC = () => {
+const FeedRecordsPage: React.FC = () => {const { t: translate } = useTranslation('feed'); 
   const [records, setRecords] = useState<FeedRecord[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -121,7 +122,7 @@ const FeedRecordsPage: React.FC = () => {
           fedAt: values.fedAt?.toISOString(),
           notes: values.notes,
         });
-        message.success('Feed record updated');
+        message.success(translate('feedRecordUpdated'));
       } else {
         await feedRecordsApi.create({
           feedTypeId: values.feedTypeId,
@@ -131,7 +132,7 @@ const FeedRecordsPage: React.FC = () => {
           fedAt: values.fedAt?.toISOString(),
           notes: values.notes,
         });
-        message.success('Feeding recorded');
+        message.success(translate('feedingRecorded'));
       }
       setModalOpen(false);
       loadRecords(page);
@@ -144,7 +145,7 @@ const FeedRecordsPage: React.FC = () => {
   const handleDelete = async (id: string) => {
     try {
       await feedRecordsApi.remove(id);
-      message.success('Feed record deleted');
+      message.success(translate('feedRecordDeleted'));
       loadRecords(page);
     } catch (err) {
       message.error(getApiError(err));
@@ -152,25 +153,25 @@ const FeedRecordsPage: React.FC = () => {
   };
 
   const columns: ColumnsType<FeedRecord> = [
-    { title: 'Fed At', dataIndex: 'fedAt', render: (d: string) => dayjs(d).format('YYYY-MM-DD HH:mm') },
-    { title: 'Feed Type', dataIndex: 'feedTypeName' },
+    { title: translate('fedAt'), dataIndex: 'fedAt', render: (d: string) => dayjs(d).format('YYYY-MM-DD HH:mm') },
+    { title: translate('feedType'), dataIndex: 'feedTypeName' },
     {
-      title: 'Target',
+      title: translate('target'),
       render: (_, record) =>
         record.animalId
           ? `${record.animalTagNumber}${record.animalName ? ` (${record.animalName})` : ''}`
           : record.locationName ?? '-',
     },
-    { title: 'Quantity', dataIndex: 'quantity', align: 'right', render: (v: number, r) => `${v} ${r.unitName}` },
-    { title: 'Cost', dataIndex: 'totalCost', align: 'right' },
-    { title: 'Notes', dataIndex: 'notes', ellipsis: true },
+    { title: translate('quantity'), dataIndex: 'quantity', align: 'right', render: (v: number, r) => `${v} ${r.unitName}` },
+    { title: translate('cost'), dataIndex: 'totalCost', align: 'right' },
+    { title: translate('notes'), dataIndex: 'notes', ellipsis: true },
     {
-      title: 'Actions',
+      title: translate('actions'),
       render: (_, record) => (
         <Space>
-          <Button size="small" onClick={() => openEdit(record)}>Edit</Button>
-          <Popconfirm title="Restore stock and delete this record?" onConfirm={() => handleDelete(record.id)}>
-            <Button size="small" danger>Delete</Button>
+          <Button size="small" onClick={() => openEdit(record)}>{translate('edit')}</Button>
+          <Popconfirm title={translate('restoreStockAndDeleteThisRecord')} onConfirm={() => handleDelete(record.id)}>
+            <Button size="small" danger>{translate('delete')}</Button>
           </Popconfirm>
         </Space>
       ),
@@ -179,17 +180,17 @@ const FeedRecordsPage: React.FC = () => {
 
   return (
     <Card
-      title="Daily Feed Records"
+      title={translate('dailyFeedRecords')}
       extra={
         <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
-          Record Feeding
+          {translate('recordFeeding')}
         </Button>
       }
     >
       <Space wrap style={{ marginBottom: 16 }}>
         <Select
           allowClear
-          placeholder="Filter by feed type"
+          placeholder={translate('filterByFeedType')}
           style={{ width: 200 }}
           value={filters.feedTypeId}
           onChange={(v) => setFilters((f) => ({ ...f, feedTypeId: v }))}
@@ -210,7 +211,7 @@ const FeedRecordsPage: React.FC = () => {
       />
 
       <Modal
-        title={editing ? 'Edit Feed Record' : 'Record Feeding'}
+        title={editing ? translate('editFeedRecord') : translate('recordFeeding')}
         open={modalOpen}
         onOk={handleSave}
         onCancel={() => setModalOpen(false)}
@@ -219,7 +220,7 @@ const FeedRecordsPage: React.FC = () => {
         <Form form={form} layout="vertical">
           {!editing && (
             <>
-              <Form.Item label="Feed Target">
+              <Form.Item label={translate('feedTarget')}>
                 <Radio.Group
                   value={targetMode}
                   onChange={(e) => setTargetMode(e.target.value)}
@@ -231,7 +232,7 @@ const FeedRecordsPage: React.FC = () => {
                   buttonStyle="solid"
                 />
               </Form.Item>
-              <Form.Item name="feedTypeId" label="Feed Type" rules={[{ required: true }]}>
+              <Form.Item name="feedTypeId" label={translate('feedType')} rules={[{ required: true }]}>
                 <LookupQuickAddSelect
                   kind="feedType"
                   options={feedTypes.map((t) => ({ value: t.id, label: `${t.name} (${t.unitName})` }))}
@@ -239,7 +240,7 @@ const FeedRecordsPage: React.FC = () => {
                 />
               </Form.Item>
               {targetMode === 'animal' ? (
-                <Form.Item name="animalId" label="Animal" rules={[{ required: true }]}>
+                <Form.Item name="animalId" label={translate('animal')} rules={[{ required: true }]}>
                   <Select
                     showSearch
                     optionFilterProp="label"
@@ -250,7 +251,7 @@ const FeedRecordsPage: React.FC = () => {
                   />
                 </Form.Item>
               ) : (
-                <Form.Item name="locationId" label="Location" rules={[{ required: true }]}>
+                <Form.Item name="locationId" label={translate('location')} rules={[{ required: true }]}>
                   <LookupQuickAddSelect
                     kind="location"
                     ctx={{
@@ -264,13 +265,13 @@ const FeedRecordsPage: React.FC = () => {
               )}
             </>
           )}
-          <Form.Item name="quantity" label="Quantity" rules={[{ required: true }]}>
+          <Form.Item name="quantity" label={translate('quantity')} rules={[{ required: true }]}>
             <InputNumber min={0.01} style={{ width: '100%' }} />
           </Form.Item>
-          <Form.Item name="fedAt" label="Fed At" rules={[{ required: true }]}>
+          <Form.Item name="fedAt" label={translate('fedAt')} rules={[{ required: true }]}>
             <DatePicker showTime style={{ width: '100%' }} />
           </Form.Item>
-          <Form.Item name="notes" label="Notes">
+          <Form.Item name="notes" label={translate('notes')}>
             <Input.TextArea rows={2} maxLength={500} />
           </Form.Item>
         </Form>

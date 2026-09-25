@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, Descriptions, Tag, Tabs, Table, Button, Space, Spin, Typography, message, Breadcrumb, Empty } from 'antd';
-import { ArrowLeftOutlined } from '@ant-design/icons';
+import { DirectionalIcon } from '../../i18n/DirectionalIcon';
 import { animalsApi, type WeightRecord } from '../../api/animals';
 import { weightCheckStatusApi } from '../../api/health';
 import { breedingRecordsApi } from '../../api/breeding';
@@ -13,8 +13,10 @@ import { useQueueStore } from '../../offline/queueEvents';
 import SyncAgeLabel from '../../components/SyncAgeLabel';
 import { useAuthStore } from '../../stores/authStore';
 import { useFarmStore } from '../../stores/farmStore';
+import { formatDate } from '../../i18n/format';
 import dayjs from 'dayjs';
 import type { AnimalDetail, BreedingRecord, WeightCheckStatus } from '../../types';
+import { useTranslation } from 'react-i18next';
 
 /** One row of the merged weights view: the server's copy, or this device's queued one. */
 interface WeightRow {
@@ -47,7 +49,7 @@ const STATUS_COLORS: Record<number, string> = { 0: 'green', 1: 'orange', 2: 'red
 const AnimalWeightsTab: React.FC<{ animalId: string; weightRecordsCount: number }> = ({
   animalId,
   weightRecordsCount,
-}) => {
+}) => {const { t } = useTranslation('animals'); 
   const navigate = useNavigate();
   const accountId = useAuthStore((state) => state.user?.accountId ?? null);
   const farmId = useFarmStore((state) => state.activeFarm?.id ?? null);
@@ -148,7 +150,7 @@ const AnimalWeightsTab: React.FC<{ animalId: string; weightRecordsCount: number 
       )}
       {statuses.length > 0 && (
         <div style={{ marginBottom: 16 }}>
-          <strong>Weight Check Status:</strong>
+          <strong>{t('weightCheckStatus')}</strong>
           <div style={{ marginTop: 8 }}>
             {statuses.map((ws, i) => (
               <Tag
@@ -156,7 +158,7 @@ const AnimalWeightsTab: React.FC<{ animalId: string; weightRecordsCount: number 
                 color={ws.status === 'Overdue' ? 'red' : ws.status === 'Due' ? 'orange' : 'blue'}
                 style={{ marginBottom: 4 }}
               >
-                {ws.status} — Next due: {dayjs(ws.nextDueDate).format('YYYY-MM-DD')} ({ws.daysUntilDue} days)
+                {ws.status} {t('nextDue')} {formatDate(ws.nextDueDate)} ({ws.daysUntilDue} {t('days')}
               </Tag>
             ))}
           </div>
@@ -168,11 +170,10 @@ const AnimalWeightsTab: React.FC<{ animalId: string; weightRecordsCount: number 
             type="primary"
             onClick={() => navigate(`/dashboard/records/weight?animalId=${animalId}`)}
           >
-            Record weight
+            {t('recordWeight')}
           </Button>
           <Text type="secondary">
-            Works offline: the weight is stored on this device and sent when there is a
-            connection.
+            {t('worksOfflineTheWeightIsStoredOnThis')}
           </Text>
         </Space>
       </div>
@@ -208,12 +209,12 @@ const AnimalWeightsTab: React.FC<{ animalId: string; weightRecordsCount: number 
                 title: 'Status',
                 key: 'status',
                 render: (_: unknown, row: WeightRow) => {
-                  if (row.status === 'server') return <Tag>Saved</Tag>;
-                  if (row.status === 'synced') return <Tag color="green">Synced</Tag>;
-                  if (row.status === 'pending') return <Tag color="blue">Waiting to sync</Tag>;
+                  if (row.status === 'server') return <Tag>{t('saved')}</Tag>;
+                  if (row.status === 'synced') return <Tag color="green">{t('synced')}</Tag>;
+                  if (row.status === 'pending') return <Tag color="blue">{t('waitingToSync')}</Tag>;
                   return (
                     <Space direction="vertical" size={0}>
-                      <Tag color="red">Not saved</Tag>
+                      <Tag color="red">{t('notSaved')}</Tag>
                       {row.message && <Text type="danger">{row.message}</Text>}
                     </Space>
                   );
@@ -223,7 +224,7 @@ const AnimalWeightsTab: React.FC<{ animalId: string; weightRecordsCount: number 
           />
           <Text type="secondary" style={{ display: 'block', marginTop: 8 }}>
             {rows.filter((row) => row.status === 'pending' || row.status === 'quarantined').length > 0
-              ? 'Records marked “Waiting to sync” exist only on this device. Manage them under Offline & sync.'
+              ? t('recordsMarkedWaitingToSyncExistOnlyOn')
               : `Weight records: ${weightRecordsCount}`}
           </Text>
         </>
@@ -232,7 +233,7 @@ const AnimalWeightsTab: React.FC<{ animalId: string; weightRecordsCount: number 
   );
 };
 
-export default function AnimalDetailPage() {
+export default function AnimalDetailPage() {const { t } = useTranslation('animals'); 
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [animal, setAnimal] = useState<AnimalDetail | null>(null);
@@ -288,13 +289,13 @@ export default function AnimalDetailPage() {
 
   const breedingColumns = [
     {
-      title: 'Date',
+      title: t('date'),
       dataIndex: 'breedingDate',
       key: 'breedingDate',
-      render: (text: string) => dayjs(text).format('YYYY-MM-DD'),
+      render: (text: string) => formatDate(text),
     },
     {
-      title: 'Sire',
+      title: t('sire'),
       key: 'sire',
       render: (_: unknown, record: BreedingRecord) => (
         <a onClick={() => navigate(`/dashboard/animals/${record.sireId}`)}>
@@ -303,7 +304,7 @@ export default function AnimalDetailPage() {
       ),
     },
     {
-      title: 'Dam',
+      title: t('dam'),
       key: 'dam',
       render: (_: unknown, record: BreedingRecord) => (
         <a onClick={() => navigate(`/dashboard/animals/${record.damId}`)}>
@@ -312,19 +313,19 @@ export default function AnimalDetailPage() {
       ),
     },
     {
-      title: 'Method',
+      title: t('method'),
       dataIndex: 'method',
       key: 'method',
       render: (val: number) => methodLabels[val] || 'Unknown',
     },
     {
-      title: 'Result',
+      title: t('result'),
       dataIndex: 'result',
       key: 'result',
       render: (val: number) => <Tag color={resultColors[val]}>{resultLabels[val]}</Tag>,
     },
     {
-      title: 'Vet',
+      title: t('vet'),
       dataIndex: 'vetName',
       key: 'vetName',
       render: (text: string) => text || '-',
@@ -334,33 +335,33 @@ export default function AnimalDetailPage() {
   const tabItems = [
     {
       key: 'overview',
-      label: 'Overview',
+      label: t('overview'),
       children: (
         <Descriptions bordered column={2} size="small">
-          <Descriptions.Item label="Tag Number">{animal.tagNumber}</Descriptions.Item>
-          <Descriptions.Item label="Name">{animal.name || '-'}</Descriptions.Item>
-          <Descriptions.Item label="Type">{animal.animalTypeName}</Descriptions.Item>
-          <Descriptions.Item label="Breed">{animal.breedName || '-'}</Descriptions.Item>
-          <Descriptions.Item label="Sex">{animal.sexValue}</Descriptions.Item>
-          <Descriptions.Item label="Status">
+          <Descriptions.Item label={t('tagNumber')}>{animal.tagNumber}</Descriptions.Item>
+          <Descriptions.Item label={t('name')}>{animal.name || '-'}</Descriptions.Item>
+          <Descriptions.Item label={t('type')}>{animal.animalTypeName}</Descriptions.Item>
+          <Descriptions.Item label={t('breed')}>{animal.breedName || '-'}</Descriptions.Item>
+          <Descriptions.Item label={t('sex')}>{animal.sexValue}</Descriptions.Item>
+          <Descriptions.Item label={t('status')}>
             <Tag color={STATUS_COLORS[animal.statusCategory] || 'default'}>{animal.statusName}</Tag>
           </Descriptions.Item>
-          <Descriptions.Item label="Location">{animal.locationName || '-'}</Descriptions.Item>
-          <Descriptions.Item label="Age Category">{animal.ageCategoryName || '-'}</Descriptions.Item>
-          <Descriptions.Item label="Date of Birth">{animal.dateOfBirth ? dayjs(animal.dateOfBirth).format('YYYY-MM-DD') : '-'}</Descriptions.Item>
-          <Descriptions.Item label="Acquisition Date">{animal.acquisitionDate ? dayjs(animal.acquisitionDate).format('YYYY-MM-DD') : '-'}</Descriptions.Item>
-          <Descriptions.Item label="Sire">{animal.sireTagNumber || '-'}</Descriptions.Item>
-          <Descriptions.Item label="Dam">{animal.damTagNumber || '-'}</Descriptions.Item>
-          <Descriptions.Item label="Notes" span={2}>{animal.notes || '-'}</Descriptions.Item>
-          <Descriptions.Item label="Weight Records">{animal.weightRecordsCount}</Descriptions.Item>
-          <Descriptions.Item label="Images">{animal.imagesCount}</Descriptions.Item>
-          <Descriptions.Item label="Created">{dayjs(animal.createdAt).format('YYYY-MM-DD HH:mm')}</Descriptions.Item>
+          <Descriptions.Item label={t('location')}>{animal.locationName || '-'}</Descriptions.Item>
+          <Descriptions.Item label={t('ageCategory')}>{animal.ageCategoryName || '-'}</Descriptions.Item>
+          <Descriptions.Item label={t('dateOfBirth')}>{animal.dateOfBirth ? formatDate(animal.dateOfBirth) : '-'}</Descriptions.Item>
+          <Descriptions.Item label={t('acquisitionDate')}>{animal.acquisitionDate ? formatDate(animal.acquisitionDate) : '-'}</Descriptions.Item>
+          <Descriptions.Item label={t('sire')}>{animal.sireTagNumber || '-'}</Descriptions.Item>
+          <Descriptions.Item label={t('dam')}>{animal.damTagNumber || '-'}</Descriptions.Item>
+          <Descriptions.Item label={t('notes')} span={2}>{animal.notes || '-'}</Descriptions.Item>
+          <Descriptions.Item label={t('weightRecords')}>{animal.weightRecordsCount}</Descriptions.Item>
+          <Descriptions.Item label={t('images')}>{animal.imagesCount}</Descriptions.Item>
+          <Descriptions.Item label={t('created')}>{dayjs(animal.createdAt).format('YYYY-MM-DD HH:mm')}</Descriptions.Item>
         </Descriptions>
       ),
     },
     {
       key: 'weights',
-      label: 'Weights',
+      label: t('weights'),
       children: (
         <AnimalWeightsTab
           animalId={animal.id}
@@ -370,19 +371,19 @@ export default function AnimalDetailPage() {
     },
     {
       key: 'timeline',
-      label: 'Timeline',
+      label: t('timeline'),
       children: (
-        <Empty description="Timeline events will appear here" />
+        <Empty description={t('timelineEventsWillAppearHere')} />
       ),
     },
     {
       key: 'breeding',
-      label: 'Breeding',
+      label: t('breeding'),
       children: (
         <div>
           <div style={{ marginBottom: 16 }}>
             <Button type="primary" onClick={() => navigate('/dashboard/breeding/records')}>
-              Add Breeding Record
+              {t('addBreedingRecord')}
             </Button>
           </div>
           <Table
@@ -403,15 +404,15 @@ export default function AnimalDetailPage() {
       <Breadcrumb
         style={{ marginBottom: 16 }}
         items={[
-          { title: <a onClick={() => navigate('/dashboard/animals')}>Animals</a> },
+          { title: <a onClick={() => navigate('/dashboard/animals')}>{t('animals')}</a> },
           { title: `${animal.tagNumber}${animal.name ? ` - ${animal.name}` : ''}` },
         ]}
       />
       <Card
         title={`${animal.tagNumber}${animal.name ? ` - ${animal.name}` : ''}`}
         extra={
-          <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/dashboard/animals')}>
-            Back
+          <Button icon={<DirectionalIcon role="back" />} onClick={() => navigate('/dashboard/animals')}>
+            {t('back')}
           </Button>
         }
       >

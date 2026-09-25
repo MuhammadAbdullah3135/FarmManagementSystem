@@ -22,24 +22,33 @@ import {
   type DashboardCharts,
 } from '../api/dashboard';
 import { getApiError } from '../api/farmApi';
+import { formatMoney } from '../i18n/format';
+import { renderKeyedMessage } from '../i18n/serverMessage';
 import { message } from 'antd';
+import { useTranslation } from 'react-i18next';
 
 const { Title, Text } = Typography;
 
-const formatCurrency = (v: number) =>
-  `$${v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+// One money formatter for the whole app (see `i18n/format.ts`): the `$` is unchanged, the
+// separators follow the language. Wrapped rather than aliased so recharts' extra callback
+// arguments cannot be mistaken for a locale.
+const formatCurrency = (v: number) => formatMoney(v);
 
 /**
  * Renders an alert's `link` as a navigable action. Alerts without a link keep
  * the plain layout (no dead control), so this returns `undefined` for them.
  */
-const alertAction = (alert: DashboardAlert) =>
-  alert.link ? <Link to={alert.link}>View</Link> : undefined;
+/**
+ * An alert's action, translated: the link is the server's route, the word is the reader's.
+ * An alert with no route keeps no action rather than a control that goes nowhere.
+ */
+const alertAction = (alert: DashboardAlert, viewLabel: string) =>
+  alert.link ? <Link to={alert.link}>{viewLabel}</Link> : undefined;
 
 /** How many alert cards the dashboard shows before it counts the rest. */
 const ALERT_PREVIEW_LIMIT = 5;
 
-const DashboardPage: React.FC = () => {
+const DashboardPage: React.FC = () => {const { t } = useTranslation('dashboard'); 
   const { user } = useAuthStore();
   const { activeFarm } = useFarmStore();
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
@@ -97,9 +106,9 @@ const DashboardPage: React.FC = () => {
 
   return (
     <div>
-      <Title level={3}>Welcome, {user?.firstName}!</Title>
+      <Title level={3}>{t('welcome')} {user?.firstName}!</Title>
       <Text type="secondary">
-        {activeFarm ? `Currently managing: ${activeFarm.name}` : 'Select a farm to get started'}
+        {activeFarm ? t('currentlyManaging', { name: activeFarm.name }) : t('selectAFarmToGetStarted')}
       </Text>
 
       {/* ── Summary Cards ──────────────────────────────────── */}
@@ -108,7 +117,7 @@ const DashboardPage: React.FC = () => {
           <Col xs={12} sm={8} md={6}>
             <Card>
               <Statistic
-                title="Total Animals"
+                title={t('totalAnimals')}
                 value={summary?.totalAnimals ?? 0}
                 prefix={<BugOutlined />}
               />
@@ -117,7 +126,7 @@ const DashboardPage: React.FC = () => {
           <Col xs={12} sm={8} md={6}>
             <Card>
               <Statistic
-                title="Pregnant"
+                title={t('pregnant')}
                 value={summary?.pregnantCount ?? 0}
                 prefix={<HeartOutlined />}
                 styles={{ content: { color: '#1677ff' } }}
@@ -127,7 +136,7 @@ const DashboardPage: React.FC = () => {
           <Col xs={12} sm={8} md={6}>
             <Card>
               <Statistic
-                title="Sick"
+                title={t('sick')}
                 value={summary?.sickCount ?? 0}
                 prefix={<MedicineBoxOutlined />}
                 styles={{ content: { color: summary?.sickCount ? '#ff4d4f' : undefined } }}
@@ -137,7 +146,7 @@ const DashboardPage: React.FC = () => {
           <Col xs={12} sm={8} md={6}>
             <Card>
               <Statistic
-                title="Due Weight Checks"
+                title={t('dueWeightChecks')}
                 value={summary?.dueWeightCheckCount ?? 0}
                 prefix={<MedicineBoxOutlined />}
                 styles={{ content: { color: summary?.dueWeightCheckCount ? '#faad14' : undefined } }}
@@ -147,7 +156,7 @@ const DashboardPage: React.FC = () => {
           <Col xs={12} sm={8} md={6}>
             <Card>
               <Statistic
-                title="Overdue Tasks"
+                title={t('overdueTasks')}
                 value={summary?.overdueTasks ?? 0}
                 prefix={<CheckSquareOutlined />}
                 styles={{ content: { color: summary?.overdueTasks ? '#ff4d4f' : undefined } }}
@@ -157,7 +166,7 @@ const DashboardPage: React.FC = () => {
           <Col xs={12} sm={8} md={6}>
             <Card>
               <Statistic
-                title="Upcoming Births"
+                title={t('upcomingBirths')}
                 value={summary?.upcomingBirths ?? 0}
                 prefix={<NodeIndexOutlined />}
                 styles={{ content: { color: summary?.upcomingBirths ? '#52c41a' : undefined } }}
@@ -167,7 +176,7 @@ const DashboardPage: React.FC = () => {
           <Col xs={12} sm={8} md={6}>
             <Card>
               <Statistic
-                title="Feed Stock Value"
+                title={t('feedStockValue')}
                 value={summary?.totalFeedStockValue ?? 0}
                 prefix={<CoffeeOutlined />}
                 formatter={(value) => formatCurrency(value as number)}
@@ -177,7 +186,7 @@ const DashboardPage: React.FC = () => {
           <Col xs={12} sm={8} md={6}>
             <Card>
               <Statistic
-                title="Inventory Value"
+                title={t('inventoryValue')}
                 value={summary?.totalInventoryStockValue ?? 0}
                 prefix={<InboxOutlined />}
                 formatter={(value) => formatCurrency(value as number)}
@@ -189,7 +198,7 @@ const DashboardPage: React.FC = () => {
 
       {/* ── Alerts ─────────────────────────────────────────── */}
       {alerts.length > 0 && (
-        <Card title={`Alerts (${sortedAlerts.length})`} style={{ marginTop: 16 }}>
+        <Card title={`${t('alerts')} (${sortedAlerts.length})`} style={{ marginTop: 16 }}>
           <Space orientation="vertical" style={{ width: '100%' }}>
             {previewAlerts.map((alert, i) => (
               <Alert
@@ -198,16 +207,20 @@ const DashboardPage: React.FC = () => {
                    triangle made every Critical alert look like every other one. */
                 type={alert.severity === 'Critical' ? 'error' : alert.severity === 'Warning' ? 'warning' : 'info'}
                 showIcon
-                title={alert.title}
-                description={alert.message}
-                action={alertAction(alert)}
+                // The keyed form when the server sent one, the English text otherwise —
+                // the same preference the rest of the client uses for server messages.
+                title={renderKeyedMessage(alert.titleKey, alert.titleArgs, alert.title)}
+                description={renderKeyedMessage(alert.messageKey, alert.messageArgs, alert.message)}
+                action={alertAction(alert, t('view'))}
                 closable
               />
             ))}
             {hiddenAlertCount > 0 && (
               <Text type="secondary">
-                {hiddenAlertCount} more alert{hiddenAlertCount === 1 ? '' : 's'} on this farm —{' '}
-                <Link to="/dashboard/notifications">see them all</Link>.
+                {/* The count drives a plural form rather than an appended `s`: Arabic has six
+                    plural categories, so concatenating a suffix is only correct in English. */}
+                {t('moreAlerts', { count: hiddenAlertCount })} {t('onThisFarm')}{' '}
+                <Link to="/dashboard/notifications">{t('seeThemAll')}</Link>.
               </Text>
             )}
           </Space>
@@ -216,7 +229,7 @@ const DashboardPage: React.FC = () => {
 
       {/* ── Charts ─────────────────────────────────────────── */}
       <Card
-        title="Charts"
+        title={t('charts')}
         style={{ marginTop: 16 }}
         extra={<DateRangeFilter onChange={(from, to) => loadCharts(from, to)} />}
       >
@@ -224,7 +237,7 @@ const DashboardPage: React.FC = () => {
           <Row gutter={[16, 16]}>
             {/* Animal Trends */}
             <Col xs={24} lg={12}>
-              <Card title="Animal Additions" size="small">
+              <Card title={t('animalAdditions')} size="small">
                 {charts?.animalTrends && charts.animalTrends.length > 0 ? (
                   <ResponsiveContainer width="100%" height={260}>
                     <AreaChart data={charts.animalTrends}>
@@ -236,28 +249,28 @@ const DashboardPage: React.FC = () => {
                     </AreaChart>
                   </ResponsiveContainer>
                 ) : (
-                  <Empty description="No data" />
+                  <Empty description={t('noData')} />
                 )}
               </Card>
             </Col>
 
             {/* Expense Breakdown */}
             <Col xs={24} lg={12}>
-              <Card title="Expense Breakdown" size="small">
+              <Card title={t('expenseBreakdown')} size="small">
                 {charts?.expenseBreakdown && charts.expenseBreakdown.items.length > 0 ? (
                   <BreakdownPieChart
                     data={charts.expenseBreakdown.items.map(i => ({ name: i.categoryName, value: i.total }))}
                     valueFormatter={formatCurrency}
                   />
                 ) : (
-                  <Empty description="No data" />
+                  <Empty description={t('noData')} />
                 )}
               </Card>
             </Col>
 
             {/* Feed Consumption */}
             <Col xs={24} lg={12}>
-              <Card title="Feed Consumption Trend" size="small">
+              <Card title={t('feedConsumptionTrend')} size="small">
                 {charts?.feedConsumptionTrend && charts.feedConsumptionTrend.length > 0 ? (
                   <ResponsiveContainer width="100%" height={260}>
                     <LineChart data={charts.feedConsumptionTrend}>
@@ -271,14 +284,14 @@ const DashboardPage: React.FC = () => {
                     </LineChart>
                   </ResponsiveContainer>
                 ) : (
-                  <Empty description="No data" />
+                  <Empty description={t('noData')} />
                 )}
               </Card>
             </Col>
 
             {/* Monthly P/L */}
             <Col xs={24} lg={12}>
-              <Card title="Monthly Profit & Loss" size="small">
+              <Card title={t('monthlyProfitLoss')} size="small">
                 {charts?.monthlyPL && charts.monthlyPL.length > 0 ? (
                   <ResponsiveContainer width="100%" height={260}>
                     <BarChart data={charts.monthlyPL}>
@@ -292,7 +305,7 @@ const DashboardPage: React.FC = () => {
                     </BarChart>
                   </ResponsiveContainer>
                 ) : (
-                  <Empty description="No data" />
+                  <Empty description={t('noData')} />
                 )}
               </Card>
             </Col>
@@ -303,7 +316,7 @@ const DashboardPage: React.FC = () => {
       {/* ── No farm selected ───────────────────────────────── */}
       {!activeFarm && (
         <Card style={{ marginTop: 24 }}>
-          <Text>Select a farm from the dropdown in the header to start managing your operations.</Text>
+          <Text>{t('selectAFarmFromTheDropdownInThe')}</Text>
         </Card>
       )}
     </div>

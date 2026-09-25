@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { formatDate } from '../../i18n/format';
 import {
   Button, Card, DatePicker, Modal, Select, Space, Table, Tag, message,
 } from 'antd';
@@ -8,6 +9,7 @@ import dayjs, { Dayjs } from 'dayjs';
 import { feedingTasksApi } from '../../api/feed';
 import { getApiError } from '../../api/farmApi';
 import type { DietPlanItem, FeedingTask, FeedingTaskStatus } from '../../types';
+import { useTranslation } from 'react-i18next';
 
 const STATUS_COLORS: Record<FeedingTaskStatus, string> = {
   Pending: 'gold',
@@ -15,7 +17,7 @@ const STATUS_COLORS: Record<FeedingTaskStatus, string> = {
   Skipped: 'red',
 };
 
-const FeedingTasksPage: React.FC = () => {
+const FeedingTasksPage: React.FC = () => {const { t } = useTranslation('feed'); 
   const [tasks, setTasks] = useState<FeedingTask[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -51,7 +53,7 @@ const FeedingTasksPage: React.FC = () => {
   }, [load]);
 
   const handleGenerate = async () => {
-    if (!date) { message.warning('Pick a date'); return; }
+    if (!date) { message.warning(t('pickADate')); return; }
     setGenLoading(true);
     try {
       await feedingTasksApi.generate(date.format('YYYY-MM-DD'));
@@ -69,10 +71,10 @@ const FeedingTasksPage: React.FC = () => {
     try {
       if (notesTarget.action === 'complete') {
         await feedingTasksApi.complete(notesTarget.id, notesValue || undefined);
-        message.success('Task completed');
+        message.success(t('taskCompleted'));
       } else {
         await feedingTasksApi.skip(notesTarget.id, notesValue || undefined);
-        message.success('Task skipped');
+        message.success(t('taskSkipped'));
       }
       setNotesTarget(null);
       setNotesValue('');
@@ -83,21 +85,21 @@ const FeedingTasksPage: React.FC = () => {
   };
 
   const columns: ColumnsType<FeedingTask> = [
-    { title: 'Diet Plan', dataIndex: 'dietPlanName' },
-    { title: 'Date', dataIndex: 'taskDate', render: (d: string) => dayjs(d).format('YYYY-MM-DD') },
-    { title: 'Time', dataIndex: 'timeOfDay' },
-    { title: 'Target', dataIndex: 'targetAnimalCount', align: 'center' },
+    { title: t('dietPlan'), dataIndex: 'dietPlanName' },
+    { title: t('date'), dataIndex: 'taskDate', render: (d: string) => formatDate(d) },
+    { title: t('time'), dataIndex: 'timeOfDay' },
+    { title: t('target'), dataIndex: 'targetAnimalCount', align: 'center' },
     {
-      title: 'Status',
+      title: t('status'),
       dataIndex: 'status',
       render: (s: FeedingTaskStatus) => <Tag color={STATUS_COLORS[s]}>{s}</Tag>,
     },
     {
-      title: 'Items',
+      title: t('items'),
       render: (_, record) => record.items.length,
     },
     {
-      title: 'Actions',
+      title: t('actions'),
       render: (_, record) =>
         record.status === 'Pending' ? (
           <Space>
@@ -107,7 +109,7 @@ const FeedingTasksPage: React.FC = () => {
               icon={<CheckOutlined />}
               onClick={() => setNotesTarget({ id: record.id, action: 'complete' })}
             >
-              Complete
+              {t('complete')}
             </Button>
             <Button
               size="small"
@@ -115,33 +117,33 @@ const FeedingTasksPage: React.FC = () => {
               icon={<CloseOutlined />}
               onClick={() => setNotesTarget({ id: record.id, action: 'skip' })}
             >
-              Skip
+              {t('skip')}
             </Button>
           </Space>
         ) : record.status === 'Completed' ? (
-          <span style={{ color: '#52c41a' }}>Done at {dayjs(record.completedAt).format('HH:mm')}</span>
+          <span style={{ color: '#52c41a' }}>{t('doneAt')} {dayjs(record.completedAt).format('HH:mm')}</span>
         ) : (
-          <span style={{ color: '#999' }}>Skipped</span>
+          <span style={{ color: '#999' }}>{t('skipped')}</span>
         ),
     },
   ];
 
   return (
     <Card
-      title="Feeding Tasks"
+      title={t('feedingTasks')}
       extra={
         <Space>
           <DatePicker value={date} onChange={setDate} />
           <Select
             allowClear
-            placeholder="Status"
+            placeholder={t('status')}
             style={{ width: 120 }}
             value={statusFilter}
             onChange={setStatusFilter}
             options={['Pending', 'Completed', 'Skipped'].map((s) => ({ value: s, label: s }))}
           />
           <Button icon={<ThunderboltOutlined />} loading={genLoading} onClick={handleGenerate}>
-            Generate
+            {t('generate')}
           </Button>
         </Space>
       }
@@ -173,12 +175,12 @@ const FeedingTasksPage: React.FC = () => {
       />
 
       <Modal
-        title={notesTarget?.action === 'complete' ? 'Complete Task' : 'Skip Task'}
+        title={notesTarget?.action === 'complete' ? t('completeTask') : t('skipTask')}
         open={!!notesTarget}
         onOk={handleAction}
         onCancel={() => setNotesTarget(null)}
       >
-        <p>Optional notes:</p>
+        <p>{t('optionalNotes')}</p>
         <textarea
           value={notesValue}
           onChange={(e) => setNotesValue(e.target.value)}

@@ -4,13 +4,14 @@ import {
 } from 'antd';
 import { BellOutlined, CheckOutlined, DeleteOutlined, SettingOutlined } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
-import dayjs from 'dayjs';
-import {
-  notificationsApi, alertTypeLabel, severityColor,
-} from '../api/notifications';
+import { notificationsApi, severityColor } from '../api/notifications';
 import type { Notification, NotificationListParams } from '../api/notifications';
 import { getApiError } from '../api/farmApi';
+import { formatDateLong, formatTime } from '../i18n/format';
+import { renderKeyedMessage } from '../i18n/serverMessage';
+import { alertTypeLabel, severityLabel } from '../i18n/vocabulary';
 import { useFarmStore } from '../stores/farmStore';
+import { useTranslation } from 'react-i18next';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -27,7 +28,7 @@ const PAGE_SIZE = 20;
  * "View" reuses the same relative route the dashboard cards link to, so an alert
  * navigates identically from either place.
  */
-const NotificationsPage: React.FC = () => {
+const NotificationsPage: React.FC = () => {const { t } = useTranslation('notifications'); 
   const navigate = useNavigate();
   const { activeFarm } = useFarmStore();
 
@@ -105,36 +106,35 @@ const NotificationsPage: React.FC = () => {
       <Space style={{ width: '100%', justifyContent: 'space-between', marginBottom: 8 }} align="start">
         <div>
           <Title level={3} style={{ marginBottom: 0 }}>
-            Notifications <Badge count={unreadCount} overflowCount={99} />
+            {t('notifications')} <Badge count={unreadCount} overflowCount={99} />
           </Title>
           <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-            Your alerts for {activeFarm?.name ?? 'this farm'}, recorded by the scheduled dispatch job.
-            Marking one read or dismissing it only affects your own list.
+            {t('yourAlertsFor')} {activeFarm?.name ?? t('thisFarm')}{t('recordedByTheScheduledDispatchJobMarkingOne')}
           </Paragraph>
         </div>
         <Space>
           <Switch
-            aria-label="Unread only"
+            aria-label={t('unreadOnly')}
             checked={unreadOnly}
             onChange={(checked) => changeFilter(() => setUnreadOnly(checked))}
-            checkedChildren="Unread"
-            unCheckedChildren="All"
+            checkedChildren={t('unread')}
+            unCheckedChildren={t('all')}
           />
           <Switch
-            aria-label="Show dismissed"
+            aria-label={t('showDismissed')}
             checked={includeDismissed}
             onChange={(checked) => changeFilter(() => setIncludeDismissed(checked))}
-            checkedChildren="Dismissed shown"
-            unCheckedChildren="Dismissed hidden"
+            checkedChildren={t('dismissedShown')}
+            unCheckedChildren={t('dismissedHidden')}
           />
           <Button
             icon={<SettingOutlined />}
             onClick={() => navigate('/dashboard/notifications/preferences')}
           >
-            Preferences
+            {t('preferences')}
           </Button>
           <Button icon={<CheckOutlined />} onClick={() => void handleMarkAllRead()} disabled={unreadCount === 0}>
-            Mark all read
+            {t('markAllRead')}
           </Button>
         </Space>
       </Space>
@@ -145,7 +145,7 @@ const NotificationsPage: React.FC = () => {
             <Empty
               image={<BellOutlined style={{ fontSize: 32 }} />}
               description={
-                includeDismissed ? 'No notifications.' : 'Nothing needs attention right now.'
+                includeDismissed ? t('noNotifications') : t('nothingNeedsAttentionRightNow')
               }
             />
           ) : (
@@ -164,31 +164,36 @@ const NotificationsPage: React.FC = () => {
                 >
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <Space size={8} wrap>
-                      <Tag color={severityColor(notification.severity)}>{notification.severity}</Tag>
-                      <Tag>{alertTypeLabel(notification.alertType)}</Tag>
-                      <Text strong={!notification.isRead}>{notification.title}</Text>
-                      {notification.isRead ? null : <Badge status="processing" text="Unread" />}
-                      {notification.isDismissed ? <Tag>Dismissed</Tag> : null}
+                      <Tag color={severityColor(notification.severity)}>{severityLabel(t, notification.severity)}</Tag>
+                      <Tag>{alertTypeLabel(t, notification.alertType)}</Tag>
+                      {/* Keyed when the dispatcher stored one, English text otherwise. */}
+                      <Text strong={!notification.isRead}>
+                        {renderKeyedMessage(notification.titleKey, notification.titleArgs, notification.title)}
+                      </Text>
+                      {notification.isRead ? null : <Badge status="processing" text={t('unread')} />}
+                      {notification.isDismissed ? <Tag>{t('dismissed')}</Tag> : null}
                     </Space>
-                    <div style={{ marginTop: 4 }}>{notification.message}</div>
+                    <div style={{ marginTop: 4 }}>
+                      {renderKeyedMessage(notification.messageKey, notification.messageArgs, notification.message)}
+                    </div>
                     <Text type="secondary" style={{ fontSize: 12 }}>
                       {notification.dueDate
-                        ? `Due ${dayjs(notification.dueDate).format('MMM D, YYYY')} · `
+                        ? t('dueOn', { date: formatDateLong(notification.dueDate) })
                         : ''}
-                      recorded {dayjs(notification.createdAt).format('MMM D, YYYY HH:mm')}
-                      {notification.deliveredAtUtc ? ' · emailed' : ''}
+                      {t('recorded')} {formatDateLong(notification.createdAt)} {formatTime(notification.createdAt)}
+                      {notification.deliveredAtUtc ? t('emailed') : ''}
                     </Text>
                   </div>
 
                   <Space size={4} wrap>
-                    {notification.link ? <Link to={notification.link}>View</Link> : null}
+                    {notification.link ? <Link to={notification.link}>{t('view')}</Link> : null}
                     {notification.isRead ? null : (
                       <Button
                         type="link"
                         size="small"
                         onClick={() => void handleMarkRead(notification)}
                       >
-                        Mark read
+                        {t('markRead')}
                       </Button>
                     )}
                     {notification.isDismissed ? null : (
@@ -198,7 +203,7 @@ const NotificationsPage: React.FC = () => {
                         icon={<DeleteOutlined />}
                         onClick={() => void handleDismiss(notification)}
                       >
-                        Dismiss
+                        {t('dismiss')}
                       </Button>
                     )}
                   </Space>
@@ -210,7 +215,8 @@ const NotificationsPage: React.FC = () => {
 
         {totalCount > PAGE_SIZE && (
           <Pagination
-            style={{ marginTop: 16, textAlign: 'right' }}
+            // Centred-to-trailing: `end` is the right-hand side in English, the left in Arabic.
+            style={{ marginTop: 16, textAlign: 'end' }}
             current={page}
             pageSize={PAGE_SIZE}
             total={totalCount}

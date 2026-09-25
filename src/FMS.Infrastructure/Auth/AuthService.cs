@@ -121,8 +121,57 @@ public class AuthService : IAuthService
             Email = user.Email,
             FirstName = user.FirstName,
             LastName = user.LastName,
-            Roles = roles
+            Roles = roles,
+            Locale = user.Locale
         });
+    }
+
+    public async Task<Result<UserProfileResponse>> GetProfileAsync(Guid userId)
+    {
+        var user = await _context.Users
+            .Include(u => u.UserRoles)
+            .ThenInclude(ur => ur.Role)
+            .FirstOrDefaultAsync(u => u.Id == userId);
+
+        if (user == null)
+            return Result<UserProfileResponse>.NotFound("User not found");
+
+        return Result<UserProfileResponse>.Success(new UserProfileResponse
+        {
+            UserId = user.Id,
+            AccountId = user.AccountId,
+            Email = user.Email,
+            FirstName = user.FirstName,
+            LastName = user.LastName,
+            Locale = user.Locale,
+            // Read from the account's roles, not from a farm membership: this endpoint is
+            // account-scoped, exactly like the role claims in its access token.
+            Roles = user.UserRoles.Select(ur => ur.Role.Name).ToList()
+        });
+    }
+
+    public async Task<Result<string?>> SetLocaleAsync(Guid userId, string? locale)
+    {
+        // A blank value is a deliberate "no preference" rather than a bad request — the
+        // client sends it when it has nothing better to say.
+        var normalized = string.IsNullOrWhiteSpace(locale) ? null : SupportedLocales.Normalize(locale);
+        if (!string.IsNullOrWhiteSpace(locale) && normalized == null)
+        {
+            return Result<string?>.Validation(
+                $"Unsupported locale '{locale}'",
+                "validation.locale.unsupported",
+                new Dictionary<string, object?> { ["locale"] = locale });
+        }
+
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
+        if (user == null)
+            return Result<string?>.NotFound("User not found");
+
+        user.Locale = normalized;
+        user.ModifiedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+
+        return Result<string?>.Success(normalized);
     }
 
     public async Task<Result<AuthResponse>> LoginAsync(LoginRequest request)
@@ -168,7 +217,8 @@ public class AuthService : IAuthService
             Email = user.Email,
             FirstName = user.FirstName,
             LastName = user.LastName,
-            Roles = roles
+            Roles = roles,
+            Locale = user.Locale
         });
     }
 
@@ -269,7 +319,8 @@ public class AuthService : IAuthService
             Email = user.Email,
             FirstName = user.FirstName,
             LastName = user.LastName,
-            Roles = roles
+            Roles = roles,
+            Locale = user.Locale
         });
     }
 

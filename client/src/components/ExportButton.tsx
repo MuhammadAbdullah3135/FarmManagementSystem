@@ -2,6 +2,7 @@ import React from 'react';
 import { Dropdown, Button } from 'antd';
 import { DownloadOutlined, FilePdfOutlined, FileExcelOutlined, FileTextOutlined } from '@ant-design/icons';
 import { exportCsv, exportExcel, exportPdf } from '../utils/export';
+import { useTranslation } from 'react-i18next';
 
 interface ExportButtonProps {
   filename: string;
@@ -11,24 +12,24 @@ interface ExportButtonProps {
   disabled?: boolean;
 }
 
-const ExportButton: React.FC<ExportButtonProps> = ({ filename, title: _title, headers, rows, disabled }) => {
+const ExportButton: React.FC<ExportButtonProps> = ({ filename, title: _title, headers, rows, disabled }) => {const { t } = useTranslation('common'); 
   const items = [
     {
       key: 'pdf',
       icon: <FilePdfOutlined />,
-      label: 'Export PDF',
+      label: t('exportPdf'),
       onClick: () => exportPdf(filename, _title, headers, rows),
     },
     {
       key: 'excel',
       icon: <FileExcelOutlined />,
-      label: 'Export Excel',
+      label: t('exportExcel'),
       onClick: () => exportExcel(filename, headers, rows),
     },
     {
       key: 'csv',
       icon: <FileTextOutlined />,
-      label: 'Export CSV',
+      label: t('exportCsv'),
       onClick: () => exportCsv(filename, headers, rows),
     },
   ];
@@ -36,7 +37,7 @@ const ExportButton: React.FC<ExportButtonProps> = ({ filename, title: _title, he
   return (
     <Dropdown menu={{ items }} trigger={['click']} disabled={disabled}>
       <Button icon={<DownloadOutlined />}>
-        Export
+        {t('export')}
       </Button>
     </Dropdown>
   );

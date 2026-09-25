@@ -53,29 +53,45 @@ public static class InventoryItemRules
         var errors = new List<FieldError>();
 
         if (string.IsNullOrWhiteSpace(name))
-            errors.Add(new FieldError(InventoryImportFields.Name, "Item name is required"));
+            errors.Add(new FieldError(InventoryImportFields.Name, "Item name is required", "validation.inventoryItem.nameRequired"));
         else if (name.Trim().Length > NameMaxLength)
-            errors.Add(new FieldError(InventoryImportFields.Name, $"Item name cannot exceed {NameMaxLength} characters"));
+            errors.Add(new FieldError(
+                InventoryImportFields.Name,
+                $"Item name cannot exceed {NameMaxLength} characters",
+                "validation.inventoryItem.nameMaxLength",
+                new Dictionary<string, object?> { ["max"] = NameMaxLength }));
 
         if (string.IsNullOrWhiteSpace(unit))
-            errors.Add(new FieldError(InventoryImportFields.Unit, "Unit is required"));
+            errors.Add(new FieldError(InventoryImportFields.Unit, "Unit is required", "validation.inventoryItem.unitRequired"));
         else if (unit.Trim().Length > UnitMaxLength)
-            errors.Add(new FieldError(InventoryImportFields.Unit, $"Unit cannot exceed {UnitMaxLength} characters"));
+            errors.Add(new FieldError(
+                InventoryImportFields.Unit,
+                $"Unit cannot exceed {UnitMaxLength} characters",
+                "validation.inventoryItem.unitMaxLength",
+                new Dictionary<string, object?> { ["max"] = UnitMaxLength }));
 
         if (validateQuantity && quantity < 0)
-            errors.Add(new FieldError(InventoryImportFields.Quantity, "Quantity cannot be negative"));
+            errors.Add(new FieldError(InventoryImportFields.Quantity, "Quantity cannot be negative", "validation.inventoryItem.quantityNegative"));
 
         if (reorderLevel < 0)
-            errors.Add(new FieldError(InventoryImportFields.ReorderLevel, "Reorder level cannot be negative"));
+            errors.Add(new FieldError(InventoryImportFields.ReorderLevel, "Reorder level cannot be negative", "validation.inventoryItem.reorderLevelNegative"));
 
         if (unitCost < 0)
-            errors.Add(new FieldError(InventoryImportFields.UnitCost, "Unit cost cannot be negative"));
+            errors.Add(new FieldError(InventoryImportFields.UnitCost, "Unit cost cannot be negative", "validation.inventoryItem.unitCostNegative"));
 
         if (category is not null && category.Trim().Length > CategoryMaxLength)
-            errors.Add(new FieldError(InventoryImportFields.Category, $"Category cannot exceed {CategoryMaxLength} characters"));
+            errors.Add(new FieldError(
+                InventoryImportFields.Category,
+                $"Category cannot exceed {CategoryMaxLength} characters",
+                "validation.inventoryItem.categoryMaxLength",
+                new Dictionary<string, object?> { ["max"] = CategoryMaxLength }));
 
         if (location is not null && location.Trim().Length > LocationMaxLength)
-            errors.Add(new FieldError(InventoryImportFields.Location, $"Location cannot exceed {LocationMaxLength} characters"));
+            errors.Add(new FieldError(
+                InventoryImportFields.Location,
+                $"Location cannot exceed {LocationMaxLength} characters",
+                "validation.inventoryItem.locationMaxLength",
+                new Dictionary<string, object?> { ["max"] = LocationMaxLength }));
 
         return errors;
     }

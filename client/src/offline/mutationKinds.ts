@@ -169,12 +169,9 @@ export function getMutationKind(kind: string): MutationKindDefinition<any> | nul
 }
 
 /** Status wording, in one place so the badge, the screen and the pages agree. */
-export const OUTBOX_STATUS_LABELS: Record<OutboxStatus, string> = {
-  pending: 'Waiting to sync',
-  applied: 'Synced',
-  quarantined: 'Refused',
-  dismissed: 'Dismissed',
-};
+// The status labels are translated at render time; `i18n/vocabulary.ts` owns the
+// value → key table, since the same four words appear on the sync screens and in the
+// outbox table. Colours stay here: a colour is not a language.
 
 export const OUTBOX_STATUS_COLORS: Record<OutboxStatus, string> = {
   pending: 'blue',

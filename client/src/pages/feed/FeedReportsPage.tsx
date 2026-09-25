@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { formatMoney } from '../../i18n/format';
 import {
   Card, DatePicker, Row, Col, Statistic, Select, Table, Tabs, Tag,
 } from 'antd';
@@ -16,8 +17,9 @@ import type {
   LocationConsumption,
   FeedCostSummary,
 } from '../../types';
+import { useTranslation } from 'react-i18next';
 
-const FeedReportsPage: React.FC = () => {
+const FeedReportsPage: React.FC = () => {const { t } = useTranslation('feed'); 
   const [range, setRange] = useState<[Dayjs | null, Dayjs | null]>([dayjs().subtract(30, 'day'), dayjs()]);
   const [period, setPeriod] = useState<'day' | 'week' | 'month'>('day');
   const [trend, setTrend] = useState<ConsumptionTrendPoint[]>([]);
@@ -57,9 +59,9 @@ const FeedReportsPage: React.FC = () => {
   };
 
   const trendCols: ColumnsType<ConsumptionTrendPoint> = [
-    { title: 'Period', dataIndex: 'label' },
-    { title: 'Quantity', dataIndex: 'quantity', align: 'right' },
-    { title: 'Cost', dataIndex: 'cost', align: 'right' },
+    { title: t('period'), dataIndex: 'label' },
+    { title: t('quantity'), dataIndex: 'quantity', align: 'right' },
+    { title: t('cost'), dataIndex: 'cost', align: 'right' },
   ];
 
   // The first column of the wide tables is pinned so the row identity stays visible while the
@@ -67,11 +69,11 @@ const FeedReportsPage: React.FC = () => {
   // NB: antd v6 only pins on `fixed: 'start'` — the legacy 'left' still type-checks but is
   // ignored (rc-table's isFixedStart compares strictly against 'start').
   const typeCols: ColumnsType<FeedTypeBreakdown> = [
-    { title: 'Feed Type', dataIndex: 'feedTypeName', fixed: 'start', width: 140 },
-    { title: 'Quantity', dataIndex: 'quantity', align: 'right', render: (v, r) => `${v} ${r.unitName}` },
-    { title: 'Cost', dataIndex: 'cost', align: 'right' },
+    { title: t('feedType'), dataIndex: 'feedTypeName', fixed: 'start', width: 140 },
+    { title: t('quantity'), dataIndex: 'quantity', align: 'right', render: (v, r) => `${v} ${r.unitName}` },
+    { title: t('cost'), dataIndex: 'cost', align: 'right' },
     {
-      title: 'Share',
+      title: t('share'),
       dataIndex: 'sharePercent',
       align: 'right',
       render: (v: number) => <Tag color="blue">{v.toFixed(1)}%</Tag>,
@@ -79,16 +81,16 @@ const FeedReportsPage: React.FC = () => {
   ];
 
   const animalCols: ColumnsType<AnimalConsumption> = [
-    { title: 'Tag', dataIndex: 'tagNumber', fixed: 'start', width: 100 },
-    { title: 'Name', dataIndex: 'name', render: (n?: string) => n ?? '-' },
-    { title: 'Quantity', dataIndex: 'quantity', align: 'right' },
-    { title: 'Cost', dataIndex: 'cost', align: 'right' },
+    { title: t('tag'), dataIndex: 'tagNumber', fixed: 'start', width: 100 },
+    { title: t('name'), dataIndex: 'name', render: (n?: string) => n ?? '-' },
+    { title: t('quantity'), dataIndex: 'quantity', align: 'right' },
+    { title: t('cost'), dataIndex: 'cost', align: 'right' },
   ];
 
   const locationCols: ColumnsType<LocationConsumption> = [
-    { title: 'Location', dataIndex: 'locationName', fixed: 'start', width: 130 },
-    { title: 'Quantity', dataIndex: 'quantity', align: 'right' },
-    { title: 'Cost', dataIndex: 'cost', align: 'right' },
+    { title: t('location'), dataIndex: 'locationName', fixed: 'start', width: 130 },
+    { title: t('quantity'), dataIndex: 'quantity', align: 'right' },
+    { title: t('cost'), dataIndex: 'cost', align: 'right' },
   ];
 
   return (
@@ -123,12 +125,12 @@ const FeedReportsPage: React.FC = () => {
           two-value gutter keeps a gap between the cards once they wrap. */}
       {summary && (
         <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-          <Col xs={12} sm={8} lg={4}><Card><Statistic title="Consumed" value={summary.totalConsumedQuantity} precision={2} suffix="kg" /></Card></Col>
-          <Col xs={12} sm={8} lg={4}><Card><Statistic title="Consumed Cost" value={summary.totalConsumedCost} precision={2} prefix="$" /></Card></Col>
-          <Col xs={12} sm={8} lg={4}><Card><Statistic title="Purchased" value={summary.totalPurchasedQuantity} precision={2} suffix="kg" /></Card></Col>
-          <Col xs={12} sm={8} lg={4}><Card><Statistic title="Purchased Cost" value={summary.totalPurchasedCost} precision={2} prefix="$" /></Card></Col>
-          <Col xs={12} sm={8} lg={4}><Card><Statistic title="Inventory Value" value={summary.currentInventoryValue} precision={2} prefix="$" /></Card></Col>
-          <Col xs={12} sm={8} lg={4}><Card><Statistic title="Period" value={`${dayjs(summary.from).format('MMM D')} – ${dayjs(summary.to).format('MMM D')}`} /></Card></Col>
+          <Col xs={12} sm={8} lg={4}><Card><Statistic title={t('consumed')} value={summary.totalConsumedQuantity} precision={2} suffix="kg" /></Card></Col>
+          <Col xs={12} sm={8} lg={4}><Card><Statistic title={t('consumedCost')} value={summary.totalConsumedCost} precision={2} prefix="$" /></Card></Col>
+          <Col xs={12} sm={8} lg={4}><Card><Statistic title={t('purchased')} value={summary.totalPurchasedQuantity} precision={2} suffix="kg" /></Card></Col>
+          <Col xs={12} sm={8} lg={4}><Card><Statistic title={t('purchasedCost')} value={summary.totalPurchasedCost} precision={2} prefix="$" /></Card></Col>
+          <Col xs={12} sm={8} lg={4}><Card><Statistic title={t('inventoryValue')} value={summary.currentInventoryValue} precision={2} prefix="$" /></Card></Col>
+          <Col xs={12} sm={8} lg={4}><Card><Statistic title={t('period')} value={`${dayjs(summary.from).format('MMM D')} – ${dayjs(summary.to).format('MMM D')}`} /></Card></Col>
         </Row>
       )}
 
@@ -168,7 +170,7 @@ const FeedReportsPage: React.FC = () => {
                     /* The table below already lists every feed type with its share, so no legend here. */
                     <BreakdownPieChart
                       data={byType.map(i => ({ name: i.feedTypeName, value: i.cost }))}
-                      valueFormatter={(v) => `$${v.toFixed(2)}`}
+                      valueFormatter={(v) => formatMoney(v)}
                       showLegend={false}
                     />
                   ) : null}
@@ -191,12 +193,12 @@ const FeedReportsPage: React.FC = () => {
               label: 'Cost Summary',
               children: summary ? (
                 <Row gutter={[16, 16]}>
-                  <Col xs={12} md={6}><Card><Statistic title="Consumed Qty" value={summary.totalConsumedQuantity} precision={2} /></Card></Col>
-                  <Col xs={12} md={6}><Card><Statistic title="Consumed Cost" value={summary.totalConsumedCost} precision={2} prefix="$" /></Card></Col>
-                  <Col xs={12} md={6}><Card><Statistic title="Purchased Qty" value={summary.totalPurchasedQuantity} precision={2} /></Card></Col>
-                  <Col xs={12} md={6}><Card><Statistic title="Purchased Cost" value={summary.totalPurchasedCost} precision={2} prefix="$" /></Card></Col>
+                  <Col xs={12} md={6}><Card><Statistic title={t('consumedQty')} value={summary.totalConsumedQuantity} precision={2} /></Card></Col>
+                  <Col xs={12} md={6}><Card><Statistic title={t('consumedCost')} value={summary.totalConsumedCost} precision={2} prefix="$" /></Card></Col>
+                  <Col xs={12} md={6}><Card><Statistic title={t('purchasedQty')} value={summary.totalPurchasedQuantity} precision={2} /></Card></Col>
+                  <Col xs={12} md={6}><Card><Statistic title={t('purchasedCost')} value={summary.totalPurchasedCost} precision={2} prefix="$" /></Card></Col>
                 </Row>
-              ) : loading ? <Table loading columns={[]} dataSource={[]} pagination={false} /> : <p>Select a date range and click this tab to load.</p>,
+              ) : loading ? <Table loading columns={[]} dataSource={[]} pagination={false} /> : <p>{t('selectADateRangeAndClickThisTab')}</p>,
             },
           ]}
         />

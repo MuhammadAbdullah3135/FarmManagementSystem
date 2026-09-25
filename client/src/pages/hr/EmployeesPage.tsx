@@ -6,16 +6,19 @@ import { PlusOutlined, SearchOutlined, UploadOutlined } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
+import { formatDate, formatNumber } from '../../i18n/format';
+
 import { employeesApi, departmentsApi, employeeRolesApi } from '../../api/hr';
 import { getApiError } from '../../api/farmApi';
 import { useCachedQuery } from '../../offline/cachedQuery';
 import SyncAgeLabel from '../../components/SyncAgeLabel';
 import LookupQuickAddSelect from '../../components/LookupQuickAddSelect';
 import type { Department, Employee, EmployeeRole } from '../../types';
+import { useTranslation } from 'react-i18next';
 
 const SALARY_TYPES = ['Monthly', 'Weekly', 'Daily', 'Hourly'];
 
-const EmployeesPage: React.FC = () => {
+const EmployeesPage: React.FC = () => {const { t: translate } = useTranslation('hr'); 
   const navigate = useNavigate();
   const [departments, setDepartments] = useState<Department[]>([]);
   const [roles, setRoles] = useState<EmployeeRole[]>([]);
@@ -124,13 +127,15 @@ const EmployeesPage: React.FC = () => {
       const values = await form.validateFields();
       if (editing) {
         await employeesApi.update(editing.id, { ...values, hireDate: editing.hireDate });
-        message.success('Employee updated');
+        message.success(translate('employeeUpdated'));
       } else {
         await employeesApi.create({
           ...values,
+          // A payload, not a display: the API stores an ISO date whatever language the
+          // form was filled in.
           hireDate: dayjs().format('YYYY-MM-DD'),
         });
-        message.success('Employee created');
+        message.success(translate('employeeCreated'));
       }
       setModalOpen(false);
       employeesQuery.refresh();
@@ -143,7 +148,7 @@ const EmployeesPage: React.FC = () => {
   const handleDelete = async (id: string) => {
     try {
       await employeesApi.remove(id);
-      message.success('Employee deleted');
+      message.success(translate('employeeDeleted'));
       employeesQuery.refresh();
     } catch (err) {
       message.error(getApiError(err));
@@ -152,30 +157,30 @@ const EmployeesPage: React.FC = () => {
 
   const columns: ColumnsType<Employee> = [
     {
-      title: 'Name',
+      title: translate('name'),
       render: (_, r) => <span>{r.firstName} {r.lastName}</span>,
     },
-    { title: 'Phone', dataIndex: 'phone', render: (p?: string) => p ?? '-' },
-    { title: 'Email', dataIndex: 'email', render: (e?: string) => e ?? '-' },
-    { title: 'Department', dataIndex: 'departmentName', render: (d?: string) => d ?? '-' },
-    { title: 'Role', dataIndex: 'employeeRoleName', render: (r?: string) => r ?? '-' },
+    { title: translate('phone'), dataIndex: 'phone', render: (p?: string) => p ?? '-' },
+    { title: translate('email'), dataIndex: 'email', render: (e?: string) => e ?? '-' },
+    { title: translate('department'), dataIndex: 'departmentName', render: (d?: string) => d ?? '-' },
+    { title: translate('role'), dataIndex: 'employeeRoleName', render: (r?: string) => r ?? '-' },
     {
-      title: 'Salary',
-      render: (_, r) => `${r.salaryTypeName} ${r.salaryRate.toLocaleString()}`,
+      title: translate('salary'),
+      render: (_, r) => `${r.salaryTypeName} ${formatNumber(r.salaryRate)}`,
     },
-    { title: 'Hire Date', dataIndex: 'hireDate', render: (d: string) => dayjs(d).format('YYYY-MM-DD') },
+    { title: translate('hireDate'), dataIndex: 'hireDate', render: (d: string) => formatDate(d) },
     {
-      title: 'Active',
+      title: translate('active'),
       dataIndex: 'isActive',
-      render: (a: boolean) => a ? <Tag color="green">Active</Tag> : <Tag>Inactive</Tag>,
+      render: (a: boolean) => a ? <Tag color="green">{translate('active')}</Tag> : <Tag>{translate('inactive')}</Tag>,
     },
     {
-      title: 'Actions',
+      title: translate('actions'),
       render: (_, r) => (
         <Space>
-          <Button size="small" onClick={() => openEdit(r)}>Edit</Button>
-          <Popconfirm title="Soft-delete this employee?" onConfirm={() => handleDelete(r.id)}>
-            <Button size="small" danger>Delete</Button>
+          <Button size="small" onClick={() => openEdit(r)}>{translate('edit')}</Button>
+          <Popconfirm title={translate('softDeleteThisEmployee')} onConfirm={() => handleDelete(r.id)}>
+            <Button size="small" danger>{translate('delete')}</Button>
           </Popconfirm>
         </Space>
       ),
@@ -184,11 +189,11 @@ const EmployeesPage: React.FC = () => {
 
   return (
     <Card
-      title="Employees"
+      title={translate('employees')}
       extra={
         <Space>
           <Input
-            placeholder="Search..."
+            placeholder={translate('search')}
             prefix={<SearchOutlined />}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -196,10 +201,10 @@ const EmployeesPage: React.FC = () => {
             style={{ width: 200 }}
           />
           <Button icon={<UploadOutlined />} onClick={() => navigate('/dashboard/hr/employees/import')}>
-            Import
+            {translate('import')}
           </Button>
           <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
-            Add Employee
+            {translate('addEmployee')}
           </Button>
         </Space>
       }
@@ -219,7 +224,7 @@ const EmployeesPage: React.FC = () => {
       />
 
       <Modal
-        title={editing ? 'Edit Employee' : 'Add Employee'}
+        title={editing ? translate('editEmployee') : translate('addEmployee')}
         open={modalOpen}
         onOk={handleSave}
         onCancel={() => setModalOpen(false)}
@@ -229,31 +234,31 @@ const EmployeesPage: React.FC = () => {
         <Form form={form} layout="vertical">
           <Row gutter={[16, 16]}>
             <Col xs={24} sm={12}>
-              <Form.Item name="firstName" label="First Name" rules={[{ required: true }]}>
+              <Form.Item name="firstName" label={translate('firstName')} rules={[{ required: true }]}>
                 <Input maxLength={100} />
               </Form.Item>
             </Col>
             <Col xs={24} sm={12}>
-              <Form.Item name="lastName" label="Last Name" rules={[{ required: true }]}>
+              <Form.Item name="lastName" label={translate('lastName')} rules={[{ required: true }]}>
                 <Input maxLength={100} />
               </Form.Item>
             </Col>
           </Row>
           <Row gutter={[16, 16]}>
             <Col xs={24} sm={12}>
-              <Form.Item name="phone" label="Phone">
+              <Form.Item name="phone" label={translate('phone')}>
                 <Input maxLength={50} />
               </Form.Item>
             </Col>
             <Col xs={24} sm={12}>
-              <Form.Item name="email" label="Email">
+              <Form.Item name="email" label={translate('email')}>
                 <Input maxLength={200} />
               </Form.Item>
             </Col>
           </Row>
           <Row gutter={[16, 16]}>
             <Col xs={24} sm={12}>
-              <Form.Item name="departmentId" label="Department">
+              <Form.Item name="departmentId" label={translate('department')}>
                 <LookupQuickAddSelect
                   kind="department"
                   allowClear
@@ -263,7 +268,7 @@ const EmployeesPage: React.FC = () => {
               </Form.Item>
             </Col>
             <Col xs={24} sm={12}>
-              <Form.Item name="employeeRoleId" label="Role">
+              <Form.Item name="employeeRoleId" label={translate('role')}>
                 <LookupQuickAddSelect
                   kind="employeeRole"
                   allowClear
@@ -275,22 +280,22 @@ const EmployeesPage: React.FC = () => {
           </Row>
           <Row gutter={[16, 16]}>
             <Col xs={24} sm={12}>
-              <Form.Item name="salaryType" label="Salary Type" rules={[{ required: true }]}>
+              <Form.Item name="salaryType" label={translate('salaryType')} rules={[{ required: true }]}>
                 <Select options={SALARY_TYPES.map((t) => ({ value: t, label: t }))} style={{ width: '100%' }} />
               </Form.Item>
             </Col>
             <Col xs={24} sm={12}>
-              <Form.Item name="salaryRate" label="Salary Rate" rules={[{ required: true }]}>
+              <Form.Item name="salaryRate" label={translate('salaryRate')} rules={[{ required: true }]}>
                 <InputNumber min={0} style={{ width: '100%' }} />
               </Form.Item>
             </Col>
           </Row>
           {editing && (
-            <Form.Item name="isActive" label="Active" valuePropName="checked">
+            <Form.Item name="isActive" label={translate('active')} valuePropName="checked">
               <Switch />
             </Form.Item>
           )}
-          <Form.Item name="notes" label="Notes">
+          <Form.Item name="notes" label={translate('notes')}>
             <Input.TextArea rows={2} maxLength={1000} />
           </Form.Item>
         </Form>

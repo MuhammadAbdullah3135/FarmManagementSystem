@@ -8,9 +8,11 @@ import { lookupsApi } from '../../api/attendance';
 import { getApiError } from '../../api/farmApi';
 import LookupQuickAddSelect, { type CreatedLookup } from '../../components/LookupQuickAddSelect';
 import type { LookupKind } from '../../components/lookupQuickAdd';
+import { formatDate } from '../../i18n/format';
 import dayjs from 'dayjs';
 import { useNavigate } from 'react-router-dom';
 import type { AnimalListItem } from '../../types';
+import { useTranslation } from 'react-i18next';
 
 interface LookupOption {
   id: string;
@@ -23,7 +25,7 @@ const STATUS_COLORS: Record<number, string> = { 0: 'green', 1: 'orange', 2: 'red
 /** Indents nested location labels so the tree structure is visible in the select. */
 const indentLocationLabel = (name: string, depth: number) => `${'\u00A0\u00A0'.repeat(depth)}${name}`;
 
-export default function AnimalsPage() {
+export default function AnimalsPage() {const { t: translate } = useTranslation('animals'); 
   const navigate = useNavigate();
   const [data, setData] = useState<AnimalListItem[]>([]);
   const [total, setTotal] = useState(0);
@@ -203,10 +205,10 @@ export default function AnimalsPage() {
       };
       if (editing) {
         await animalsApi.update(editing.id, payload);
-        message.success('Animal updated');
+        message.success(translate('animalUpdated'));
       } else {
         await animalsApi.create(payload);
-        message.success('Animal created');
+        message.success(translate('animalCreated'));
       }
       setModalOpen(false);
       load(1);
@@ -219,7 +221,7 @@ export default function AnimalsPage() {
   const handleDelete = async (id: string) => {
     try {
       await animalsApi.delete(id);
-      message.success('Animal deleted');
+      message.success(translate('animalDeleted'));
       load(page);
     } catch (err) {
       message.error(getApiError(err));
@@ -228,7 +230,7 @@ export default function AnimalsPage() {
 
   const columns: ColumnsType<AnimalListItem> = [
     {
-      title: 'Tag',
+      title: translate('tag'),
       dataIndex: 'tagNumber',
       key: 'tagNumber',
       render: (text: string, record) => (
@@ -236,29 +238,29 @@ export default function AnimalsPage() {
       ),
     },
     {
-      title: 'Name',
+      title: translate('name'),
       dataIndex: 'name',
       key: 'name',
       render: (text: string) => text || '-',
     },
     {
-      title: 'Type',
+      title: translate('type'),
       dataIndex: 'animalTypeName',
       key: 'animalTypeName',
     },
     {
-      title: 'Breed',
+      title: translate('breed'),
       dataIndex: 'breedName',
       key: 'breedName',
       render: (text: string) => text || '-',
     },
     {
-      title: 'Sex',
+      title: translate('sex'),
       dataIndex: 'sexValue',
       key: 'sexValue',
     },
     {
-      title: 'Status',
+      title: translate('status'),
       dataIndex: 'statusName',
       key: 'statusName',
       render: (text: string, record) => (
@@ -266,32 +268,32 @@ export default function AnimalsPage() {
       ),
     },
     {
-      title: 'Sire',
+      title: translate('sire'),
       dataIndex: 'sireTagNumber',
       key: 'sireTagNumber',
       render: (text: string) => text || '-',
     },
     {
-      title: 'Dam',
+      title: translate('dam'),
       dataIndex: 'damTagNumber',
       key: 'damTagNumber',
       render: (text: string) => text || '-',
     },
     {
-      title: 'DOB',
+      title: translate('dob'),
       dataIndex: 'dateOfBirth',
       key: 'dateOfBirth',
-      render: (text: string) => text ? dayjs(text).format('YYYY-MM-DD') : '-',
+      render: (text: string) => text ? formatDate(text) : '-',
     },
     {
-      title: 'Actions',
+      title: translate('actions'),
       key: 'actions',
       width: 120,
       render: (_, record) => (
         <Space>
           <Button size="small" icon={<EyeOutlined />} onClick={() => navigate(`/dashboard/animals/${record.id}`)} />
           <Button size="small" icon={<EditOutlined />} onClick={() => openEdit(record)} />
-          <Popconfirm title="Delete this animal?" onConfirm={() => handleDelete(record.id)}>
+          <Popconfirm title={translate('deleteThisAnimal')} onConfirm={() => handleDelete(record.id)}>
             <Button size="small" danger icon={<DeleteOutlined />} />
           </Popconfirm>
         </Space>
@@ -302,13 +304,13 @@ export default function AnimalsPage() {
   return (
     <>
       <Card
-        title="Animals"
+        title={translate('animals')}
         extra={
           <Space>
             <Button icon={<UploadOutlined />} onClick={() => navigate('/dashboard/animals/import')}>
-              Import
+              {translate('import')}
             </Button>
-            <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>Add Animal</Button>
+            <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>{translate('addAnimal')}</Button>
           </Space>
         }
       >
@@ -322,7 +324,7 @@ export default function AnimalsPage() {
       </Card>
 
       <Modal
-        title={editing ? 'Edit Animal' : 'Add Animal'}
+        title={editing ? translate('editAnimal') : translate('addAnimal')}
         open={modalOpen}
         onOk={handleSave}
         onCancel={() => setModalOpen(false)}
@@ -332,66 +334,66 @@ export default function AnimalsPage() {
         <Form form={form} layout="vertical">
           <Row gutter={[16, 16]}>
             <Col xs={24} sm={12}>
-              <Form.Item name="tagNumber" label="Tag Number" rules={[{ required: true }]}>
+              <Form.Item name="tagNumber" label={translate('tagNumber')} rules={[{ required: true }]}>
                 <Input maxLength={50} />
               </Form.Item>
             </Col>
             <Col xs={24} sm={12}>
-              <Form.Item name="name" label="Name">
+              <Form.Item name="name" label={translate('name')}>
                 <Input maxLength={200} />
               </Form.Item>
             </Col>
           </Row>
           <Row gutter={[16, 16]}>
             <Col xs={24} sm={12}>
-              <Form.Item name="animalTypeId" label="Animal Type" rules={[{ required: true }]}>
+              <Form.Item name="animalTypeId" label={translate('animalType')} rules={[{ required: true }]}>
                 <LookupQuickAddSelect
                   kind="animalType"
                   options={animalTypes.map((t) => ({ value: t.id, label: t.name }))}
                   onCreated={handleLookupCreated}
                   onValueSelected={(v) => void handleAnimalTypeChange(v)}
-                  placeholder="Select animal type"
+                  placeholder={translate('selectAnimalType')}
                 />
               </Form.Item>
             </Col>
             <Col xs={24} sm={12}>
-              <Form.Item name="breedId" label="Breed">
+              <Form.Item name="breedId" label={translate('breed')}>
                 <LookupQuickAddSelect
                   kind="breed"
                   ctx={{ animalTypeId: selectedAnimalTypeId }}
                   options={breeds.map((b) => ({ value: b.id, label: b.name }))}
                   onCreated={handleLookupCreated}
                   allowClear
-                  placeholder={selectedAnimalTypeId ? 'Select breed' : 'Select an Animal Type first'}
+                  placeholder={selectedAnimalTypeId ? translate('selectBreed') : translate('selectAnAnimalTypeFirst')}
                 />
               </Form.Item>
             </Col>
           </Row>
           <Row gutter={[16, 16]}>
             <Col xs={24} sm={12}>
-              <Form.Item name="sexOptionId" label="Sex" rules={[{ required: true }]}>
+              <Form.Item name="sexOptionId" label={translate('sex')} rules={[{ required: true }]}>
                 <LookupQuickAddSelect
                   kind="sexOption"
                   options={sexOptions.map((s) => ({ value: s.id, label: s.name }))}
                   onCreated={handleLookupCreated}
-                  placeholder="Select sex"
+                  placeholder={translate('selectSex')}
                 />
               </Form.Item>
             </Col>
             <Col xs={24} sm={12}>
-              <Form.Item name="animalStatusId" label="Status" rules={[{ required: true }]}>
+              <Form.Item name="animalStatusId" label={translate('status')} rules={[{ required: true }]}>
                 <LookupQuickAddSelect
                   kind="animalStatus"
                   options={statuses.map((s) => ({ value: s.id, label: s.name }))}
                   onCreated={handleLookupCreated}
-                  placeholder="Select status"
+                  placeholder={translate('selectStatus')}
                 />
               </Form.Item>
             </Col>
           </Row>
           <Row gutter={[16, 16]}>
             <Col xs={24} sm={12}>
-              <Form.Item name="locationId" label="Location">
+              <Form.Item name="locationId" label={translate('location')}>
                 <LookupQuickAddSelect
                   kind="location"
                   ctx={{
@@ -401,44 +403,44 @@ export default function AnimalsPage() {
                   options={locations.map((l) => ({ value: l.id, label: l.name }))}
                   onCreated={handleLookupCreated}
                   allowClear
-                  placeholder="Select location"
+                  placeholder={translate('selectLocation')}
                 />
               </Form.Item>
             </Col>
             <Col xs={24} sm={12}>
-              <Form.Item name="ageCategoryId" label="Age Category">
+              <Form.Item name="ageCategoryId" label={translate('ageCategory')}>
                 <LookupQuickAddSelect
                   kind="ageCategory"
                   options={ageCategories.map((c) => ({ value: c.id, label: c.name }))}
                   onCreated={handleLookupCreated}
                   allowClear
-                  placeholder="Select age category"
+                  placeholder={translate('selectAgeCategory')}
                 />
               </Form.Item>
             </Col>
           </Row>
           <Row gutter={[16, 16]}>
             <Col xs={24} sm={12}>
-              <Form.Item name="sireId" label="Sire (Father)">
+              <Form.Item name="sireId" label={translate('sireFather')}>
                 <Select
                   options={allAnimals.map(a => ({ value: a.id, label: a.name ? `${a.tagNumber} - ${a.name}` : a.tagNumber }))}
                   showSearch
                   optionFilterProp="label"
                   allowClear
-                  placeholder="Select sire"
+                  placeholder={translate('selectSire')}
                   style={{ width: '100%' }}
                   popupMatchSelectWidth={false}
                 />
               </Form.Item>
             </Col>
             <Col xs={24} sm={12}>
-              <Form.Item name="damId" label="Dam (Mother)">
+              <Form.Item name="damId" label={translate('damMother')}>
                 <Select
                   options={allAnimals.map(a => ({ value: a.id, label: a.name ? `${a.tagNumber} - ${a.name}` : a.tagNumber }))}
                   showSearch
                   optionFilterProp="label"
                   allowClear
-                  placeholder="Select dam"
+                  placeholder={translate('selectDam')}
                   style={{ width: '100%' }}
                   popupMatchSelectWidth={false}
                 />
@@ -447,17 +449,17 @@ export default function AnimalsPage() {
           </Row>
           <Row gutter={[16, 16]}>
             <Col xs={24} sm={12}>
-              <Form.Item name="dateOfBirth" label="Date of Birth">
+              <Form.Item name="dateOfBirth" label={translate('dateOfBirth')}>
                 <DatePicker style={{ width: '100%' }} />
               </Form.Item>
             </Col>
             <Col xs={24} sm={12}>
-              <Form.Item name="acquisitionDate" label="Acquisition Date">
+              <Form.Item name="acquisitionDate" label={translate('acquisitionDate')}>
                 <DatePicker style={{ width: '100%' }} />
               </Form.Item>
             </Col>
           </Row>
-          <Form.Item name="notes" label="Notes">
+          <Form.Item name="notes" label={translate('notes')}>
             <Input.TextArea rows={2} maxLength={2000} />
           </Form.Item>
         </Form>

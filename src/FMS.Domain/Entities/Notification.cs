@@ -56,6 +56,29 @@ public class Notification : AuditableEntity, IAuditLogExcluded
 
     public string Message { get; set; } = string.Empty;
 
+    /// <summary>
+    /// The message key this notification's title was generated from, and the arguments it
+    /// needs — the localisable half of the pair above.
+    ///
+    /// <para>
+    /// Both halves are stored. The English text is what the email digest sends and what the
+    /// client falls back to; the key is what lets the notification centre render in the
+    /// reader's language, months after the condition was computed. Storing only the key
+    /// would lose the fallback; storing only the text would freeze the language at dispatch
+    /// time, which is wrong for a row that sits in a list and waits to be read.
+    /// </para>
+    /// </summary>
+    public string? TitleKey { get; set; }
+
+    /// <inheritdoc cref="TitleKey" />
+    public string? TitleArgsJson { get; set; }
+
+    /// <inheritdoc cref="TitleKey" />
+    public string? MessageKey { get; set; }
+
+    /// <inheritdoc cref="TitleKey" />
+    public string? MessageArgsJson { get; set; }
+
     /// <summary>In-app route the alert points at (<c>/dashboard/health/vaccinations</c>, …).</summary>
     public string? Link { get; set; }
 

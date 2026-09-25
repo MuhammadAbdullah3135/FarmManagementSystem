@@ -4,11 +4,13 @@ import {
 } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
-import dayjs from 'dayjs';
+import { formatDate } from '../../i18n/format';
+
 import { feedInventoryApi, feedTypesApi } from '../../api/feed';
 import { getApiError } from '../../api/farmApi';
 import type { FeedStock, FeedType, FeedStockMovement } from '../../types';
 import { FEED_CATEGORIES, FEED_UNITS } from '../../utils/feedOptions';
+import { useTranslation } from 'react-i18next';
 
 const MOVEMENT_TYPES = ['Purchase', 'Adjustment'];
 
@@ -21,7 +23,7 @@ const categoryColor: Record<string, string> = {
   Other: 'default',
 };
 
-const FeedTypesPage: React.FC = () => {
+const FeedTypesPage: React.FC = () => {const { t: translate } = useTranslation('feed'); 
   const [types, setTypes] = useState<FeedType[]>([]);
   const [stock, setStock] = useState<FeedStock[]>([]);
   const [movements, setMovements] = useState<FeedStockMovement[]>([]);
@@ -87,10 +89,10 @@ const FeedTypesPage: React.FC = () => {
       const values = await form.validateFields();
       if (editing) {
         await feedTypesApi.update(editing.id, values);
-        message.success('Feed type updated');
+        message.success(translate('feedTypeUpdated'));
       } else {
         await feedTypesApi.create(values);
-        message.success('Feed type created');
+        message.success(translate('feedTypeCreated'));
       }
       setTypeModalOpen(false);
       loadTypes();
@@ -103,7 +105,7 @@ const FeedTypesPage: React.FC = () => {
   const handleDelete = async (id: string) => {
     try {
       await feedTypesApi.remove(id);
-      message.success('Feed type deleted');
+      message.success(translate('feedTypeDeleted'));
       loadTypes();
     } catch (err) {
       message.error(getApiError(err));
@@ -124,7 +126,7 @@ const FeedTypesPage: React.FC = () => {
         ...values,
         movementDate: values.movementDate ? values.movementDate.toISOString() : undefined,
       });
-      message.success('Stock movement recorded');
+      message.success(translate('stockMovementRecorded'));
       setMovementModalOpen(false);
       loadTypes();
       loadMovements(1);
@@ -135,23 +137,23 @@ const FeedTypesPage: React.FC = () => {
   };
 
   const typeColumns: ColumnsType<FeedType> = [
-    { title: 'Name', dataIndex: 'name' },
+    { title: translate('name'), dataIndex: 'name' },
     {
-      title: 'Category',
+      title: translate('category'),
       dataIndex: 'categoryName',
       render: (c: string) => <Tag color={categoryColor[c]}>{c}</Tag>,
     },
-    { title: 'Unit', dataIndex: 'unitName' },
-    { title: 'Cost/Unit', dataIndex: 'costPerUnit', align: 'right' },
-    { title: 'Notes', dataIndex: 'notes', ellipsis: true },
+    { title: translate('unit'), dataIndex: 'unitName' },
+    { title: translate('costUnit'), dataIndex: 'costPerUnit', align: 'right' },
+    { title: translate('notes'), dataIndex: 'notes', ellipsis: true },
     {
-      title: 'Actions',
+      title: translate('actions'),
       render: (_, record) => (
         <Space>
-          <Button size="small" onClick={() => openEdit(record)}>Edit</Button>
-          <Button size="small" type="primary" ghost onClick={() => openMovement(record)}>Adjust Stock</Button>
-          <Popconfirm title="Delete this feed type?" onConfirm={() => handleDelete(record.id)}>
-            <Button size="small" danger>Delete</Button>
+          <Button size="small" onClick={() => openEdit(record)}>{translate('edit')}</Button>
+          <Button size="small" type="primary" ghost onClick={() => openMovement(record)}>{translate('adjustStock')}</Button>
+          <Popconfirm title={translate('deleteThisFeedType')} onConfirm={() => handleDelete(record.id)}>
+            <Button size="small" danger>{translate('delete')}</Button>
           </Popconfirm>
         </Space>
       ),
@@ -159,34 +161,34 @@ const FeedTypesPage: React.FC = () => {
   ];
 
   const stockColumns: ColumnsType<FeedStock> = [
-    { title: 'Feed Type', dataIndex: 'feedTypeName' },
-    { title: 'Purchased', dataIndex: 'quantityPurchased', align: 'right' },
-    { title: 'Consumed', dataIndex: 'quantityConsumed', align: 'right' },
-    { title: 'Adjustments', dataIndex: 'netAdjustments', align: 'right' },
+    { title: translate('feedType'), dataIndex: 'feedTypeName' },
+    { title: translate('purchased'), dataIndex: 'quantityPurchased', align: 'right' },
+    { title: translate('consumed'), dataIndex: 'quantityConsumed', align: 'right' },
+    { title: translate('adjustments'), dataIndex: 'netAdjustments', align: 'right' },
     {
-      title: 'Current Stock',
+      title: translate('currentStock'),
       dataIndex: 'currentStock',
       align: 'right',
       render: (v: number, record) => (
         <span>{v} {record.unitName}</span>
       ),
     },
-    { title: 'Inventory Value', dataIndex: 'totalCost', align: 'right' },
+    { title: translate('inventoryValue'), dataIndex: 'totalCost', align: 'right' },
   ];
 
   const movementColumns: ColumnsType<FeedStockMovement> = [
-    { title: 'Date', dataIndex: 'movementDate', render: (d: string) => dayjs(d).format('YYYY-MM-DD') },
-    { title: 'Feed Type', dataIndex: 'feedTypeName' },
+    { title: translate('date'), dataIndex: 'movementDate', render: (d: string) => formatDate(d) },
+    { title: translate('feedType'), dataIndex: 'feedTypeName' },
     {
-      title: 'Type',
+      title: translate('type'),
       dataIndex: 'movementTypeName',
       render: (t: string) => (
         <Tag color={t === 'Purchase' ? 'green' : t === 'Consumption' ? 'red' : 'blue'}>{t}</Tag>
       ),
     },
-    { title: 'Qty', dataIndex: 'signedQuantity', align: 'right' },
-    { title: 'Supplier', dataIndex: 'supplier' },
-    { title: 'Notes', dataIndex: 'notes', ellipsis: true },
+    { title: translate('qty'), dataIndex: 'signedQuantity', align: 'right' },
+    { title: translate('supplier'), dataIndex: 'supplier' },
+    { title: translate('notes'), dataIndex: 'notes', ellipsis: true },
   ];
 
   return (
@@ -198,10 +200,10 @@ const FeedTypesPage: React.FC = () => {
             label: 'Feed Types',
             children: (
               <Card
-                title="Feed Types"
+                title={translate('feedTypes')}
                 extra={
                   <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
-                    Add Feed Type
+                    {translate('addFeedType')}
                   </Button>
                 }
               >
@@ -213,7 +215,7 @@ const FeedTypesPage: React.FC = () => {
             key: 'stock',
             label: 'Current Stock',
             children: (
-              <Card title="Current Stock">
+              <Card title={translate('currentStock')}>
                 <Table rowKey="feedTypeId" columns={stockColumns} dataSource={stock} loading={loading} pagination={false} />
               </Card>
             ),
@@ -222,7 +224,7 @@ const FeedTypesPage: React.FC = () => {
             key: 'movements',
             label: 'Stock Movements',
             children: (
-              <Card title="Stock Movements">
+              <Card title={translate('stockMovements')}>
                 <Table
                   rowKey="id"
                   columns={movementColumns}
@@ -237,26 +239,26 @@ const FeedTypesPage: React.FC = () => {
       />
 
       <Modal
-        title={editing ? 'Edit Feed Type' : 'Add Feed Type'}
+        title={editing ? translate('editFeedType') : translate('addFeedType')}
         open={typeModalOpen}
         onOk={handleSaveType}
         onCancel={() => setTypeModalOpen(false)}
         destroyOnClose
       >
         <Form form={form} layout="vertical">
-          <Form.Item name="name" label="Name" rules={[{ required: true, message: 'Name is required' }]}>
+          <Form.Item name="name" label={translate('name')} rules={[{ required: true, message: 'Name is required' }]}>
             <Input maxLength={100} />
           </Form.Item>
-          <Form.Item name="category" label="Category" rules={[{ required: true }]}>
+          <Form.Item name="category" label={translate('category')} rules={[{ required: true }]}>
             <Select options={FEED_CATEGORIES.map((c) => ({ value: c, label: c }))} />
           </Form.Item>
-          <Form.Item name="unit" label="Unit" rules={[{ required: true }]}>
+          <Form.Item name="unit" label={translate('unit')} rules={[{ required: true }]}>
             <Select options={FEED_UNITS.map((u) => ({ value: u, label: u }))} />
           </Form.Item>
-          <Form.Item name="costPerUnit" label="Cost per Unit" rules={[{ required: true }]}>
+          <Form.Item name="costPerUnit" label={translate('costPerUnit')} rules={[{ required: true }]}>
             <InputNumber min={0} style={{ width: '100%' }} />
           </Form.Item>
-          <Form.Item name="notes" label="Notes">
+          <Form.Item name="notes" label={translate('notes')}>
             <Input.TextArea rows={2} maxLength={500} />
           </Form.Item>
         </Form>
@@ -273,19 +275,19 @@ const FeedTypesPage: React.FC = () => {
           <Form.Item name="feedTypeId" hidden>
             <Input />
           </Form.Item>
-          <Form.Item name="movementType" label="Movement Type" rules={[{ required: true }]} initialValue="Purchase">
+          <Form.Item name="movementType" label={translate('movementType')} rules={[{ required: true }]} initialValue="Purchase">
             <Select options={MOVEMENT_TYPES.map((t) => ({ value: t, label: t }))} />
           </Form.Item>
-          <Form.Item name="quantity" label="Quantity" rules={[{ required: true }]}>
+          <Form.Item name="quantity" label={translate('quantity')} rules={[{ required: true }]}>
             <InputNumber min={0.01} style={{ width: '100%' }} />
           </Form.Item>
-          <Form.Item name="unitCost" label="Unit Cost (purchases)">
+          <Form.Item name="unitCost" label={translate('unitCostPurchases')}>
             <InputNumber min={0} style={{ width: '100%' }} />
           </Form.Item>
-          <Form.Item name="supplier" label="Supplier">
+          <Form.Item name="supplier" label={translate('supplier')}>
             <Input maxLength={200} />
           </Form.Item>
-          <Form.Item name="notes" label="Notes">
+          <Form.Item name="notes" label={translate('notes')}>
             <Input.TextArea rows={2} maxLength={500} />
           </Form.Item>
         </Form>

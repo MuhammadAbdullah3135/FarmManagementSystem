@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Button, Col, DatePicker, Form, Input, InputNumber, Modal, Popconfirm, Row, Select, Space, Tag, message } from 'antd';
-import { PlusOutlined, ReloadOutlined } from '@ant-design/icons';
+import { PlusOutlined, ReloadOutlined, UploadOutlined } from '@ant-design/icons';
+import { useNavigate } from 'react-router-dom';
 import { ProTable } from '@ant-design/pro-components';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import dayjs, { Dayjs } from 'dayjs';
@@ -11,6 +12,7 @@ import { flattenLocations } from '../../api/configuration';
 import { getApiError } from '../../api/farmApi';
 import LookupQuickAddSelect from '../../components/LookupQuickAddSelect';
 import type { Expense, ExpenseCategory, PaymentMethod } from '../../types';
+import { useTranslation } from 'react-i18next';
 
 interface FormValues {
   expenseDate: Dayjs;
@@ -25,7 +27,8 @@ interface FormValues {
 const formatAmount = (amount: number) =>
   `$${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-const ExpensesPage: React.FC = () => {
+const ExpensesPage: React.FC = () => {const { t } = useTranslation('finance'); 
+  const navigate = useNavigate();
   const actionRef = useRef<ActionType>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Expense | null>(null);
@@ -105,10 +108,10 @@ const ExpensesPage: React.FC = () => {
       };
       if (editing) {
         await expensesApi.update(editing.id, payload);
-        message.success('Expense updated');
+        message.success(t('expenseUpdated'));
       } else {
         await expensesApi.create(payload);
-        message.success('Expense recorded');
+        message.success(t('expenseRecorded'));
       }
       setModalOpen(false);
       loadOptions();
@@ -124,7 +127,7 @@ const ExpensesPage: React.FC = () => {
   const handleDelete = async (id: string) => {
     try {
       await expensesApi.remove(id);
-      message.success('Expense deleted');
+      message.success(t('expenseDeleted'));
       loadOptions();
       actionRef.current?.reload();
     } catch (err) {
@@ -134,14 +137,14 @@ const ExpensesPage: React.FC = () => {
 
   const columns: ProColumns<Expense>[] = [
     {
-      title: 'Date',
+      title: t('date'),
       dataIndex: 'expenseDate',
       valueType: 'date',
       width: 110,
       search: false,
     },
     {
-      title: 'Date Range',
+      title: t('dateRange'),
       dataIndex: 'expenseDateRange',
       valueType: 'dateRange',
       hideInTable: true,
@@ -150,20 +153,20 @@ const ExpensesPage: React.FC = () => {
       },
     },
     {
-      title: 'Description',
+      title: t('description'),
       dataIndex: 'description',
       ellipsis: true,
       search: false,
       render: (_, record) => record.description ?? '-',
     },
     {
-      title: 'Search',
+      title: t('search'),
       dataIndex: 'search',
       hideInTable: true,
-      fieldProps: { placeholder: 'Search description' },
+      fieldProps: { placeholder: t('searchDescription') },
     },
     {
-      title: 'Category',
+      title: t('category'),
       dataIndex: 'expenseCategoryId',
       width: 140,
       valueType: 'select',
@@ -171,7 +174,7 @@ const ExpensesPage: React.FC = () => {
       render: (_, record) => <Tag color="orange">{record.expenseCategoryName}</Tag>,
     },
     {
-      title: 'Payment Method',
+      title: t('paymentMethod'),
       dataIndex: 'paymentMethodId',
       width: 150,
       valueType: 'select',
@@ -179,7 +182,7 @@ const ExpensesPage: React.FC = () => {
       render: (_, record) => record.paymentMethodName,
     },
     {
-      title: 'Animal',
+      title: t('animal'),
       dataIndex: 'animalTagNumber',
       search: false,
       width: 130,
@@ -187,28 +190,28 @@ const ExpensesPage: React.FC = () => {
         record.animalTagNumber ? `${record.animalTagNumber}${record.animalName ? ` (${record.animalName})` : ''}` : '-',
     },
     {
-      title: 'Animal Filter',
+      title: t('animalFilter'),
       dataIndex: 'animalId',
       valueType: 'select',
       hideInTable: true,
       fieldProps: { options: animals.map((a) => ({ value: a.id, label: a.name ? `${a.tagNumber} (${a.name})` : a.tagNumber })), showSearch: true, optionFilterProp: 'label' },
     },
     {
-      title: 'Location',
+      title: t('location'),
       dataIndex: 'locationName',
       search: false,
       width: 120,
       render: (_, record) => record.locationName ?? '-',
     },
     {
-      title: 'Location Filter',
+      title: t('locationFilter'),
       dataIndex: 'locationId',
       valueType: 'select',
       hideInTable: true,
       fieldProps: { options: locations.map((l) => ({ value: l.id, label: l.name })) },
     },
     {
-      title: 'Amount',
+      title: t('amount'),
       dataIndex: 'amount',
       width: 120,
       align: 'right',
@@ -222,11 +225,11 @@ const ExpensesPage: React.FC = () => {
       render: (_, record) => (
         <Space>
           <Button size="small" onClick={() => openEdit(record)}>
-            Edit
+            {t('edit')}
           </Button>
-          <Popconfirm title="Delete this expense?" onConfirm={() => handleDelete(record.id)}>
+          <Popconfirm title={t('deleteThisExpense')} onConfirm={() => handleDelete(record.id)}>
             <Button size="small" danger>
-              Delete
+              {t('delete')}
             </Button>
           </Popconfirm>
         </Space>
@@ -265,14 +268,17 @@ const ExpensesPage: React.FC = () => {
         pagination={{ defaultPageSize: 20, showSizeChanger: true }}
         toolBarRender={() => [
           <Button key="reload" icon={<ReloadOutlined />} onClick={() => actionRef.current?.reload()} />,
+          <Button key="import" icon={<UploadOutlined />} onClick={() => navigate('/dashboard/finance/expenses/import')}>
+            {t('import')}
+          </Button>,
           <Button key="add" type="primary" icon={<PlusOutlined />} onClick={openCreate}>
-            Add Expense
+            {t('addExpense')}
           </Button>,
         ]}
       />
 
       <Modal
-        title={editing ? 'Edit Expense' : 'Add Expense'}
+        title={editing ? t('editExpense') : t('addExpense')}
         open={modalOpen}
         onOk={handleSubmit}
         onCancel={() => setModalOpen(false)}
@@ -283,38 +289,38 @@ const ExpensesPage: React.FC = () => {
         <Form form={form} layout="vertical">
           <Row gutter={[16, 16]}>
             <Col xs={24} sm={12}>
-              <Form.Item name="expenseDate" label="Date" rules={[{ required: true, message: 'Date is required' }]}>
+              <Form.Item name="expenseDate" label={t('date')} rules={[{ required: true, message: 'Date is required' }]}>
                 <DatePicker style={{ width: '100%' }} />
               </Form.Item>
             </Col>
             <Col xs={24} sm={12}>
-              <Form.Item name="amount" label="Amount" rules={[{ required: true, message: 'Amount is required' }]}>
+              <Form.Item name="amount" label={t('amount')} rules={[{ required: true, message: 'Amount is required' }]}>
                 <InputNumber min={0.01} precision={2} prefix="$" style={{ width: '100%' }} />
               </Form.Item>
             </Col>
           </Row>
-          <Form.Item name="expenseCategoryId" label="Category" rules={[{ required: true, message: 'Category is required' }]}>
+          <Form.Item name="expenseCategoryId" label={t('category')} rules={[{ required: true, message: 'Category is required' }]}>
             <LookupQuickAddSelect
               kind="expenseCategory"
-              placeholder="Select category"
+              placeholder={t('selectCategory')}
               options={categories.map((c) => ({ value: c.id, label: c.name }))}
               onCreated={() => loadOptions()}
             />
           </Form.Item>
-          <Form.Item name="paymentMethodId" label="Payment Method" rules={[{ required: true, message: 'Payment method is required' }]}>
+          <Form.Item name="paymentMethodId" label={t('paymentMethod')} rules={[{ required: true, message: 'Payment method is required' }]}>
             <LookupQuickAddSelect
               kind="paymentMethod"
-              placeholder="Select payment method"
+              placeholder={t('selectPaymentMethod')}
               options={methods.map((m) => ({ value: m.id, label: m.name }))}
               onCreated={() => loadOptions()}
             />
           </Form.Item>
           <Row gutter={[16, 16]}>
             <Col xs={24} sm={12}>
-              <Form.Item name="animalId" label="Animal (optional)">
+              <Form.Item name="animalId" label={t('animalOptional')}>
                 <Select
                   allowClear
-                  placeholder="Link an animal"
+                  placeholder={t('linkAnAnimal')}
                   options={animals.map((a) => ({ value: a.id, label: a.name ? `${a.tagNumber} (${a.name})` : a.tagNumber }))}
                   showSearch
                   optionFilterProp="label"
@@ -324,7 +330,7 @@ const ExpensesPage: React.FC = () => {
               </Form.Item>
             </Col>
             <Col xs={24} sm={12}>
-              <Form.Item name="locationId" label="Location (optional)">
+              <Form.Item name="locationId" label={t('locationOptional')}>
                 <LookupQuickAddSelect
                   kind="location"
                   ctx={{
@@ -332,7 +338,7 @@ const ExpensesPage: React.FC = () => {
                     locations: locations.map((l) => ({ value: l.id, label: l.name })),
                   }}
                   allowClear
-                  placeholder="Link a location"
+                  placeholder={t('linkALocation')}
                   options={locations.map((l) => ({ value: l.id, label: l.name }))}
                   onCreated={() => loadOptions()}
                 />
@@ -341,10 +347,10 @@ const ExpensesPage: React.FC = () => {
           </Row>
           <Form.Item
             name="description"
-            label="Description"
+            label={t('description')}
             rules={[{ max: 1000, message: 'Description cannot exceed 1000 characters' }]}
           >
-            <Input.TextArea rows={3} maxLength={1000} placeholder='e.g. "$500 for Veterinary Visit"' />
+            <Input.TextArea rows={3} maxLength={1000} placeholder={t('eG500ForVeterinaryVisit')} />
           </Form.Item>
         </Form>
       </Modal>

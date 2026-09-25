@@ -27,6 +27,8 @@ public class ImportE2ETests : IClassFixture<ImportE2ETests.Factory>
 
     private const string InventoryHeaders = "name,unit,quantity,reorderLevel,unitCost,category";
 
+    private const string ExpenseHeaders = "date,amount,category,payment,animal,location,description";
+
     private readonly Factory _factory;
 
     public ImportE2ETests(Factory factory) => _factory = factory;
@@ -59,6 +61,10 @@ public class ImportE2ETests : IClassFixture<ImportE2ETests.Factory>
             // does not have — so a farm with no department or role can import nobody.
             db.Departments.Add(new Department { Id = Guid.NewGuid(), FarmId = seed.FarmId, Name = "Dairy" });
             db.EmployeeRoles.Add(new EmployeeRole { Id = Guid.NewGuid(), FarmId = seed.FarmId, Name = "Milker" });
+
+            // The finance importers resolve the farm's own categories, payment methods and
+            // locations by name; the base seed already provides Feed, Cash, Milk Sales and
+            // Main Barn, so the tests below import against those rather than adding more.
 
             ForeignFarmId = Guid.NewGuid();
             db.Farms.Add(new Farm { Id = ForeignFarmId, AccountId = seed.AccountId, Name = "Foreign Farm" });
@@ -234,19 +240,136 @@ public class ImportE2ETests : IClassFixture<ImportE2ETests.Factory>
         Assert.Equal(5m, item.Quantity);
     }
 
-    // ── the farm gate, on both new routes ───────────────────
+    // ── suppliers and customers ─────────────────────────────
+
+    [Fact]
+    public async Task SupplierCommit_ImportsTheFile_AndTheSuppliersShowUpInTheListEndpoint()
+    {
+        var farmId = FarmId;
+        var client = Client(farmId);
+
+        var name = Unique("Supplier");
+        var csv = $"supplier,contact,products\n{name},+254 700 000000,Feed\n";
+
+        using var response = await PostAsync(client, farmId, "inventory/suppliers", "commit", csv);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var commit = await response.Content.ReadFromJsonAsync<CommitShape>();
+        Assert.Equal(1, commit!.ImportedCount);
+
+        var supplier = Assert.Single(await ListSuppliersAsync(client, farmId), candidate => candidate.Name == name);
+        Assert.Equal("+254 700 000000", supplier.ContactInfo);
+        Assert.Equal("Feed", supplier.ProductsSupplied);
+    }
+
+    [Fact]
+    public async Task SupplierCommit_DuplicateName_IsRefusedRatherThanSkipped()
+    {
+        var farmId = FarmId;
+        var client = Client(farmId);
+
+        var csv = $"supplier,contact,products\n{Unique("Supplier")},,Feed\n";
+
+        using var first = await PostAsync(client, farmId, "inventory/suppliers", "commit", csv);
+        Assert.Equal(1, (await first.Content.ReadFromJsonAsync<CommitShape>())!.ImportedCount);
+
+        using var second = await PostAsync(client, farmId, "inventory/suppliers", "commit", csv);
+        var commit = await second.Content.ReadFromJsonAsync<CommitShape>();
+        Assert.Equal(0, commit!.ImportedCount);
+        Assert.Equal("A supplier with this name already exists",
+            Assert.Single(Assert.Single(commit.InvalidRows).Errors).Message);
+    }
+
+    [Fact]
+    public async Task CustomerCommit_ImportsTheFile_AndTheCustomersShowUpInTheListEndpoint()
+    {
+        var farmId = FarmId;
+        var client = Client(farmId);
+
+        var name = Unique("Customer");
+        using var response = await PostAsync(
+            client, farmId, "inventory/customers", "commit", $"customer,contact\n{name},+254 711 111111\n");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(1, (await response.Content.ReadFromJsonAsync<CommitShape>())!.ImportedCount);
+
+        var customer = Assert.Single(await ListCustomersAsync(client, farmId), candidate => candidate.Name == name);
+        Assert.Equal("+254 711 111111", customer.ContactInfo);
+    }
+
+    // ── expenses and income ─────────────────────────────────
+
+    [Fact]
+    public async Task ExpenseCommit_ImportsTheFile_AndTheExpensesShowUpInTheListEndpoint()
+    {
+        var farmId = FarmId;
+        var client = Client(farmId);
+
+        var description = Unique("Expense");
+        var csv = $"{ExpenseHeaders}\n2026-01-15,1500.50,Feed,Cash,,Main Barn,{description}\n";
+
+        using var response = await PostAsync(client, farmId, "finance/expenses", "commit", csv);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(1, (await response.Content.ReadFromJsonAsync<CommitShape>())!.ImportedCount);
+
+        var expense = Assert.Single(await ListExpensesAsync(client, farmId), candidate => candidate.Description == description);
+        Assert.Equal(1500.50m, expense.Amount);
+        Assert.Equal("Feed", expense.ExpenseCategoryName);
+        Assert.Equal("Cash", expense.PaymentMethodName);
+    }
+
+    [Fact]
+    public async Task ExpenseCommit_IdenticalRows_AreBothWritten_BecauseAnExpenseHasNoDuplicate()
+    {
+        var farmId = FarmId;
+        var client = Client(farmId);
+
+        // The deliberate no-duplicate policy, over HTTP: an expense has no identifier, so
+        // two identical rows are two real transactions and both are imported.
+        var description = Unique("Repeated expense");
+        var row = $"2026-01-15,321.00,Feed,Cash,,,{description}";
+        var csv = $"{ExpenseHeaders}\n{row}\n{row}\n";
+
+        using var response = await PostAsync(client, farmId, "finance/expenses", "commit", csv);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(2, (await response.Content.ReadFromJsonAsync<CommitShape>())!.ImportedCount);
+
+        Assert.Equal(2, (await ListExpensesAsync(client, farmId)).Count(candidate => candidate.Description == description));
+    }
+
+    [Fact]
+    public async Task IncomeCommit_ImportsTheFile_AndTheRecordsShowUpInTheListEndpoint()
+    {
+        var farmId = FarmId;
+        var client = Client(farmId);
+
+        var description = Unique("Income");
+        var csv = $"{ExpenseHeaders}\n2026-01-20,2500,Milk Sales,Cash,,,{description}\n";
+
+        using var response = await PostAsync(client, farmId, "finance/income-records", "commit", csv);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(1, (await response.Content.ReadFromJsonAsync<CommitShape>())!.ImportedCount);
+
+        var record = Assert.Single(await ListIncomeAsync(client, farmId), candidate => candidate.Description == description);
+        Assert.Equal(2500m, record.Amount);
+        Assert.Equal("Milk Sales", record.IncomeCategoryName);
+    }
+
+    // ── the farm gate, on every route ───────────────────────
 
     [Theory]
     [InlineData("employees")]
     [InlineData("inventory-items")]
+    [InlineData("inventory/suppliers")]
+    [InlineData("inventory/customers")]
+    [InlineData("finance/expenses")]
+    [InlineData("finance/income-records")]
     public async Task Import_IntoAFarmTheCallerIsNotAMemberOf_IsForbiddenAndWritesNothing(string entity)
     {
         _ = _factory.Host;
         var farmId = _factory.ForeignFarmId;
         var client = Client(farmId);
-        var csv = entity == "employees"
-            ? EmployeeFile(Email("foreign"), "Dairy", "Milker")
-            : $"{InventoryHeaders}\n{Unique("Foreign item")},kg,1,1,1,\n";
+        var csv = CsvFor(entity);
 
         using var preview = await PostAsync(client, farmId, entity, "preview", csv);
         Assert.Equal(HttpStatusCode.Forbidden, preview.StatusCode);
@@ -258,6 +381,10 @@ public class ImportE2ETests : IClassFixture<ImportE2ETests.Factory>
     [Theory]
     [InlineData("employees")]
     [InlineData("inventory-items")]
+    [InlineData("inventory/suppliers")]
+    [InlineData("inventory/customers")]
+    [InlineData("finance/expenses")]
+    [InlineData("finance/income-records")]
     public async Task Import_WithNoToken_IsUnauthorized(string entity)
     {
         var farmId = FarmId;
@@ -308,6 +435,45 @@ public class ImportE2ETests : IClassFixture<ImportE2ETests.Factory>
         return page?.Items ?? new List<InventoryShape>();
     }
 
+    /// <summary>
+    /// A well-formed file for each import route. For the 401/403 theories the body is
+    /// never parsed — the request is refused before the pipeline — so the values only
+    /// need to be non-empty and shaped like the entity.
+    /// </summary>
+    private static string CsvFor(string entity) => entity switch
+    {
+        "employees" => EmployeeFile(Email("foreign"), "Dairy", "Milker"),
+        "inventory-items" => $"{InventoryHeaders}\n{Unique("Item")},kg,1,1,1,\n",
+        "inventory/suppliers" => "supplier,contact,products\nKilimo Feeds,,Feed\n",
+        "inventory/customers" => "customer,contact\nNairobi Dairy Co-op,\n",
+        "finance/expenses" => $"{ExpenseHeaders}\n2026-01-15,100,Feed,Cash,,Main Barn,Dairy meal\n",
+        _ => $"{ExpenseHeaders}\n2026-01-20,100,Milk Sales,Cash,,,Morning milk\n",
+    };
+
+    private static async Task<List<SupplierShape>> ListSuppliersAsync(HttpClient client, Guid farmId)
+    {
+        var page = await client.GetFromJsonAsync<SupplierPageShape>($"/api/farm/{farmId}/inventory/suppliers?pageSize=50");
+        return page?.Items ?? new List<SupplierShape>();
+    }
+
+    private static async Task<List<CustomerShape>> ListCustomersAsync(HttpClient client, Guid farmId)
+    {
+        var page = await client.GetFromJsonAsync<CustomerPageShape>($"/api/farm/{farmId}/inventory/customers?pageSize=50");
+        return page?.Items ?? new List<CustomerShape>();
+    }
+
+    private static async Task<List<ExpenseShape>> ListExpensesAsync(HttpClient client, Guid farmId)
+    {
+        var page = await client.GetFromJsonAsync<ExpensePageShape>($"/api/farm/{farmId}/finance/expenses?pageSize=50");
+        return page?.Items ?? new List<ExpenseShape>();
+    }
+
+    private static async Task<List<IncomeShape>> ListIncomeAsync(HttpClient client, Guid farmId)
+    {
+        var page = await client.GetFromJsonAsync<IncomePageShape>($"/api/farm/{farmId}/finance/income-records?pageSize=50");
+        return page?.Items ?? new List<IncomeShape>();
+    }
+
     private sealed record PreviewShape(
         int TotalRows,
         int ValidRowCount,
@@ -331,4 +497,22 @@ public class ImportE2ETests : IClassFixture<ImportE2ETests.Factory>
     private sealed record InventoryPageShape(List<InventoryShape> Items, int TotalCount);
 
     private sealed record InventoryShape(Guid Id, string Name, string Unit, decimal Quantity, decimal ReorderLevel, decimal UnitCost);
+
+    private sealed record SupplierPageShape(List<SupplierShape> Items, int TotalCount);
+
+    private sealed record SupplierShape(Guid Id, string Name, string? ContactInfo, string? ProductsSupplied);
+
+    private sealed record CustomerPageShape(List<CustomerShape> Items, int TotalCount);
+
+    private sealed record CustomerShape(Guid Id, string Name, string? ContactInfo);
+
+    private sealed record ExpensePageShape(List<ExpenseShape> Items, int TotalCount);
+
+    private sealed record ExpenseShape(
+        Guid Id, decimal Amount, string ExpenseCategoryName, string PaymentMethodName, string? Description);
+
+    private sealed record IncomePageShape(List<IncomeShape> Items, int TotalCount);
+
+    private sealed record IncomeShape(
+        Guid Id, decimal Amount, string IncomeCategoryName, string PaymentMethodName, string? Description);
 }

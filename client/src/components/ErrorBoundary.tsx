@@ -1,4 +1,5 @@
 import React from 'react';
+import i18n from '../i18n';
 
 interface ErrorBoundaryProps {
   children: React.ReactNode;
@@ -32,6 +33,10 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
 
   render() {
     const { error } = this.state;
+    // A class component cannot use the `useTranslation` hook, and this screen exists
+    // precisely when the tree below it has crashed — so it reads the live language straight
+    // from the i18n instance rather than subscribing to anything.
+    const t = i18n.getFixedT(null, 'errors');
     if (error) {
       return (
         <div
@@ -56,10 +61,8 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
               padding: 24,
             }}
           >
-            <h2 style={{ margin: '0 0 8px', fontSize: 20 }}>Something went wrong</h2>
-            <p style={{ margin: '0 0 12px', color: '#555' }}>
-              The app hit an unexpected error and had to stop rendering this screen.
-            </p>
+            <h2 style={{ margin: '0 0 8px', fontSize: 20 }}>{t('somethingWentWrong')}</h2>
+            <p style={{ margin: '0 0 12px', color: '#555' }}>{t('unexpectedRenderError')}</p>
             <pre
               style={{
                 whiteSpace: 'pre-wrap',
@@ -89,7 +92,7 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
                 cursor: 'pointer',
               }}
             >
-              Reload app
+              {t('reloadApp')}
             </button>
           </div>
         </div>

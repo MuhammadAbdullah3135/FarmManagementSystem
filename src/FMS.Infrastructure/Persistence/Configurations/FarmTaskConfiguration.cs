@@ -20,6 +20,14 @@ public class FarmTaskConfiguration : IEntityTypeConfiguration<FarmTask>
         builder.HasIndex(t => new { t.FarmId, t.Status, t.DueDate });
         builder.HasIndex(t => new { t.FarmId, t.AssignedEmployeeId });
 
+        // Serves the weight-check task-existence check, which filters FarmId + AnimalId + Title
+        // and ignores completed/cancelled rows. The three indexes above all lead with FarmId but
+        // none carries AnimalId, so that check had to read every task on the farm — and it runs
+        // once per matching (schedule, animal) pair, which on a farm with real history is the
+        // hottest read the health path makes. Deliberately not speculative: this is the only
+        // touched table whose index set has a gap on a column the query filters by.
+        builder.HasIndex(t => new { t.FarmId, t.AnimalId });
+
         // Idempotency: a completion changes the task in place, so the queued mutation's id
         // lives here rather than on a row of its own. Unique per farm, filtered to the rows
         // that actually came from a device.
