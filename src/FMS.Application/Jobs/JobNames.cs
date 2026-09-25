@@ -24,4 +24,14 @@ public static class JobNames
 
     /// <summary>Per farm: reconciles notifications from the farm's current alert conditions.</summary>
     public const string NotificationDispatch = "notification-dispatch";
+
+    /// <summary>
+    /// Per farm, on demand: builds the farm's full-data export archive.
+    ///
+    /// The only job with no cron — it is enqueued by the export endpoint when a
+    /// member asks for one, which is why it is named here alongside the scheduled
+    /// jobs rather than in a separate vocabulary: it must appear in logs and the
+    /// job-status view under the same naming rules as the rest.
+    /// </summary>
+    public const string FarmExport = "farm-export";
 }

@@ -173,6 +173,13 @@ public class NotificationDispatcher : INotificationDispatcher
                         SourceKey = sourceKey,
                         Title = alert.Title,
                         Message = alert.Message,
+                        // The localisable half travels with the row: this notification may sit
+                        // unread in a list for weeks, and the language it is read in is not the
+                        // language it was generated in.
+                        TitleKey = alert.TitleKey,
+                        TitleArgsJson = MessageArgsJson.Serialize(alert.TitleArgs),
+                        MessageKey = alert.MessageKey,
+                        MessageArgsJson = MessageArgsJson.Serialize(alert.MessageArgs),
                         Link = alert.Link,
                         DueDate = alert.DueDate,
                         CreatedAt = now
@@ -196,6 +203,12 @@ public class NotificationDispatcher : INotificationDispatcher
                     existing.Severity = alert.Severity;
                     existing.Title = alert.Title;
                     existing.Message = alert.Message;
+                    // Refreshed with the text they belong to: leaving the old key would have the
+                    // list render a stale sentence in the right language.
+                    existing.TitleKey = alert.TitleKey;
+                    existing.TitleArgsJson = MessageArgsJson.Serialize(alert.TitleArgs);
+                    existing.MessageKey = alert.MessageKey;
+                    existing.MessageArgsJson = MessageArgsJson.Serialize(alert.MessageArgs);
                     existing.Link = alert.Link;
                     existing.DueDate = alert.DueDate;
                     existing.ModifiedAt = now;

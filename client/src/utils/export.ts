@@ -70,9 +70,13 @@ export function exportPdf(filename: string, title: string, headers: string[], ro
 }
 
 /**
- * Helper to download a blob as a file
+ * Download a blob as a file.
+ *
+ * Exported because a file the *server* produced — the full-farm export archive —
+ * arrives as a Blob from an authenticated request, and saving it must work exactly
+ * like saving a client-built one: a programmatic click on a temporary object URL.
  */
-function downloadBlob(blob: Blob, filename: string): void {
+export function downloadBlob(blob: Blob, filename: string): void {
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;

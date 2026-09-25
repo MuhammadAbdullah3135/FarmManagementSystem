@@ -24,6 +24,39 @@ public static class NotificationAlertTypes
     public const string DueBirth = "DueBirth";
     public const string LowInventory = "LowInventory";
 
+    /// <summary>
+    /// A requested full-farm export finished building.
+    ///
+    /// <para>
+    /// <b>Deliberately not in <see cref="All"/>.</b> <see cref="All"/> is the dashboard's
+    /// alert vocabulary — conditions that exist or stop existing on the farm — and two
+    /// things follow from it that this alert type must not be part of:
+    /// </para>
+    ///
+    /// <list type="number">
+    /// <item>the preferences matrix is built from <see cref="All"/>, and "email me when
+    /// my export is ready" is not a farm condition anyone should have to configure;</item>
+    /// <item><c>NotificationDispatcher</c> derives its auto-resolve set from
+    /// <see cref="All"/> and resolves any open notification whose condition the dashboard
+    /// no longer reports. A completion notice added to that set would be resolved as
+    /// "no longer a problem" on the very next dispatch — the notice would silently
+    /// disappear from the recipient's list minutes after arriving.</item>
+    /// </list>
+    ///
+    /// <para>
+    /// So the job writes this row directly, and <c>FarmExportNotificationTests</c> pins
+    /// both halves of that: the type is absent from <see cref="All"/>, and a dispatch run
+    /// does not touch it.
+    /// </para>
+    /// </summary>
+    public const string ExportReady = "ExportReady";
+
+    /// <summary>
+    /// Where an export-ready notification points: the page that shows the archive and its
+    /// download button. A client route rather than a URL, matching every other alert link.
+    /// </summary>
+    public const string ExportReadyLink = "/dashboard/configuration/export";
+
     /// <summary>Every alert type the dashboard can produce.</summary>
     public static readonly IReadOnlyList<string> All =
     [
@@ -158,6 +191,21 @@ public static class NotificationAlertTypes
 
         public static string ForLowInventory(Guid inventoryItemId) =>
             $"{LowInventory}:{inventoryItemId}";
+
+        /// <summary>
+        /// One per <em>build</em>, so a farm that exports twice gets told twice.
+        ///
+        /// <para>
+        /// This is the deliberate opposite of the rules above: the other keys are built
+        /// from entity ids alone and deliberately exclude dates, because a condition that
+        /// merely moves is the same problem and must not re-alert. An export is not a
+        /// condition — it is an event — so two of them are two pieces of news, and the
+        /// completion instant is what tells them apart. Without it both notices would
+        /// share a key and anything keying on it would collapse them.
+        /// </para>
+        /// </summary>
+        public static string ForExport(Guid exportId, DateTime completedAtUtc) =>
+            $"{ExportReady}:{exportId}:{completedAtUtc:yyyyMMddHHmmssfff}";
     }
 }
 
