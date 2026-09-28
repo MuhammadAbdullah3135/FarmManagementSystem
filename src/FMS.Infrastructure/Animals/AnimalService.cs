@@ -6,86 +6,45 @@ using FMS.Domain.Enums;
 using FMS.Infrastructure.Common;
 using FMS.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 
 namespace FMS.Infrastructure.Animals;
 
 public class AnimalService : IAnimalService
 {
+    /// <summary>The server's own ceiling on a page of animals, for the list and the label sheet alike.</summary>
+    private const int MaxPageSize = 200;
+
+    /// <summary>The page size a request that does not ask for one gets, for the list and the sheet alike.</summary>
+    private const int DefaultPageSize = 20;
+
     private readonly FmsDbContext _context;
     private readonly ICurrentUserService _currentUser;
     private readonly IFileStorageService _fileStorage;
+    private readonly IConfiguration _configuration;
 
     private static readonly string[] ImageExtensions = { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
     private const long MaxImageBytes = 5 * 1024 * 1024;
     private static readonly string[] DocumentExtensions = { ".pdf", ".jpg", ".jpeg", ".png", ".doc", ".docx", ".xls", ".xlsx", ".txt", ".csv" };
     private const long MaxDocumentBytes = 20 * 1024 * 1024;
 
-    public AnimalService(FmsDbContext context, ICurrentUserService currentUser, IFileStorageService fileStorage)
+    public AnimalService(FmsDbContext context, ICurrentUserService currentUser, IFileStorageService fileStorage, IConfiguration configuration)
     {
         _context = context;
         _currentUser = currentUser;
         _fileStorage = fileStorage;
+        _configuration = configuration;
     }
 
     public async Task<Result<PagedResult<AnimalListItemDto>>> GetAnimalsAsync(Guid farmId, AnimalListFilter filter)
     {
-        var page = filter.Page < 1 ? 1 : filter.Page;
-        var pageSize = filter.PageSize < 1 ? 20 : Math.Min(filter.PageSize, 200);
+        var (page, pageSize) = ResolvePaging(filter);
 
-        var query = _context.Animals
-            .AsNoTracking()
-            .Where(a => a.FarmId == farmId && !a.IsDeleted);
-
-        if (!filter.StatusId.HasValue && !filter.IncludeTerminal)
-            query = query.Where(a => a.AnimalStatus.Category != AnimalStatusCategory.Terminal);
-
-        if (filter.AnimalTypeId.HasValue)
-            query = query.Where(a => a.AnimalTypeId == filter.AnimalTypeId.Value);
-
-        if (filter.BreedId.HasValue)
-            query = query.Where(a => a.BreedId == filter.BreedId.Value);
-
-        if (filter.StatusId.HasValue)
-            query = query.Where(a => a.AnimalStatusId == filter.StatusId.Value);
-
-        if (filter.LocationId.HasValue)
-            query = query.Where(a => a.LocationId == filter.LocationId.Value);
-
-        if (!string.IsNullOrWhiteSpace(filter.Search))
-        {
-            var term = filter.Search.Trim();
-            query = query.Where(a =>
-                a.TagNumber.Contains(term) ||
-                (a.Name != null && a.Name.Contains(term)) ||
-                a.Identifications.Any(i => i.DateRemoved == null && i.Value.Contains(term)));
-        }
+        var query = ApplyListFilter(farmId, filter);
 
         var total = await query.CountAsync();
 
-        var sortBy = filter.SortBy?.Trim().ToLowerInvariant();
-        IQueryable<Domain.Entities.Animal> ordered;
-        if (filter.SortDescending)
-        {
-            ordered = sortBy switch
-            {
-                "tagnumber" => query.OrderByDescending(a => a.TagNumber),
-                "name" => query.OrderByDescending(a => a.Name),
-                "dateofbirth" => query.OrderByDescending(a => a.DateOfBirth),
-                _ => query.OrderByDescending(a => a.CreatedAt)
-            };
-        }
-        else
-        {
-            ordered = sortBy switch
-            {
-                "tagnumber" => query.OrderBy(a => a.TagNumber),
-                "name" => query.OrderBy(a => a.Name),
-                "dateofbirth" => query.OrderBy(a => a.DateOfBirth),
-                _ => query.OrderBy(a => a.CreatedAt)
-            };
-        }
-
-        var items = await ordered
+        var items = await ApplyListOrdering(query, filter)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .Select(a => new AnimalListItemDto
@@ -118,6 +77,141 @@ public class AnimalService : IAnimalService
             .ToListAsync();
 
         return Result<PagedResult<AnimalListItemDto>>.Success(new PagedResult<AnimalListItemDto>
+        {
+            Items = items,
+            Page = page,
+            PageSize = pageSize,
+            TotalCount = total
+        });
+    }
+
+    /// <summary>
+    /// The page a request resolves to, extracted for the same reason the filter is: a sheet
+    /// printed from page 2 of a filtered table has to be that page of those rows, so the two
+    /// reads cannot each own a copy of this arithmetic. A default that drifted between them
+    /// would print labels for animals the user never saw — and a caller that wants bigger
+    /// batches gets them by asking (<see cref="AnimalListFilter.PageSize"/>), not by the route
+    /// it happens to call.
+    /// </summary>
+    private static (int Page, int PageSize) ResolvePaging(AnimalListFilter filter) =>
+        (filter.Page < 1 ? 1 : filter.Page,
+         filter.PageSize < 1 ? DefaultPageSize : Math.Min(filter.PageSize, MaxPageSize));
+
+    /// <summary>
+    /// The farm-scoped filter a list read applies, extracted so the animal table and the QR
+    /// label sheet answer the same question. A sheet that filtered differently from the table it
+    /// was printed from would be a quiet way to label the wrong animals, so the two do not each
+    /// own a copy of this logic — and the equality is asserted by a test comparing the two
+    /// endpoints' answers for the same filter.
+    /// </summary>
+    private IQueryable<FMS.Domain.Entities.Animal> ApplyListFilter(Guid farmId, AnimalListFilter filter)
+    {
+        var query = _context.Animals
+            .AsNoTracking()
+            .Where(a => a.FarmId == farmId && !a.IsDeleted);
+
+        if (!filter.StatusId.HasValue && !filter.IncludeTerminal)
+            query = query.Where(a => a.AnimalStatus.Category != AnimalStatusCategory.Terminal);
+
+        if (filter.AnimalTypeId.HasValue)
+            query = query.Where(a => a.AnimalTypeId == filter.AnimalTypeId.Value);
+
+        if (filter.BreedId.HasValue)
+            query = query.Where(a => a.BreedId == filter.BreedId.Value);
+
+        if (filter.StatusId.HasValue)
+            query = query.Where(a => a.AnimalStatusId == filter.StatusId.Value);
+
+        if (filter.LocationId.HasValue)
+            query = query.Where(a => a.LocationId == filter.LocationId.Value);
+
+        if (!string.IsNullOrWhiteSpace(filter.Search))
+        {
+            var term = filter.Search.Trim();
+            query = query.Where(a =>
+                a.TagNumber.Contains(term) ||
+                (a.Name != null && a.Name.Contains(term)) ||
+                a.Identifications.Any(i => i.DateRemoved == null && i.Value.Contains(term)));
+        }
+
+        return query;
+    }
+
+    /// <summary>The ordering half of the same contract — the sheet prints the page the user sees.</summary>
+    private static IQueryable<FMS.Domain.Entities.Animal> ApplyListOrdering(IQueryable<FMS.Domain.Entities.Animal> query, AnimalListFilter filter)
+    {
+        var sortBy = filter.SortBy?.Trim().ToLowerInvariant();
+
+        if (filter.SortDescending)
+        {
+            return sortBy switch
+            {
+                "tagnumber" => query.OrderByDescending(a => a.TagNumber),
+                "name" => query.OrderByDescending(a => a.Name),
+                "dateofbirth" => query.OrderByDescending(a => a.DateOfBirth),
+                _ => query.OrderByDescending(a => a.CreatedAt)
+            };
+        }
+
+        return sortBy switch
+        {
+            "tagnumber" => query.OrderBy(a => a.TagNumber),
+            "name" => query.OrderBy(a => a.Name),
+            "dateofbirth" => query.OrderBy(a => a.DateOfBirth),
+            _ => query.OrderBy(a => a.CreatedAt)
+        };
+    }
+
+    public async Task<Result<AnimalQrLabelDto>> GetQrLabelAsync(Guid farmId, Guid id)
+    {
+        var animal = await _context.Animals
+            .AsNoTracking()
+            .Where(a => a.Id == id && a.FarmId == farmId && !a.IsDeleted)
+            .Select(a => new { a.Id, a.TagNumber, a.Name, AnimalTypeName = a.AnimalType.Name })
+            .FirstOrDefaultAsync();
+
+        // Farm-scoped like every other read: another farm's id is "not found", never a peek at
+        // the record — which is also what makes a scanned label from another farm resolve to
+        // nothing rather than to somebody else's animal.
+        if (animal == null)
+            return Result<AnimalQrLabelDto>.NotFound("Animal not found");
+
+        return Result<AnimalQrLabelDto>.Success(new AnimalQrLabelDto
+        {
+            AnimalId = animal.Id,
+            TagNumber = animal.TagNumber,
+            Name = animal.Name,
+            AnimalTypeName = animal.AnimalTypeName,
+            Url = AnimalQrLinks.BuildUrl(_configuration, animal.Id)
+        });
+    }
+
+    public async Task<Result<PagedResult<AnimalQrLabelDto>>> GetQrLabelsAsync(Guid farmId, AnimalListFilter filter)
+    {
+        var (page, pageSize) = ResolvePaging(filter);
+
+        var query = ApplyListFilter(farmId, filter);
+        var total = await query.CountAsync();
+
+        var rows = await ApplyListOrdering(query, filter)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(a => new { a.Id, a.TagNumber, a.Name, AnimalTypeName = a.AnimalType.Name })
+            .ToListAsync();
+
+        // The payload is composed after materialisation: it is configuration plus the route,
+        // not a column, and asking the database to build a URL would put the frontend's origin
+        // in a query plan.
+        var items = rows.Select(row => new AnimalQrLabelDto
+        {
+            AnimalId = row.Id,
+            TagNumber = row.TagNumber,
+            Name = row.Name,
+            AnimalTypeName = row.AnimalTypeName,
+            Url = AnimalQrLinks.BuildUrl(_configuration, row.Id)
+        }).ToList();
+
+        return Result<PagedResult<AnimalQrLabelDto>>.Success(new PagedResult<AnimalQrLabelDto>
         {
             Items = items,
             Page = page,

@@ -3,4 +3,13 @@
 	<application android:allowBackup="true" android:icon="@mipmap/appicon" android:roundIcon="@mipmap/appicon_round" android:supportsRtl="true"></application>
 	<uses-permission android:name="android.permission.INTERNET" />
 	<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+	<!--
+		Scanning an animal's tag. Declared rather than required: the whole app works without a
+		camera (a tag can be typed, a label printed), so a device that has none must still be able
+		to install it. FmsWebChromeClient asks for it at the moment the scan screen opens the
+		camera, which is when the user is expecting the question.
+	-->
+	<uses-permission android:name="android.permission.CAMERA" />
+	<uses-feature android:name="android.hardware.camera" android:required="false" />
+	<uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
 </manifest>

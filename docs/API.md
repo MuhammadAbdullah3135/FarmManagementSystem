@@ -136,6 +136,43 @@ The report deliberately does not price three things, and names each one instead 
 
 Warning codes, all in `warnings[]`: `feed.not-recorded`, `labour.not-recorded` (a zero that means "nothing was recorded", not "it was free"), `pool.unallocated` (with `amount`), `animal.presence-start-unknown` and `animal.departure-unknown` (with `affectedCount` — an animal counted as present for the whole range, so its share is overstated), `excluded.medicine-cost`, `excluded.inventory-consumption`, `excluded.feed-purchases` (with `affectedCount`), and `rows.unassigned`, which should never appear: it means money in a source total reached no row, and it is stated rather than hidden.
 
+## Animal QR labels
+
+Two read-only additions to the animal routes, used by scanning and by printing a label sheet. Both are farm-scoped exactly like the rest of `/api/farm/{farmId}/animals/…` — same middleware, same membership check, same route/header farm match — so **no authorization path was added** for this feature and Phase 3.1's pipeline is untouched.
+
+| Route | Answers |
+|---|---|
+| `GET /api/farm/{farmId}/animals/qr-labels` | a page of labels, through the same `AnimalListFilter`, ordering, terminal-status rule and paging the animal list answers (so a sheet prints the rows the table was showing) |
+| `GET /api/farm/{farmId}/animals/{id}/qr` | one animal's label; **404** for another farm's animal, a deleted one, or an id that is not in this farm |
+
+A label is:
+
+```json
+{
+  "animalId": "6f9619ff-8b86-d011-b42d-00c04fc964ff",
+  "tagNumber": "TL-014",
+  "name": "Buttercup",
+  "animalTypeName": "Cattle",
+  "url": "https://farm.example.com/dashboard/animals/6f9619ff-8b86-d011-b42d-00c04fc964ff"
+}
+```
+
+`url` is the payload of the QR symbol itself. Nothing else changed on the wire: the animal detail response is unchanged and carries no code, so the detail page reads its own label from the per-animal route above and omits the card when that read fails — the code on a page is a convenience, while the printable path is the sheet.
+
+**Why the payload is the animal's id inside a URL, and not the tag number.** `AnimalQrCode` owns the whole grammar and the reasoning sits next to it; in short: `TagNumber` is editable (`PUT …/animals/{id}`) and unique only among a farm's non-deleted animals, so a label anchored to it can silently come to name a different animal — and a printed ear tag is the longest-lived artifact this system produces. `Id` is immutable for the life of the record. Readability is not lost: the sheet prints the tag number as text beside the code, and a stock camera app can open the URL too, because the deployed SPA already serves `404.html` as its client-side fallback.
+
+**Why the server builds it.** `AnimalQrLinks` reads the same `Frontend:BaseUrl` the invitation and password-reset links use — the setting `EmailConfigurationGuard` already refuses to start against when it is a template value outside Development. A label is a printed link with exactly the failure mode of an emailed link, plus the cost that a wrong one is glued to an animal and surfaces only when somebody scans it, so reusing the setting means one configuration is kept right and one guard watches it. A client that assembled the URL from `window.location` would be correct until the app moved.
+
+**The origin is not part of the accepted shape; the route segment is.** A scan is matched on `/dashboard/animals/{id}` with exactly one GUID after it (a query string or fragment is tolerated), so a label printed by one deployment still scans in a build served from a different path. A longer path is refused rather than guessed at — `…/animals/{id}/weights` is a different address. 1D barcodes and vendor tag values are deliberately not accepted; the reader and the parser are each one seam, so adding them later is a grammar decision rather than a rewrite.
+
+**No farm id in the payload.** Resolution is always against the *scanning* user's active farm, so another farm's label resolves to nothing rather than taking the reader across a farm boundary — which is the same rule every read on these routes already enforces.
+
+**Nothing is stored.** No `AnimalIdentification` row and no new `IdentificationType` is created for a code: the value is configuration plus the id, and storing it would be a second source of truth with a lifecycle (`DateRemoved`) nobody maintains. `GET …/animals/qr-labels` is a read and does not touch `POST …/animals/{id}/identifications`; the existing multi-type identification feature is unchanged (it remains API-only — no client surface reads `identifications`).
+
+**No server-side image and no new dependency.** The symbol is rendered by the client's existing component, which also means a device can display its own code with no request at all. A server-side encoder becomes justified only if codes are ever wanted inside the archive (see "Full-farm export"), which is deliberately deferred.
+
+`pageSize` follows the animal list's own rule — a missing or non-positive value resolves to the list's default of **20**, and anything larger is capped at **200** — through one shared function rather than a second copy of the numbers. Before this they were two: the sheet's default silently diverged from the list's, and a sheet that paged differently from the table it was printed from would be a quiet way to label the wrong animals.
+
 ## Offline mutations (sync)
 
 `POST /api/farm/{farmId}/sync/mutations` applies work a device did while it was offline. Farm-scoped exactly like every other farm route (X-Farm-Id header, membership enforced, route/header farm match), authorized exactly as the three workflows it applies — animal weights, attendance and task completion all require any farm member today, and the endpoint's per-operation role requirement is asserted against those controllers' own attributes by a test, so a workflow that gains a role cannot be reached through sync without it.

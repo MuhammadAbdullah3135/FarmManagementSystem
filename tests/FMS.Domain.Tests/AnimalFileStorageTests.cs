@@ -4,6 +4,7 @@ using FMS.Domain.Entities;
 using FMS.Infrastructure.Animals;
 using FMS.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 
 namespace FMS.Domain.Tests;
 
@@ -14,6 +15,8 @@ namespace FMS.Domain.Tests;
 public class AnimalFileStorageTests
 {
     private const string PresignedUrl = "https://account123.r2.cloudflarestorage.com/fms-files/key?X-Amz-Signature=abc";
+
+    private static readonly IConfiguration Configuration = TestConfiguration.WithFrontend();
 
     private static FmsDbContext CreateContext() =>
         new(new DbContextOptionsBuilder<FmsDbContext>()
@@ -93,7 +96,7 @@ public class AnimalFileStorageTests
     {
         var context = CreateContext();
         var (farmId, animalId) = await SeedAnimalAsync(context);
-        var service = new AnimalService(context, new FixedCurrentUser(), new FakeFileStorage { SupportsPresignedUrls = true });
+        var service = new AnimalService(context, new FixedCurrentUser(), new FakeFileStorage { SupportsPresignedUrls = true }, Configuration);
 
         using var stream = new MemoryStream(Encoding.UTF8.GetBytes("image-bytes"));
         var result = await service.AddImageAsync(farmId, animalId, stream, "photo.jpg", "image/jpeg", stream.Length, null, false);
@@ -107,7 +110,7 @@ public class AnimalFileStorageTests
     {
         var context = CreateContext();
         var (farmId, animalId) = await SeedAnimalAsync(context);
-        var service = new AnimalService(context, new FixedCurrentUser(), new FakeFileStorage { SupportsPresignedUrls = false });
+        var service = new AnimalService(context, new FixedCurrentUser(), new FakeFileStorage { SupportsPresignedUrls = false }, Configuration);
 
         var imageId = await AddImageAsync(service, farmId, animalId);
         var images = await service.GetImagesAsync(farmId, animalId);
@@ -122,7 +125,7 @@ public class AnimalFileStorageTests
     {
         var context = CreateContext();
         var (farmId, animalId) = await SeedAnimalAsync(context);
-        var service = new AnimalService(context, new FixedCurrentUser(), new FakeFileStorage { SupportsPresignedUrls = true, PresignSucceeds = false });
+        var service = new AnimalService(context, new FixedCurrentUser(), new FakeFileStorage { SupportsPresignedUrls = true, PresignSucceeds = false }, Configuration);
 
         var imageId = await AddImageAsync(service, farmId, animalId);
         var images = await service.GetImagesAsync(farmId, animalId);
@@ -137,7 +140,7 @@ public class AnimalFileStorageTests
     {
         var context = CreateContext();
         var (farmId, animalId) = await SeedAnimalAsync(context);
-        var service = new AnimalService(context, new FixedCurrentUser(), new FakeFileStorage { SupportsPresignedUrls = true });
+        var service = new AnimalService(context, new FixedCurrentUser(), new FakeFileStorage { SupportsPresignedUrls = true }, Configuration);
 
         using var stream = new MemoryStream(Encoding.UTF8.GetBytes("pdf-bytes"));
         var result = await service.AddDocumentAsync(farmId, animalId, stream, "cert.pdf", "application/pdf", stream.Length, "Health", null);
@@ -152,7 +155,7 @@ public class AnimalFileStorageTests
         var context = CreateContext();
         var (farmId, animalId) = await SeedAnimalAsync(context);
         var storage = new FakeFileStorage { SupportsPresignedUrls = true };
-        var service = new AnimalService(context, new FixedCurrentUser(), storage);
+        var service = new AnimalService(context, new FixedCurrentUser(), storage, Configuration);
 
         var imageId = await AddImageAsync(service, farmId, animalId);
         var storedKey = (await context.AnimalImages.SingleAsync(i => i.Id == imageId)).StoragePath;
@@ -166,7 +169,7 @@ public class AnimalFileStorageTests
     {
         var context = CreateContext();
         var (farmId, animalId) = await SeedAnimalAsync(context);
-        var service = new AnimalService(context, new FixedCurrentUser(), new FakeFileStorage { SupportsPresignedUrls = true });
+        var service = new AnimalService(context, new FixedCurrentUser(), new FakeFileStorage { SupportsPresignedUrls = true }, Configuration);
 
         var imageId = await AddImageAsync(service, farmId, animalId);
 

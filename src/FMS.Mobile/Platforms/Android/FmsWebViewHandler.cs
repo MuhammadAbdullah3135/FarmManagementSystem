@@ -29,5 +29,10 @@ public partial class FmsWebViewHandler : WebViewHandler
             if (VirtualView is FmsWebView fms)
                 fms.RaiseReceivedError(errorCode, description, failingUrl);
         }));
+
+        // Replaces the one MAUI installs, by subclassing it: MAUI's chrome client does not answer
+        // the WebView's camera requests, so without this the scanner screen reports "no camera"
+        // on a device whose camera is fine. See FmsWebChromeClient.
+        platformView.SetWebChromeClient(new FmsWebChromeClient(this));
     }
 }

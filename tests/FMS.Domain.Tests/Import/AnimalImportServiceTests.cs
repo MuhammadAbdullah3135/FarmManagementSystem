@@ -542,7 +542,8 @@ public class AnimalImportServiceTests
         var (logger, logs) = TestLoggers.Create<AnimalImportService>();
         var currentUser = new FixedCurrentUser();
         var animals = new AnimalService(
-            context, currentUser, new FileStorageService(Path.Combine(Path.GetTempPath(), "fms-import-tests")));
+            context, currentUser, new FileStorageService(Path.Combine(Path.GetTempPath(), "fms-import-tests")),
+            TestConfiguration.WithFrontend());
 
         var options = new ImportOptions();
         configure?.Invoke(options);

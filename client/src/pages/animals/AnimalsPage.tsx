@@ -2,7 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { Card, Table, Button, Modal, Form, Input, Select, DatePicker, Space, Tag, message, Popconfirm, Row, Col } from 'antd';
 import { flattenLocations, type AnimalType } from '../../api/configuration';
 import type { ColumnsType } from 'antd/es/table';
-import { PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined, UploadOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined, UploadOutlined, PrinterOutlined } from '@ant-design/icons';
+import { AnimalScanButton } from '../../components/AnimalScanModal';
 import { animalsApi, type AnimalListFilter, type CreateAnimalPayload } from '../../api/animals';
 import { lookupsApi } from '../../api/attendance';
 import { getApiError } from '../../api/farmApi';
@@ -307,6 +308,15 @@ export default function AnimalsPage() {const { t: translate } = useTranslation('
         title={translate('animals')}
         extra={
           <Space>
+            {/*
+              Three ways in that are not "type a tag": scan one, print a sheet of them, import a
+              file. The scan button is the same component as the header's, so there is one scan
+              flow rather than one per entry point.
+            */}
+            <AnimalScanButton />
+            <Button icon={<PrinterOutlined />} onClick={() => navigate('/dashboard/animals/labels')}>
+              {translate('printLabels')}
+            </Button>
             <Button icon={<UploadOutlined />} onClick={() => navigate('/dashboard/animals/import')}>
               {translate('import')}
             </Button>

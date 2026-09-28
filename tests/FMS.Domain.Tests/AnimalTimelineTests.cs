@@ -20,7 +20,7 @@ public class AnimalTimelineTests
     }
 
     private static AnimalService CreateService(FmsDbContext context) =>
-        new(context, new FixedCurrentUser(), CreateFileStorage());
+        new(context, new FixedCurrentUser(), CreateFileStorage(), TestConfiguration.WithFrontend());
 
     private static FMS.Infrastructure.Files.FileStorageService CreateFileStorage() =>
         new(Path.Combine(Path.GetTempPath(), "fms-test-uploads"));

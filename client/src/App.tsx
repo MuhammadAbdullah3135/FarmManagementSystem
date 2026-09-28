@@ -53,6 +53,7 @@ import VetCostsPage from './pages/health/VetCostsPage';
 import AnimalsPage from './pages/animals/AnimalsPage';
 import AnimalDetailPage from './pages/animals/AnimalDetailPage';
 import AnimalImportPage from './pages/animals/AnimalImportPage';
+import AnimalQrLabelsPage from './pages/animals/AnimalQrLabelsPage';
 import EmployeeImportPage from './pages/hr/EmployeeImportPage';
 import InventoryImportPage from './pages/inventory/InventoryImportPage';
 import SupplierImportPage from './pages/inventory/SupplierImportPage';
@@ -180,6 +181,10 @@ const App: React.FC = () => {
             {/* Animals */}
             <Route path="animals" element={<AnimalsPage />} />
             <Route path="animals/import" element={<AnimalImportPage />} />
+            {/* Before the `:id` route on purpose: a static segment has to win the match, or
+                "labels" would be read as an animal id. React Router ranks static above dynamic,
+                and this order keeps that true for a reader as well. */}
+            <Route path="animals/labels" element={<AnimalQrLabelsPage />} />
             <Route path="animals/:id" element={<AnimalDetailPage />} />
 
             {/* Inventory */}

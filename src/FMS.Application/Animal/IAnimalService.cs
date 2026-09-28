@@ -6,6 +6,21 @@ public interface IAnimalService
 {
     Task<Result<PagedResult<AnimalListItemDto>>> GetAnimalsAsync(Guid farmId, AnimalListFilter filter);
     Task<Result<AnimalDetailDto>> GetAnimalByIdAsync(Guid farmId, Guid id);
+
+    /// <summary>
+    /// The QR label for one animal: the payload that goes on the physical tag, built by the
+    /// server so the printed code and the code that resolves back to this animal are one
+    /// definition rather than two that agree until one is changed.
+    /// </summary>
+    Task<Result<AnimalQrLabelDto>> GetQrLabelAsync(Guid farmId, Guid id);
+
+    /// <summary>
+    /// A bounded page of QR labels for a label sheet, through the same filter, ordering and
+    /// paging a <see cref="GetAnimalsAsync"/> call applies — so the sheet prints the rows the
+    /// user is looking at rather than its own idea of which animals belong on it. A caller
+    /// wanting a large sheet asks for a large <see cref="AnimalListFilter.PageSize"/>.
+    /// </summary>
+    Task<Result<PagedResult<AnimalQrLabelDto>>> GetQrLabelsAsync(Guid farmId, AnimalListFilter filter);
     Task<Result<AnimalDetailDto>> CreateAnimalAsync(Guid farmId, CreateAnimalRequest request);
     Task<Result<AnimalDetailDto>> UpdateAnimalAsync(Guid farmId, Guid id, UpdateAnimalRequest request);
     Task<Result> DeleteAnimalAsync(Guid farmId, Guid id);

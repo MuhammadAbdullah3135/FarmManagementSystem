@@ -18,6 +18,7 @@ item could be verified for real.
 | 4 | Rotate the two leaked secrets | **HANDED OFF (account owner)** | Requires production credentials; guard + tripwires landed here |
 | 5 | Live email delivery (reset, invitation, digest) | **HANDED OFF** | No provider credentials or mailbox in this environment |
 | 6 | Offline shell and the offline write queue inside a real Android WebView | **HANDED OFF** | No device or emulator here; jsdom cannot exercise the WebView's cache, a service worker's install, or IndexedDB durability across an OS kill |
+| 9 | QR scanning inside the Android WebView | **HANDED OFF** | No device or emulator here, and jsdom has neither a camera nor `BarcodeDetector`; the wrapper's permission grant and a printed label at arm's length cannot be simulated |
 
 ---
 
@@ -940,6 +941,97 @@ to العربية:
 
 ---
 
+## 9. QR scanning inside the Android WebView — HANDED OFF
+
+### What the suites already prove
+
+- Both routes are covered server-side: `GET …/animals/qr-labels` and `GET …/animals/{id}/qr` are
+  farm-scoped like every other animal read (another farm's animal is **404**, never a peek, and
+  never appears on that farm's sheet), the sheet answers the same filter, ordering and page size as
+  the animal table, the page size is capped at the list's 200, and a terminal animal is left off
+  unless asked for.
+- The payload grammar is pinned **on both sides** — `AnimalQrLabelTests` (server) and
+  `client/src/offline/scanResolve.test.ts` — including that the frontend origin is ignored (a
+  redeployment does not invalidate printed labels), that a query string or fragment is tolerated,
+  and that a near-miss GUID, an API path and a bare tag number are all refused.
+- Resolution is asserted to run against the device's cached rows with **no request** on the resolve
+  path, and to treat another farm's code as an unknown id rather than following it.
+- The detail page is asserted to render the cached identity instead of redirecting when the record
+  cannot be read, and the pinned cached-surface test (`phase5Invariants.test.ts`) is unchanged.
+- The wrapper **compiles** with `CAMERA` declared (`android.hardware.camera` **not** required, so a
+  device without one still installs) and `FmsWebChromeClient` answering `OnPermissionRequest`.
+
+### What only a device can show
+
+Everything between that grant and a decoded frame: whether the WebView raises
+`OnPermissionRequest` at all, whether the runtime prompt appears and is honoured, whether a preview
+starts inside the wrapper, and whether a printed label reads at a realistic distance in daylight.
+jsdom has no camera and no `BarcodeDetector`; the in-process API tests never load a WebView.
+
+### Runbook
+
+Prerequisites: an Android device or emulator with a camera (an emulator's synthetic scene is enough
+for 9a and 9e), the built APK, an account with access to a farm that holds a few animals, and — for
+9b and 9c — the label sheet printed, or open on a second screen.
+
+**9a. Does the wrapper grant the camera at all?**
+
+1. Install, open the app, sign in, and tap the scan button in the header.
+   **Pass:** the system permission prompt appears, and granting it starts a live preview.
+2. Refuse the prompt, then reopen the dialog. **Pass:** the dialog says the camera was refused and
+   what to do about it — no empty black box, no crash.
+3. Switch the app's camera permission off in Settings and repeat step 1. **Pass:** the same
+   actionable message, and nothing in `adb logcat` about an unhandled exception.
+
+**9b. Does a printed label scan?**
+
+1. In a browser, open *Animals → QR labels* and print one page.
+2. In the app, scan a tag from that sheet. **Pass:** the right animal's page opens — check the tag
+   number printed on the paper against the one on screen.
+3. Scan again at a realistic arm's length in daylight. **Pass:** it still reads. This step is the
+   whole reason the bundled decoder exists next to the platform one.
+
+**9c. Does scanning work offline, and what does it leave undone?**
+
+1. Open the app online so the farm's animals are stored, then turn airplane mode on.
+2. Scan a label. **Pass:** the animal's page opens with no request, says the full record needs a
+   connection, and still shows the weights tab — and a weight recorded there still queues.
+3. Relaunch in airplane mode and open `/dashboard/animals/{id}` for an animal the device holds.
+   **Pass:** the page names the animal instead of redirecting to the list. For an animal it does
+   **not** hold, the redirect still happens, with a message.
+4. Offline, scan a label for an animal outside the farm's first 100 (5.4's bounded lookup).
+   **Pass:** the dialog says it is not stored on this device yet and to connect once. Repeat the
+   scan online: **pass** if it opens, since the server is the authority for what the cache lacks.
+5. Close the app while a weight queued from step 2 is unsent, reopen it online. **Pass:** the
+   record reaches the server exactly once (this is runbook item 6d's cold-kill check, repeated on
+   the scan path).
+
+**9d. What does a code that is not ours do?**
+
+1. Scan a retail or courier code. **Pass:** refused as "that code is not an animal tag".
+2. Scan a label belonging to a farm the account cannot open. **Pass:** refused as "no animal in
+   this farm carries that tag" — and neither scan navigates, writes, or logs a cross-farm read.
+
+**9e. Is a closed dialog a closed camera?**
+
+1. Open the scan dialog, then close it and leave the app on any page.
+   **Pass:** Android 12+'s camera indicator goes out — the preview must not keep running behind
+   the dialog.
+
+### What to report back
+
+- For each of 9a–9e: pass or fail, with the device or emulator, the Android version, and the System
+  WebView version (Settings → Apps → Android System WebView).
+- Whether the permission prompt appeared **at all**. If it did not, the wrapper's grant is not being
+  reached and the fix is native, not in the web app — say that rather than "scanning does not work".
+- Any `adb logcat` line mentioning permission, `getUserMedia`, or a decoder failure.
+- Whether the decoder read a real printed label at a normal distance (9b step 3), with a photo if it
+  did not.
+- Whether the offline detail page named the animal or redirected (9c step 3), and whether the weight
+  queued from a scanned page arrived exactly once after the kill (9c step 5).
+
+---
+
 ## Automated QA scripts
 
 Three dependency-free scripts in `scripts/` run against the deployed API
@@ -1009,3 +1101,4 @@ Fill in as each item is executed. Do not mark an item verified on inspection alo
 | 5. Live email delivery | | | | reset/invitation/digest to a real inbox; blocked on the two preconditions above |
 | 6. Offline shell (device) | | | | seven checks: shell loads offline × `CacheModes.NoCache`, messaging stays honest, a deploy reaches the device, queued writes survive a cold kill (6d), sign-out keeps the queue (6e), the offline-write window (6f), two devices see each other's deltas (6g) |
 | 8. Arabic in the Android WebView | | | | nine checks: the shell mirrors, the native Retry overlay is legible, copy is Arabic, digits/dates/amounts stay Latin, charts are *read* not mirrored, the back arrow points right, nothing truncates or loses its pinned column, mixed-direction names read correctly, and offline still works (8.1–8.9) |
+| 9. QR scanning (device) | | | | five checks: the wrapper's camera grant and its refusal path (9a), a printed label reading at arm's length (9b), offline scanning plus the cached-identity page and the queued weight surviving a kill (9c), a foreign or non-animal code refused without a read (9d), and the camera stopping when the dialog closes (9e) |

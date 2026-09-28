@@ -27,7 +27,8 @@ public class AnimalStatusDepartureIdTests
 
     private static AnimalService CreateService(FmsDbContext context) =>
         new(context, new FixedCurrentUser(),
-            new FileStorageService(Path.Combine(Path.GetTempPath(), "fms-test-uploads")));
+            new FileStorageService(Path.Combine(Path.GetTempPath(), "fms-test-uploads")),
+            TestConfiguration.WithFrontend());
 
     private sealed class FixedCurrentUser : ICurrentUserService
     {

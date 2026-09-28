@@ -1,0 +1,65 @@
+/*
+ * A sheet of animal labels, on paper.
+ *
+ * The grid is deliberately a fixed number of columns of a fixed width rather than a responsive
+ * one: a label is a physical object with a size (it is glued to an ear, a collar or a pen), so
+ * its on-screen geometry has to be the printed geometry, not whatever the window happened to be.
+ */
+
+.fms-label-sheet {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.fms-label {
+  border: 1px solid #d9d9d9;
+  border-radius: 8px;
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  /* A label split across two pages is two unusable halves. */
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.fms-label-text {
+  min-inline-size: 0;
+}
+
+.fms-label-tag {
+  font-size: 18px;
+  font-weight: 600;
+  /* A tag number is an identifier: never wrapped, never hyphenated. */
+  white-space: nowrap;
+}
+
+@media print {
+  /*
+   * Only the sheet prints. The app's chrome — sider, header, buttons, the hint above the grid —
+   * is hidden rather than removed: `visibility` keeps each element's box, so the layout does not
+   * reflow into a different arrangement for print than the one the user just approved on screen.
+   * `print:` hidden via `display` is the version that silently changes the grid.
+   */
+  body * {
+    visibility: hidden;
+  }
+
+  .fms-label-sheet,
+  .fms-label-sheet * {
+    visibility: visible;
+  }
+
+  .fms-label-sheet {
+    position: absolute;
+    inset-block-start: 0;
+    inset-inline-start: 0;
+    inline-size: 100%;
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  @page {
+    margin: 10mm;
+  }
+}

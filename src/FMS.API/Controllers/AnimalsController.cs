@@ -34,6 +34,29 @@ public class AnimalsController : ControllerBase
         return MapResult(result);
     }
 
+    /// <summary>
+    /// The QR labels for a label sheet: the same filter and page the animal table answers, with
+    /// the code's payload attached.
+    ///
+    /// <c>qr-labels</c> rather than a sub-route of an animal because a sheet is a page of
+    /// animals, and because it sits on the same farm-scoped route as every other animal read —
+    /// no new authorization path, the same middleware, the same membership check.
+    /// </summary>
+    [HttpGet("qr-labels")]
+    public async Task<IActionResult> GetQrLabels(Guid farmId, [FromQuery] AnimalListFilter filter)
+    {
+        var result = await _animalService.GetQrLabelsAsync(farmId, filter);
+        return MapResult(result);
+    }
+
+    /// <summary>One animal's label — what a label sheet shows a single animal's code from.</summary>
+    [HttpGet("{id:guid}/qr")]
+    public async Task<IActionResult> GetQrLabel(Guid farmId, Guid id)
+    {
+        var result = await _animalService.GetQrLabelAsync(farmId, id);
+        return MapResult(result);
+    }
+
     [HttpPost]
     public async Task<IActionResult> CreateAnimal(Guid farmId, [FromBody] CreateAnimalRequest request)
     {

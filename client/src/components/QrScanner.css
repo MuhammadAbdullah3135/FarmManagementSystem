@@ -1,0 +1,18 @@
+/*
+ * The scanner's live preview.
+ *
+ * A fixed aspect ratio rather than the camera's own: a preview that resizes as the stream
+ * negotiates its resolution makes the whole dialog jump. `object-fit: cover` keeps the picture
+ * filling the frame without distorting it.
+ *
+ * Logical properties only (`inline-size`, no `left:`), because this dialog is mirrored in
+ * Arabic like every other screen — see tools/i18n/check-physical-directions.mjs.
+ */
+.fms-scan-preview {
+  inline-size: 100%;
+  aspect-ratio: 4 / 3;
+  max-block-size: 60vh;
+  background-color: #000;
+  border-radius: 8px;
+  object-fit: cover;
+}

@@ -63,7 +63,8 @@ weight-recording path needs, come with that work rather than here.
 **Not covered offline by design:** a filtered or later page with no cached copy renders empty
 rather than showing a cached page that does not answer the query. A cold offline launch of the
 animal detail page still redirects, because the animal record itself is not a cached collection
-in this increment; the weights tab works from cache once the page is open.
+in this increment; the weights tab works from cache once the page is open. **Narrowed in 8.1** —
+the page no longer redirects for any animal the device's own lookup holds; see "Phase 8.1" below.
 
 **4.5.3 shipped:** the server side of queued work, and the only schema change in the whole set.
 `POST /api/farm/{farmId}/sync/mutations` takes a batch of items and applies each one by calling
@@ -344,6 +345,59 @@ checks green (the script's own output is the record). One behavioural gap was fo
 reached the server did not reset the five-day/seven-day write window, so a device that came back
 online and drained its queue could still refuse the next record (`syncEngine.ts`, `finishPass`).
 
+## Phase 8.1 — scanning an animal's label offline
+
+An animal's QR label carries the animal's immutable id inside this deployment's own URL
+(`…/dashboard/animals/{id}`), never the tag number, because the tag is editable and a printed
+tag outlives every other record. A scan resolves **only** against the rows the device already
+holds for the active farm — the `animals@lookup` collection 5.4 introduced — so scanning puts
+nothing new on a handset:
+
+- **No new cached collection.** The pinned "declares exactly the approved cached surface" test is
+  unchanged, which is the proof of that rather than a promise about it.
+- **No request on the resolve path.** A scan that finds its animal navigates; the lookup API is
+  never called (asserted, the same way the weight picker's cache-only read is).
+- **One grammar, two implementations, asserted equal.** The parser is a pure function
+  (`client/src/offline/scanResolve.ts`) and the server's reader is `AnimalQrCode.cs`; tests on both
+  sides pin the accepted shape, because a printed label outlives a deployment and the shape cannot
+  be discovered at scan time.
+- **The scanner wraps two decoders** — the platform's `BarcodeDetector` where it exists and a
+  bundled pure-JS decoder otherwise — and the bundled one is precached with the app shell, so
+  scanning needs no connection and no new runtime download.
+
+### What it closes
+
+The detail page no longer bounces a user back to the list when the record cannot be read. It
+renders the identity the device holds (tag and name, from the cached lookup) with a notice that
+the full record needs a connection, and everything already offline keeps working — the weights
+tab, and recording a weight. Until this, a cold offline launch of `/dashboard/animals/{id}`
+redirected to a list that was itself offline: the one place 4.5.2 left an animal unreachable, and
+the reason a scanned tag would have been useless in a pen with no signal. One rule is preserved
+in the rewrite: the page never decides between "unreachable" and "here it is" before the device's
+rows have answered, because losing that race is what bounced the user.
+
+### What it deliberately leaves, in the words the user sees
+
+- **The lookup is still bounded at the farm's first 100 animals** (5.4's decision, unchanged). A
+  label beyond that page resolves *online only*; offline, the scan says the animal is not stored on
+  this device yet and to connect once, rather than failing silently or looking elsewhere for it.
+- **Offline with an empty store**, the scan dialog says there is nothing to resolve against
+  instead of starting a camera that cannot succeed.
+- **A code that is not an animal label, a label for an animal this farm does not have, and a
+  label this device does not hold while offline are three different messages.** Collapsing them
+  would make "connect once and this will work" indistinguishable from "this will never work here".
+- **Another farm's label resolves to nothing here** — the payload carries no farm, so it is
+  compared against the scanning user's own farm and matches no row. There is no fallback that
+  would look it up across a farm boundary, which is also why no cross-farm read is possible from a
+  camera.
+- **Printing is a desk workflow.** `window.print()` is unsupported in the Android WebView, and the
+  codes are built by the server from the configured frontend origin, so the sheet needs a browser
+  and a connection — the same framing 6.2 gives the farm export.
+
+**No Phase 5 decision was revised.** The bounded lookup, the approved cached surface, the outbox,
+its flush algorithm and the mutation kinds are untouched, and the suites that pin them pass
+unchanged.
+
 ## Constraints confirmed in the code
 
 These are the facts the design is built on. Each was read out of the source, not assumed.
@@ -485,7 +539,13 @@ Handed off as device runbooks rather than claimed — see
   user meets it, by editing the marker rather than by waiting seven days; the cap is asserted in
   the suites only, and VERIFICATION.md says so rather than pretending otherwise;
 - whether two devices on one farm see each other's delta — one edits an employee, one deletes a
-  task, and the other device's cached list follows without a full reload (runbook item 6g).
+  task, and the other device's cached list follows without a full reload (runbook item 6g);
+- whether the WebView's camera permission prompt appears and `getUserMedia` succeeds inside the
+  Android wrapper at all — the manifest now declares `CAMERA` (and `android.hardware.camera` as
+  **not required**, so a device without one can still install the app), and `FmsWebChromeClient`
+  answers `OnPermissionRequest` by asking for the runtime permission and then granting
+  `RESOURCE_VIDEO_CAPTURE` — but only a device can show that this is the callback the WebView
+  actually raises (runbook item 9).
 
 The idempotency unique indexes are in the same category: the InMemory provider the unit and E2E
 suites run on ignores unique indexes entirely, so the race they prevent — a retry that races the

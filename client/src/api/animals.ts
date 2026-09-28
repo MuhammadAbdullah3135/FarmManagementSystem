@@ -55,9 +55,36 @@ export interface WeightRecord {
   createdAt: string;
 }
 
+/**
+ * One physical label: the animal it names, the text a person reads off it, and the payload
+ * that goes into the code itself.
+ *
+ * The payload is built by the server (`AnimalQrCode`), never assembled here. That is what
+ * makes "the code printed on the tag" and "the code that resolves back to this animal" one
+ * definition instead of two that agree until one of them changes — and it is why the label
+ * sheet is a server read rather than a loop over the rows already on screen.
+ */
+export interface AnimalQrLabel {
+  animalId: string;
+  tagNumber: string;
+  name?: string | null;
+  animalTypeName?: string | null;
+  url: string;
+}
+
 export const animalsApi = {
   list: (params: AnimalListFilter = {}) =>
     axios.get<PagedResult<unknown>>(farmUrl('/animals'), { params }),
+
+  /**
+   * A page of labels for a sheet, through the same filter, ordering and paging the animal
+   * list answers — so the sheet prints the rows the user was looking at.
+   */
+  qrLabels: (params: AnimalListFilter = {}) =>
+    axios.get<PagedResult<AnimalQrLabel>>(farmUrl('/animals/qr-labels'), { params }),
+
+  /** One animal's label, for the code shown on its own page. */
+  qrLabel: (id: string) => axios.get<AnimalQrLabel>(farmUrl(`/animals/${id}/qr`)),
 
   get: (id: string) =>
     axios.get<unknown>(farmUrl(`/animals/${id}`)),

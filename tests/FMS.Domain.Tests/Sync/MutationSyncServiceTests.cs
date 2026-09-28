@@ -181,6 +181,9 @@ internal sealed class SyncHarness : IDisposable
         services.AddDbContext<FmsDbContext>(options => options.UseInMemoryDatabase(databaseName));
         services.AddSingleton<IFileStorageService>(
             new FileStorageService(Path.Combine(Path.GetTempPath(), "fms-sync-unit-uploads")));
+        // AnimalService reads the frontend origin to build QR payloads; the sync tests never
+        // print a label, but the container has to be able to construct it.
+        services.AddSingleton(TestConfiguration.WithFrontend());
         services.AddScoped<IAnimalService, AnimalService>();
         services.AddScoped<IFarmTaskService, FarmTaskService>();
         services.AddScoped<IAttendanceService>(provider => attendance ?? new AttendanceService(

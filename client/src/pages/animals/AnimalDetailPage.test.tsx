@@ -6,7 +6,7 @@ import 'fake-indexeddb/auto';
 import { IDBFactory } from 'fake-indexeddb';
 
 vi.mock('../../api/animals', () => ({
-  animalsApi: { get: vi.fn(), list: vi.fn(), getWeights: vi.fn() },
+  animalsApi: { get: vi.fn(), list: vi.fn(), getWeights: vi.fn(), qrLabel: vi.fn() },
 }));
 vi.mock('../../api/health', () => ({
   weightCheckStatusApi: { all: vi.fn(), overdue: vi.fn() },
@@ -81,9 +81,9 @@ const renderPage = () =>
  * while online can lose signal and still open this tab: it must render the last-known
  * statuses (with a freshness label) rather than going blank or failing.
  *
- * (The animal record itself is not a cached collection in 4.5.2 — a cold *offline* launch
- * of this page cannot load it and still redirects. This test covers the reachable case:
- * the page is already open when connectivity drops.)
+ * (The animal record itself is still not a cached collection in 4.5.2; the "offline identity"
+ * suite below covers what a cold offline launch of this page does now that a scanned tag leads
+ * here. This suite covers the reachable case: the page is already open when connectivity drops.)
  */
 describe('AnimalDetailPage weights tab offline', () => {
   beforeEach(() => {
@@ -139,6 +139,109 @@ describe('AnimalDetailPage weights tab offline', () => {
     // The list came from the store: the status endpoint was never called.
     await waitFor(() => expect(weightCheckStatusApi.all).not.toHaveBeenCalled());
   });
+});
+
+/**
+ * The animal's own code, on its own page — the payload the server would print on the tag.
+ */
+describe('AnimalDetailPage QR label', () => {
+  beforeEach(() => {
+    (globalThis as { indexedDB: IDBFactory }).indexedDB = new IDBFactory();
+    resetOfflineDbConnection();
+    vi.clearAllMocks();
+    vi.mocked(animalsApi.get).mockResolvedValue({ data: ANIMAL } as never);
+    vi.mocked(animalsApi.getWeights).mockResolvedValue({
+      data: { items: [], totalCount: 0, page: 1, pageSize: 20 },
+    } as never);
+    vi.mocked(weightCheckStatusApi.all).mockResolvedValue({
+      data: { items: [], page: 1, pageSize: 0, totalCount: 0, deletedIds: [], cursor: null, requiresFullSync: false },
+    } as never);
+
+    useOfflineStore.setState({
+      isOnline: true,
+      storageAvailable: true,
+      stats: { recordCount: 0, collectionCount: 0, lastSyncedAt: null },
+    });
+    useAuthStore.setState({ user, isAuthenticated: true });
+    useFarmStore.setState({ farms: [farm], activeFarm: farm, isLoading: false, error: null });
+  });
+
+  it('shows the animal’s own QR code, from the payload the server built', async () => {
+    const url = `https://farm.example.com/dashboard/animals/${ANIMAL.id}`;
+    vi.mocked(animalsApi.qrLabel).mockResolvedValue({
+      data: { animalId: ANIMAL.id, tagNumber: ANIMAL.tagNumber, name: ANIMAL.name, animalTypeName: 'Cattle', url },
+    } as never);
+
+    renderPage();
+
+    // On its own tab rather than mixed into the record's fields: the code is something a person
+    // holds a phone up to, not a field to read.
+    await userEvent.click(await screen.findByRole('tab', { name: 'Animal QR code' }));
+
+    // The code on the page is the code on the tag: printed from the server's payload rather
+    // than assembled here, so a label and a screen cannot disagree about where a scan goes.
+    expect(await screen.findByText(url)).toBeInTheDocument();
+  }, 20_000);
+
+  it('renders without the code when the payload cannot be read', async () => {
+    vi.mocked(animalsApi.qrLabel).mockRejectedValue(new Error('network unreachable'));
+
+    renderPage();
+
+    // The code is a convenience on this page, not the reason for it. A page that refused to
+    // render, or invented a payload of its own, would both be worse than one without it.
+    expect(await screen.findByText('Cattle')).toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: 'Animal QR code' })).not.toBeInTheDocument();
+  }, 20_000);
+});
+
+/**
+ * The page without a connection, for an animal this device was told about.
+ *
+ * The full record is not a cached collection (4.5.2), so this page used to be the one place an
+ * animal could not be reached offline at all — including the animal a user had just scanned,
+ * which is exactly when a phone in a pen is most likely to have no signal. The lookup row from
+ * 5.4 is the fallback: it keeps the page honest about *which* animal it is, and keeps recording
+ * a weight against her one tap away, since recording goes through the queue either way.
+ */
+describe('AnimalDetailPage offline identity', () => {
+  beforeEach(() => {
+    (globalThis as { indexedDB: IDBFactory }).indexedDB = new IDBFactory();
+    resetOfflineDbConnection();
+    vi.clearAllMocks();
+    vi.mocked(animalsApi.get).mockRejectedValue(new Error('network unreachable'));
+    vi.mocked(animalsApi.qrLabel).mockRejectedValue(new Error('network unreachable'));
+
+    useOfflineStore.setState({
+      isOnline: false,
+      storageAvailable: true,
+      stats: { recordCount: 0, collectionCount: 0, lastSyncedAt: null },
+    });
+    useAuthStore.setState({ user, isAuthenticated: true });
+    useFarmStore.setState({ farms: [farm], activeFarm: farm, isLoading: false, error: null });
+  });
+
+  it('shows the animal from the device’s own row instead of bouncing to the list', async () => {
+    await replaceCollection(scope, 'animals@lookup', [
+      { id: ANIMAL.id, data: { id: ANIMAL.id, tagNumber: ANIMAL.tagNumber, name: ANIMAL.name } },
+    ], { fetchedAt: twoDaysAgo });
+
+    renderPage();
+
+    expect(await screen.findByText('C-001 — Bessie')).toBeInTheDocument();
+    expect(screen.getByText('You are offline.')).toBeInTheDocument();
+    // Recording still works offline, and it is the reason to keep the page at all.
+    expect(screen.getByRole('button', { name: /Record weight/ })).toBeInTheDocument();
+  }, 20_000);
+
+  it('still leaves for the list when this device knows nothing about the animal', async () => {
+    renderPage();
+
+    // No cached row and no connection: there is nothing truthful to render, so the redirect
+    // stays — the same behaviour as before this fallback existed.
+    await waitFor(() => expect(animalsApi.get).toHaveBeenCalled());
+    expect(screen.queryByText(/Bessie/)).not.toBeInTheDocument();
+  }, 20_000);
 });
 
 const recordWeight = async (weightKg: number) => (await enqueueMutation<WeightRecordPayload>({

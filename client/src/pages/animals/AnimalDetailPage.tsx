@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Card, Descriptions, Tag, Tabs, Table, Button, Space, Spin, Typography, message, Breadcrumb, Empty } from 'antd';
+import { Alert, Card, Descriptions, Tag, Tabs, Table, Button, Space, Spin, Typography, message, Breadcrumb, Empty, QRCode } from 'antd';
 import { DirectionalIcon } from '../../i18n/DirectionalIcon';
-import { animalsApi, type WeightRecord } from '../../api/animals';
+import { animalsApi, type AnimalQrLabel, type WeightRecord } from '../../api/animals';
+import { useAnimalLookup } from '../../offline/useAnimalLookup';
+import { animalLabel } from '../../offline/scanResolve';
 import { weightCheckStatusApi } from '../../api/health';
 import { breedingRecordsApi } from '../../api/breeding';
 import { getApiError } from '../../api/farmApi';
@@ -238,8 +240,41 @@ export default function AnimalDetailPage() {const { t } = useTranslation('animal
   const navigate = useNavigate();
   const [animal, setAnimal] = useState<AnimalDetail | null>(null);
   const [loading, setLoading] = useState(true);
+
   const [breedingRecords, setBreedingRecords] = useState<BreedingRecord[]>([]);
   const [breedingLoading, setBreedingLoading] = useState(false);
+  // The payload the server would print on this animal's tag, once it has answered for it.
+  const [label, setLabel] = useState<AnimalQrLabel | null>(null);
+  /**
+   * Who this page is about, when the full record could not be read.
+   *
+   * Offline, the 5.4 animal lookup still holds the row the device was told about — which is
+   * enough to keep the page honest (this is C-001, Bessie) and enough to record a weight
+   * against her, since recording goes through the queue either way. Without this the offline
+   * path was to bounce the user back to a list that is itself offline: the one place 4.5.2
+   * left an animal unreachable and a scanned tag useless.
+   */
+  /**
+   * Set when the record could not be read, which is when the device's own rows start to matter.
+   *
+   * The lookup is read only from that point (`enabled`), so a page that loaded normally does
+   * not quietly pull a further hundred animals behind it.
+   */
+  const [loadFailed, setLoadFailed] = useState<{ error: unknown } | null>(null);
+  const lookup = useAnimalLookup({ enabled: loadFailed !== null });
+  const cachedIdentity = lookup.findById(id);
+
+  const loadLabel = useCallback(async (animalId: string) => {
+    try {
+      const res = await animalsApi.qrLabel(animalId);
+      setLabel(res.data);
+    } catch {
+      // The code is a convenience on this page, not the reason for it: the label sheet is the
+      // printable path, and a page that refused to render without it would be worse than one
+      // that omits it.
+      setLabel(null);
+    }
+  }, []);
 
   const loadAnimal = useCallback(async () => {
     if (!id) return;
@@ -247,13 +282,28 @@ export default function AnimalDetailPage() {const { t } = useTranslation('animal
     try {
       const res = await animalsApi.get(id);
       setAnimal(res.data as unknown as AnimalDetail);
+      setLoadFailed(null);
+      void loadLabel(id);
     } catch (err) {
-      message.error(getApiError(err));
-      navigate('/dashboard/animals');
+      // Deliberately no decision here. Whether this page can still say something depends on the
+      // device's own rows, which are read asynchronously — deciding now would be a race between
+      // "the request failed" and "the cache answered", and losing it means bouncing a user whose
+      // animal was on the device all along. The effect below waits for that read instead.
+      setLoadFailed({ error: err });
     } finally {
       setLoading(false);
     }
-  }, [id, navigate]);
+  }, [id, loadLabel]);
+
+  /**
+   * The two ways an unread record can end: the device names the animal, or there is nothing to
+   * show and the user is told why before the list appears.
+   */
+  useEffect(() => {
+    if (!loadFailed || lookup.isLoading || cachedIdentity) return;
+    message.error(getApiError(loadFailed.error));
+    navigate('/dashboard/animals');
+  }, [cachedIdentity, loadFailed, lookup.isLoading, navigate]);
 
   const loadBreeding = useCallback(async () => {
     if (!id) return;
@@ -281,7 +331,46 @@ export default function AnimalDetailPage() {const { t } = useTranslation('animal
   };
 
   if (loading) return <Spin size="large" style={{ display: 'block', margin: '100px auto' }} />;
-  if (!animal) return null;
+
+  if (!animal) {
+    // Waiting for the device's rows to answer: a spinner, not a redirect, because the answer
+    // may well be "we know this animal".
+    if (!cachedIdentity && lookup.isLoading) {
+      return <Spin size="large" style={{ display: 'block', margin: '100px auto' }} />;
+    }
+
+    if (!cachedIdentity) return null;
+
+    return (
+      <Card
+        title={animalLabel(cachedIdentity)}
+        extra={
+          <Button icon={<DirectionalIcon role="back" />} onClick={() => navigate('/dashboard/animals')}>
+            {t('back')}
+          </Button>
+        }
+      >
+        <Space direction="vertical" size={16} style={{ width: '100%' }}>
+          <Alert
+            type="info"
+            showIcon
+            message={t('offlineLimitedDetails')}
+            description={t('thisIsWhatThisDeviceHasStoredThe')}
+          />
+          <Space>
+            <Button
+              type="primary"
+              onClick={() => navigate(`/dashboard/records/weight?animalId=${cachedIdentity.id}`)}
+            >
+              {t('recordWeight')}
+            </Button>
+            <Text type="secondary">{t('worksOfflineTheWeightIsStoredOnThis')}</Text>
+          </Space>
+          {lookup.lastSyncedAt && <SyncAgeLabel lastSyncedAt={lookup.lastSyncedAt} />}
+        </Space>
+      </Card>
+    );
+  }
 
   const methodLabels: Record<number, string> = { 0: 'Natural', 1: 'AI' };
   const resultLabels: Record<number, string> = { 0: 'Pending', 1: 'Confirmed', 2: 'Failed' };
@@ -359,6 +448,22 @@ export default function AnimalDetailPage() {const { t } = useTranslation('animal
         </Descriptions>
       ),
     },
+    // The animal's own tag, shown where the record is: this is what somebody reprinting a
+    // lost label needs, and what a person holding a phone next to the animal can compare
+    // against before recording anything.
+    ...(label
+      ? [{
+          key: 'label',
+          label: t('animalQrCode'),
+          children: (
+            <Space direction="vertical" size={12}>
+              <QRCode value={label.url} type="svg" size={160} errorLevel="M" />
+              <Text type="secondary" style={{ wordBreak: 'break-all' }}>{label.url}</Text>
+              <Text type="secondary">{t('thisCodeOpensThisAnimalsRecordOnAny')}</Text>
+            </Space>
+          ),
+        }]
+      : []),
     {
       key: 'weights',
       label: t('weights'),

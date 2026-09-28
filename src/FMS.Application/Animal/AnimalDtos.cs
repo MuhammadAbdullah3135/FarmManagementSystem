@@ -140,3 +140,24 @@ public class AnimalDetailDto
     public int DocumentsCount { get; set; }
     public DateTime CreatedAt { get; set; }
 }
+
+/// <summary>
+/// One physical label: the animal it identifies, the text a person reads off it, and the
+/// payload that goes into the code itself.
+///
+/// <para>
+/// The payload is built by the server (<see cref="AnimalQrCode"/>) rather than assembled by
+/// whichever client happens to be printing. That is what makes "the code printed on the tag"
+/// and "the code that resolves back to this animal" one definition instead of two that agree
+/// until one of them is changed.
+/// </para>
+/// </summary>
+public class AnimalQrLabelDto
+{
+    public Guid AnimalId { get; set; }
+    public string TagNumber { get; set; } = string.Empty;
+    public string? Name { get; set; }
+    public string? AnimalTypeName { get; set; }
+    /// <summary>The code's content: an absolute URL that opens this animal.</summary>
+    public string Url { get; set; } = string.Empty;
+}

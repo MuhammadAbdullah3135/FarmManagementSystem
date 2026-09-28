@@ -27,6 +27,7 @@ import {
   DownloadOutlined,
   TranslationOutlined,
   CheckOutlined,
+  QrcodeOutlined,
 } from '@ant-design/icons';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
@@ -36,6 +37,7 @@ import { useSyncStore } from '../offline/syncStatus';
 import { clearAllOfflineData, clearOfflineDataForFarm } from '../offline/offlineData';
 import OfflineBanner from './OfflineBanner';
 import RouteErrorBoundary from './RouteErrorBoundary';
+import { AnimalScanButton } from './AnimalScanModal';
 import { filterMenuByRole } from '../utils/permissions';
 import type { AppMenuItem } from '../utils/permissions';
 import { usePermissions } from '../hooks/usePermissions';
@@ -118,6 +120,8 @@ export const appMenuItems: AppMenuItem[] = [
     labelKey: 'nav:animals',
     children: [
       { key: '/dashboard/animals', icon: <UnorderedListOutlined />, labelKey: 'nav:animalList' },
+      // Ungated like the list: printing a label is a read of data the user can already see.
+      { key: '/dashboard/animals/labels', icon: <QrcodeOutlined />, labelKey: 'nav:animalQrLabels' },
     ],
   },
   {
@@ -575,6 +579,12 @@ const isFarmIndependent = (pathname: string) =>
           </div>
 
           <Space size={4} style={{ minWidth: 0 }}>
+            {/*
+              Reading a tag from anywhere: the reason to scan is usually the animal in front of
+              the user, not a screen they had to navigate to first. It opens that animal's page.
+            */}
+            <AnimalScanButton variant="icon" />
+
             {/*
               The queue, at a glance: what is waiting and what the server refused. Red when a
               record needs a person (a refusal never resolves itself), otherwise a plain count.
