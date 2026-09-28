@@ -157,7 +157,9 @@ A label is:
 }
 ```
 
-`url` is the payload of the QR symbol itself. Nothing else changed on the wire: the animal detail response is unchanged and carries no code, so the detail page reads its own label from the per-animal route above and omits the card when that read fails — the code on a page is a convenience, while the printable path is the sheet.
+`url` is the payload of the QR symbol itself.
+
+**One field was added to the animal detail response**: `qrUrl` on `GET …/animals/{id}`, carrying exactly the same string as the label's `url`. It is there so an animal's own page shows its code from the read it already makes instead of a second request — and so the page, its label and the sheet are one payload over one setting rather than three that agree until one is changed. The per-animal route above remains the way to read one label without reading the record.
 
 **Why the payload is the animal's id inside a URL, and not the tag number.** `AnimalQrCode` owns the whole grammar and the reasoning sits next to it; in short: `TagNumber` is editable (`PUT …/animals/{id}`) and unique only among a farm's non-deleted animals, so a label anchored to it can silently come to name a different animal — and a printed ear tag is the longest-lived artifact this system produces. `Id` is immutable for the life of the record. Readability is not lost: the sheet prints the tag number as text beside the code, and a stock camera app can open the URL too, because the deployed SPA already serves `404.html` as its client-side fallback.
 

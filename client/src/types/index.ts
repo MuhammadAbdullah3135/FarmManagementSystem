@@ -858,6 +858,8 @@ export interface AnimalDetail {
   weightRecordsCount: number;
   imagesCount: number;
   documentsCount: number;
+  /** The payload of this animal's QR label: an absolute URL that opens this record. */
+  qrUrl: string;
   createdAt: string;
 }
 

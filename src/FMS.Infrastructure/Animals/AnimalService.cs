@@ -1724,11 +1724,14 @@ public class AnimalService : IAnimalService
         }
     }
 
-    private static AnimalDetailDto MapDetail(Domain.Entities.Animal animal, int weightCount, int imageCount, int documentCount)
+    private AnimalDetailDto MapDetail(Domain.Entities.Animal animal, int weightCount, int imageCount, int documentCount)
     {
         return new AnimalDetailDto
         {
             Id = animal.Id,
+            // Built here rather than by the caller: the payload is the same one the label sheet
+            // prints, so the two cannot drift into describing different tags.
+            QrUrl = AnimalQrLinks.BuildUrl(_configuration, animal.Id),
             FarmId = animal.FarmId,
             TagNumber = animal.TagNumber,
             Name = animal.Name,

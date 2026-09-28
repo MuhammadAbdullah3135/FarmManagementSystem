@@ -138,6 +138,17 @@ public class AnimalDetailDto
     public int WeightRecordsCount { get; set; }
     public int ImagesCount { get; set; }
     public int DocumentsCount { get; set; }
+    /// <summary>
+    /// The payload of this animal's QR label — the absolute URL that opens this record, built by
+    /// <see cref="AnimalQrCode"/> from the deployment's own frontend origin.
+    ///
+    /// <para>
+    /// Carried on the detail read so a page that shows an animal's own code needs no second
+    /// request, and so the animal's page, its label and the printed sheet cannot disagree about
+    /// what is inside a tag: all three come from one builder over one setting.
+    /// </para>
+    /// </summary>
+    public string QrUrl { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
 }
 

@@ -100,6 +100,30 @@ public class AnimalQrLabelTests
     }
 
     [Fact]
+    public async Task Detail_CarriesTheSamePayloadAsTheLabel_SoShowingACodeCostsNoSecondRequest()
+    {
+        using var context = CreateContext();
+        var seed = await SeedFarmAsync(context);
+        var animal = await AddAnimalAsync(context, seed, "TL-002");
+        var service = CreateService(context);
+
+        var detail = (await service.GetAnimalByIdAsync(seed.FarmId, animal.Id)).Value!;
+        var label = (await service.GetQrLabelAsync(seed.FarmId, animal.Id)).Value!;
+
+        // One builder, two readers: the animal's own page and the sheet that prints its label
+        // read the same string, so they cannot drift into describing different tags.
+        Assert.Equal(label.Url, detail.QrUrl);
+        Assert.Equal($"{TestConfiguration.FrontendBaseUrl}/dashboard/animals/{animal.Id}", detail.QrUrl);
+
+        // And it follows the deployment, not the request: change the setting and the record's own
+        // payload moves with the label's, which is what keeps a re-pointed frontend from leaving
+        // codes on screens that disagree with the ones on tags.
+        var elsewhere = CreateService(context, "https://other.example.com");
+        var moved = (await elsewhere.GetAnimalByIdAsync(seed.FarmId, animal.Id)).Value!;
+        Assert.Equal($"https://other.example.com/dashboard/animals/{animal.Id}", moved.QrUrl);
+    }
+
+    [Fact]
     public async Task Label_CarriesTheTagNumberAsTextAlongsideTheCode()
     {
         using var context = CreateContext();

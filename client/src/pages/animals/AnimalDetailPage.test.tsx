@@ -5,8 +5,11 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import 'fake-indexeddb/auto';
 import { IDBFactory } from 'fake-indexeddb';
 
+// No `qrLabel` here on purpose: the page renders the code from the record it already fetched, so
+// a page that went back to asking for the label separately would fail on an undefined method
+// rather than quietly making a second request.
 vi.mock('../../api/animals', () => ({
-  animalsApi: { get: vi.fn(), list: vi.fn(), getWeights: vi.fn(), qrLabel: vi.fn() },
+  animalsApi: { get: vi.fn(), list: vi.fn(), getWeights: vi.fn() },
 }));
 vi.mock('../../api/health', () => ({
   weightCheckStatusApi: { all: vi.fn(), overdue: vi.fn() },
@@ -64,6 +67,7 @@ const ANIMAL = {
   notes: 'Healthy',
   weightRecordsCount: 3,
   imagesCount: 0,
+  qrUrl: 'https://farm.example.com/dashboard/animals/animal-1',
   createdAt: '2023-01-01T00:00:00.000Z',
 };
 
@@ -166,30 +170,27 @@ describe('AnimalDetailPage QR label', () => {
     useFarmStore.setState({ farms: [farm], activeFarm: farm, isLoading: false, error: null });
   });
 
-  it('shows the animal’s own QR code, from the payload the server built', async () => {
-    const url = `https://farm.example.com/dashboard/animals/${ANIMAL.id}`;
-    vi.mocked(animalsApi.qrLabel).mockResolvedValue({
-      data: { animalId: ANIMAL.id, tagNumber: ANIMAL.tagNumber, name: ANIMAL.name, animalTypeName: 'Cattle', url },
-    } as never);
-
+  it('shows the animal’s own QR code, from the payload the record already carries', async () => {
     renderPage();
 
     // On its own tab rather than mixed into the record's fields: the code is something a person
     // holds a phone up to, not a field to read.
     await userEvent.click(await screen.findByRole('tab', { name: 'Animal QR code' }));
 
-    // The code on the page is the code on the tag: printed from the server's payload rather
-    // than assembled here, so a label and a screen cannot disagree about where a scan goes.
-    expect(await screen.findByText(url)).toBeInTheDocument();
+    // The code on the page is the code on the tag: the server's payload, taken from the record
+    // this page already read, so showing it costs no second request and a screen cannot
+    // disagree with a printed label about where a scan goes.
+    expect(await screen.findByText(ANIMAL.qrUrl)).toBeInTheDocument();
   }, 20_000);
 
-  it('renders without the code when the payload cannot be read', async () => {
-    vi.mocked(animalsApi.qrLabel).mockRejectedValue(new Error('network unreachable'));
+  it('renders without the code when the record carries no payload', async () => {
+    // A record with no payload — an older deployment, or a stored copy of one — loses the tab
+    // rather than gaining a code assembled here: a page that refused to render, or invented its
+    // own URL, would both be worse than one without a code.
+    vi.mocked(animalsApi.get).mockResolvedValue({ data: { ...ANIMAL, qrUrl: '' } } as never);
 
     renderPage();
 
-    // The code is a convenience on this page, not the reason for it. A page that refused to
-    // render, or invented a payload of its own, would both be worse than one without it.
     expect(await screen.findByText('Cattle')).toBeInTheDocument();
     expect(screen.queryByRole('tab', { name: 'Animal QR code' })).not.toBeInTheDocument();
   }, 20_000);
@@ -210,7 +211,6 @@ describe('AnimalDetailPage offline identity', () => {
     resetOfflineDbConnection();
     vi.clearAllMocks();
     vi.mocked(animalsApi.get).mockRejectedValue(new Error('network unreachable'));
-    vi.mocked(animalsApi.qrLabel).mockRejectedValue(new Error('network unreachable'));
 
     useOfflineStore.setState({
       isOnline: false,

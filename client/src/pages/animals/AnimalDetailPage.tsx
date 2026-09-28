@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Alert, Card, Descriptions, Tag, Tabs, Table, Button, Space, Spin, Typography, message, Breadcrumb, Empty, QRCode } from 'antd';
 import { DirectionalIcon } from '../../i18n/DirectionalIcon';
-import { animalsApi, type AnimalQrLabel, type WeightRecord } from '../../api/animals';
+import { animalsApi, type WeightRecord } from '../../api/animals';
 import { useAnimalLookup } from '../../offline/useAnimalLookup';
 import { animalLabel } from '../../offline/scanResolve';
 import { weightCheckStatusApi } from '../../api/health';
@@ -243,8 +243,6 @@ export default function AnimalDetailPage() {const { t } = useTranslation('animal
 
   const [breedingRecords, setBreedingRecords] = useState<BreedingRecord[]>([]);
   const [breedingLoading, setBreedingLoading] = useState(false);
-  // The payload the server would print on this animal's tag, once it has answered for it.
-  const [label, setLabel] = useState<AnimalQrLabel | null>(null);
   /**
    * Who this page is about, when the full record could not be read.
    *
@@ -264,18 +262,6 @@ export default function AnimalDetailPage() {const { t } = useTranslation('animal
   const lookup = useAnimalLookup({ enabled: loadFailed !== null });
   const cachedIdentity = lookup.findById(id);
 
-  const loadLabel = useCallback(async (animalId: string) => {
-    try {
-      const res = await animalsApi.qrLabel(animalId);
-      setLabel(res.data);
-    } catch {
-      // The code is a convenience on this page, not the reason for it: the label sheet is the
-      // printable path, and a page that refused to render without it would be worse than one
-      // that omits it.
-      setLabel(null);
-    }
-  }, []);
-
   const loadAnimal = useCallback(async () => {
     if (!id) return;
     setLoading(true);
@@ -283,7 +269,6 @@ export default function AnimalDetailPage() {const { t } = useTranslation('animal
       const res = await animalsApi.get(id);
       setAnimal(res.data as unknown as AnimalDetail);
       setLoadFailed(null);
-      void loadLabel(id);
     } catch (err) {
       // Deliberately no decision here. Whether this page can still say something depends on the
       // device's own rows, which are read asynchronously — deciding now would be a race between
@@ -293,7 +278,7 @@ export default function AnimalDetailPage() {const { t } = useTranslation('animal
     } finally {
       setLoading(false);
     }
-  }, [id, loadLabel]);
+  }, [id]);
 
   /**
    * The two ways an unread record can end: the device names the animal, or there is nothing to
@@ -451,14 +436,19 @@ export default function AnimalDetailPage() {const { t } = useTranslation('animal
     // The animal's own tag, shown where the record is: this is what somebody reprinting a
     // lost label needs, and what a person holding a phone next to the animal can compare
     // against before recording anything.
-    ...(label
+    //
+    // The payload comes from the record the page already read (`qrUrl`, built by the server),
+    // so showing the code costs no extra request — and a tag, a label sheet and this screen all
+    // hold the same string, since one builder over one setting produces all three. A record
+    // whose payload is missing renders without the tab rather than inventing a code.
+    ...(animal.qrUrl
       ? [{
           key: 'label',
           label: t('animalQrCode'),
           children: (
             <Space direction="vertical" size={12}>
-              <QRCode value={label.url} type="svg" size={160} errorLevel="M" />
-              <Text type="secondary" style={{ wordBreak: 'break-all' }}>{label.url}</Text>
+              <QRCode value={animal.qrUrl} type="svg" size={160} errorLevel="M" />
+              <Text type="secondary" style={{ wordBreak: 'break-all' }}>{animal.qrUrl}</Text>
               <Text type="secondary">{t('thisCodeOpensThisAnimalsRecordOnAny')}</Text>
             </Space>
           ),
