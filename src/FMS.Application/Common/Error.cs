@@ -29,12 +29,28 @@ public sealed class Error
     /// <summary>Interpolation values for <see cref="MessageKey"/>, or null when it takes none.</summary>
     public IReadOnlyDictionary<string, object?>? MessageArgs { get; }
 
-    private Error(string code, string message, string? messageKey, IReadOnlyDictionary<string, object?>? messageArgs)
+    /// <summary>
+    /// The rows standing in the way of a refused change, or null when the refusal is not about
+    /// other rows. A conflict that only counts what blocks it ("still used by 2 gestation
+    /// records") sends the reader hunting; one that names the rows can link straight to them.
+    ///
+    /// <para>
+    /// The count stays in <see cref="Message"/> and the key stays in <see cref="MessageKey"/>,
+    /// so every existing caller and test reads what it always read. Only a caller that wants the
+    /// rows reads this, and a caller that ignores it loses nothing — the same additivity rule the
+    /// key itself follows.
+    /// </para>
+    /// </summary>
+    public IReadOnlyList<Blocker>? Blockers { get; }
+
+    private Error(string code, string message, string? messageKey,
+        IReadOnlyDictionary<string, object?>? messageArgs, IReadOnlyList<Blocker>? blockers = null)
     {
         Code = code;
         Message = message;
         MessageKey = messageKey;
         MessageArgs = messageArgs;
+        Blockers = blockers;
     }
 
     public static Error NotFound(string message, string? messageKey = null, IReadOnlyDictionary<string, object?>? messageArgs = null)
@@ -45,6 +61,11 @@ public sealed class Error
         => new("Unauthorized", message, messageKey, messageArgs);
     public static Error Conflict(string message, string? messageKey = null, IReadOnlyDictionary<string, object?>? messageArgs = null)
         => new("Conflict", message, messageKey, messageArgs);
+
+    /// <summary>A conflict that can name the rows in the way. The message and key are unchanged.</summary>
+    public static Error Conflict(string message, string messageKey, IReadOnlyList<Blocker> blockers)
+        => new("Conflict", message, messageKey, null, blockers);
+
     public static Error Unexpected(string message, string? messageKey = null, IReadOnlyDictionary<string, object?>? messageArgs = null)
         => new("Unexpected", message, messageKey, messageArgs);
 

@@ -405,20 +405,24 @@ public class AnimalService : IAnimalService
                 return Result<AnimalDetailDto>.NotFound("Location not found");
         }
 
-        if (request.SireId.HasValue)
+        // A parent is only re-examined when this request changes it. The farm already holds
+        // one impossible parent — a female recorded as the sire of TAG-0079 Boocho — and
+        // gating the rule on the change is what keeps that record editable: correcting its
+        // name or its date of birth does not also demand the pedigree be fixed, while a *new*
+        // impossible parent is refused. `animal.SireId` is the stored value, so a field the
+        // request leaves alone is never re-checked.
+        if (request.SireId != animal.SireId)
         {
-            var sire = await _context.Animals
-                .FirstOrDefaultAsync(a => a.Id == request.SireId.Value && a.FarmId == farmId && !a.IsDeleted);
-            if (sire == null)
-                return Result<AnimalDetailDto>.NotFound("Sire animal not found");
+            var sireError = await CheckParentAsync(farmId, id, request.SireId, SireRole);
+            if (sireError != null)
+                return Result<AnimalDetailDto>.Failure(sireError);
         }
 
-        if (request.DamId.HasValue)
+        if (request.DamId != animal.DamId)
         {
-            var dam = await _context.Animals
-                .FirstOrDefaultAsync(a => a.Id == request.DamId.Value && a.FarmId == farmId && !a.IsDeleted);
-            if (dam == null)
-                return Result<AnimalDetailDto>.NotFound("Dam animal not found");
+            var damError = await CheckParentAsync(farmId, id, request.DamId, DamRole);
+            if (damError != null)
+                return Result<AnimalDetailDto>.Failure(damError);
         }
 
         animal.TagNumber = tag;
@@ -1421,7 +1425,11 @@ public class AnimalService : IAnimalService
         IReadOnlyDictionary<Guid, AgeCategory> AgeCategories,
         IReadOnlyDictionary<Guid, AnimalStatus> AnimalStatuses,
         IReadOnlyDictionary<Guid, Location> Locations,
-        IReadOnlySet<Guid> KnownAnimalIds,
+        // The animals a parent may point at, each with the sex that decides whether it can be
+        // named on that side of the pedigree. A row of this same batch counts as known, with
+        // the sex its own request asks for; the value is null when that sex option was itself
+        // invalid, which the row is already failing for.
+        IReadOnlyDictionary<Guid, string?> KnownAnimals,
         IReadOnlySet<string> ExistingTags);
 
     private async Task<CreationLookups> LoadCreationLookupsAsync(Guid farmId, IReadOnlyList<BulkAnimalCreateItem> items)
@@ -1460,9 +1468,9 @@ public class AnimalService : IAnimalService
             .Where(l => l.FarmId == farmId && locationIds.Contains(l.Id))
             .ToDictionaryAsync(l => l.Id);
 
-        var existingAnimalIds = await _context.Animals
+        var existingAnimals = await _context.Animals
             .Where(a => a.FarmId == farmId && !a.IsDeleted && relatedAnimalIds.Contains(a.Id))
-            .Select(a => a.Id)
+            .Select(a => new { a.Id, a.SexOption.Value })
             .ToListAsync();
 
         // Only the tags this batch proposes are probed, so the cost tracks the batch
@@ -1474,9 +1482,13 @@ public class AnimalService : IAnimalService
 
         // Batch ids count as known so a row can name a parent created by the same
         // batch. Self-reference is still rejected by the sire/dam rules below.
-        var knownAnimalIds = existingAnimalIds
-            .Concat(items.Select(item => item.Id))
-            .ToHashSet();
+        var knownAnimals = existingAnimals.ToDictionary(a => a.Id, a => (string?)a.Value);
+        foreach (var item in items)
+        {
+            knownAnimals[item.Id] = sexOptions.TryGetValue(item.Request.SexOptionId, out var ownSex)
+                ? ownSex.Value
+                : null;
+        }
 
         return new CreationLookups(
             animalTypes,
@@ -1485,7 +1497,7 @@ public class AnimalService : IAnimalService
             ageCategories,
             animalStatuses,
             locations,
-            knownAnimalIds,
+            knownAnimals,
             existingTags.ToHashSet(StringComparer.Ordinal));
     }
 
@@ -1580,6 +1592,37 @@ public class AnimalService : IAnimalService
         return lookups.Locations.ContainsKey(request.LocationId.Value) ? null : Error.NotFound("Location not found");
     }
 
+    /// <summary>
+    /// One side of a pedigree: the sentences its failures use, the i18n keys those sentences
+    /// travel with, and the sex a parent named on that side has to be.
+    ///
+    /// <para>
+    /// The English text is exactly what this endpoint has always answered with; the key is
+    /// additive metadata (see <c>ApiMessageKeys</c>) so a client can say the same thing in the
+    /// reader's language without the server choosing one.
+    /// </para>
+    /// </summary>
+    private sealed record ParentRole(
+        string NotFoundMessage,
+        string NotFoundKey,
+        string WrongSexMessage,
+        string WrongSexKey,
+        bool MustBeMale);
+
+    private static readonly ParentRole SireRole = new(
+        "Sire animal not found",
+        "validation.animal.sireNotFound",
+        "The sire must be male",
+        "validation.animal.sireMustBeMale",
+        MustBeMale: true);
+
+    private static readonly ParentRole DamRole = new(
+        "Dam animal not found",
+        "validation.animal.damNotFound",
+        "The dam must be female",
+        "validation.animal.damMustBeFemale",
+        MustBeMale: false);
+
     private static Error? CheckSire(CreateAnimalRequest request, CreationLookups lookups, Guid ownId)
     {
         if (!request.SireId.HasValue)
@@ -1588,9 +1631,9 @@ public class AnimalService : IAnimalService
         // An animal cannot be its own sire: the id is known to the batch, but it is
         // not an existing animal, which is the same answer the single-row path gave.
         var sireId = request.SireId.Value;
-        return sireId != ownId && lookups.KnownAnimalIds.Contains(sireId)
-            ? null
-            : Error.NotFound("Sire animal not found");
+        return sireId != ownId && lookups.KnownAnimals.TryGetValue(sireId, out var sexValue)
+            ? CheckParentSex(sexValue, SireRole)
+            : Error.NotFound(SireRole.NotFoundMessage, SireRole.NotFoundKey);
     }
 
     private static Error? CheckDam(CreateAnimalRequest request, CreationLookups lookups, Guid ownId)
@@ -1599,9 +1642,54 @@ public class AnimalService : IAnimalService
             return null;
 
         var damId = request.DamId.Value;
-        return damId != ownId && lookups.KnownAnimalIds.Contains(damId)
+        return damId != ownId && lookups.KnownAnimals.TryGetValue(damId, out var sexValue)
+            ? CheckParentSex(sexValue, DamRole)
+            : Error.NotFound(DamRole.NotFoundMessage, DamRole.NotFoundKey);
+    }
+
+    /// <summary>
+    /// The single-row rules for one parent reference — it exists in this farm, it is not the
+    /// animal being edited, and it is sexed for the side of the pedigree it is named on.
+    ///
+    /// Shared with <see cref="ValidateForCreationAsync"/>'s batch path so a create and an
+    /// import row cannot accept a pairing the other refuses.
+    /// </summary>
+    private async Task<Error?> CheckParentAsync(Guid farmId, Guid ownId, Guid? parentId, ParentRole role)
+    {
+        if (!parentId.HasValue)
+            return null;
+
+        var parent = await _context.Animals
+            .Where(a => a.Id == parentId.Value && a.FarmId == farmId && !a.IsDeleted)
+            .Select(a => new { a.Id, a.SexOption.Value })
+            .FirstOrDefaultAsync();
+
+        // The animal being edited is never its own parent, and the same answer is given here
+        // as on creation: the id is not another animal's.
+        return parent == null || parent.Id == ownId
+            ? Error.NotFound(role.NotFoundMessage, role.NotFoundKey)
+            : CheckParentSex(parent.Value, role);
+    }
+
+    /// <summary>
+    /// Whether a parent's recorded sex is the one its side of the pedigree requires.
+    ///
+    /// A farm's sex vocabulary is its own — "Male"/"Female" are only the two a new farm is
+    /// seeded with — so a value this app cannot read (a farm that renamed them "Buck" and
+    /// "Doe") is left alone rather than rejected: refusing every parent over a word the rule
+    /// does not know would make the form unusable for that farm. A value it *can* read has to
+    /// be the right one, which is the whole point of the check.
+    /// </summary>
+    private static Error? CheckParentSex(string? sexValue, ParentRole role)
+    {
+        var isMale = string.Equals(sexValue?.Trim(), "Male", StringComparison.OrdinalIgnoreCase);
+        var isFemale = string.Equals(sexValue?.Trim(), "Female", StringComparison.OrdinalIgnoreCase);
+        if (!isMale && !isFemale)
+            return null;
+
+        return isMale == role.MustBeMale
             ? null
-            : Error.NotFound("Dam animal not found");
+            : Error.Validation(role.WrongSexMessage, role.WrongSexKey);
     }
 
     /// <summary>

@@ -40,6 +40,10 @@ public class Result<T>
     public static Result<T> Conflict(string message, string? messageKey = null, IReadOnlyDictionary<string, object?>? messageArgs = null) =>
         Failure(Error.Conflict(message, messageKey, messageArgs));
 
+    /// <summary>A conflict that can name the rows in the way, via <see cref="Error.Blockers"/>.</summary>
+    public static Result<T> Conflict(string message, string messageKey, IReadOnlyList<Blocker> blockers) =>
+        Failure(Error.Conflict(message, messageKey, blockers));
+
     /// <summary>
     /// Existing state already means what the caller asked for: nothing was written and nothing
     /// is wrong. <see cref="Error.Superseded"/> explains why this is a distinct outcome.
@@ -76,6 +80,10 @@ public class Result
 
     public static Result Conflict(string message, string? messageKey = null, IReadOnlyDictionary<string, object?>? messageArgs = null) =>
         Failure(Error.Conflict(message, messageKey, messageArgs));
+
+    /// <summary>A conflict that can name the rows in the way, via <see cref="Error.Blockers"/>.</summary>
+    public static Result Conflict(string message, string messageKey, IReadOnlyList<Blocker> blockers) =>
+        Failure(Error.Conflict(message, messageKey, blockers));
 
     public static Result Unexpected(string message = "An unexpected error occurred", string? messageKey = null, IReadOnlyDictionary<string, object?>? messageArgs = null) =>
         Failure(Error.Unexpected(message, messageKey, messageArgs));

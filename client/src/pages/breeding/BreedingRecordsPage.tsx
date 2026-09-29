@@ -6,7 +6,9 @@ import { breedingRecordsApi, type BreedingRecordListFilter, type CreateBreedingR
 import { lookupsApi } from '../../api/attendance';
 import { getApiError } from '../../api/farmApi';
 import { formatDate } from '../../i18n/format';
+import { blockersOf } from '../../utils/blockers';
 import dayjs from 'dayjs';
+import { useNavigate } from 'react-router-dom';
 import type { BreedingRecord } from '../../types';
 import { useTranslation } from 'react-i18next';
 
@@ -21,6 +23,7 @@ const RESULT_LABELS: Record<number, string> = { 0: 'Pending', 1: 'Confirmed', 2:
 const RESULT_COLORS: Record<number, string> = { 0: 'orange', 1: 'green', 2: 'red' };
 
 export default function BreedingRecordsPage() {const { t } = useTranslation('breeding'); 
+  const navigate = useNavigate();
   const [data, setData] = useState<BreedingRecord[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -140,7 +143,26 @@ export default function BreedingRecordsPage() {const { t } = useTranslation('bre
       message.success(t('breedingRecordDeleted'));
       load(page);
     } catch (err) {
-      message.error(getApiError(err));
+      // A refused delete that names what blocks it turns the toast into the way out: the
+      // sentence still comes from the server (localised through its key), and the blocking
+      // records hang off it as links to the page where they can be dealt with. Every other
+      // failure keeps the plain sentence it always showed.
+      const blockers = blockersOf(err);
+      if (blockers.length > 0) {
+        message.error({
+          content: (
+            <span>
+              {getApiError(err)}{' '}
+              <a onClick={() => navigate('/dashboard/breeding/gestation')}>
+                {t('viewGestationRecords')}
+              </a>
+            </span>
+          ),
+          duration: 8,
+        });
+      } else {
+        message.error(getApiError(err));
+      }
     }
   };
 

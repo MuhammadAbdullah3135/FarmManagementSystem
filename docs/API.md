@@ -255,3 +255,31 @@ The guarantee this rests on is server-side and central: `FmsDbContext` stamps `C
 
 ## Error Responses
 All errors follow RFC 7807 Problem Details format with traceId for debugging.
+
+### Conflicts that name what blocks them
+
+A refused change that other rows cause answers **409** with the refusal's English sentence as
+`detail` and, when the failure carries one, its i18n key in the `X-Message-Key` response header
+(exposed on the CORS policy; see `ApiMessageKeys`). A conflict whose blocker is other *records*
+also names them, so a client can offer the rows rather than only a count to go and find:
+
+```json
+{
+  "status": 409,
+  "title": "Conflict",
+  "detail": "Cannot delete breeding record 'TAG-0057 and TAG-0058 on 2026-05-01': still used by 1 gestation record. Delete that gestation record first.",
+  "traceId": "…",
+  "blockers": [
+    { "id": "6f1c…", "kind": "gestationRecord", "label": "005 · expected 2026-11-30" }
+  ]
+}
+```
+
+`blockers[]` is additive and appears **only** on such conflicts — `id` is routable, `kind` names
+the domain type, `label` is a recognition line for the row (unlocalised; the client owns the
+words for a kind). Every other error body is unchanged: no `blockers` field, a string or a
+problem without extensions beyond `traceId`. The one producer today is
+`DELETE /api/farm/{farmId}/breeding-records/{id}`, whose blockers are the gestation records
+created from the mating (a birth record's link is `SetNull` and never blocks); the breeding
+records page renders the sentence with a link to the gestation page when the field is present.
+Declaring blockers in a domain failure is one constructor: `Error.Conflict(message, key, blockers)`.

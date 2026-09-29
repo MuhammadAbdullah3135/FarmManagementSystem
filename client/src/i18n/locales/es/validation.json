@@ -1,4 +1,13 @@
 {
+  "animal": {
+    "damMustBeFemale": "La madre debe ser hembra",
+    "damNotFound": "No se encontró la madre",
+    "sireMustBeMale": "El padre debe ser macho",
+    "sireNotFound": "No se encontró el padre"
+  },
+  "breeding": {
+    "recordInUse": "Este registro de cría todavía está referenciado por registros de gestación, así que no se puede eliminar. Elimina esos registros primero."
+  },
   "customer": {
     "contactInfoMaxLength": "La información de contacto no puede superar los {{max}} caracteres",
     "nameMaxLength": "El nombre del cliente no puede superar los {{max}} caracteres",

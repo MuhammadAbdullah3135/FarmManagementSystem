@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
+import i18n from './index';
 import { canRenderMessageKey, messageKeyFromResponse, renderKeyedMessage } from './serverMessage';
 
 describe('renderKeyedMessage', () => {
@@ -16,6 +17,27 @@ describe('renderKeyedMessage', () => {
   it('falls back when there is no key at all', () => {
     expect(renderKeyedMessage(null, null, 'Tag number is required')).toBe('Tag number is required');
     expect(canRenderMessageKey(null)).toBe(false);
+  });
+
+  it('says the delete refusal in the reader’s language, not the server’s English', async () => {
+    // The key the breeding-records delete answers with when gestation records still hang off the
+    // mating. It takes no arguments, which is what lets it travel as a bare header.
+    expect(renderKeyedMessage('validation.breeding.recordInUse', null, 'ignored'))
+      .toBe('This breeding record is still referenced by gestation records, so it cannot be deleted. Delete those records first.');
+
+    await i18n.changeLanguage('es');
+    const spanish = renderKeyedMessage('validation.breeding.recordInUse', null, 'ignored');
+    expect(spanish).not.toBe('ignored');
+    expect(spanish).not.toContain('breeding record');
+
+    await i18n.changeLanguage('ar');
+    const arabic = renderKeyedMessage('validation.breeding.recordInUse', null, 'ignored');
+    expect(arabic).not.toBe('ignored');
+    expect(arabic).not.toContain('breeding record');
+  });
+
+  afterEach(async () => {
+    await i18n.changeLanguage('en');
   });
 });
 

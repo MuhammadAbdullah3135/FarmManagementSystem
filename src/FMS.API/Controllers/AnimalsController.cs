@@ -149,12 +149,22 @@ public class AnimalsController : ControllerBase
         ? Ok(result.Value)
         : MapError(result.Error!);
 
-    private IActionResult MapError(Error error) => error.Code switch
+    /// <summary>
+    /// Maps a domain failure to its response. <see cref="ApiMessageKeys.Attach"/> adds the
+    /// failure's i18n key as a header, so the body — the English text every existing caller and
+    /// test already asserts on — is untouched while a keyed client can localise it. The
+    /// parentage rules are the first animal failures to carry one.
+    /// </summary>
+    private IActionResult MapError(Error error)
     {
-        "NotFound" => NotFound(error.Message),
-        "Validation" => BadRequest(error.Message),
-        "Conflict" => Conflict(error.Message),
-        "Unauthorized" => Unauthorized(error.Message),
-        _ => StatusCode(500, error.Message)
-    };
+        ApiMessageKeys.Attach(Response, error);
+        return error.Code switch
+        {
+            "NotFound" => NotFound(error.Message),
+            "Validation" => BadRequest(error.Message),
+            "Conflict" => Conflict(error.Message),
+            "Unauthorized" => Unauthorized(error.Message),
+            _ => StatusCode(500, error.Message)
+        };
+    }
 }

@@ -10,6 +10,7 @@ import { getApiError } from '../../api/farmApi';
 import LookupQuickAddSelect, { type CreatedLookup } from '../../components/LookupQuickAddSelect';
 import type { LookupKind } from '../../components/lookupQuickAdd';
 import { formatDate } from '../../i18n/format';
+import { parentCandidates } from '../../utils/animalSex';
 import dayjs from 'dayjs';
 import { useNavigate } from 'react-router-dom';
 import type { AnimalListItem } from '../../types';
@@ -41,7 +42,9 @@ export default function AnimalsPage() {const { t: translate } = useTranslation('
   const [locations, setLocations] = useState<LookupOption[]>([]);
   const [ageCategories, setAgeCategories] = useState<LookupOption[]>([]);
   const [locationTypes, setLocationTypes] = useState<LookupOption[]>([]);
-  const [allAnimals, setAllAnimals] = useState<{ id: string; tagNumber: string; name?: string }[]>([]);
+  const [allAnimals, setAllAnimals] = useState<
+    { id: string; tagNumber: string; name?: string; sexValue?: string }[]
+  >([]);
   const [form] = Form.useForm();
 
   const selectedAnimalTypeId = Form.useWatch('animalTypeId', form);
@@ -70,7 +73,7 @@ export default function AnimalsPage() {const { t: translate } = useTranslation('
     else failed.push('age categories');
     if (ltRes.status === 'fulfilled') setLocationTypes(ltRes.value.data.map((lt: LookupOption) => ({ id: lt.id, name: lt.name })));
     else failed.push('location types');
-    if (anRes.status === 'fulfilled') setAllAnimals(anRes.value.data.items.map((a: { id: string; tagNumber: string; name?: string }) => ({ id: a.id, tagNumber: a.tagNumber, name: a.name })));
+    if (anRes.status === 'fulfilled') setAllAnimals(anRes.value.data.items.map((a: { id: string; tagNumber: string; name?: string; sexValue?: string }) => ({ id: a.id, tagNumber: a.tagNumber, name: a.name, sexValue: a.sexValue })));
     else failed.push('animals');
     if (failed.length > 0) {
       console.error('Failed to load animal form lookups:', failed.join(', '));
@@ -165,6 +168,20 @@ export default function AnimalsPage() {const { t: translate } = useTranslation('
         break;
     }
   };
+
+  /**
+   * The options a parent field may offer. A sire is male and a dam is female, neither may be
+   * the animal being edited, and the parent already on the record is kept in the list even
+   * when it fails that rule — the farm holds one such record (a female recorded as the sire of
+   * TAG-0079 Boocho), and it has to keep showing its parent by tag so the mistake can be seen
+   * and corrected instead of surfacing as a raw id. `utils/animalSex` holds the rule, and the
+   * API applies the same one on save.
+   */
+  const parentOptions = (required: 'male' | 'female', selectedId?: string) =>
+    parentCandidates(allAnimals, required, { editingId: editing?.id, selectedId }).map((animal) => ({
+      value: animal.id,
+      label: animal.name ? `${animal.tagNumber} - ${animal.name}` : animal.tagNumber,
+    }));
 
   const openCreate = () => {
     setEditing(null);
@@ -433,11 +450,12 @@ export default function AnimalsPage() {const { t: translate } = useTranslation('
             <Col xs={24} sm={12}>
               <Form.Item name="sireId" label={translate('sireFather')}>
                 <Select
-                  options={allAnimals.map(a => ({ value: a.id, label: a.name ? `${a.tagNumber} - ${a.name}` : a.tagNumber }))}
+                  options={parentOptions('male', editing?.sireId)}
                   showSearch
                   optionFilterProp="label"
                   allowClear
                   placeholder={translate('selectSire')}
+                  notFoundContent={translate('noCandidateAnimalsForThisSex')}
                   style={{ width: '100%' }}
                   popupMatchSelectWidth={false}
                 />
@@ -446,11 +464,12 @@ export default function AnimalsPage() {const { t: translate } = useTranslation('
             <Col xs={24} sm={12}>
               <Form.Item name="damId" label={translate('damMother')}>
                 <Select
-                  options={allAnimals.map(a => ({ value: a.id, label: a.name ? `${a.tagNumber} - ${a.name}` : a.tagNumber }))}
+                  options={parentOptions('female', editing?.damId)}
                   showSearch
                   optionFilterProp="label"
                   allowClear
                   placeholder={translate('selectDam')}
+                  notFoundContent={translate('noCandidateAnimalsForThisSex')}
                   style={{ width: '100%' }}
                   popupMatchSelectWidth={false}
                 />

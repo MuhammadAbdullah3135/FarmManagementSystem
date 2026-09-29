@@ -1,4 +1,13 @@
 {
+  "animal": {
+    "damMustBeFemale": "The dam must be female",
+    "damNotFound": "Dam animal not found",
+    "sireMustBeMale": "The sire must be male",
+    "sireNotFound": "Sire animal not found"
+  },
+  "breeding": {
+    "recordInUse": "This breeding record is still referenced by gestation records, so it cannot be deleted. Delete those records first."
+  },
   "customer": {
     "contactInfoMaxLength": "Contact information cannot exceed {{max}} characters",
     "nameMaxLength": "Customer name cannot exceed {{max}} characters",

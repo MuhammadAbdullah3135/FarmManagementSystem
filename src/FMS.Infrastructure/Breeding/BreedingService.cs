@@ -200,6 +200,29 @@ public class BreedingService : IBreedingService
         return await GetBreedingRecordByIdAsync(farmId, id);
     }
 
+    /// <summary>
+    /// Deletes a mating, unless something was recorded from it.
+    ///
+    /// <para>
+    /// <c>GestationRecords.BreedingRecordId</c> is a Restrict foreign key, so a mating that a
+    /// pregnancy was created from cannot be deleted: without this check the database refuses it
+    /// (Postgres 23503) and the client is shown an opaque 500 with the row still on screen.
+    /// Counting the references here turns that into a 409 naming what is in the way, in the shape
+    /// <see cref="Configuration.ConfigurationService"/> uses for the same problem.
+    /// </para>
+    ///
+    /// <para>
+    /// Birth records deliberately do not block: their link is nullable and declared
+    /// <c>SetNull</c>, so deleting the mating only unlinks them. Refusing over a link the schema
+    /// drops by itself would be a rule the database does not have, and it would close a delete
+    /// that has always worked.
+    /// </para>
+    ///
+    /// <para>
+    /// The refusal also carries the blocking rows themselves (<see cref="Error.Blockers"/>) —
+    /// id, kind, a recognisable line — so a client can offer the records, not merely count them.
+    /// </para>
+    /// </summary>
     public async Task<Result> DeleteBreedingRecordAsync(Guid farmId, Guid id)
     {
         var record = await _context.BreedingRecords
@@ -208,10 +231,52 @@ public class BreedingService : IBreedingService
         if (record == null)
             return Result.NotFound("Breeding record not found");
 
+        // Counted by the foreign key alone, with no farm filter: the constraint that will reject
+        // the write does not know about farms, so a guard that added one could disagree with it.
+        var blockers = await _context.GestationRecords
+            .Where(gr => gr.BreedingRecordId == id)
+            .OrderBy(gr => gr.ExpectedDeliveryDate)
+            .Select(gr => new Blocker(gr.Id, "gestationRecord",
+                $"{gr.Animal.TagNumber} · expected {gr.ExpectedDeliveryDate:yyyy-MM-dd}"))
+            .ToListAsync();
+
+        if (blockers.Count > 0)
+        {
+            var usedBy = $"{blockers.Count} gestation record{(blockers.Count == 1 ? string.Empty : "s")}";
+            var remedy = blockers.Count == 1
+                ? "Delete that gestation record first."
+                : "Delete those gestation records first.";
+
+            return Result.Conflict(
+                $"Cannot delete breeding record '{await DescribeMatingAsync(record)}': still used by {usedBy}. {remedy}",
+                "validation.breeding.recordInUse",
+                blockers);
+        }
+
         _context.BreedingRecords.Remove(record);
         await _context.SaveChangesAsync();
 
         return Result.Success();
+    }
+
+    /// <summary>
+    /// A mating as a reader can recognise it: whose it was, and when.
+    ///
+    /// The tags are read on their own rather than through the navigation properties, because a
+    /// soft-deleted animal is filtered out of a navigation and the message has to name the mating
+    /// even then; <c>IgnoreQueryFilters</c> keeps the row that still holds the foreign key.
+    /// </summary>
+    private async Task<string> DescribeMatingAsync(BreedingRecord record)
+    {
+        var parties = await _context.Animals
+            .IgnoreQueryFilters()
+            .Where(a => a.Id == record.SireId || a.Id == record.DamId)
+            .Select(a => new { a.Id, a.TagNumber })
+            .ToListAsync();
+
+        var sire = parties.FirstOrDefault(p => p.Id == record.SireId)?.TagNumber ?? "?";
+        var dam = parties.FirstOrDefault(p => p.Id == record.DamId)?.TagNumber ?? "?";
+        return $"{sire} and {dam} on {record.BreedingDate:yyyy-MM-dd}";
     }
 
     // Gestation Tracking

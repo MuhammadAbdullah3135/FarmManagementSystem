@@ -76,6 +76,8 @@ export interface AnimalLookupRow {
   id: string;
   tagNumber: string;
   name?: string;
+  /** The animal's recorded sex ("Male"/"Female" on a farm seeded with the defaults). */
+  sexValue?: string;
 }
 
 export const lookupsApi = {

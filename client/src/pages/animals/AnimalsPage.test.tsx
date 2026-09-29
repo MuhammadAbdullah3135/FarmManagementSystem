@@ -144,6 +144,159 @@ const findVisibleModal = (predicate: (modal: HTMLElement) => boolean) => {
   return visible as HTMLElement;
 };
 
+/*
+ * The parent pickers are half of the parentage rule the API enforces on save (a sire is male,
+ * a dam is female, and an animal is never its own parent). They are asserted through the real
+ * modal because the two halves have to agree: a form that offers a pairing the server refuses
+ * only moves the failure to the end of a form the user has already filled in.
+ */
+const animalRow = (overrides: Record<string, unknown> = {}) => ({
+  id: 'row-1',
+  tagNumber: 'TAG-0079',
+  name: 'Boocho',
+  animalTypeId: 't1',
+  animalTypeName: 'Cattle',
+  sexOptionId: 's1',
+  sexValue: 'Female',
+  animalStatusId: 'st1',
+  statusName: 'Healthy',
+  statusCategory: 0,
+  createdAt: '2026-01-01T00:00:00Z',
+  ...overrides,
+});
+
+/** The options in the dropdown that is currently open — the last one antd has shown. */
+const openDropdownOptions = () => {
+  const open = [...document.querySelectorAll<HTMLElement>('.ant-select-dropdown')].filter(
+    (dropdown) => !dropdown.className.includes('hidden'),
+  );
+  const last = open[open.length - 1];
+  return [...last.querySelectorAll('.ant-select-item-option-content')].map((el) => el.textContent);
+};
+
+/** Opens the edit modal for the only row on the page (its second action button). */
+const openEditAnimalModal = async (user: User) => {
+  const row = await screen.findByText('TAG-0079');
+  const tableRow = row.closest('tr') as HTMLElement;
+  await user.click(within(tableRow).getAllByRole('button')[1]);
+  return (await screen.findByText('Edit Animal', { selector: '.ant-modal-title' })).closest('.ant-modal') as HTMLElement;
+};
+
+describe('AnimalsPage parent pickers', () => {
+  const herd = [
+    { id: 'cow-1', tagNumber: 'COW-1', name: 'Bessie', sexValue: 'Female' },
+    { id: 'bull-1', tagNumber: 'BULL-1', name: 'Rex', sexValue: 'Male' },
+  ];
+
+  it('offers only male animals as a sire and only females as a dam', async () => {
+    const user = userEvent.setup();
+    vi.mocked(lookupsApi.animals).mockResolvedValue(res({ items: herd, totalCount: 2 }));
+    renderPage();
+
+    const modal = await openAddAnimalModal(user);
+    await openSelectFooter(user, modal, 'Sire (Father)');
+    expect(openDropdownOptions()).toEqual(['BULL-1 - Rex']);
+
+    // Opening the next select closes the previous dropdown, so both halves are the open one.
+    await openSelectFooter(user, modal, 'Dam (Mother)');
+    expect(openDropdownOptions()).toEqual(['COW-1 - Bessie']);
+  }, 20000);
+
+  it('never offers the animal being edited as its own parent', async () => {
+    const user = userEvent.setup();
+    vi.mocked(animalsApi.list).mockResolvedValue(
+      res({ items: [animalRow({ id: 'bull-1', tagNumber: 'TAG-0079', sexValue: 'Male' })], totalCount: 1 }),
+    );
+    vi.mocked(lookupsApi.animals).mockResolvedValue(
+      res({ items: [...herd, { id: 'bull-2', tagNumber: 'BULL-2', name: 'Star', sexValue: 'Male' }], totalCount: 3 }),
+    );
+    renderPage();
+
+    const modal = await openEditAnimalModal(user);
+    await openSelectFooter(user, modal, 'Sire (Father)');
+
+    // BULL-1 is male, so the sex rule would have kept it on this list: only the rule against
+    // being its own parent takes it off.
+    const options = openDropdownOptions();
+    expect(options).toEqual(['BULL-2 - Star']);
+    expect(options.some((label) => label?.startsWith('BULL-1'))).toBe(false);
+  }, 20000);
+
+  it('shows the parent already on an impossible record, and keeps it selectable', async () => {
+    const user = userEvent.setup();
+    // The farm's real record: TAG-0058-2, a female, stored as the sire of 079 Boocho.
+    vi.mocked(animalsApi.list).mockResolvedValue(
+      res({
+        items: [animalRow({ id: 'cow-1', sireId: 'cow-2', sireTagNumber: 'TAG-0058-2' })],
+        totalCount: 1,
+      }),
+    );
+    vi.mocked(lookupsApi.animals).mockResolvedValue(
+      res({
+        items: [...herd, { id: 'cow-2', tagNumber: 'TAG-0058-2', name: 'Seed Calf B', sexValue: 'Female' }],
+        totalCount: 3,
+      }),
+    );
+    renderPage();
+
+    const modal = await openEditAnimalModal(user);
+    const sireItem = await getFormItem(modal, 'Sire (Father)');
+
+    // Shown by tag, not as the raw id the field would fall back to if the stored parent were
+    // filtered out of the options.
+    expect(sireItem.textContent).toContain('TAG-0058-2 - Seed Calf B');
+
+    await openSelectFooter(user, modal, 'Sire (Father)');
+    expect(openDropdownOptions()).toEqual(['TAG-0058-2 - Seed Calf B', 'BULL-1 - Rex']);
+  }, 20000);
+
+  it('leaves the list whole when the farm names its sexes something this app cannot read', async () => {
+    const user = userEvent.setup();
+    vi.mocked(lookupsApi.animals).mockResolvedValue(
+      res({
+        items: [
+          { id: 'buck-1', tagNumber: 'BUCK-1', name: 'Rex', sexValue: 'Buck' },
+          { id: 'doe-1', tagNumber: 'DOE-1', name: 'Bessie', sexValue: 'Doe' },
+        ],
+        totalCount: 2,
+      }),
+    );
+    renderPage();
+
+    const modal = await openAddAnimalModal(user);
+    await openSelectFooter(user, modal, 'Sire (Father)');
+
+    // Narrowing on a word the app does not know would empty the field; the API leaves such a
+    // value alone too, so both layers keep working on that farm.
+    expect(openDropdownOptions()).toEqual(['BUCK-1 - Rex', 'DOE-1 - Bessie']);
+  }, 20000);
+
+  it('offers nothing rather than the wrong sex when no animal of that sex is recorded', async () => {
+    const user = userEvent.setup();
+    vi.mocked(lookupsApi.animals).mockResolvedValue(
+      res({
+        items: [
+          { id: 'cow-1', tagNumber: 'COW-1', name: 'Bessie', sexValue: 'Female' },
+          { id: 'cow-2', tagNumber: 'COW-2', name: 'Daisy', sexValue: 'Female' },
+        ],
+        totalCount: 2,
+      }),
+    );
+    renderPage();
+
+    const modal = await openAddAnimalModal(user);
+    await openSelectFooter(user, modal, 'Sire (Father)');
+
+    // A herd of cows: the sire field offers none of them, because the server would refuse one,
+    // and says so rather than opening onto an unexplained empty list.
+    expect(openDropdownOptions()).toEqual([]);
+    expect(await screen.findByText('No animal of this sex is recorded yet.')).toBeInTheDocument();
+
+    await openSelectFooter(user, modal, 'Dam (Mother)');
+    expect(openDropdownOptions()).toEqual(['COW-1 - Bessie', 'COW-2 - Daisy']);
+  }, 20000);
+});
+
 describe('AnimalsPage create form', () => {
   it('loads age category options into the Age Category selector', async () => {
     const user = userEvent.setup();
