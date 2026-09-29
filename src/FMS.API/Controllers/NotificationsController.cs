@@ -28,10 +28,14 @@ namespace FMS.API.Controllers;
 public class NotificationsController : ControllerBase
 {
     private readonly INotificationService _notificationService;
+    private readonly IPushSubscriptionService _pushSubscriptionService;
 
-    public NotificationsController(INotificationService notificationService)
+    public NotificationsController(
+        INotificationService notificationService,
+        IPushSubscriptionService pushSubscriptionService)
     {
         _notificationService = notificationService;
+        _pushSubscriptionService = pushSubscriptionService;
     }
 
     private Guid GetUserId() => Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
@@ -101,8 +105,55 @@ public class NotificationsController : ControllerBase
         return MapResult(result);
     }
 
+    /// <summary>
+    /// Whether push is available on this deployment, the key a browser must subscribe
+    /// with, and the caller's own registered devices.
+    ///
+    /// Farm-scoped for the same reason every other route here is: a subscription belongs
+    /// to a person, but the only thing that decides which of a farm's alerts reaches a
+    /// device is that farm's preferences, and keeping the route under the farm keeps the
+    /// farm-context gate covering it.
+    /// </summary>
+    [HttpGet("push")]
+    public async Task<IActionResult> GetPushSettings(Guid farmId)
+    {
+        var result = await _pushSubscriptionService.GetSettingsAsync(farmId, GetUserId());
+        return MapResult(result);
+    }
+
+    /// <summary>
+    /// Registers or refreshes one of the caller's devices.
+    ///
+    /// Idempotent on the endpoint, and refused with 400 when this deployment cannot send
+    /// push at all — storing a device that would never be used is worse than saying so.
+    /// </summary>
+    [HttpPost("push")]
+    public async Task<IActionResult> RegisterPushSubscription(
+        Guid farmId,
+        [FromBody] RegisterPushSubscriptionRequest request)
+    {
+        var result = await _pushSubscriptionService.RegisterAsync(farmId, GetUserId(), request);
+        return MapResult(result);
+    }
+
+    /// <summary>
+    /// Removes one of the caller's devices. Another member's id answers 404, never a
+    /// silent success.
+    /// </summary>
+    [HttpDelete("push/{id:guid}")]
+    public async Task<IActionResult> UnregisterPushSubscription(Guid farmId, Guid id)
+    {
+        var result = await _pushSubscriptionService.UnregisterAsync(farmId, GetUserId(), id);
+        return MapResult(result);
+    }
+
     private IActionResult MapResult<T>(Result<T> result) => result.IsSuccess
         ? Ok(result.Value)
+        : MapError(result.Error!);
+
+    /// <summary>A void result — the delete. 204 on success, the error body otherwise.</summary>
+    private IActionResult MapResult(Result result) => result.IsSuccess
+        ? NoContent()
         : MapError(result.Error!);
 
     private IActionResult MapError(Error error) => error.Code switch

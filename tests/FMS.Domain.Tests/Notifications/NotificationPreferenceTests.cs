@@ -19,10 +19,14 @@ public class NotificationPreferenceTests
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options);
 
-    private static NotificationService CreateService(FmsDbContext context, string emailMinSeverity = "Critical") =>
+    private static NotificationService CreateService(
+        FmsDbContext context,
+        string emailMinSeverity = "Critical",
+        string pushMinSeverity = "Critical") =>
         new(context, Options.Create(new NotificationOptions
         {
-            EmailMinSeverityOnByDefault = emailMinSeverity
+            EmailMinSeverityOnByDefault = emailMinSeverity,
+            PushMinSeverityOnByDefault = pushMinSeverity
         }));
 
     [Fact]
@@ -55,8 +59,148 @@ public class NotificationPreferenceTests
         Assert.False(preferences.Single(p => p.AlertType == NotificationAlertTypes.LowInventory).EmailEnabled);
 
         Assert.Equal(
-            new[] { NotificationChannels.InApp, NotificationChannels.Email },
+            new[] { NotificationChannels.InApp, NotificationChannels.Email, NotificationChannels.Push },
             result.Value.Channels);
+    }
+
+    [Fact]
+    public async Task GetPreferencesAsync_PushDefaultsToTheSameOutOfAppThresholdAsEmail()
+    {
+        using var context = CreateContext();
+        var service = CreateService(context);
+
+        var result = await service.GetPreferencesAsync(Guid.NewGuid(), Guid.NewGuid());
+        var preferences = result.Value!.Preferences;
+
+        // Push and email make the same claim on somebody's attention and differ only in how
+        // fast they arrive, so one policy covers both: a Critical type is pushed, a quieter one
+        // is not until somebody opts in per row. A rule that drifted apart between the two
+        // channels would be a difference nobody chose.
+        Assert.All(preferences, p => Assert.Equal(p.EmailEnabled, p.PushEnabled));
+
+        Assert.True(preferences.Single(p => p.AlertType == NotificationAlertTypes.OverdueVaccination).PushEnabled);
+        Assert.True(preferences.Single(p => p.AlertType == NotificationAlertTypes.OverdueTask).PushEnabled);
+        Assert.False(preferences.Single(p => p.AlertType == NotificationAlertTypes.OverdueWeightCheck).PushEnabled);
+        Assert.False(preferences.Single(p => p.AlertType == NotificationAlertTypes.LowInventory).PushEnabled);
+    }
+
+    [Fact]
+    public async Task GetPreferencesAsync_ReportsTheConfiguredPushThresholdRatherThanAConstant()
+    {
+        using var context = CreateContext();
+        var service = CreateService(context, pushMinSeverity: NotificationSeverity.Warning);
+
+        var result = await service.GetPreferencesAsync(Guid.NewGuid(), Guid.NewGuid());
+
+        // The screen's sentence is "alerts at <threshold> or above are pushed by default", so
+        // the threshold it prints has to be the one the rows above were computed from: a
+        // constant here would have the page explain a policy the dispatcher does not run.
+        Assert.Equal(NotificationSeverity.Warning, result.Value!.MinSeverityOnByDefault);
+
+        // ...and the rows behind it really were computed from Warning: a Warning-severity type
+        // is now pushed by default, and an Info one still is not.
+        Assert.True(result.Value.Preferences
+            .Single(p => p.AlertType == NotificationAlertTypes.OverdueWeightCheck).PushEnabled);
+        Assert.False(result.Value.Preferences
+            .Single(p => p.AlertType == NotificationAlertTypes.LowInventory).PushEnabled);
+    }
+
+    [Fact]
+    public async Task UpdatePreferencesAsync_WithoutAPushValue_LeavesTheChoiceWhereItWas()
+    {
+        using var context = CreateContext();
+        var service = CreateService(context);
+        var farmId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+
+        // A client built before the push column existed sends rows without the field. Read as
+        // false, that would mute push for every type it saved — a settings screen silently
+        // changing a channel it cannot show.
+        await service.UpdatePreferencesAsync(farmId, userId, new UpdateNotificationPreferencesRequest
+        {
+            Preferences =
+            [
+                new NotificationPreferenceUpdateDto
+                {
+                    AlertType = NotificationAlertTypes.OverdueVaccination,
+                    InAppEnabled = true,
+                    EmailEnabled = true
+                }
+            ]
+        });
+
+        var afterLegacySave = await service.GetPreferencesAsync(farmId, userId);
+        Assert.True(afterLegacySave.Value!.Preferences
+            .Single(p => p.AlertType == NotificationAlertTypes.OverdueVaccination).PushEnabled);
+
+        // Turned off deliberately by a client that knows about the channel...
+        await service.UpdatePreferencesAsync(farmId, userId, new UpdateNotificationPreferencesRequest
+        {
+            Preferences =
+            [
+                new NotificationPreferenceUpdateDto
+                {
+                    AlertType = NotificationAlertTypes.OverdueVaccination,
+                    InAppEnabled = true,
+                    EmailEnabled = true,
+                    PushEnabled = false
+                }
+            ]
+        });
+
+        Assert.False((await context.NotificationPreferences.AsNoTracking().SingleAsync()).PushEnabled);
+
+        // ...and the same legacy save afterwards does not undo it: silence means "no opinion",
+        // not "the default".
+        await service.UpdatePreferencesAsync(farmId, userId, new UpdateNotificationPreferencesRequest
+        {
+            Preferences =
+            [
+                new NotificationPreferenceUpdateDto
+                {
+                    AlertType = NotificationAlertTypes.OverdueVaccination,
+                    InAppEnabled = true,
+                    EmailEnabled = true
+                }
+            ]
+        });
+
+        var afterSecondLegacySave = await service.GetPreferencesAsync(farmId, userId);
+        Assert.False(afterSecondLegacySave.Value!.Preferences
+            .Single(p => p.AlertType == NotificationAlertTypes.OverdueVaccination).PushEnabled);
+    }
+
+    [Fact]
+    public async Task UpdatePreferencesAsync_StoresThePushChoiceInTheSameSparseRow()
+    {
+        using var context = CreateContext();
+        var service = CreateService(context);
+        var farmId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+
+        // Opting a quieter type into push: one row per (farm, user, alert type) holds all three
+        // channels, which is what keeps the matrix free of per-channel backfills.
+        await service.UpdatePreferencesAsync(farmId, userId, new UpdateNotificationPreferencesRequest
+        {
+            Preferences =
+            [
+                new NotificationPreferenceUpdateDto
+                {
+                    AlertType = NotificationAlertTypes.LowInventory,
+                    InAppEnabled = true,
+                    EmailEnabled = false,
+                    PushEnabled = true
+                }
+            ]
+        });
+
+        var stored = await context.NotificationPreferences.AsNoTracking().SingleAsync();
+        Assert.True(stored.PushEnabled);
+        Assert.False(stored.EmailEnabled);
+
+        var settings = await service.GetPreferencesAsync(farmId, userId);
+        Assert.True(settings.Value!.Preferences
+            .Single(p => p.AlertType == NotificationAlertTypes.LowInventory).PushEnabled);
     }
 
     [Fact]

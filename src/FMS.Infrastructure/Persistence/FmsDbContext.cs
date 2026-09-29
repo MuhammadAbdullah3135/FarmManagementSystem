@@ -67,6 +67,7 @@ public class FmsDbContext : DbContext
     public DbSet<FarmHealthStatusSnapshot> FarmHealthStatusSnapshots => Set<FarmHealthStatusSnapshot>();
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<NotificationPreference> NotificationPreferences => Set<NotificationPreference>();
+    public DbSet<PushSubscription> PushSubscriptions => Set<PushSubscription>();
     public DbSet<BreedingRecord> BreedingRecords => Set<BreedingRecord>();
     public DbSet<GestationRecord> GestationRecords => Set<GestationRecord>();
     public DbSet<GestationHealthCheck> GestationHealthChecks => Set<GestationHealthCheck>();

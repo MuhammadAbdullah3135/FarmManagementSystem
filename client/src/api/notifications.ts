@@ -43,6 +43,8 @@ export interface NotificationPreference {
   alertType: string;
   inAppEnabled: boolean;
   emailEnabled: boolean;
+  /** Whether this alert type reaches the devices registered for push. */
+  pushEnabled: boolean;
 }
 
 export interface NotificationPreferenceSettings {
@@ -50,6 +52,40 @@ export interface NotificationPreferenceSettings {
   /** Channel names; the server owns the vocabulary so the UI never guesses. */
   channels: string[];
   emailMinSeverityOnByDefault: string;
+  /** The threshold the out-of-app channels share, as the server computes it. */
+  minSeverityOnByDefault: string;
+}
+
+/** One device that has registered to receive push notifications. */
+export interface PushSubscriptionSummary {
+  id: string;
+  deviceLabel?: string | null;
+  createdAt: string;
+  lastSeenAtUtc: string;
+  /** False once the push service reported the browser gone. */
+  isActive: boolean;
+  lastFailureReason?: string | null;
+}
+
+/**
+ * What the push card needs: whether this deployment can push at all, the key a browser
+ * must subscribe with, and the caller's own devices.
+ */
+export interface PushSettings {
+  enabled: boolean;
+  /** Null when the server has no VAPID key — see `enabled`. */
+  vapidPublicKey?: string | null;
+  maxSubscriptionsPerUser: number;
+  minSeverityOnByDefault: string;
+  subscriptions: PushSubscriptionSummary[];
+}
+
+/** The three values a browser's `PushSubscription.toJSON()` yields, plus an optional label. */
+export interface RegisterPushSubscriptionRequest {
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+  deviceLabel?: string;
 }
 
 export interface NotificationListParams {
@@ -76,6 +112,14 @@ export const notificationsApi = {
 
   updatePreferences: (preferences: NotificationPreference[]) =>
     api.put<NotificationPreferenceSettings>(farmUrl('/notifications/preferences'), { preferences }),
+
+  getPushSettings: () => api.get<PushSettings>(farmUrl('/notifications/push')),
+
+  registerPushSubscription: (body: RegisterPushSubscriptionRequest) =>
+    api.post<PushSubscriptionSummary>(farmUrl('/notifications/push'), body),
+
+  unregisterPushSubscription: (id: string) =>
+    api.delete(farmUrl(`/notifications/push/${id}`)),
 };
 
 /**

@@ -32,6 +32,17 @@ public class NotificationPreference : AuditableEntity, IAuditLogExcluded
     /// <summary>Whether this alert type is included in the recipient's email digest.</summary>
     public bool EmailEnabled { get; set; }
 
+    /// <summary>
+    /// Whether this alert type is pushed to the recipient's registered devices.
+    ///
+    /// Defaults with the email column rather than on: both are channels that reach
+    /// somebody away from the app, and the same reason applies to each — interrupting
+    /// people about everything is how a channel stops being read. A row with this off
+    /// means the type is still recorded in-app and, by default, still emailed if it is
+    /// severe enough; it simply does not buzz a phone.
+    /// </summary>
+    public bool PushEnabled { get; set; }
+
     public Farm Farm { get; set; } = null!;
 
     public User User { get; set; } = null!;

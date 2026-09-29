@@ -204,6 +204,14 @@ public class TestWebApplicationFactory : IDisposable
                     services.AddScoped<FMS.Application.Notifications.INotificationService, FMS.Infrastructure.Notifications.NotificationService>();
                     services.AddScoped<FMS.Application.Notifications.INotificationDispatcher, FMS.Infrastructure.Notifications.NotificationDispatcher>();
                     services.AddScoped<FMS.Infrastructure.Jobs.NotificationDispatchJob>();
+                    // Web push (phase 8.2). The transport is deliberately unconfigured here —
+                    // no deployment in a test has VAPID keys — but the service and its options
+                    // are real, so the /push routes are exercised over the same code a keyless
+                    // deployment runs and the controller can be constructed at all.
+                    services.Configure<FMS.Application.Notifications.PushOptions>(_ => { });
+                    services.AddSingleton<FMS.Application.Notifications.IPushSender, UnconfiguredPushSender>();
+                    services.AddScoped<FMS.Application.Notifications.IPushSubscriptionService,
+                        FMS.Infrastructure.Notifications.PushSubscriptionService>();
 
                     // Bulk animal import. The real reader and pipeline run against the
                     // test host's InMemory database, so the endpoint exercises the same

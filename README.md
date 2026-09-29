@@ -274,7 +274,7 @@ Scheduled background work (Hangfire, job tables in the `hangfire` schema of the 
 
 All three fan out one job **per farm**, so a farm's work runs in its own scope and retries independently. Configure with the `Jobs` section (see `.env.example`); `Jobs__Enabled=false` runs the API with no scheduler in that process.
 
-Notifications are durable rather than page-load-only, and deduplicated on the identity of the condition: an alert that merely changes (a pushed-back due date) refreshes its row, one that clears is resolved, and one that recurs alerts again. Only genuinely new conditions are emailed, and email defaults to Critical severity only — `Notifications:EmailMinSeverityOnByDefault` changes that default. Push and SMS are not implemented.
+Notifications are durable rather than page-load-only, and deduplicated on the identity of the condition: an alert that merely changes (a pushed-back due date) refreshes its row, one that clears is resolved, and one that recurs alerts again. Only genuinely new conditions are emailed or pushed, and both out-of-app channels default to Critical severity only — `Notifications:EmailMinSeverityOnByDefault` and `Notifications:PushMinSeverityOnByDefault` change that default. SMS is not implemented.
 
 Job status for SystemOwners:
 - `GET /api/admin/jobs` — recurring jobs, next/last run, last state, last error and recent failures (account-scoped, so no farm context is required).
@@ -284,7 +284,10 @@ Notification centre (farm-scoped, always your own notifications):
 - `GET /api/farm/{farmId}/notifications` — list, with `unreadOnly`, `includeDismissed`, `includeResolved` and paging;
 - `GET /api/farm/{farmId}/notifications/unread-count` — what the header badge shows;
 - `POST /api/farm/{farmId}/notifications/{id}/read`, `POST …/read-all`, `POST …/{id}/dismiss`;
-- `GET`/`PUT /api/farm/{farmId}/notifications/preferences` — per alert type, in-app and email.
+- `GET`/`PUT /api/farm/{farmId}/notifications/preferences` — per alert type, in-app, email and push;
+- `GET`/`POST /api/farm/{farmId}/notifications/push` and `DELETE …/push/{id}` — whether this deployment can push, the VAPID public key, and this user's registered devices.
+
+Push is Web Push (RFC 8030/8188/8291/8292) with VAPID, implemented in-tree with no extra package, and **off until an operator supplies keys**: the `Push` section (`Enabled`, `Subject`, `PublicKey`, `PrivateKey`, `TtlSeconds`, `MaxSubscriptionsPerUser`, `RequestTimeoutSeconds`). With it off, the preferences screen says so instead of offering a switch that cannot deliver, and `POST …/push` refuses rather than storing a device nothing would ever use. Outside Development, an enabled-but-unusable configuration refuses to start. A subscription belongs to a **user**, not a farm: the same browser signing in as someone else moves the row, while which alerts reach it stays per farm in the preferences matrix. One push is sent per recipient per dispatch run ("3 new alerts on Farm A"), not one per alert. The Android wrapper cannot receive push — its WebView has neither the Push API nor a notification permission — so that app reports the state instead of pretending; see [`src/FMS.Mobile/README.md`](src/FMS.Mobile/README.md).
 
 ### Email delivery
 

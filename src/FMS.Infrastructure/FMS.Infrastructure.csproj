@@ -8,6 +8,15 @@
     <ProjectReference Include="..\FMS.Application\FMS.Application.csproj" />
   </ItemGroup>
 
+  <!-- The tests are the only other assembly that may see internals, the same shape
+       FMS.API already uses. What needs it is WebPushEncryption's overload that takes
+       an explicit salt and ephemeral key: RFC 8291's published example cannot be
+       reproduced without fixing both, and leaving that overload public would hand the
+       delivery path a way to reuse a nonce. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="FMS.Domain.Tests" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="AWSSDK.S3" Version="4.0.103.3" />
     <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />

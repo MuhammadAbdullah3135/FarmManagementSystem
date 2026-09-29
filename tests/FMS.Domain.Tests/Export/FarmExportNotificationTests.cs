@@ -70,6 +70,9 @@ public class FarmExportNotificationTests
             harness.Context,
             new QuietDashboard(),
             new QuietEmail(),
+            // Push is not this test's subject, and a sender with nothing configured is the
+            // deployment shape it is standing in for: the channel is simply absent.
+            new QuietPush(),
             Options.Create(new NotificationOptions()),
             NullLogger<NotificationDispatcher>.Instance);
 
@@ -164,5 +167,21 @@ public class FarmExportNotificationTests
             string email,
             string farmName,
             IReadOnlyList<NotificationEmailItem> notifications) => Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// A push channel that is present but not configured, which is what a deployment with
+    /// no VAPID keys looks like. Push is not this file's subject; what matters is that the
+    /// dispatcher's signature change did not quietly make this run send something.
+    /// </summary>
+    private sealed class QuietPush : IPushSender
+    {
+        public bool IsConfigured => false;
+
+        public Task<PushSendResult> SendAsync(
+            PushSubscriptionTarget target,
+            PushMessage message,
+            CancellationToken cancellationToken = default) =>
+            throw new InvalidOperationException("(test) an unconfigured push channel must not be used");
     }
 }

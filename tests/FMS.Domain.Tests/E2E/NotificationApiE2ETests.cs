@@ -44,6 +44,15 @@ public class NotificationApiE2ETests : IDisposable
         /// <summary>A resolved notification for the test user (no longer actionable).</summary>
         public Guid MyResolvedNotificationId { get; private set; }
 
+        /// <summary>A device of the test user's, still expected to receive.</summary>
+        public Guid MyPushDeviceId { get; private set; }
+
+        /// <summary>A device of the test user's that a push service reported gone.</summary>
+        public Guid MyDisabledPushDeviceId { get; private set; }
+
+        /// <summary>The other member's device — never visible to, or removable by, the test user.</summary>
+        public Guid TheirPushDeviceId { get; private set; }
+
         protected override async Task SeedAsync(FmsDbContext db, ApiSeedData.SeedIds seed)
         {
             db.Users.Add(new User
@@ -86,8 +95,53 @@ public class NotificationApiE2ETests : IDisposable
                 NewNotification(TheirNotificationId, seed.FarmId, OtherMemberId,
                     "Overdue: FMD", NotificationAlertTypes.OverdueVaccination, NotificationSeverity.Critical));
 
+            MyPushDeviceId = Guid.NewGuid();
+            MyDisabledPushDeviceId = Guid.NewGuid();
+            TheirPushDeviceId = Guid.NewGuid();
+
+            // Seeded directly rather than through the API: this factory's deployment has no VAPID
+            // keys, so registration is *refused* (asserted below) and a device can only reach the
+            // table by other means. These rows are what "a deployment that once could push, or was
+            // seeded by hand" looks like to every read path.
+            db.PushSubscriptions.AddRange(
+                NewPushSubscription(MyPushDeviceId, JwtTokenHelper.TestUserId, "https://push.example/mine",
+                    "Chrome on Android"),
+                NewPushSubscription(MyDisabledPushDeviceId, JwtTokenHelper.TestUserId,
+                    "https://push.example/mine-old", "Firefox on Windows",
+                    disabledAtUtc: DateTime.UtcNow.AddDays(-1),
+                    lastFailureReason: "the push service answered 410 Gone",
+                    failureCount: 3),
+                NewPushSubscription(TheirPushDeviceId, OtherMemberId, "https://push.example/theirs",
+                    "Safari on macOS"));
+
             await db.SaveChangesAsync();
         }
+
+        private static PushSubscription NewPushSubscription(
+            Guid id,
+            Guid userId,
+            string endpoint,
+            string? deviceLabel,
+            DateTime? disabledAtUtc = null,
+            string? lastFailureReason = null,
+            int failureCount = 0) => new()
+        {
+            Id = id,
+            UserId = userId,
+            Endpoint = endpoint,
+            // Shaped like a real subscription (an uncompressed P-256 point and a 16-octet secret)
+            // without being one: nothing here is ever encrypted against, because the host cannot
+            // send. A read path that tried to would fail loudly rather than silently.
+            P256dh = "BFakeButWellShapedPointForTheE2EHost000000000000000000000000000000000000000",
+            Auth = "FakeAuthSecret16",
+            DeviceLabel = deviceLabel,
+            LastSeenAtUtc = DateTime.UtcNow,
+            DisabledAtUtc = disabledAtUtc,
+            LastFailureReason = lastFailureReason,
+            FailureCount = failureCount,
+            CreatedAt = DateTime.UtcNow,
+            CreatedBy = userId
+        };
 
         private static Notification NewNotification(
             Guid id,
@@ -366,6 +420,148 @@ public class NotificationApiE2ETests : IDisposable
     private sealed record PreferenceResponse(string AlertType, bool InAppEnabled, bool EmailEnabled);
 
     private sealed record PreferenceSettingsResponse(List<PreferenceResponse> Preferences);
+
+    // ── Push devices (phase 8.2) ────────────────────────────
+
+    private sealed record PushSubscriptionResponse(
+        Guid Id,
+        string? DeviceLabel,
+        DateTime CreatedAt,
+        DateTime LastSeenAtUtc,
+        bool IsActive,
+        string? LastFailureReason);
+
+    private sealed record PushSettingsResponse(
+        bool Enabled,
+        string? VapidPublicKey,
+        int MaxSubscriptionsPerUser,
+        string MinSeverityOnByDefault,
+        List<PushSubscriptionResponse> Subscriptions);
+
+    /// <summary>
+    /// A subscription a browser could really have minted: a genuine uncompressed P-256 point and
+    /// a 16-octet secret. Used so the refusal below is provably about the deployment and not about
+    /// a malformed request.
+    /// </summary>
+    private static (string P256dh, string Auth) RealSubscriptionKeys()
+    {
+        using var key = System.Security.Cryptography.ECDiffieHellman.Create(
+            System.Security.Cryptography.ECCurve.NamedCurves.nistP256);
+        var q = key.PublicKey.ExportParameters().Q;
+
+        var point = new byte[65];
+        point[0] = 0x04;
+        q.X!.CopyTo(point, 1);
+        q.Y!.CopyTo(point, 33);
+
+        return (
+            FMS.Infrastructure.Notifications.Base64Url.Encode(point),
+            FMS.Infrastructure.Notifications.Base64Url.Encode(
+                System.Security.Cryptography.RandomNumberGenerator.GetBytes(16)));
+    }
+
+    [Fact]
+    public async Task PushSettings_WithoutVapidKeys_OfferNoKeyAndSayPushIsOff()
+    {
+        var client = MyClient();
+
+        var settings = await client.GetFromJsonAsync<PushSettingsResponse>(Url("/push"));
+
+        Assert.NotNull(settings);
+        Assert.False(settings!.Enabled);
+        // The half a browser would subscribe with is withheld while the deployment cannot send:
+        // handing it out would produce a subscription nothing ever uses, bought with a permission
+        // prompt.
+        Assert.Null(settings.VapidPublicKey);
+        Assert.True(settings.MaxSubscriptionsPerUser >= 1);
+        Assert.Equal(NotificationSeverity.Critical, settings.MinSeverityOnByDefault);
+
+        // Only my own devices, with the disabled one marked rather than hidden.
+        Assert.Equal(2, settings.Subscriptions.Count);
+        Assert.DoesNotContain(settings.Subscriptions, s => s.Id == _factory.TheirPushDeviceId);
+        Assert.True(settings.Subscriptions.Single(s => s.Id == _factory.MyPushDeviceId).IsActive);
+
+        var disabled = settings.Subscriptions.Single(s => s.Id == _factory.MyDisabledPushDeviceId);
+        Assert.False(disabled.IsActive);
+        Assert.NotNull(disabled.LastFailureReason);
+
+        // Neither the endpoint nor the encryption keys are in the payload: the browser already
+        // holds them, and a capability URL is not something to hand back over the wire.
+        var raw = await client.GetStringAsync(Url("/push"));
+        Assert.DoesNotContain("push.example", raw);
+        Assert.DoesNotContain("FakeAuthSecret16", raw);
+    }
+
+    [Fact]
+    public async Task RegisteringADevice_IsRefusedWhileTheDeploymentCannotSend()
+    {
+        var client = MyClient();
+        var (p256dh, auth) = RealSubscriptionKeys();
+
+        var response = await client.PostAsJsonAsync(Url("/push"), new
+        {
+            endpoint = "https://push.example/new-browser",
+            p256dh,
+            auth,
+            deviceLabel = "Chrome on Android"
+        });
+
+        // 400, not 200: storing a device this deployment could never deliver to would leave it in
+        // the user's list looking healthy while every alert went nowhere.
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+
+        var stored = await WithDbAsync(db => db.PushSubscriptions.AsNoTracking()
+            .Where(s => s.Endpoint == "https://push.example/new-browser")
+            .ToListAsync());
+        Assert.Empty(stored);
+    }
+
+    [Fact]
+    public async Task RemovingADevice_TakesOnlyMyOwn()
+    {
+        var client = MyClient();
+
+        // Another member's device is not mine to remove, and the answer says so rather than
+        // pretending it worked.
+        var theirs = await client.DeleteAsync(Url($"/push/{_factory.TheirPushDeviceId}"));
+        Assert.Equal(HttpStatusCode.NotFound, theirs.StatusCode);
+        Assert.True(await WithDbAsync(db => db.PushSubscriptions.AsNoTracking()
+            .AnyAsync(s => s.Id == _factory.TheirPushDeviceId)));
+
+        var mine = await client.DeleteAsync(Url($"/push/{_factory.MyPushDeviceId}"));
+        Assert.Equal(HttpStatusCode.NoContent, mine.StatusCode);
+        Assert.False(await WithDbAsync(db => db.PushSubscriptions.AsNoTracking()
+            .AnyAsync(s => s.Id == _factory.MyPushDeviceId)));
+
+        // The row is gone from the list too, so the page and the store agree.
+        var settings = await client.GetFromJsonAsync<PushSettingsResponse>(Url("/push"));
+        Assert.DoesNotContain(settings!.Subscriptions, s => s.Id == _factory.MyPushDeviceId);
+    }
+
+    [Fact]
+    public async Task PushRoutes_InheritTheFarmContextGate()
+    {
+        // Sub-routes are the risk this checks for: FarmContextMiddleware's exemptions are keyed to
+        // exact paths, so a new /push route that somehow skipped the gate would let a header-validated
+        // farm be read through another farm's route.
+        var client = ClientFor(JwtTokenHelper.TestUserId, Seed.FarmId);
+        var otherFarmId = Guid.NewGuid();
+
+        var read = await client.GetAsync($"/api/farm/{otherFarmId}/notifications/push");
+        var (p256dh, auth) = RealSubscriptionKeys();
+        var register = await client.PostAsJsonAsync($"/api/farm/{otherFarmId}/notifications/push", new
+        {
+            endpoint = "https://push.example/cross-farm",
+            p256dh,
+            auth
+        });
+        var remove = await client.DeleteAsync(
+            $"/api/farm/{otherFarmId}/notifications/push/{_factory.MyPushDeviceId}");
+
+        Assert.Equal(HttpStatusCode.Forbidden, read.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, register.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, remove.StatusCode);
+    }
 
     // ── Farm-context protection carries over ────────────────
 

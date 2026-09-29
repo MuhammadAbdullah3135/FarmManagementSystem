@@ -20,6 +20,9 @@ vi.mock('../api/notifications', async (importOriginal) => {
       dismiss: vi.fn(),
       getPreferences: vi.fn(),
       updatePreferences: vi.fn(),
+      getPushSettings: vi.fn(),
+      registerPushSubscription: vi.fn(),
+      unregisterPushSubscription: vi.fn(),
     },
   };
 });
@@ -36,16 +39,46 @@ const farm: Farm = {
 // the alert types whose declared severity is Critical.
 const defaults: NotificationPreferenceSettings = {
   preferences: [
-    { alertType: 'OverdueVaccination', inAppEnabled: true, emailEnabled: true },
-    { alertType: 'OverdueWeightCheck', inAppEnabled: true, emailEnabled: false },
-    { alertType: 'Medicine', inAppEnabled: true, emailEnabled: false },
-    { alertType: 'OverdueTask', inAppEnabled: true, emailEnabled: true },
-    { alertType: 'DueBirth', inAppEnabled: true, emailEnabled: false },
-    { alertType: 'LowInventory', inAppEnabled: true, emailEnabled: false },
+    { alertType: 'OverdueVaccination', inAppEnabled: true, emailEnabled: true, pushEnabled: true },
+    { alertType: 'OverdueWeightCheck', inAppEnabled: true, emailEnabled: false, pushEnabled: false },
+    { alertType: 'Medicine', inAppEnabled: true, emailEnabled: false, pushEnabled: false },
+    { alertType: 'OverdueTask', inAppEnabled: true, emailEnabled: true, pushEnabled: true },
+    { alertType: 'DueBirth', inAppEnabled: true, emailEnabled: false, pushEnabled: false },
+    { alertType: 'LowInventory', inAppEnabled: true, emailEnabled: false, pushEnabled: false },
   ],
-  channels: ['InApp', 'Email'],
+  channels: ['InApp', 'Email', 'Push'],
   emailMinSeverityOnByDefault: 'Critical',
+  minSeverityOnByDefault: 'Critical',
 };
+
+// Push is on offer and this browser is already subscribed — the state in which the push
+// column is usable.
+const pushSettings = {
+  enabled: true,
+  vapidPublicKey: 'BExampleVapidKey',
+  maxSubscriptionsPerUser: 5,
+  minSeverityOnByDefault: 'Critical',
+  subscriptions: [
+    {
+      id: 'device-1',
+      deviceLabel: 'Chrome on Android',
+      createdAt: '2026-09-01T10:00:00Z',
+      lastSeenAtUtc: '2026-09-20T10:00:00Z',
+      isActive: true,
+      lastFailureReason: null,
+    },
+  ],
+};
+
+/** \n * Waits for the push card's settings to have arrived.
+ *
+ * The device list is its own request, one tick behind the matrix, and under the fully parallel
+ * suite testing-library's 1s default is occasionally not enough — a failure there would read as
+ * "the device is missing" when it was merely late. Waiting on the settings keeps every later
+ * assertion about push itself.
+ */
+const findPushDevices = () =>
+  screen.findByText(pushSettings.subscriptions[0].deviceLabel, undefined, { timeout: 5000 });
 
 const renderPage = () =>
   render(
@@ -54,14 +87,67 @@ const renderPage = () =>
     </MemoryRouter>,
   );
 
+/**
+ * Gives the page a browser that really can push.
+ *
+ * jsdom ships neither `serviceWorker`, `PushManager`, nor `Notification`, so out of the box the
+ * real `browserPush` reports `unsupported` and every push assertion would be testing that dead
+ * branch instead of the feature. Stubbing the three globals keeps the real module (and its
+ * `pushState` ordering) in the test, rather than replacing the thing under test with a fake.
+ */
+function stubBrowserPush(options: {
+  permission?: NotificationPermission;
+  endpoint?: string | null;
+} = {}) {
+  const { permission = 'granted', endpoint = 'https://push.example/device-1' } = options;
+
+  const subscription = endpoint
+    ? {
+        endpoint,
+        toJSON: () => ({ endpoint, keys: { p256dh: 'p256dh-key', auth: 'auth-key' } }),
+        unsubscribe: async () => true,
+      }
+    : null;
+
+  Object.defineProperty(navigator, 'serviceWorker', {
+    configurable: true,
+    value: {
+      ready: Promise.resolve({
+        pushManager: {
+          getSubscription: async () => subscription,
+          subscribe: async () => subscription,
+        },
+      }),
+    },
+  });
+
+  (window as unknown as { PushManager?: unknown }).PushManager = class {};
+  (globalThis as unknown as { Notification?: unknown }).Notification = {
+    permission,
+    requestPermission: async () => permission,
+  };
+}
+
+/** The Android WebView the farm app actually ships in: none of the three globals exist. */
+function removeBrowserPush() {
+  delete (navigator as unknown as { serviceWorker?: unknown }).serviceWorker;
+  delete (window as unknown as { PushManager?: unknown }).PushManager;
+  delete (globalThis as unknown as { Notification?: unknown }).Notification;
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
+  stubBrowserPush();
   useFarmStore.setState({ farms: [farm], activeFarm: farm, isLoading: false, error: null });
   vi.mocked(notificationsApi.getPreferences).mockResolvedValue({ data: defaults } as never);
   vi.mocked(notificationsApi.updatePreferences).mockResolvedValue({ data: defaults } as never);
+  vi.mocked(notificationsApi.getPushSettings).mockResolvedValue({ data: pushSettings } as never);
+  vi.mocked(notificationsApi.registerPushSubscription)
+    .mockResolvedValue({ data: pushSettings.subscriptions[0] } as never);
+  vi.mocked(notificationsApi.unregisterPushSubscription).mockResolvedValue({ data: null } as never);
 });
 
-describe('NotificationPreferencesPage', () => {
+describe('NotificationPreferencesPage', { timeout: 20_000 }, () => {
   it('renders the whole matrix from the server vocabulary', async () => {
     renderPage();
 
@@ -124,5 +210,101 @@ describe('NotificationPreferencesPage', () => {
 
     const sent = vi.mocked(notificationsApi.updatePreferences).mock.calls[0][0];
     expect(sent.find((p) => p.alertType === 'LowInventory')).toMatchObject({ inAppEnabled: false });
+  });
+
+  // ── Push ────────────────────────────────────────────────
+
+  it('shows the push row for every alert type and the devices already registered', async () => {
+    renderPage();
+    await findPushDevices();
+
+    // The third channel is a column in the same matrix, not a separate page: one row per
+    // alert type holds all three choices.
+    expect(await screen.findByRole('switch', { name: 'Push notifications for Overdue vaccinations' }))
+      .toBeChecked();
+    expect(screen.getByRole('switch', { name: 'Push notifications for Low inventory stock' }))
+      .not.toBeChecked();
+
+    // ...and the device that registered is named, so "on" has something behind it.
+    expect(screen.getByText('Chrome on Android')).toBeInTheDocument();
+    expect(screen.getByText('On for this device')).toBeInTheDocument();
+  });
+
+  it('saves a push choice alongside the other channels', async () => {
+    renderPage();
+    await findPushDevices();
+
+    await userEvent.click(
+      await screen.findByRole('switch', { name: 'Push notifications for Low inventory stock' }),
+    );
+    await userEvent.click(screen.getByRole('button', { name: /Save/ }));
+
+    await waitFor(() => expect(notificationsApi.updatePreferences).toHaveBeenCalled());
+
+    const sent = vi.mocked(notificationsApi.updatePreferences).mock.calls[0][0];
+    expect(sent.find((p) => p.alertType === 'LowInventory')).toMatchObject({
+      inAppEnabled: true,
+      emailEnabled: false,
+      pushEnabled: true,
+    });
+  });
+
+  it('explains which half of push is missing rather than showing a switch that would do nothing', async () => {
+    vi.mocked(notificationsApi.getPushSettings).mockResolvedValue({
+      data: { ...pushSettings, enabled: false, vapidPublicKey: null, subscriptions: [] },
+    } as never);
+
+    renderPage();
+
+    // The deployment has no keys: the per-type switches are disabled (their stored values are
+    // untouched) and the reason is on screen, rather than a column of on switches that would
+    // buzz nobody's phone.
+    expect(await screen.findByText('Push is turned off on this server, so nothing would be delivered.'))
+      .toBeInTheDocument();
+    expect(screen.getByRole('switch', { name: 'Push notifications for Overdue vaccinations' }))
+      .toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Turn on for this device' })).toBeDisabled();
+  });
+
+  it('removes a device without touching the matrix', async () => {
+    renderPage();
+    await findPushDevices();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Remove' }));
+
+    await waitFor(() =>
+      expect(notificationsApi.unregisterPushSubscription).toHaveBeenCalledWith('device-1'));
+
+    // The per-type push choices are not part of removing a device: losing a phone must not
+    // silently rewrite what the user asked to be told about.
+    expect(notificationsApi.updatePreferences).not.toHaveBeenCalled();
+  });
+
+  it('keeps working on a deployment without the push endpoints at all', async () => {
+    vi.mocked(notificationsApi.getPushSettings).mockRejectedValue(new Error('Request failed with status code 404'));
+
+    renderPage();
+
+    // An older server answers 404 here; the page still renders its matrix and says push is off
+    // rather than showing an error page for a feature the deployment does not have.
+    expect(await screen.findByText('Overdue vaccinations')).toBeInTheDocument();
+    expect(screen.getByText('Push is turned off on this server, so nothing would be delivered.'))
+      .toBeInTheDocument();
+  });
+
+  it('says a browser that cannot push cannot push, instead of blaming the server', async () => {
+    removeBrowserPush();
+
+    renderPage();
+
+    // The Android WebView the farm app ships in has no Push API and no notification permission:
+    // the card names that rather than showing an "off" switch the user could never turn on, and
+    // the per-type switches stay disabled so nothing looks deliverable.
+    expect(await screen.findByText(
+      'This browser or app cannot receive push notifications. Open the farm app in a browser to use them.',
+    )).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Turn on for this device' })).toBeDisabled();
+    expect(screen.getByRole('switch', { name: 'Push notifications for Overdue vaccinations' }))
+      .toBeDisabled();
   });
 });

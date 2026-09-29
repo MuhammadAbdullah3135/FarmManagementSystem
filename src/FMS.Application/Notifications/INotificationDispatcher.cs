@@ -10,7 +10,9 @@ public readonly record struct NotificationDispatchResult(
     int Resolved,
     int EmailsSent,
     int EmailFailures,
-    IReadOnlyList<string> SkippedAlertTypes)
+    IReadOnlyList<string> SkippedAlertTypes,
+    int PushesDelivered = 0,
+    int PushFailures = 0)
 {
     public static NotificationDispatchResult Empty { get; } =
         new(0, 0, 0, 0, 0, Array.Empty<string>());

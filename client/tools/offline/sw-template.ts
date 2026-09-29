@@ -125,6 +125,11 @@ export function selectServiceWorkerVersion({
  *   authenticated response in a shared cache is a cross-account leak. Found exactly
  *   that way: a browser smoke test fetched a same-origin /api path and it landed in
  *   the cache. Default-deny makes the failure impossible rather than topology-dependent.
+ * - **Push is a handler, not a cache.** The `push` and `notificationclick` listeners
+ *   below are the receiving half of the server's Web Push channel: they render the
+ *   alert the server sent and open the route it points at. Nothing about them touches
+ *   the cache, and a payload is never stored — a notification is about a farm's state
+ *   at one moment, and a cached copy of it would be a stale alert shown as news.
  */
 export function buildServiceWorker({ version, precache, shellUrl, assetPrefix }: ServiceWorkerInput): string {
   if (precache.length === 0) {
@@ -205,6 +210,142 @@ self.addEventListener('fetch', function (event) {
     event.respondWith(cacheFirstAsset(request));
   }
 });
+
+self.addEventListener('push', function (event) {
+  event.waitUntil(showPushNotification(event));
+});
+
+/**
+ * Renders one pushed alert.
+ *
+ * The payload is the JSON the server's WebPushSender builds; the field names are that
+ * contract, and
+ * a test on each side pins them, because nothing else would catch the two drifting apart
+ * (a push that arrives and renders nothing has no error anywhere).
+ */
+async function showPushNotification(event) {
+  var payload = readPushPayload(event);
+  var iconUrl = new URL('favicon.svg', self.registration.scope).href;
+
+  await self.registration.showNotification(payload.title, {
+    body: payload.body,
+    // Collapses this farm's alerts: a phone that was off all day shows the latest state
+    // rather than a stack of stale knock-ons.
+    tag: payload.tag,
+    // The route survives in the notification's data while it sits in the tray and while this
+    // worker is stopped and restarted, which is the only reliable way to carry it.
+    data: { url: payload.url },
+    icon: iconUrl,
+    badge: iconUrl,
+    // A critical alert waits to be dealt with. Swiping a banner away by accident should not
+    // be how somebody loses an overdue vaccination.
+    requireInteraction: payload.severity === 'Critical'
+  });
+}
+
+function readPushPayload(event) {
+  var fallback = {
+    title: 'New alert',
+    body: 'Open the app to see it.',
+    url: '/dashboard/notifications',
+    tag: 'fms-notifications',
+    severity: 'Info'
+  };
+
+  if (!event.data) return fallback;
+
+  var raw = null;
+  try {
+    raw = event.data.json();
+  } catch (error) {
+    raw = null;
+  }
+
+  if (!raw || typeof raw !== 'object') {
+    // Something that is not our payload still gets shown rather than dropped: a push the
+    // browser hands us is evidence the server had something to say, and a silent one is
+    // indistinguishable from a broken channel.
+    var text = '';
+    try {
+      text = event.data.text();
+    } catch (error) {
+      text = '';
+    }
+
+    return {
+      title: fallback.title,
+      body: text || fallback.body,
+      url: fallback.url,
+      tag: fallback.tag,
+      severity: fallback.severity
+    };
+  }
+
+  return {
+    title: typeof raw.title === 'string' && raw.title ? raw.title : fallback.title,
+    body: typeof raw.body === 'string' ? raw.body : '',
+    url: typeof raw.url === 'string' && raw.url ? raw.url : fallback.url,
+    tag: typeof raw.tag === 'string' && raw.tag ? raw.tag : fallback.tag,
+    severity: typeof raw.severity === 'string' ? raw.severity : fallback.severity
+  };
+}
+
+self.addEventListener('notificationclick', function (event) {
+  event.notification.close();
+
+  var url = event.notification.data && event.notification.data.url;
+  event.waitUntil(openNotificationTarget(url));
+});
+
+/**
+ * Focuses the app on the alert's route, opening a window if there is none.
+ *
+ * The origin check is the one thing here worth being careful about: the payload comes from
+ * our own server, but it travels through a push service and is only authenticated as far as
+ * the record's tag reaches (RFC 8291 §7 leaves the headers unauthenticated), so a target on
+ * another origin must not be able to make the app open somebody else's page. Anything that
+ * is not this app's own origin falls back to the app itself.
+ */
+async function openNotificationTarget(url) {
+  var home = new URL(self.registration.scope);
+  var target = home;
+
+  if (typeof url === 'string' && url) {
+    try {
+      var candidate = new URL(url, home);
+      if (candidate.origin === home.origin) target = candidate;
+    } catch (error) {
+      target = home;
+    }
+  }
+
+  var windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+
+  for (var index = 0; index < windows.length; index++) {
+    var client = windows[index];
+
+    var clientOrigin;
+    try {
+      clientOrigin = new URL(client.url).origin;
+    } catch (error) {
+      continue;
+    }
+
+    if (clientOrigin !== home.origin) continue;
+
+    await client.focus();
+
+    // Navigated rather than reopened: the app is already installed and warm, and a second
+    // window for the same farm is not what the reader asked for by tapping an alert.
+    if (client.navigate && client.url !== target.href) {
+      await client.navigate(target.href);
+    }
+
+    return;
+  }
+
+  await self.clients.openWindow(target.href);
+}
 
 async function networkFirstShell(request) {
   var cache = await caches.open(CACHE_NAME);

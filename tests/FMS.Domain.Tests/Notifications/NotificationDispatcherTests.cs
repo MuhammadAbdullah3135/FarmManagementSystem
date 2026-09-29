@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using FMS.Application.Auth;
 using FMS.Application.Breeding;
 using FMS.Application.Common;
@@ -88,6 +89,45 @@ public class NotificationDispatcherTests
     }
 
     /// <summary>
+    /// Records what was pushed, and can be told what the push service answers.
+    ///
+    /// <para>
+    /// The outcomes worth testing are not all successes: a push service answers 410 for a
+    /// browser that has gone away, and the dispatcher has to close that subscription rather
+    /// than retry it for ever. So the sender takes a per-device answer, and every attempt is
+    /// recorded — including the failed ones, which is how the tests see an attempt that
+    /// correctly did <em>not</em> happen.
+    /// </para>
+    ///
+    /// <para>
+    /// <see cref="IsConfigured"/> is settable because a deployment with no VAPID keys has no
+    /// push channel at all, and the dispatcher must then skip the channel instead of trying
+    /// and failing.
+    /// </para>
+    /// </summary>
+    private sealed class TestPushSender : IPushSender
+    {
+        public List<(Guid SubscriptionId, string Endpoint, PushMessage Message, PushSendResult Result)> Attempts { get; } = new();
+
+        public bool IsConfigured { get; set; } = true;
+
+        /// <summary>What the push service answers for a given device. Delivered by default.</summary>
+        public Func<Guid, PushSendResult> ResultFor { get; set; } = _ => PushSendResult.Sent;
+
+        public Task<PushSendResult> SendAsync(
+            PushSubscriptionTarget target,
+            PushMessage message,
+            CancellationToken cancellationToken = default)
+        {
+            var result = ResultFor(target.SubscriptionId);
+            Attempts.Add((target.SubscriptionId, target.Endpoint, message, result));
+            return Task.FromResult(result);
+        }
+
+        public int Delivered => Attempts.Count(a => a.Result.Delivered);
+    }
+
+    /// <summary>
     /// The real weight-check service, switchable to throwing.
     ///
     /// Delegating rather than reimplementing keeps healthy runs honest — they run
@@ -152,6 +192,7 @@ public class NotificationDispatcherTests
             services.AddSingleton(Context);
             services.AddSingleton<ICurrentUserService>(currentUser);
             services.AddSingleton<IEmailService>(Email);
+            services.AddSingleton<IPushSender>(Push);
             services.AddSingleton<IWeightCheckScheduleService>(WeightChecks);
             services.Configure<JobOptions>(_ => { });
             services.Configure<NotificationOptions>(_ => { });
@@ -176,6 +217,8 @@ public class NotificationDispatcherTests
         public INotificationDispatcher Dispatcher { get; }
 
         public TestNotificationEmail Email { get; } = new();
+
+        public TestPushSender Push { get; } = new();
 
         public StubWeightCheckScheduleService WeightChecks { get; }
 
@@ -712,6 +755,271 @@ public class NotificationDispatcherTests
 
         Assert.NotEmpty(harness.Context.Notifications.Where(n => n.FarmId == farmA.FarmId));
         Assert.Empty(harness.Context.Notifications.Where(n => n.FarmId == farmB.FarmId));
+    }
+
+    // ── Push ────────────────────────────────────────────────
+
+    /// <summary>Registers a device for one member, as the API would after a browser subscribed.</summary>
+    private static async Task<PushSubscription> AddDeviceAsync(
+        FmsDbContext context, Guid userId, string endpoint = "https://push.example.net/send/abc")
+    {
+        var keyPair = ECDiffieHellman.Create(ECCurve.NamedCurves.nistP256);
+        var q = keyPair.ExportParameters(false).Q;
+        var point = new byte[65];
+        point[0] = 0x04;
+        q.X!.CopyTo(point, 1);
+        q.Y!.CopyTo(point, 33);
+
+        var subscription = new PushSubscription
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Endpoint = endpoint,
+            P256dh = Base64UrlForTest(point),
+            Auth = Base64UrlForTest(RandomNumberGenerator.GetBytes(16)),
+            DeviceLabel = "Chrome on Android",
+            LastSeenAtUtc = DateTime.UtcNow,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        context.PushSubscriptions.Add(subscription);
+        await context.SaveChangesAsync();
+
+        return subscription;
+    }
+
+    private static string Base64UrlForTest(byte[] bytes) =>
+        Convert.ToBase64String(bytes).TrimEnd('=').Replace('+', '-').Replace('/', '_');
+
+    [Fact]
+    public async Task ExecuteAsync_WithARegisteredDevice_PushesTheNewAlertToIt()
+    {
+        using var harness = new Harness();
+        var seed = await SeedFarmAsync(harness.Context);
+        var device = await AddDeviceAsync(harness.Context, seed.Members.ManagerId);
+
+        var result = await harness.Dispatcher.ExecuteAsync(seed.FarmId);
+
+        Assert.Equal(1, result.PushesDelivered);
+        Assert.Equal(0, result.PushFailures);
+
+        var attempt = Assert.Single(harness.Push.Attempts);
+        Assert.Equal(device.Id, attempt.SubscriptionId);
+
+        // A single alert names itself and links to its own page. "Overdue: FMD" is the
+        // dashboard's wording for the seeded vaccine type, and it is sent in English: a push
+        // is rendered by the browser before any client of ours is running, so there is nobody
+        // to hand a message key to. The row it announces carries the key the app renders a
+        // moment later, which is why the same alert appears translated when it is opened.
+        Assert.Equal("Overdue: FMD", attempt.Message.Title);
+        Assert.Equal(1, attempt.Message.AlertCount);
+        Assert.Equal(NotificationSeverity.Critical, attempt.Message.Severity);
+        Assert.Equal("/dashboard/health/vaccinations", attempt.Message.Url);
+
+        // Delivered is recorded on the notification row, and the counter counts both
+        // out-of-app channels: the digest attempted this one (a Critical type is emailable by
+        // default) and so did the push.
+        var vaccination = await SingleForKeyAsync(
+            harness.Context, seed.Members.ManagerId, VaccinationKey(seed));
+        Assert.NotNull(vaccination.DeliveredAtUtc);
+        Assert.Equal(2, vaccination.DeliveryAttempts);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WithNoRegisteredDevice_PushesNothing()
+    {
+        using var harness = new Harness();
+        var seed = await SeedFarmAsync(harness.Context);
+
+        var result = await harness.Dispatcher.ExecuteAsync(seed.FarmId);
+
+        // The notifications still exist: push is a channel, not the feature.
+        Assert.Equal(3, result.Created);
+        Assert.Empty(harness.Push.Attempts);
+        Assert.Equal(0, result.PushesDelivered);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WithoutAVapidConfiguration_SkipsPushWithoutFailing()
+    {
+        using var harness = new Harness();
+        var seed = await SeedFarmAsync(harness.Context);
+        await AddDeviceAsync(harness.Context, seed.Members.ManagerId);
+        harness.Push.IsConfigured = false;
+
+        var result = await harness.Dispatcher.ExecuteAsync(seed.FarmId);
+
+        // A deployment with no push keys is not a failing deployment: the dispatch does its
+        // ordinary work, the channel is simply absent, and nothing is reported as a failure.
+        Assert.Equal(3, result.Created);
+        Assert.Empty(harness.Push.Attempts);
+        Assert.Equal(0, result.PushesDelivered);
+        Assert.Equal(0, result.PushFailures);
+
+        // The recipient is still reached by the channel that does exist.
+        Assert.Equal(3, result.EmailsSent);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_PushCarriesCriticalByDefault_AndOptingATypeInGroupsIt()
+    {
+        using var harness = new Harness();
+        var seed = await SeedFarmAsync(harness.Context, includeLowStockMedicine: true);
+        await AddDeviceAsync(harness.Context, seed.Members.ManagerId);
+
+        await harness.Dispatcher.ExecuteAsync(seed.FarmId);
+
+        // Two alerts exist for this recipient — the Critical overdue vaccination and a Warning
+        // about medicine stock — and only the Critical one is pushed. Push follows the same
+        // default as email and for the same reason: a channel that interrupts somebody about
+        // everything is a channel they switch off, and the in-app record still has both.
+        var attempt = Assert.Single(harness.Push.Attempts);
+        Assert.Equal(1, attempt.Message.AlertCount);
+        Assert.Equal(2, await harness.Context.Notifications.CountAsync(n =>
+            n.FarmId == seed.FarmId && n.UserId == seed.Members.ManagerId));
+
+        // Opting that type in per row puts both in one push: a phone that buzzes once per alert
+        // is a phone whose notifications get switched off, so a run's alerts arrive together.
+        harness.Context.Notifications.RemoveRange(harness.Context.Notifications);
+        harness.Context.NotificationPreferences.Add(new NotificationPreference
+        {
+            Id = Guid.NewGuid(),
+            FarmId = seed.FarmId,
+            UserId = seed.Members.ManagerId,
+            AlertType = NotificationAlertTypes.Medicine,
+            InAppEnabled = true,
+            EmailEnabled = false,
+            PushEnabled = true,
+            CreatedAt = DateTime.UtcNow
+        });
+        await harness.Context.SaveChangesAsync();
+        harness.Push.Attempts.Clear();
+
+        await harness.Dispatcher.ExecuteAsync(seed.FarmId);
+
+        attempt = Assert.Single(harness.Push.Attempts);
+        Assert.Equal(2, attempt.Message.AlertCount);
+        Assert.Contains("2 new alerts", attempt.Message.Title);
+
+        // The worst of the batch decides how urgent the push is, and the reader is sent to the
+        // list rather than to one of the two alerts.
+        Assert.Equal(NotificationSeverity.Critical, attempt.Message.Severity);
+        Assert.Equal(NotificationAlertTypes.CentreLink, attempt.Message.Url);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_PushTurnedOffForAnAlertType_DoesNotPushIt()
+    {
+        using var harness = new Harness();
+        var seed = await SeedFarmAsync(harness.Context);
+        await AddDeviceAsync(harness.Context, seed.Members.ManagerId);
+
+        // The one alert type this farm produces, muted on push for this recipient. The row is
+        // still created in-app: push is the only channel being silenced.
+        harness.Context.NotificationPreferences.Add(new NotificationPreference
+        {
+            Id = Guid.NewGuid(),
+            FarmId = seed.FarmId,
+            UserId = seed.Members.ManagerId,
+            AlertType = NotificationAlertTypes.OverdueVaccination,
+            InAppEnabled = true,
+            EmailEnabled = true,
+            PushEnabled = false,
+            CreatedAt = DateTime.UtcNow
+        });
+        await harness.Context.SaveChangesAsync();
+
+        var result = await harness.Dispatcher.ExecuteAsync(seed.FarmId);
+
+        Assert.Equal(3, result.Created);
+        Assert.Empty(harness.Push.Attempts);
+
+        // The other two recipients have no overrides at all, so they keep the default — and
+        // the manager still gets the alert in the app.
+        Assert.Single(await OpenForAsync(harness.Context, seed.FarmId, seed.Members.ManagerId));
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_SubscriptionThePushServiceReportsGone_IsDisabledAndNotRetried()
+    {
+        using var harness = new Harness();
+        var seed = await SeedFarmAsync(harness.Context);
+        var device = await AddDeviceAsync(harness.Context, seed.Members.ManagerId);
+
+        harness.Push.ResultFor = _ => PushSendResult.Gone("the push service answered 410 Gone");
+
+        var first = await harness.Dispatcher.ExecuteAsync(seed.FarmId);
+
+        Assert.Equal(1, first.PushFailures);
+        Assert.Equal(0, first.PushesDelivered);
+
+        // The condition is cleared away so the next run has something new to announce. If the
+        // device were still active it would be pushed to again — which is exactly what this
+        // asserts does not happen.
+        harness.Context.Notifications.RemoveRange(
+            harness.Context.Notifications.Where(n => n.FarmId == seed.FarmId));
+        await harness.Context.SaveChangesAsync();
+
+        var second = await harness.Dispatcher.ExecuteAsync(seed.FarmId);
+
+        Assert.Equal(3, second.Created);
+        Assert.Single(harness.Push.Attempts);
+        Assert.Equal(0, second.PushesDelivered);
+
+        var stored = await harness.Context.PushSubscriptions.AsNoTracking()
+            .SingleAsync(s => s.Id == device.Id);
+        Assert.NotNull(stored.DisabledAtUtc);
+        Assert.False(stored.IsActive);
+        Assert.Contains("410", stored.LastFailureReason);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_PushFailingTransiently_IsCountedOnTheDeviceAndDoesNotThrow()
+    {
+        using var harness = new Harness();
+        var seed = await SeedFarmAsync(harness.Context);
+        var device = await AddDeviceAsync(harness.Context, seed.Members.ManagerId);
+
+        harness.Push.ResultFor = _ => PushSendResult.Failed("the request to the push service failed: connection refused");
+
+        var result = await harness.Dispatcher.ExecuteAsync(seed.FarmId);
+
+        // The dispatch completed: a push service having a bad afternoon must not fail a farm's
+        // notifications, which are already persisted by the time push runs.
+        Assert.Equal(3, result.Created);
+        Assert.Equal(1, result.PushFailures);
+        Assert.Equal(0, result.PushesDelivered);
+
+        // The device stays active (worth retrying) and carries the reason, so a flapping
+        // endpoint is visible instead of being an unexplained silence.
+        var stored = await harness.Context.PushSubscriptions.AsNoTracking()
+            .SingleAsync(s => s.Id == device.Id);
+        Assert.True(stored.IsActive);
+        Assert.Equal(1, stored.FailureCount);
+        Assert.Contains("connection refused", stored.LastFailureReason);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_OnlyPushesTheRecipientsWhoRegisteredADevice()
+    {
+        using var harness = new Harness();
+        var seed = await SeedFarmAsync(harness.Context);
+
+        // One device, on the vet's account. The manager and the accountant are eligible for
+        // the same alert and have nowhere to receive a push.
+        await AddDeviceAsync(harness.Context, seed.Members.VetId, "https://push.example.net/send/vet");
+
+        var result = await harness.Dispatcher.ExecuteAsync(seed.FarmId);
+
+        Assert.Equal(1, result.PushesDelivered);
+
+        var attempt = Assert.Single(harness.Push.Attempts);
+        Assert.Equal("https://push.example.net/send/vet", attempt.Endpoint);
+
+        // The other two recipients still have their notifications — having nowhere to push to
+        // is not a failure, and the alert reaches them in the app and by email as before.
+        Assert.Single(await OpenForAsync(harness.Context, seed.FarmId, seed.Members.ManagerId));
+        Assert.Single(await OpenForAsync(harness.Context, seed.FarmId, seed.Members.AccountantId));
     }
 }
 

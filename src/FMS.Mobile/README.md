@@ -21,7 +21,7 @@ A lightweight .NET MAUI Android app that wraps the [FMS web frontend](https://mu
 - **Android only** — the iOS, MacCatalyst and Windows targets were removed in `7188b41`, and the removal stands: an iOS target needs a macOS/Xcode machine this project does not have. See [Why Android only](#why-android-only-no-ios-target) for the reasons and for what a port would take.
 - **arm64-only Debug build** — the Debug configuration forces the `android-arm64` ABI, so the APK produced by the build command below will not run on arm32 or x86 devices
 - **Debug build** — current APK includes test-only buttons (Test Crash, Share Report) compiled out of Release builds
-- **No push notifications** — not yet implemented
+- **No push notifications inside the wrapped app** — the Android WebView implements neither the Push API nor a notification permission, so the app's push card reports that this app cannot receive push notifications instead of offering a switch that would do nothing. Web push works in any real browser (Chrome, Edge, Firefox on Android, or a desktop); reaching the APK means Firebase Cloud Messaging and its credentials, which is a second transport rather than a setting. See [../../docs/VERIFICATION.md](../../docs/VERIFICATION.md) §10.
 - **Tightly coupled to GitHub Pages URL** — the WebView URL is hardcoded in `MainPage.cs`; changing the deployment URL requires a code change and rebuild
 - **google-services.json is not in the repo** — Firebase config is gitignored; you must obtain your own from the Firebase console
 
@@ -48,7 +48,7 @@ What an iOS port would have to contain if it is ever revived — read off the An
 | `MainActivity`'s `OnBackPressedCallback` walking web history | The edge-swipe gesture, which `WKWebView` provides itself |
 | `AndroidManifest.xml` — `INTERNET`, `CAMERA`, and a camera `uses-feature` marked `required="false"` | `Info.plist`'s `NSCameraUsageDescription`; network access needs no declaration |
 
-The runbooks that exercise the shell are Android-only with it: `../../docs/VERIFICATION.md` §6 (offline shell and write queue in a real WebView), §8 (Arabic RTL inside the WebView) and §9 (QR scanning with the camera). An iOS port restarts all three; none of their results transfers.
+The runbooks that exercise the shell are Android-only with it: `../../docs/VERIFICATION.md` §6 (offline shell and write queue in a real WebView), §8 (Arabic RTL inside the WebView) and §9 (QR scanning with the camera). An iOS port restarts all three; none of their results transfers. §10 (push notifications) is a **browser** runbook by construction — this shell cannot be its subject, because the WebView has no Push API.
 
 iPhone users are not shut out of the product — the frontend runs in any browser, Safari included — but there is no FMS app in the App Store, and there is no plan for one.
 ## Building

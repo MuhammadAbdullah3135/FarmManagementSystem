@@ -163,6 +163,16 @@ public class NotificationService : INotificationService
             var existing = stored.FirstOrDefault(p =>
                 string.Equals(p.AlertType, update.AlertType, StringComparison.Ordinal));
 
+            // A payload that says nothing about push leaves the choice where it is — the
+            // stored one, or the deployment's severity default for a type that has no row
+            // yet. A client from before the push column existed is the case this protects:
+            // it must not mute a channel it cannot show.
+            var pushEnabled = update.PushEnabled
+                ?? existing?.PushEnabled
+                ?? NotificationSeverity.IsOutOfAppEnabledByDefault(
+                    NotificationAlertTypes.DefaultSeverityFor(update.AlertType),
+                    _options.PushMinSeverityOnByDefault);
+
             if (existing is null)
             {
                 _db.NotificationPreferences.Add(new NotificationPreference
@@ -173,6 +183,7 @@ public class NotificationService : INotificationService
                     AlertType = update.AlertType,
                     InAppEnabled = update.InAppEnabled,
                     EmailEnabled = update.EmailEnabled,
+                    PushEnabled = pushEnabled,
                     CreatedAt = now,
                     CreatedBy = userId
                 });
@@ -181,6 +192,7 @@ public class NotificationService : INotificationService
             {
                 existing.InAppEnabled = update.InAppEnabled;
                 existing.EmailEnabled = update.EmailEnabled;
+                existing.PushEnabled = pushEnabled;
                 existing.ModifiedAt = now;
                 existing.ModifiedBy = userId;
             }
@@ -230,13 +242,26 @@ public class NotificationService : INotificationService
                     AlertType = alertType,
                     InAppEnabled = preference?.InAppEnabled ?? true,
                     EmailEnabled = preference?.EmailEnabled
-                        ?? NotificationSeverity.IsEmailEnabledByDefault(
+                        ?? NotificationSeverity.IsOutOfAppEnabledByDefault(
                             NotificationAlertTypes.DefaultSeverityFor(alertType),
-                            _options.EmailMinSeverityOnByDefault)
+                            _options.EmailMinSeverityOnByDefault),
+                    PushEnabled = preference?.PushEnabled
+                        ?? NotificationSeverity.IsOutOfAppEnabledByDefault(
+                            NotificationAlertTypes.DefaultSeverityFor(alertType),
+                            _options.PushMinSeverityOnByDefault)
                 };
             }).ToList(),
-            Channels = new List<string> { NotificationChannels.InApp, NotificationChannels.Email },
-            EmailMinSeverityOnByDefault = _options.EmailMinSeverityOnByDefault
+            Channels = new List<string>
+            {
+                NotificationChannels.InApp,
+                NotificationChannels.Email,
+                NotificationChannels.Push
+            },
+            EmailMinSeverityOnByDefault = _options.EmailMinSeverityOnByDefault,
+            // Reported rather than assumed: the screen says which severities an out-of-app
+            // channel picks up by default, and a constant here would describe a policy the
+            // dispatcher is not running.
+            MinSeverityOnByDefault = _options.PushMinSeverityOnByDefault
         };
 
     private static NotificationDto Map(Notification n) => new()

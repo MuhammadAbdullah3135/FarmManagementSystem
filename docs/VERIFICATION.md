@@ -19,6 +19,7 @@ item could be verified for real.
 | 5 | Live email delivery (reset, invitation, digest) | **HANDED OFF** | No provider credentials or mailbox in this environment |
 | 6 | Offline shell and the offline write queue inside a real Android WebView | **HANDED OFF** | No device or emulator here; jsdom cannot exercise the WebView's cache, a service worker's install, or IndexedDB durability across an OS kill |
 | 9 | QR scanning inside the Android WebView | **HANDED OFF** | No device or emulator here, and jsdom has neither a camera nor `BarcodeDetector`; the wrapper's permission grant and a printed label at arm's length cannot be simulated |
+| 10 | Web push delivery to a real browser (and its phone) | **HANDED OFF** | No push service, browser or device is reachable from this environment; the RFC 8291 vector, the client suites and the endpoint E2E tests around it are green here |
 
 ---
 
@@ -1038,6 +1039,165 @@ for 9a and 9e), the built APK, an account with access to a farm that holds a few
 
 ---
 
+## 10. Web push delivery to a real browser — HANDED OFF
+
+**Browser, not wrapper.** This runbook needs a real browser and a reachable push service. The Android
+WebView cannot be its subject at all — it implements neither the Push API nor a notification
+permission — and step 10e4 exists to show that the app says so. See
+[`src/FMS.Mobile/README.md`](../src/FMS.Mobile/README.md#known-limitations).
+
+Nothing here has ever been exercised against a push service: no FCM, no Mozilla autopush, no
+browser. Every byte the sender produces is checked against the RFC's own example, which is a
+stronger statement than "it compiles" and a much weaker one than "a phone buzzed".
+
+The whole test project was run for this increment as two complementary `--filter`s rather than in one
+sweep: a single whole-project `dotnet test` does not finish inside this environment's command budget,
+and the two filters are complements, so their union is the suite.
+
+### What the suites already prove
+
+- **The message body is byte-for-byte the RFC 8291 §5 example.** `WebPushEncryptionTests`
+  reproduces the request body exactly — the 86-octet header (salt, `rs=4096`, `idlen=65`, sender
+  point) and the ciphertext — and asserts the Appendix A intermediates (the ECDH secret, the CEK and
+  the nonce) **by value**. Two failures that nothing else here would catch are pinned by that:
+  the AEAD must be invoked with **zero-length associated data** (passing the header as AAD leaves the
+  ciphertext intact and corrupts only the tag, so it fails at the phone and nowhere earlier), and the
+  published body is **144** octets even though the RFC's own `Content-Length: 145` says otherwise.
+- **The VAPID JWT is shaped the way push services require**: signed `ES256` in IEEE-P1363
+  fixed-field form (not DER, which some verifiers reject), scoped to the endpoint's origin, with
+  `sub` and `exp` set. The key pair is cross-checked at parse time, and a fabricated P-256 point is
+  refused — `ECDiffieHellman.ImportParameters` does **not** verify the curve equation, so without
+  that check a forged key parses happily and fails at every send instead.
+- **The browser half is covered with the browser injected**: permission refused, an unsupported
+  browser, a server with no keys, the server row failing *after* the browser subscribed, the device
+  label derived from the user agent, and the service worker's `push`/`notificationclick` handlers —
+  including that a `notificationclick` for a foreign origin is never focused or opened, since a push
+  message's headers are unauthenticated (RFC 8291 §7).
+- **The HTTP surface is covered through the real farm-context middleware**: settings with the key
+  withheld while unconfigured, registration refused with 400 for the same reason, owner-scoped
+deletion (another member's id is 404 and the row survives), and that `/notifications/push` inherits
+  the gate — route farm ≠ header farm is 403 for read, write and delete.
+- **The preferences screen is covered with a push-capable browser stubbed in**: the third column is
+  disabled unless this browser is subscribed, the device list renders and removes, and the two
+  "half missing" messages appear instead of a switch that would do nothing.
+
+### What only a browser, a push service and a phone can show
+
+Everything between our encrypted bytes and a visible notification: whether the push service accepts
+the VAPID JWT and the `aes128gcm` body, whether the browser renders the title, body, tag and urgency
+as intended, whether `notificationclick` focuses the existing tab instead of opening a second one,
+whether a phone that was **off** receives the message once it is back inside the TTL, and whether the
+OS shows it with the app closed. jsdom has neither a Push API nor a push service, and no test in this
+repository has ever opened a connection to one.
+
+### Runbook
+
+Prerequisites: PostgreSQL (per §1 — the identical suite setup) and a machine with ordinary internet
+access. A local browser is enough for most of it: `http://127.0.0.1:3000` and `http://localhost:3000`
+are *secure contexts*, so the Push API and a service worker work there without TLS — but a LAN
+address such as `http://192.168.1.20:3000` is not, and the card will correctly report that the
+browser cannot push.
+
+**10a. Generate a VAPID pair.**
+
+```bash
+node -e "
+const { webcrypto } = require('crypto');
+(async () => {
+  const k = await webcrypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign','verify']);
+  const j = await webcrypto.subtle.exportKey('jwk', k.privateKey);
+  const point = Buffer.concat([Buffer.from([4]), Buffer.from(j.x, 'base64url'), Buffer.from(j.y, 'base64url')]);
+  console.log('PublicKey  =', point.toString('base64url'));
+  console.log('PrivateKey =', Buffer.from(j.d, 'base64url').toString('base64url'));
+})();
+"
+```
+
+**Pass:** a 65-octet point (87 URL-safe characters) and a 32-octet scalar (43). Only the private half
+is strictly required — the public one is derived from it — but set **both**: that is what lets the
+startup guard catch a paste error instead of a silently unverifiable pair.
+
+**10b. Configure it and start, in Development.**
+
+```bash
+export Push__Enabled=true
+export Push__Subject='mailto:you@example.com'
+export Push__PublicKey='<from 10a>'
+export Push__PrivateKey='<from 10a>'
+export ASPNETCORE_ENVIRONMENT=Development      # /hangfire is mounted, and the guard warns rather than refuses
+cd src/FMS.API && dotnet run
+```
+
+**Pass:** startup logs no push warning, and `GET /api/farm/{farmId}/notifications/push` answers
+`enabled: true` with the public key and an empty device list.
+
+Also worth one deliberate failure run each, because these are the two ways a deployment with keys
+still delivers nothing:
+
+1. Swap one character of `Push__PrivateKey`, restart. In Development: a warning naming the
+   unusable configuration, and the server still starts. With `ASPNETCORE_ENVIRONMENT=Production`: it
+   **refuses to start**.
+2. `Push__Enabled=false`, restart. Pass: push is off, `/push` answers `enabled: false` with a null
+   key, and the app's card says so rather than offering a switch.
+
+**10c. Subscribe a browser.**
+
+1. Open the app in Chrome (desktop or Android), sign in, and go to *Notifications → Preferences*.
+2. **Pass:** the card reads *Off for this device*, the matrix has a **Push** column whose switches
+   are enabled, and the button is *Turn on for this device*.
+3. Press it and accept the browser's prompt.
+4. **Pass:** the status becomes *On for this device*, the button becomes *Turn off for this device*,
+   and the device appears in the list with a recognisable label (*Chrome on Android*).
+   `GET …/notifications/push` then lists exactly one subscription, and the response contains
+   **neither the endpoint nor either key**.
+5. Reload the page. **Pass:** it is still on — the card reads the browser's own subscription, not a
+   remembered click.
+
+**10d. Deliver one.**
+
+1. Give the farm a condition that alerts above the default threshold. An overdue vaccination is
+   Critical, so it is pushed by default; alternatively turn push on for a Warning type (low stock)
+   so a cheaper condition serves.
+2. Open `/hangfire` (Development only) → **Recurring Jobs** → `notification-dispatch-fan-out` →
+   **Trigger now**. There is no manual-trigger endpoint on `/api/admin/jobs`; the dashboard is the
+   supported way to run it outside its 15-minute cron.
+3. **Pass:** the farm's completion log line reports `1 push(es) delivered` (and `0 failed`); one
+   notification appears reading *N new alerts on {farm}*; tapping it opens that farm's notification
+   centre; triggering again with nothing new sends nothing.
+4. **Pass:** with the app backgrounded and again with it closed — the notification still arrives.
+5. **Pass:** the push text is English whatever the UI language (it is rendered before any client of
+   ours runs), while the alert it points at reads in the reader's language.
+
+**10e. The failure paths, one run each.**
+
+1. Revoke the site's notification permission in the browser and reopen the card. **Pass:** it says
+   notifications are blocked for this site, and offers no switch that cannot work.
+2. Turn push off for this device in the app. **Pass:** the row is deleted server-side *and* the
+   browser's subscription is dropped, so no later dispatch spends a request on it. Re-enabling
+   reuses the same endpoint and restores the same alert choices.
+3. Make a subscription unreachable (clear the browser profile, or uninstall the browser on the
+   phone) and dispatch. **Pass:** the row is not retried forever — a 404/410 disables it, the list
+   marks it *Not receiving*, and the log counts a failure rather than a delivery.
+4. Open the web app inside **the Android wrapper** and open Preferences. **Pass:** the card says this
+   app cannot receive push notifications and the push switches are disabled — the honest state, not a
+   control that would do nothing.
+
+### What to report back
+
+- The browser, its version and the OS (or the phone model), plus the endpoint host the browser
+  minted (`fcm.googleapis.com`, `*.push.services.mozilla.com`, `*.notify.windows.com`) — and
+  whether the VAPID JWT was accepted on the first attempt, because a rejected JWT is exactly what
+  "nothing arrived" looks like from the outside.
+- The verbatim dispatch log line with its `push(es) delivered` / `failed` counts, for 10d and for
+  each 10e run.
+- Whether 10b's two failure runs behaved as described, with the exact startup message when the pair
+  did not match.
+- For a phone that was **off** when the push was sent: whether it arrived after powering on, and
+  roughly how long after (the TTL is four hours, so a device off overnight is expected to miss it).
+- For 10e4: whether the wrapper reported the unsupported state rather than offering the switch.
+
+---
+
 ## Automated QA scripts
 
 Three dependency-free scripts in `scripts/` run against the deployed API
@@ -1108,3 +1268,4 @@ Fill in as each item is executed. Do not mark an item verified on inspection alo
 | 6. Offline shell (device) | | | | seven checks: shell loads offline × `CacheModes.NoCache`, messaging stays honest, a deploy reaches the device, queued writes survive a cold kill (6d), sign-out keeps the queue (6e), the offline-write window (6f), two devices see each other's deltas (6g) |
 | 8. Arabic in the Android WebView | | | | nine checks: the shell mirrors, the native Retry overlay is legible, copy is Arabic, digits/dates/amounts stay Latin, charts are *read* not mirrored, the back arrow points right, nothing truncates or loses its pinned column, mixed-direction names read correctly, and offline still works (8.1–8.9) |
 | 9. QR scanning (device) | | | | five checks: the wrapper's camera grant and its refusal path (9a), a printed label reading at arm's length (9b), offline scanning plus the cached-identity page and the queued weight surviving a kill (9c), a foreign or non-animal code refused without a read (9d), and the camera stopping when the dialog closes (9e) |
+| 10. Web push (browser/device) | | | | five checks: a VAPID pair the guard accepts and rejects correctly (10a/10b), a browser that subscribes and says so without leaking the endpoint (10c), one dispatch arriving as a single collapsed notification with the app closed (10d), and the failure paths — permission revoked, a device turned off, a subscription gone disabled rather than retried, and the Android wrapper reporting that it cannot receive push (10e) |

@@ -57,6 +57,19 @@ public static class NotificationAlertTypes
     /// </summary>
     public const string ExportReadyLink = "/dashboard/configuration/export";
 
+    /// <summary>
+    /// The notification centre.
+    ///
+    /// <para>
+    /// What a push points at when it covers more than one alert, and the fallback when the
+    /// alert it covers has no link of its own. A push is a knock on the door rather than a
+    /// destination: the recipient needs the list of what happened, and an alert's own link
+    /// (a vaccination schedule, a gestation record) can be a page whose context they would
+    /// have to reconstruct.
+    /// </para>
+    /// </summary>
+    public const string CentreLink = "/dashboard/notifications";
+
     /// <summary>Every alert type the dashboard can produce.</summary>
     public static readonly IReadOnlyList<string> All =
     [
@@ -226,14 +239,23 @@ public static class NotificationSeverity
     };
 
     /// <summary>
-    /// Whether an alert of this severity is emailable by default.
+    /// Whether an alert of this severity is carried by an out-of-app channel by
+    /// default.
     ///
-    /// The default is the one that avoids both failure modes: emailing everything
-    /// trains people to ignore the channel, while defaulting email off makes it
-    /// invisible. Critical-only means the out-of-app channel carries the things
-    /// worth interrupting somebody for, and anything quieter is opt-in per alert
-    /// type on the preferences screen.
+    /// The default is the one that avoids both failure modes: sending everything
+    /// trains people to ignore the channel, while defaulting the channel off makes it
+    /// invisible. Critical-only means email and push carry the things worth
+    /// interrupting somebody for, and anything quieter is opt-in per alert type on the
+    /// preferences screen.
+    ///
+    /// One method for both channels on purpose: they make the same claim on a person's
+    /// attention and differ only in how fast they arrive, so a rule that drifted apart
+    /// between them would be a difference nobody chose.
     /// </summary>
-    public static bool IsEmailEnabledByDefault(string? severity, string minimumSeverity) =>
+    public static bool IsOutOfAppEnabledByDefault(string? severity, string minimumSeverity) =>
         Rank(severity) <= Rank(minimumSeverity);
+
+    /// <inheritdoc cref="IsOutOfAppEnabledByDefault" />
+    public static bool IsEmailEnabledByDefault(string? severity, string minimumSeverity) =>
+        IsOutOfAppEnabledByDefault(severity, minimumSeverity);
 }

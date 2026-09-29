@@ -277,7 +277,9 @@ All farm-scoped endpoints require `Authorization: Bearer <token>` + `X-Farm-Id: 
 | `/notifications` | The caller's own notifications, with read/dismiss state. Farm-scoped and self-scoped: the recipient comes from the token, never the request |
 | `/notifications/unread-count` | Unread count for the header badge |
 | `/notifications/{id}/read`, `/notifications/read-all`, `/notifications/{id}/dismiss` | Acknowledge or clear a notification. Another member's id answers 404 |
-| `/notifications/preferences` | Per alert type, in-app and email channels (`Notifications` configuration section holds the default email threshold) |
+| `/notifications/preferences` | Per alert type, in-app, email and push channels (`Notifications` section holds the default out-of-app threshold, shared by email and push) |
+| `/notifications/push` | Whether this deployment can push, the VAPID public key to subscribe with, and the caller's own devices. Refused with 400 while push is unconfigured, so a browser never holds a subscription nothing will use. `Push` configuration section holds the VAPID pair |
+| `/notifications/push/{id}` (DELETE) | Remove one of the caller's devices. Another member's id answers 404. Farm-scoped like the rest of the controller, so it needs no farm-context exemption |
 
 Background jobs run through Hangfire against the same PostgreSQL database (`hangfire` schema, created on startup after EF migrations). Recurring jobs fan out one execution per active farm: `feeding-task-generation-fan-out` (daily), `health-status-recalculation-fan-out` (hourly) and `notification-dispatch-fan-out` (every 15 minutes). See the `Jobs` configuration section, and `Jobs:Enabled=false` to run an instance that serves HTTP only.
 

@@ -47,7 +47,9 @@ public class NotificationDispatchJob
             _logger.LogInformation(
                 "Job {JobName} completed for farm {FarmId} in {DurationMs}ms "
                 + "({CreatedCount} created, {UpdatedCount} updated, {ResolvedCount} resolved, "
-                + "{EmailsSent} digest(s) sent, {EmailFailures} failed, {SkippedCount} alert type(s) skipped)",
+                + "{EmailsSent} digest(s) sent, {EmailFailures} failed, "
+                + "{PushesDelivered} push(es) delivered, {PushFailures} failed, "
+                + "{SkippedCount} alert type(s) skipped)",
                 JobNames.NotificationDispatch,
                 farmId,
                 Math.Round(Stopwatch.GetElapsedTime(startedAt).TotalMilliseconds, 1),
@@ -56,6 +58,8 @@ public class NotificationDispatchJob
                 result.Resolved,
                 result.EmailsSent,
                 result.EmailFailures,
+                result.PushesDelivered,
+                result.PushFailures,
                 result.SkippedAlertTypes.Count);
 
             return result;

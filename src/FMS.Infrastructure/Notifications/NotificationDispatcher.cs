@@ -51,6 +51,7 @@ public class NotificationDispatcher : INotificationDispatcher
     private readonly FmsDbContext _db;
     private readonly IDashboardService _dashboardService;
     private readonly IEmailService _emailService;
+    private readonly IPushSender _pushSender;
     private readonly NotificationOptions _options;
     private readonly ILogger<NotificationDispatcher> _logger;
 
@@ -58,12 +59,14 @@ public class NotificationDispatcher : INotificationDispatcher
         FmsDbContext db,
         IDashboardService dashboardService,
         IEmailService emailService,
+        IPushSender pushSender,
         IOptions<NotificationOptions> options,
         ILogger<NotificationDispatcher> logger)
     {
         _db = db;
         _dashboardService = dashboardService;
         _emailService = emailService;
+        _pushSender = pushSender;
         _options = options.Value;
         _logger = logger;
     }
@@ -249,10 +252,15 @@ public class NotificationDispatcher : INotificationDispatcher
         var (emailsSent, emailFailures) = await DeliverDigestsAsync(
             farmId, members, preferences, created, now, cancellationToken);
 
+        var (pushesDelivered, pushFailures) = await DeliverPushesAsync(
+            farmId, preferences, created, now, cancellationToken);
+
         _logger.LogInformation(
             "Job {JobName} completed for farm {FarmId} in {DurationMs}ms "
             + "({CreatedCount} created, {UpdatedCount} updated, {ResolvedCount} resolved, "
-            + "{EmailsSent} digest(s) sent, {EmailFailures} failed, {SkippedCount} alert type(s) skipped)",
+            + "{EmailsSent} digest(s) sent, {EmailFailures} failed, "
+            + "{PushesDelivered} push(es) delivered, {PushFailures} failed, "
+            + "{SkippedCount} alert type(s) skipped)",
             JobNames.NotificationDispatch,
             farmId,
             Math.Round(Stopwatch.GetElapsedTime(startedAt).TotalMilliseconds, 1),
@@ -261,10 +269,13 @@ public class NotificationDispatcher : INotificationDispatcher
             resolvedCount,
             emailsSent,
             emailFailures,
+            pushesDelivered,
+            pushFailures,
             skipped.Count);
 
         return new NotificationDispatchResult(
-            created.Count, updatedCount, resolvedCount, emailsSent, emailFailures, skipped);
+            created.Count, updatedCount, resolvedCount, emailsSent, emailFailures, skipped,
+            pushesDelivered, pushFailures);
     }
 
     /// <summary>
@@ -372,6 +383,199 @@ public class NotificationDispatcher : INotificationDispatcher
     }
 
     /// <summary>
+    /// Pushes this run's new alerts to the recipients' registered devices.
+    ///
+    /// <para>
+    /// <b>One push per recipient per run, not one per notification.</b> The job runs every
+    /// fifteen minutes and a farm's conditions arrive in company — a medicine running out
+    /// is rarely alone — so a phone that buzzes once per alert is a phone whose
+    /// notifications get switched off within a week. The message names the most severe
+    /// alert and says how many came with it; the body of the job (the notification rows)
+    /// is already persisted, and the push is only the knock on the door.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Failures are recorded on the device, not on the notification.</b> A
+    /// notification's <c>DeliveredAtUtc</c> and <c>LastDeliveryError</c> answer "did an
+    /// out-of-app channel reach this person, and if not, why" — and a push that failed on a
+    /// phone whose owner was emailed anyway says nothing about that. The device row is
+    /// where a flapping endpoint is visible, and a subscription the push service reports
+    /// gone (404/410) is disabled there instead of being retried for ever.
+    /// </para>
+    ///
+    /// <para>
+    /// Nothing here throws, for the same reason the digest's failures do not: the default
+    /// Hangfire retry would re-run the dispatch, find nothing new to notify about, and
+    /// never re-attempt the delivery — the message would be lost rather than retried.
+    /// </para>
+    /// </summary>
+    private async Task<(int Delivered, int Failed)> DeliverPushesAsync(
+        Guid farmId,
+        IReadOnlyList<NotificationPreference> preferences,
+        IReadOnlyList<Notification> created,
+        DateTime now,
+        CancellationToken cancellationToken)
+    {
+        if (created.Count == 0)
+        {
+            return (0, 0);
+        }
+
+        // A deployment with no VAPID keys has no push channel at all. Returned quietly
+        // rather than logged per run: an operator who has not enabled push does not need
+        // to be told every quarter of an hour. PushConfigurationGuard says it once, at
+        // startup.
+        if (!_pushSender.IsConfigured)
+        {
+            return (0, 0);
+        }
+
+        var recipientIds = created.Select(n => n.UserId).Distinct().ToList();
+
+        var devices = await _db.PushSubscriptions
+            .Where(s => recipientIds.Contains(s.UserId) && s.DisabledAtUtc == null)
+            .ToListAsync(cancellationToken);
+
+        if (devices.Count == 0)
+        {
+            return (0, 0);
+        }
+
+        var farmName = await _db.Farms
+            .AsNoTracking()
+            .Where(f => f.Id == farmId)
+            .Select(f => f.Name)
+            .FirstOrDefaultAsync(cancellationToken) ?? "your farm";
+
+        var delivered = 0;
+        var failed = 0;
+        var changed = false;
+
+        foreach (var group in created.GroupBy(n => n.UserId))
+        {
+            var pushed = group
+                .Where(n => IsPushEnabled(preferences, group.Key, n.AlertType))
+                .OrderBy(n => NotificationSeverity.Rank(n.Severity))
+                .ThenBy(n => n.Title, StringComparer.Ordinal)
+                .ToList();
+
+            if (pushed.Count == 0)
+            {
+                continue;
+            }
+
+            var message = BuildPushMessage(farmName, pushed);
+
+            foreach (var device in devices.Where(d => d.UserId == group.Key))
+            {
+                // Counted per attempt even though the message is shared: the count is what
+                // makes a repeatedly failing channel visible on the notification's row.
+                foreach (var notification in pushed)
+                {
+                    notification.DeliveryAttempts++;
+                    notification.ModifiedAt = now;
+                }
+
+                var result = await _pushSender.SendAsync(
+                    new PushSubscriptionTarget(device.Id, device.Endpoint, device.P256dh, device.Auth),
+                    message,
+                    cancellationToken);
+
+                changed = true;
+
+                if (result.Delivered)
+                {
+                    delivered++;
+                    device.LastSeenAtUtc = now;
+                    device.FailureCount = 0;
+                    device.LastFailureReason = null;
+                    device.ModifiedAt = now;
+
+                    // The same field the digest sets: "an out-of-app channel accepted it".
+                    foreach (var notification in pushed)
+                    {
+                        notification.DeliveredAtUtc = now;
+                    }
+
+                    continue;
+                }
+
+                failed++;
+                device.LastFailureReason = Truncate(
+                    result.FailureReason ?? "the push service refused the message", 300);
+                device.ModifiedAt = now;
+
+                if (result.SubscriptionGone)
+                {
+                    // The browser is gone: uninstalled, its profile deleted, or permission
+                    // revoked. No retry brings it back, so the row is closed and the user's
+                    // device list stops offering something that cannot work.
+                    device.DisabledAtUtc = now;
+                }
+                else
+                {
+                    device.FailureCount++;
+                }
+
+                _logger.LogWarning(
+                    "Job {JobName}: push to device {SubscriptionId} on farm {FarmId} failed "
+                    + "({Reason}); the in-app notifications were persisted.",
+                    JobNames.NotificationDispatch, device.Id, farmId, device.LastFailureReason);
+            }
+        }
+
+        if (changed)
+        {
+            await _db.SaveChangesAsync(cancellationToken);
+        }
+
+        return (delivered, failed);
+    }
+
+    /// <summary>
+    /// The push that stands for this run's alerts on one farm.
+    ///
+    /// <para>
+    /// The text is English, exactly as the digest's is and for the same reason: a push is
+    /// rendered by the browser before any client of ours is running, so there is nobody to
+    /// hand a message key to. The row it announces carries its key, and the app renders it
+    /// in the reader's language a moment later.
+    /// </para>
+    ///
+    /// <para>
+    /// The tag makes the push service collapse this farm's alerts for one recipient, so a
+    /// phone that was off all day shows the latest state rather than a stack of stale
+    /// knock-ons.
+    /// </para>
+    /// </summary>
+    private static PushMessage BuildPushMessage(string farmName, IReadOnlyList<Notification> pushed)
+    {
+        var mostSevere = pushed[0];
+
+        if (pushed.Count == 1)
+        {
+            return new PushMessage(
+                mostSevere.Title,
+                mostSevere.Message,
+                // The alert's own page when it has one: a single alert is a destination.
+                mostSevere.Link ?? NotificationAlertTypes.CentreLink,
+                Tag: "fms-notifications",
+                mostSevere.Severity,
+                AlertCount: 1);
+        }
+
+        return new PushMessage(
+            $"{pushed.Count} new alerts on {farmName}",
+            $"{mostSevere.Title} — and {pushed.Count - 1} more. Open the app to see them.",
+            NotificationAlertTypes.CentreLink,
+            Tag: "fms-notifications",
+            // The worst of the batch decides how the phone treats it: a run that includes a
+            // critical alert is not a normal-priority message.
+            mostSevere.Severity,
+            AlertCount: pushed.Count);
+    }
+
+    /// <summary>
     /// Caps how much a digest lists, so a farm with hundreds of overdue vaccines
     /// produces a readable message rather than a wall of text.
     /// </summary>
@@ -407,6 +611,25 @@ public class NotificationDispatcher : INotificationDispatcher
         // No row means "use the defaults", so a user who never opens the
         // preferences screen keeps receiving in-app notifications.
         return preference?.InAppEnabled ?? true;
+    }
+
+    /// <summary>
+    /// Whether this alert type reaches the recipient's devices.
+    ///
+    /// The same shape as <see cref="IsEmailEnabled"/>: a row that says nothing means the
+    /// declared severity's default, so a user who never opens the preferences screen gets
+    /// the out-of-app policy the deployment chose rather than silence.
+    /// </summary>
+    private bool IsPushEnabled(
+        IReadOnlyList<NotificationPreference> preferences, Guid userId, string alertType)
+    {
+        var preference = preferences.FirstOrDefault(p =>
+            p.UserId == userId && string.Equals(p.AlertType, alertType, StringComparison.Ordinal));
+
+        return preference?.PushEnabled
+            ?? NotificationSeverity.IsOutOfAppEnabledByDefault(
+                NotificationAlertTypes.DefaultSeverityFor(alertType),
+                _options.PushMinSeverityOnByDefault);
     }
 
     private bool IsEmailEnabled(

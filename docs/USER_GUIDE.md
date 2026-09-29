@@ -42,6 +42,29 @@
 - Set up feeding schedules
 - Assign and track farm tasks
 
+## Notifications and push
+
+The bell in the header opens the notification centre for the farm you are working in. *Preferences*
+turns individual alert types on and off, per channel, for **your account only** — a shared login does
+not share them.
+
+- Every alert type is one row with three switches: **in-app**, **email** and **push**. Push switches
+off an alert type on **all** of your devices at once; the card above the table decides whether *this*
+browser is one of them, so both halves are needed for anything to arrive.
+- **Email and push default to Critical only.** A channel that reports everything is a channel people
+  stop reading; the per-type switches override that for your account.
+- **Turn on for this device** asks your browser for permission and then registers the device. The
+  card says *On for this device* only when both halves worked, and otherwise names the half that
+  refused: the browser blocked notifications, this server has no push keys, or this app cannot
+  receive push at all.
+- **Remove** drops a device from your list. It does not change which alerts you asked for, and
+  turning the same device back on restores them.
+- Push arrives as **one** notification per run — "3 new alerts on Farm A" — not one per alert.
+  Tapping it opens the notification centre, where each alert is worded in your language.
+- Push works in Chrome, Edge and Firefox on Android and on a desktop. **The Android app cannot
+  receive push notifications**: its WebView has no notification support, so its card says so rather
+  than showing a switch that does nothing. Use the web app in a browser to get them.
+
 ## Finance
 - Record expenses with categories and payment methods
 - Track income from various sources

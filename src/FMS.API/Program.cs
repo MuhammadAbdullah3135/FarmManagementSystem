@@ -93,6 +93,19 @@ var emailConfigurationWarning = EmailConfigurationGuard.EnsureUsable(
     builder.Configuration,
     builder.Environment.EnvironmentName,
     builder.Environment.IsDevelopment());
+
+// Push is validated for the same reason, and the failure it prevents is quieter still:
+// with push enabled and unusable VAPID keys, every notification is written and none is
+// delivered, and the only evidence is a phone that never buzzes. A malformed or mismatched
+// key pair is therefore a startup failure outside Development. Push being off is not a
+// failure — it is the default — but it is worth saying once, because a farm that expected
+// alerts on a phone would otherwise find out at the wrong moment.
+var pushOptions = builder.Configuration.GetSection(PushOptions.SectionName).Get<PushOptions>()
+    ?? new PushOptions();
+var pushConfigurationWarning = PushConfigurationGuard.EnsureUsable(
+    pushOptions,
+    builder.Environment.EnvironmentName,
+    builder.Environment.IsDevelopment());
 builder.Host.UseSerilog();
 
 // Dates are UTC by default: a value with no time zone ("2026-09-22") is read as UTC instead of
@@ -281,11 +294,25 @@ builder.Services.AddScoped<IAuditLogService, AuditLogService>();
 // ── Notifications ──────────────────────────────────────────────────────
 // The recipient's own alert history: persisted notifications, per-user channel
 // preferences, and the dispatch that keeps them in step with the dashboard's
-// alert conditions. Email is the one out-of-app channel; push and SMS are not
-// implemented, and the preference model already has a slot for them.
+// alert conditions. Email and Web Push are the two out-of-app channels; SMS is
+// not implemented, and the preference model already has a slot for it.
 builder.Services.Configure<NotificationOptions>(
     builder.Configuration.GetSection(NotificationOptions.SectionName));
 builder.Services.AddScoped<INotificationService, NotificationService>();
+
+// ── Push (Web Push / VAPID) ────────────────────────────────────────────
+// One typed client, with the timeout the options specify: the sender runs inside the
+// scheduled dispatch and a push service that hangs must not hold the job open. It is
+// registered whether or not push is enabled — a deployment with no keys resolves it,
+// reports "not configured", and the dispatcher skips the channel rather than failing
+// to construct. The public half of the key pair is served by GET …/notifications/push;
+// the private half only ever signs a JWT.
+builder.Services.Configure<PushOptions>(builder.Configuration.GetSection(PushOptions.SectionName));
+builder.Services.AddHttpClient<IPushSender, WebPushSender>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(Math.Max(1, pushOptions.RequestTimeoutSeconds));
+});
+builder.Services.AddScoped<IPushSubscriptionService, PushSubscriptionService>();
 
 // ── Background jobs ────────────────────────────────────────────────────
 // Hangfire schedules the recurring work (daily feeding-task generation, hourly
@@ -347,6 +374,11 @@ if (usingLocalStorage && !app.Environment.IsDevelopment())
 if (emailConfigurationWarning is not null)
 {
     app.Logger.LogWarning("Email configuration: {EmailWarning}", emailConfigurationWarning);
+}
+
+if (pushConfigurationWarning is not null)
+{
+    app.Logger.LogWarning("Push configuration: {PushWarning}", pushConfigurationWarning);
 }
 
 using (var scope = app.Services.CreateScope())

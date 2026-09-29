@@ -143,4 +143,51 @@ describe('generated worker', () => {
     expect(() => buildServiceWorker({ version: 'v', precache: [], shellUrl: '/index.html', assetPrefix: '/assets/' }))
       .toThrow(/empty/i);
   });
+
+  // ── Push (the receiving half of the server's Web Push channel) ──
+
+  /// The payload's field names are a contract with the server's WebPushSender. Nothing else
+  /// would catch the two drifting apart: a push that arrives and renders nothing has no error
+  /// anywhere, on either side.
+  it('renders the pushed alert and opens the route it points at', () => {
+    expect(source).toContain("self.addEventListener('push'");
+    expect(source).toContain("self.addEventListener('notificationclick'");
+    expect(source).toContain('self.registration.showNotification');
+    expect(source).toContain('event.data.json()');
+    expect(source).toContain('self.clients.openWindow');
+
+    // A critical alert waits to be dealt with rather than sliding away with the banner.
+    expect(source).toContain("payload.severity === 'Critical'");
+    expect(source).toContain('requireInteraction');
+  });
+
+  /// A payload travels through a push service, and RFC 8291 §7 leaves the headers outside the
+  /// record's authentication. A route on another origin must therefore not be able to make the
+  /// app open somebody else's page.
+  it('never follows a push to another origin', () => {
+    expect(source).toContain('candidate.origin === home.origin');
+  });
+
+  /// A notification is about a farm's state at one moment; a cached copy of it would be a
+  /// stale alert rendered as news, and the payload is not ours to keep.
+  it('keeps the push path out of the cache entirely', () => {
+    // From the push listener to the first cache helper. The listeners are emitted after the
+    // fetch handler, so the end marker is the helper rather than the fetch listener.
+    const pushSection = source.slice(
+      source.indexOf("self.addEventListener('push'"),
+      source.indexOf('async function networkFirstShell'),
+    );
+
+    expect(pushSection.length).toBeGreaterThan(0);
+
+    expect(pushSection).toContain('showPushNotification');
+    expect(pushSection).not.toContain('caches');
+  });
+
+  /// A push the browser hands us is evidence the server had something to say. Dropping one
+  /// because it is not the shape we expect is indistinguishable from a broken channel.
+  it('shows something even when the payload is not ours', () => {
+    expect(source).toContain('New alert');
+    expect(source).toContain('event.data.text()');
+  });
 });
