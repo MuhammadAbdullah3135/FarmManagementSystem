@@ -398,6 +398,13 @@ rows have answered, because losing that race is what bounced the user.
 its flush algorithm and the mutation kinds are untouched, and the suites that pin them pass
 unchanged.
 
+**The wrapper these guarantees are verified against is Android-specific.** FMS.Mobile targets
+`net10.0-android` alone — the iOS, MacCatalyst and Windows targets were removed in `7188b41` —
+so every claim above about the shell (the service worker's precache, IndexedDB durability, and
+the camera a scan needs) is a claim about the Android WebView. There is no iOS target to make
+the same claim about, and none is planned:
+[`src/FMS.Mobile/README.md`](../src/FMS.Mobile/README.md#why-android-only-no-ios-target).
+
 ## Constraints confirmed in the code
 
 These are the facts the design is built on. Each was read out of the source, not assumed.

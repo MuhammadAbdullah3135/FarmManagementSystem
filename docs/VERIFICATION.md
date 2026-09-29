@@ -943,6 +943,12 @@ to العربية:
 
 ## 9. QR scanning inside the Android WebView — HANDED OFF
 
+**Android WebView only.** FMS.Mobile targets `net10.0-android` and nothing else — the iOS,
+MacCatalyst and Windows targets were removed in `7188b41` — so every step below (the camera
+grant, `BarcodeDetector`, a printed label held at arm's length) is a step for Android alone.
+Why that is the decision, and what a port would need, is in
+[`src/FMS.Mobile/README.md`](../src/FMS.Mobile/README.md#why-android-only-no-ios-target).
+
 ### What the suites already prove
 
 - Both routes are covered server-side: `GET …/animals/qr-labels` and `GET …/animals/{id}/qr` are
