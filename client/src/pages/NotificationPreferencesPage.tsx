@@ -113,7 +113,8 @@ const NotificationPreferencesPage: React.FC = () => {const { t } = useTranslatio
 
   return (
     <div>
-      <Space style={{ width: '100%', justifyContent: 'space-between', marginBottom: 8 }} align="start">
+      {/* Layout (wrapping, and two rows on a phone) is `.fms-page-header` in AppLayout.css. */}
+      <Space className="fms-page-header" style={{ width: '100%', justifyContent: 'space-between', marginBottom: 8 }} align="start">
         <div>
           <Title level={3} style={{ marginBottom: 0 }}>{t('notificationPreferences')}</Title>
           <Paragraph type="secondary" style={{ marginBottom: 0 }}>

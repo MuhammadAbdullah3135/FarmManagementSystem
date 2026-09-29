@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
+import { Modal, Pagination } from 'antd';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import api, { setFarmAccessDeniedHandler } from '../api/axios';
@@ -500,5 +501,119 @@ describe('AppLayout write queue', () => {
 
     expect(await screen.findAllByText('Clear offline data?')).not.toHaveLength(0);
     expect((await screen.findAllByText(/discards 2 unsynced records/)).length).toBeGreaterThan(0);
+  });
+});
+
+/*
+ * The page-change scroll, back through the layout that owns the scroll box.
+ *
+ * Every `Pagination` and every table pager in the app is antd's and sits inside the layout's
+ * `Content`, so the listener that returns the reader to the top is attached to that element — and
+ * these tests render a real page (a child route with a pager on it) rather than the pager alone,
+ * because the wiring *is* the placement. jsdom has no layout: `scrollTop` is always 0 and nothing
+ * scrolls, so the box's `scrollTop` is stubbed to stand in for a reader part-way down the page and
+ * the assertion is on the scroll call the click produces.
+ */
+describe('AppLayout page-change scroll', () => {
+  /** A screen with a paged list, a modal that is paged on its own, and a plain control. */
+  const PagedScreen = () => (
+    <>
+      <div style={{ height: 2000 }}>the list</div>
+      <Pagination total={50} pageSize={10} showSizeChanger={false} />
+      <Modal open title="A modal">
+        <Pagination total={50} pageSize={10} showSizeChanger={false} />
+      </Modal>
+      <button type="button">Refresh</button>
+    </>
+  );
+
+  const renderPagedScreen = () => {
+    useAuthStore.setState({ user: userWithRoles(['FarmManager']), isAuthenticated: true });
+    useFarmStore.setState({ farms: [farmA], activeFarm: farmA, isLoading: false, error: null });
+
+    return render(
+      <MemoryRouter initialEntries={['/dashboard']}>
+        <Routes>
+          <Route path="/dashboard" element={<AppLayout />}>
+            <Route index element={<PagedScreen />} />
+          </Route>
+        </Routes>
+      </MemoryRouter>,
+    );
+  };
+
+  /** The layout's scroll box, reading as `scrollTop` (jsdom has no layout to scroll for real). */
+  const scrollBox = (container: HTMLElement, scrollTop: number): HTMLElement => {
+    const box = container.querySelector('.ant-layout-content') as HTMLElement;
+    Object.defineProperty(box, 'scrollTop', { value: scrollTop, writable: true, configurable: true });
+    return box;
+  };
+
+  /**
+   * The screen's own pager, not a modal's: the layout's content is where the listener lives, and
+   * scoping to it also keeps a header badge's `title` out of the queries below.
+   */
+  const pager = (container: HTMLElement) =>
+    within(container.querySelector('.ant-pagination') as HTMLElement);
+
+  beforeEach(() => {
+    vi.mocked(api.get).mockResolvedValue({ data: [] } as never);
+    localStorage.clear();
+  });
+
+  it('puts a reader part-way down the page back at the top when the page changes', async () => {
+    const scrollTo = vi.spyOn(HTMLElement.prototype, 'scrollTo').mockImplementation(() => undefined);
+    const { container } = renderPagedScreen();
+    scrollBox(container, 400);
+
+    await userEvent.click(pager(container).getByTitle('2'));
+
+    expect(scrollTo).toHaveBeenCalledWith({ top: 0 });
+    scrollTo.mockRestore();
+  });
+
+  it('leaves a reader who never left the top alone', async () => {
+    const scrollTo = vi.spyOn(HTMLElement.prototype, 'scrollTo').mockImplementation(() => undefined);
+    const { container } = renderPagedScreen();
+    scrollBox(container, 0);
+
+    await userEvent.click(pager(container).getByTitle('2'));
+
+    expect(scrollTo).not.toHaveBeenCalled();
+    scrollTo.mockRestore();
+  });
+
+  it('is untouched by an interaction that is not a page change', async () => {
+    const scrollTo = vi.spyOn(HTMLElement.prototype, 'scrollTo').mockImplementation(() => undefined);
+    const { container } = renderPagedScreen();
+    scrollBox(container, 400);
+
+    // Refreshing a list, and clicking the page you are already on, both leave the view where it
+    // is: the second is a pagination control, but one that navigates nowhere.
+    await userEvent.click(within(container).getByRole('button', { name: 'Refresh' }));
+    await userEvent.click(container.querySelector('.ant-pagination-item-active') as HTMLElement);
+
+    expect(scrollTo).not.toHaveBeenCalled();
+    scrollTo.mockRestore();
+  });
+
+  it('leaves the page where it is when a modal pages itself', async () => {
+    const scrollTo = vi.spyOn(HTMLElement.prototype, 'scrollTo').mockImplementation(() => undefined);
+    const { container } = renderPagedScreen();
+    scrollBox(container, 400);
+
+    // A modal renders in a portal outside the scroll box, so its pager is not this listener's
+    // business — and neither is anything else that scrolls on its own.
+    // Found by its title rather than by role: antd keeps a closed dialog mounted, and its
+    // title id is not unique across a document that still holds one, so an accessible-name query
+    // can resolve to the dialog another test left behind.
+    const dialog = (await screen.findByText('A modal')).closest('.ant-modal') as HTMLElement;
+    expect(dialog).not.toBeNull();
+    expect(within(dialog).getByTitle('2')).toBeInTheDocument();
+
+    await userEvent.click(within(dialog).getByTitle('2'));
+
+    expect(scrollTo).not.toHaveBeenCalled();
+    scrollTo.mockRestore();
   });
 });

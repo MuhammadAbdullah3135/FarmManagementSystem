@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import '../AppLayout.css';
 import { Layout, Menu, Typography, Dropdown, Avatar, Badge, Button, Drawer, Result, Space, Spin, Tooltip, message, Modal } from 'antd';
 import {
@@ -50,6 +50,7 @@ import { changeLocale } from '../i18n';
 import { DirectionalIcon, startSide, useDirection } from '../i18n/DirectionalIcon';
 import { LOCALE_LABELS, SUPPORTED_LOCALES, type Locale } from '../i18n/locale';
 import { refreshAccountLocale, saveAccountLocale } from '../i18n/localeSync';
+import { isPageChangeClick, returnToTop } from '../utils/paginationScroll';
 
 const { Header, Sider, Content } = Layout;
 const { Text } = Typography;
@@ -265,6 +266,9 @@ const isFarmIndependent = (pathname: string) =>
   // must still match to the `es` entry it offers.
   const activeLocale = i18n.language.split('-')[0];
 
+  /** The scroll box the whole app scrolls in (see the listener on it, further down). */
+  const contentRef = useRef<HTMLElement>(null);
+
   const [isMobile, setIsMobile] = useState(
     () => typeof window !== 'undefined' && window.matchMedia('screen and (max-width: 991.98px)').matches,
   );
@@ -378,6 +382,27 @@ const isFarmIndependent = (pathname: string) =>
   useEffect(() => {
     setMobileMenuOpen(false);
   }, [location.pathname]);
+
+  /*
+   * After a page change, the reader belongs at the top of the new page.
+   *
+   * All of it lives here because the scroll box does: every `Pagination` and every `Table`'s
+   * pager in the app is antd's, and all of them sit inside this element, so one delegated
+   * listener covers the screens that page on the server and the ones antd pages itself — the
+   * latter having no handler any page could hook. `utils/paginationScroll` explains the trigger
+   * and why it ignores everything that is not a page change.
+   */
+  useEffect(() => {
+    const scroller = contentRef.current;
+    if (scroller === null) return;
+
+    const onClick = (event: MouseEvent) => {
+      if (isPageChangeClick(event.target)) returnToTop(scroller);
+    };
+
+    scroller.addEventListener('click', onClick);
+    return () => scroller.removeEventListener('click', onClick);
+  }, []);
 
   const handleLogout = () => {
     // Signing out clears the cached read data but *keeps* the queue: a measurement that only
@@ -637,7 +662,10 @@ const isFarmIndependent = (pathname: string) =>
           </Space>
         </Header>
 
-        <Content style={{ flex: 1, overflowY: 'auto', margin: isMobile ? 8 : 24, padding: isMobile ? 8 : 24, background: '#fff', minHeight: 280 }}>
+        <Content
+          ref={contentRef}
+          style={{ flex: 1, overflowY: 'auto', margin: isMobile ? 8 : 24, padding: isMobile ? 8 : 24, background: '#fff', minHeight: 280 }}
+        >
           {/* Outside the farm/pages branch on purpose: connectivity is a property of the
               device, so the banner is present even while no farm is selected. */}
           <OfflineBanner />

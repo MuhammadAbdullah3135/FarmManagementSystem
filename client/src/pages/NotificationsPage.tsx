@@ -103,7 +103,14 @@ const NotificationsPage: React.FC = () => {const { t } = useTranslation('notific
 
   return (
     <div>
-      <Space style={{ width: '100%', justifyContent: 'space-between', marginBottom: 8 }} align="start">
+      {/*
+        The header's layout belongs to AppLayout.css (`.fms-page-header`). Left as a
+        single flex line, this row's controls squeeze the heading into whatever they
+        leave over — one character per line on a phone, because antd's Typography
+        carries `word-break: break-word` and so reports a min-content width of about
+        one character.
+      */}
+      <Space className="fms-page-header" style={{ width: '100%', justifyContent: 'space-between', marginBottom: 8 }} align="start">
         <div>
           <Title level={3} style={{ marginBottom: 0 }}>
             {t('notifications')} <Badge count={unreadCount} overflowCount={99} />
@@ -150,19 +157,24 @@ const NotificationsPage: React.FC = () => {const { t } = useTranslation('notific
             />
           ) : (
             <Space orientation="vertical" size={12} style={{ width: '100%' }}>
+              {/*
+                Each row's flex behaviour (wrapping, the text column's basis, and stacking
+                on a phone) is AppLayout.css's job: it is what keeps the action group off
+                the severity tag's line. Only the box itself stays here.
+              */}
               {items.map((notification) => (
                 <div
                   key={notification.id}
+                  className="fms-notification-item"
                   style={{
                     border: '1px solid #f0f0f0',
                     borderRadius: 6,
                     padding: '12px 16px',
                     display: 'flex',
                     gap: 16,
-                    alignItems: 'flex-start',
                   }}
                 >
-                  <div style={{ flex: 1, minWidth: 0 }}>
+                  <div className="fms-notification-body">
                     <Space size={8} wrap>
                       <Tag color={severityColor(notification.severity)}>{severityLabel(t, notification.severity)}</Tag>
                       <Tag>{alertTypeLabel(t, notification.alertType)}</Tag>
@@ -185,7 +197,7 @@ const NotificationsPage: React.FC = () => {const { t } = useTranslation('notific
                     </Text>
                   </div>
 
-                  <Space size={4} wrap>
+                  <Space className="fms-notification-actions" size={4} wrap>
                     {notification.link ? <Link to={notification.link}>{t('view')}</Link> : null}
                     {notification.isRead ? null : (
                       <Button

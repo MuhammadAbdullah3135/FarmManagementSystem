@@ -82,6 +82,47 @@ describe('NotificationsPage', () => {
     expect(view).toHaveAttribute('href', '/dashboard/health/vaccinations');
   });
 
+  /*
+   * The structure a phone needs: the header is one `.fms-page-header` whose two halves can
+   * be stacked by AppLayout.css, and each notification's text and its actions are sibling
+   * blocks, so the severity tag cannot end up on the same line as the action links. jsdom
+   * cannot measure the result — the CSS file's own test guards the rules — so this asserts
+   * the two hooks those rules hang from exist, and that the actions are not inside the body.
+   */
+  it('puts the header halves and a notification\'s actions where the phone rules expect them', async () => {
+    const { container } = renderPage();
+
+    await screen.findByText('Overdue: FMD');
+
+    const header = container.querySelector('.fms-page-header');
+    expect(header).not.toBeNull();
+
+    // Exactly two items — the title block and the controls — because AppLayout.css reaches
+    // them as `:first-child` and `:last-child` of this row. (The controls hold a Space of
+    // their own, so a descendant query would also match its items.)
+    const headerItems = Array.from(header!.children);
+    expect(headerItems).toHaveLength(2);
+    expect(headerItems[0].textContent).toContain('Notifications');
+    expect(headerItems[1].textContent).toContain('Mark all read');
+
+    const item = container.querySelector('.fms-notification-item');
+    expect(item).not.toBeNull();
+
+    const body = item!.querySelector('.fms-notification-body');
+    const actions = item!.querySelector('.fms-notification-actions');
+    expect(body).not.toBeNull();
+    expect(actions).not.toBeNull();
+    expect(body!.parentElement).toBe(item);
+    expect(actions!.parentElement).toBe(item);
+
+    // The severities and the text stay in the body; the actions are their own block.
+    expect(body!.textContent).toContain('Critical');
+    expect(body!.textContent).toContain('Overdue: FMD');
+    expect(actions!.textContent).toContain('View');
+    expect(actions!.textContent).toContain('Mark read');
+    expect(actions!.textContent).toContain('Dismiss');
+  });
+
   it('prompts for a farm instead of calling the API when none is active', async () => {
     useFarmStore.setState({ farms: [], activeFarm: null, isLoading: false, error: null });
 

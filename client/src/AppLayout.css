@@ -49,7 +49,259 @@ body .ant-card-head .ant-card-extra {
   max-width: 100%;
 }
 
+/* ── Page header: a title block beside a group of controls ───────────────────────────────
+   Four screens open with the same row (`.fms-page-header`: the notification centre,
+   notification preferences, the data-export page and the job-status page) — a `Space` with
+   `justifyContent: space-between` holding a heading and a paragraph, and at the other end
+   the controls for the whole screen.
+
+   Left alone it is a single flex line, and antd's Typography sets `word-break: break-word` on
+   itself (es/typography/style/index.js), which behaves like `overflow-wrap: anywhere`: the
+   element reports a min-content width of about one character. Inside a single-line flex row
+   that combination is a collapse — the controls take their own width first and the heading is
+   squeezed into whatever is left over, so on a phone the notification centre's title rendered
+   one letter per line ("N / oti / fic / ati / on / s") and its paragraph broke mid-word.
+
+   The title block is therefore given a floor of its own instead of the one-character min-content
+   it collapses to, and — below the app's own mobile breakpoint, see the end of this file — the
+   row wraps, so the controls are what moves when the two cannot share the line. The floor is a
+   floor and not a growth: at every width the header already handled, the title keeps the width it
+   had and only the controls' demand for its labels is met. */
+body .fms-page-header > .ant-space-item:first-child {
+  min-width: 260px;
+}
+
+/* A control group that wraps onto its own line stays inside the card, not past its border. */
+body .fms-page-header > .ant-space-item:last-child {
+  max-width: 100%;
+}
+
+/* ── One notification row ────────────────────────────────────────────────────────────────
+   The same collapse one level down. The row is a flex line whose text column is `flex: 1` and
+   whose action group (View / Mark read / Dismiss) does not wrap, so on a phone the actions
+   were wider than what was left of the row: the text column collapsed to the width of its
+   longest word and the severity tag ended up sharing a line with the action links. Letting the
+   row wrap moves the actions onto a line of their own instead, and the text column keeps the
+   `flex: 1` it always had — that is what hands it the row's leftover width — plus a floor, so
+   that when the two do share a line the column is readable rather than one word wide.
+
+   Layout only — the row's border, padding and gap stay with the markup in the page. */
+body .fms-notification-item {
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+body .fms-notification-item > .fms-notification-body {
+  flex: 1 1 260px;
+  min-width: 0;
+}
+
+body .fms-notification-item > .fms-notification-actions {
+  max-width: 100%;
+}
+
+/* ── Lineage chart ───────────────────────────────────────────────────────────────────────
+   The pedigree on breeding/lineage. The page places every card itself (see
+   pages/breeding/lineageLayout.ts, which explains why this is arithmetic rather than nested
+   flex rows); this block owns what a card is made of and how big one is.
+
+   Sizes are published as custom properties on the scroller rather than on the card, because
+   the geometry has to agree with them: the connectors are positioned against the card box, so
+   a stem drawn to `--fms-lineage-card-w` of a *different* number would miss the card it is
+   meant to touch. The page reads exactly these variables back at runtime, which is also how
+   the phone override below reaches the layout without a second, drifting copy of the numbers
+   in JavaScript. */
+body .fms-lineage-canvas {
+  --fms-lineage-card-w: 220px;
+  --fms-lineage-card-h: 120px;
+  --fms-lineage-gap-x: 32px;
+  --fms-lineage-gap-y: 44px;
+  --fms-lineage-link-w: 2px;
+  --fms-lineage-pad-x: 12px;
+  --fms-lineage-pad-y: 12px;
+
+  /* Sideways only, and never inwards: every offset the page computes is positive from the
+     inline-start edge, so the asked-about animal cannot end up off an edge no one can scroll
+     back to — the phone screenshot this block was written from had the root card cut off on
+     the unreachable side. Contain keeps a horizontal drag inside the chart instead of the
+     browser's back gesture. */
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+}
+
+body .fms-lineage-chart {
+  position: relative;
+}
+
+body .fms-lineage-card-slot {
+  position: absolute;
+  inline-size: var(--fms-lineage-card-w);
+  block-size: var(--fms-lineage-card-h);
+}
+
+/* One straight run of a family's connector — a stem or a bus. Both are the same box; the page
+   decides which side of it is long. */
+body .fms-lineage-link {
+  position: absolute;
+  background: var(--fms-lineage-link-color);
+  border-radius: var(--fms-lineage-link-w);
+}
+
+body .fms-lineage-link[data-side='sire'] {
+  --fms-lineage-link-color: #1677ff;
+}
+
+body .fms-lineage-link[data-side='dam'] {
+  --fms-lineage-link-color: #eb2f96;
+}
+
+body .fms-lineage-link[data-side='child'] {
+  --fms-lineage-link-color: #52c41a;
+}
+
+body .fms-lineage-link[data-side='root'] {
+  --fms-lineage-link-color: #faad14;
+}
+
+/* A card is exactly the box the layout was computed against: fixed width and height, and the
+   overflow hidden so that a long breed name wraps onto the connectors rather than under them
+   (or, worse, grows the box the next stem was positioned against). The accent edge says which
+   side of the family the card is on, and the colour is the same one its connectors use. */
+body .fms-lineage-card {
+  block-size: 100%;
+  overflow: hidden;
+  border-inline-start-width: 4px;
+  border-inline-start-style: solid;
+  border-inline-start-color: #d9d9d9;
+  box-shadow: none;
+}
+
+body .fms-lineage-card[data-side='sire'] {
+  border-inline-start-color: #1677ff;
+}
+
+body .fms-lineage-card[data-side='dam'] {
+  border-inline-start-color: #eb2f96;
+}
+
+body .fms-lineage-card[data-side='child'] {
+  border-inline-start-color: #52c41a;
+}
+
+body .fms-lineage-card[data-root='true'] {
+  border-inline-start-color: #faad14;
+  background: #fffbe6;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+body .fms-lineage-card-title {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  line-height: 18px;
+}
+
+/* The tag number is the one field a reader scans for, so it is the one that stays on its line
+   and ellipsises instead of pushing the ROOT tag off the card. */
+body .fms-lineage-card-title > strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+body .fms-lineage-card-title .ant-tag {
+  margin-inline-end: 0;
+  font-size: 10px;
+  line-height: 16px;
+}
+
+body .fms-lineage-card-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.45);
+}
+
+body .fms-lineage-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+/* antd gives every tag an inline-end margin; inside this fixed box the gap above owns the
+   spacing, so the margins would only consume height the card does not have. */
+body .fms-lineage-card-meta .ant-tag {
+  margin-inline-end: 0;
+  font-size: 11px;
+  line-height: 18px;
+}
+
+body .fms-lineage-card-dob {
+  font-size: 11px;
+  color: rgba(0, 0, 0, 0.65);
+}
+
+/* The two notes that explain a short chart — no ancestors above, no offspring below — are
+   centred against the whole box rather than placed inside it, so they are readable without
+   panning: a reader who has to scroll to find out why the chart is short has been told
+   nothing. */
+body .fms-lineage-note {
+  display: block;
+  padding-block: 8px;
+  text-align: center;
+}
+
+body .fms-lineage-status {
+  display: flex;
+  justify-content: center;
+  padding-block: 48px;
+}
+
+body .fms-lineage-controls {
+  row-gap: 8px;
+}
+
 @media (max-width: 576px) {
+  /* A phone gives the page header two rows — the title (and its paragraph), then the controls
+     below it, their box stretched to the row's width with the controls themselves keeping their
+     natural size — instead of one line that cannot hold both. */
+  body .fms-page-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  /* In a column the floor above is a width the phone must fit *inside* the row it was stacked
+     in, so it is dropped: `align-items: stretch` already gives the title block the whole row. */
+  body .fms-page-header > .ant-space-item:first-child {
+    min-width: 0;
+  }
+
+  /* Two switches and two buttons do not fit a phone side by side, so the controls wrap
+     inside their own row rather than hanging past the card. */
+  body .fms-page-header > .ant-space-item:last-child > .ant-space {
+    flex-wrap: wrap;
+  }
+
+  /* A notification row stacks: the message first, then the actions on their own line under
+     it, so the severity tag can no longer sit against the action links. Trailing-aligned,
+     which is the leading edge in Arabic (`flex-end` follows the reading direction). */
+  body .fms-notification-item {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  body .fms-notification-item > .fms-notification-body {
+    flex: 0 0 auto;
+  }
+
+  body .fms-notification-item > .fms-notification-actions {
+    justify-content: flex-end;
+  }
+
   /* On a phone the head stacks: title on one row, then the actions, instead of ellipsising the
      title into the same row. (The wrap rule above explains why the title needs rescuing at all;
      the old rule here set `flex-wrap` on `.ant-card-head`, which is inert — that element is not
@@ -189,5 +441,58 @@ body .ant-card-head .ant-card-extra {
     width: 14px;
     pointer-events: none;
     background: linear-gradient(var(--fms-fade-direction, to left), rgba(0, 0, 0, 0.09), rgba(0, 0, 0, 0));
+  }
+
+  /* A phone gets a narrower chart, not a smaller one. Each generation is twice the width of
+     the one below it, so 20px off a card is 320px off a five-generation chart — and the
+     cards keep the same three rows of text, which is why the height goes *up* rather than
+     down: at 200px the sex, breed and status tags no longer fit one line. */
+  body .fms-lineage-canvas {
+    --fms-lineage-card-w: 200px;
+    --fms-lineage-card-h: 128px;
+    --fms-lineage-gap-x: 12px;
+    --fms-lineage-gap-y: 32px;
+    --fms-lineage-pad-x: 8px;
+    --fms-lineage-pad-y: 8px;
+  }
+
+  /* One control per line. The animal picker carries its width inline (350px, wider than a
+     phone), so it is the one that has to be stretched past that width; the two depth pairs
+     keep their label beside the number, which is the shape a reader already knows from the
+     laptop.
+
+     `display: flex` is load-bearing rather than tidiness: antd's Space is an *inline*-flex
+     box, so in a block parent it shrinks to fit its widest item, and a `width: 100%` picker
+     inside it is then 100% of 220px — measured on a 360px phone — instead of of the card. */
+  body .fms-lineage-controls {
+    display: flex;
+    inline-size: 100%;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  body .fms-lineage-controls > .ant-space-item {
+    min-width: 0;
+  }
+
+  body .fms-lineage-controls .ant-select {
+    width: 100% !important;
+  }
+}
+
+/* Below the width AppLayout itself calls mobile, a page header can no longer hold its title and
+   its controls on one line: the title's floor plus the controls' own min-content (two switches and
+   two buttons whose labels cannot be broken) is wider than the row, so the controls would simply
+   hang past the card. The row wraps here and the controls drop onto the line below.
+
+   Scoped to this range on purpose. Flex lines are formed from the items' *base* sizes, and the
+   title's base is its unbroken content — wider than the row at almost any width — so an
+   all-width wrap would restack the header on a laptop, where the old shrink-to-fit has always
+   been fine. At and above 992px nothing here applies and the header behaves exactly as before;
+   the floor in the base block is what keeps its title readable there. */
+@media (max-width: 991.98px) {
+  body .fms-page-header {
+    flex-wrap: wrap;
+    row-gap: 8px;
   }
 }
