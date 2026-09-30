@@ -29,6 +29,7 @@ public class WeightServiceTests
     {
         public Guid UserId { get; } = Guid.NewGuid();
         public Guid? GetUserId() => UserId;
+        public string? GetUserEmail() => null;
     }
 
     private static async Task<(Guid farmId, Guid animalId)> SeedAnimalAsync(FmsDbContext context)

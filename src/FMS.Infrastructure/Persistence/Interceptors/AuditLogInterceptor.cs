@@ -10,6 +10,9 @@ namespace FMS.Infrastructure.Persistence.Interceptors;
 
 public class AuditLogInterceptor : SaveChangesInterceptor
 {
+    /// <summary>Key under which a service-supplied delete reason appears in a delete entry's OldValues payload.</summary>
+    public const string DeleteReasonKey = "$deleteReason";
+
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly JsonSerializerOptions _jsonOptions = new()
     {
@@ -129,9 +132,21 @@ public class AuditLogInterceptor : SaveChangesInterceptor
                     .Where(p => !IsSystemProperty(p.Metadata.Name))
                     .ToList();
 
-                if (props.Count > 0)
+                var oldDict = props.Count > 0
+                    ? props.ToDictionary(p => p.Metadata.Name, p => (object?)p.OriginalValue)
+                    : new Dictionary<string, object?>();
+
+                // A service-supplied delete reason (see FmsDbContext.DeleteReasons) becomes part
+                // of the delete entry itself — the row is about to be gone, so this payload is
+                // the only place the "why" can live.
+                if (Guid.TryParse(entityId, out var parsedId)
+                    && dbContext.DeleteReasons.Remove(parsedId, out var deleteReason))
                 {
-                    var oldDict = props.ToDictionary(p => p.Metadata.Name, p => (object?)p.OriginalValue);
+                    oldDict[DeleteReasonKey] = deleteReason;
+                }
+
+                if (oldDict.Count > 0)
+                {
                     oldValues = JsonSerializer.Serialize(oldDict, _jsonOptions);
                 }
             }

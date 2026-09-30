@@ -104,14 +104,32 @@ public class SalaryPaymentDto
     public DateTime PaymentDate { get; set; }
     public SalaryType SalaryType { get; set; }
     public string SalaryTypeName { get; set; } = string.Empty;
+    public SalaryPaymentType PaymentType { get; set; }
+    public string PaymentTypeName { get; set; } = string.Empty;
+    public string? Reference { get; set; }
+    public DateTime? PeriodCovered { get; set; }
     public string? Notes { get; set; }
+
+    /// <summary>Who recorded the payment — a name when the account has one, otherwise the email.</summary>
+    public string? RecordedByName { get; set; }
+    public string? RecordedByEmail { get; set; }
+    public DateTime RecordedAt { get; set; }
 }
 
 public class RecordSalaryPaymentRequest
 {
     public decimal Amount { get; set; }
     public DateTime? PaymentDate { get; set; }
+    public SalaryPaymentType PaymentType { get; set; }
+    public string? Reference { get; set; }
+    public DateTime? PeriodCovered { get; set; }
     public string? Notes { get; set; }
+}
+
+/// <summary>Body for deleting a salary payment. The reason is required by the service and lands in the audit log.</summary>
+public class DeleteSalaryPaymentRequest
+{
+    public string? Reason { get; set; }
 }
 
 public class PayrollReportDto

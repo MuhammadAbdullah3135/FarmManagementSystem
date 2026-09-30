@@ -27,6 +27,7 @@ public class HealthStatusRecalculationJobTests
     private sealed class FixedCurrentUser : ICurrentUserService
     {
         public Guid? GetUserId() => Guid.NewGuid();
+        public string? GetUserEmail() => null;
     }
 
     private static (HealthStatusRecalculationJob Job, CapturingLoggerProvider Logs) CreateJob(FmsDbContext context)

@@ -34,6 +34,7 @@ public class AnimalStatusDepartureIdTests
     {
         public Guid UserId { get; } = Guid.NewGuid();
         public Guid? GetUserId() => UserId;
+        public string? GetUserEmail() => null;
     }
 
     private sealed record Seed(Guid FarmId, Guid ActiveStatusId, Guid SoldStatusId, Guid AnimalId);

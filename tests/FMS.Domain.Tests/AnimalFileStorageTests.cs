@@ -27,6 +27,7 @@ public class AnimalFileStorageTests
     {
         public Guid UserId { get; } = Guid.NewGuid();
         public Guid? GetUserId() => UserId;
+        public string? GetUserEmail() => null;
     }
 
     private sealed class FakeFileStorage : IFileStorageService

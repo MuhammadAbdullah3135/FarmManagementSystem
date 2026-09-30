@@ -47,6 +47,7 @@ public class ReportOutputGoldenTests
     {
         public Guid UserId { get; } = Guid.NewGuid();
         public Guid? GetUserId() => UserId;
+        public string? GetUserEmail() => null;
     }
 
     // ── the report that started this ─────────────────────────────

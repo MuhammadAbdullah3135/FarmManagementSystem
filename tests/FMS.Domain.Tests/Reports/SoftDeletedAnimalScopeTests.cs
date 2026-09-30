@@ -36,6 +36,7 @@ public class SoftDeletedAnimalScopeTests
     {
         public Guid UserId { get; } = Guid.NewGuid();
         public Guid? GetUserId() => UserId;
+        public string? GetUserEmail() => null;
     }
 
     [Fact]
