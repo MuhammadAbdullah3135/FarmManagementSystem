@@ -1,12 +1,9 @@
-using System.Security.Claims;
 using FMS.Application.Common;
 using FMS.Application.Employees;
 using FMS.Domain.Entities;
 using FMS.Domain.Enums;
 using FMS.Infrastructure.Employees;
 using FMS.Infrastructure.Persistence;
-using FMS.Infrastructure.Persistence.Interceptors;
-using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 
 namespace FMS.Domain.Tests;
@@ -28,7 +25,6 @@ public class SalaryPaymentTests
     {
         public Guid UserId { get; } = Guid.NewGuid();
         public Guid? GetUserId() => UserId;
-        public string? GetUserEmail() => null;
     }
 
     private sealed record SeedData(Guid FarmId, Guid AliId, Guid BilalId);
@@ -180,7 +176,7 @@ public class SalaryPaymentTests
         var payment = await service.RecordSalaryPaymentAsync(seed.FarmId, seed.AliId,
             new RecordSalaryPaymentRequest { Amount = 25000 });
 
-        var deleted = await service.DeleteSalaryPaymentAsync(seed.FarmId, seed.AliId, payment.Value!.Id, "Entered twice by mistake");
+        var deleted = await service.DeleteSalaryPaymentAsync(seed.FarmId, seed.AliId, payment.Value!.Id);
         Assert.True(deleted.IsSuccess);
 
         var list = await service.GetSalaryPaymentsAsync(seed.FarmId, seed.AliId, 1, 20);
@@ -198,169 +194,12 @@ public class SalaryPaymentTests
             new RecordSalaryPaymentRequest { Amount = 25000 });
 
         // Payment exists but belongs to a different employee
-        var wrongEmployee = await service.DeleteSalaryPaymentAsync(seed.FarmId, seed.BilalId, payment.Value!.Id, "Correction");
+        var wrongEmployee = await service.DeleteSalaryPaymentAsync(seed.FarmId, seed.BilalId, payment.Value!.Id);
         Assert.Equal("NotFound", wrongEmployee.Error!.Code);
 
         // Unknown payment id
-        var unknown = await service.DeleteSalaryPaymentAsync(seed.FarmId, seed.AliId, Guid.NewGuid(), "Correction");
+        var unknown = await service.DeleteSalaryPaymentAsync(seed.FarmId, seed.AliId, Guid.NewGuid());
         Assert.Equal("NotFound", unknown.Error!.Code);
-    }
-
-    // ── Ledger fields, recorded-by, and delete reasons ─────────────────────────
-
-    private sealed class FixedCurrentUserWithEmail : ICurrentUserService
-    {
-        public Guid UserId { get; } = Guid.NewGuid();
-        public Guid? GetUserId() => UserId;
-        public string? GetUserEmail() => "manager@farm.test";
-    }
-
-    [Fact]
-    public async Task RecordSalaryPayment_StoresLedgerFields_AndTrimsBlankReference()
-    {
-        using var context = CreateContext();
-        var seed = await SeedAsync(context);
-        var service = CreateService(context);
-
-        var period = new DateTime(2026, 8, 1, 0, 0, 0, DateTimeKind.Utc);
-        var result = await service.RecordSalaryPaymentAsync(seed.FarmId, seed.AliId,
-            new RecordSalaryPaymentRequest
-            {
-                Amount = 50000,
-                PaymentType = SalaryPaymentType.BankTransfer,
-                Reference = "  TXN-991  ",
-                PeriodCovered = period
-            });
-
-        Assert.True(result.IsSuccess);
-        Assert.Equal(SalaryPaymentType.BankTransfer, result.Value!.PaymentType);
-        Assert.Equal("BankTransfer", result.Value.PaymentTypeName);
-        Assert.Equal("TXN-991", result.Value.Reference);
-        Assert.Equal(period, result.Value.PeriodCovered);
-
-        var blank = await service.RecordSalaryPaymentAsync(seed.FarmId, seed.AliId,
-            new RecordSalaryPaymentRequest { Amount = 10, Reference = "   " });
-        Assert.Null(blank.Value!.Reference);
-        Assert.Equal(SalaryPaymentType.Unspecified, blank.Value!.PaymentType);
-    }
-
-    [Fact]
-    public async Task RecordSalaryPayment_FuturePeriodOrOverlongReference_ReturnsValidation()
-    {
-        using var context = CreateContext();
-        var seed = await SeedAsync(context);
-        var service = CreateService(context);
-
-        var futurePeriod = await service.RecordSalaryPaymentAsync(seed.FarmId, seed.AliId,
-            new RecordSalaryPaymentRequest { Amount = 100, PeriodCovered = DateTime.UtcNow.AddDays(7) });
-        Assert.Equal("Validation", futurePeriod.Error!.Code);
-
-        var longReference = await service.RecordSalaryPaymentAsync(seed.FarmId, seed.AliId,
-            new RecordSalaryPaymentRequest { Amount = 100, Reference = new string('x', 101) });
-        Assert.Equal("Validation", longReference.Error!.Code);
-    }
-
-    [Fact]
-    public async Task RecordSalaryPayment_DeletedEmployee_ReturnsNotFound()
-    {
-        using var context = CreateContext();
-        var seed = await SeedAsync(context);
-        var service = CreateService(context);
-
-        var employee = await context.Employees.SingleAsync(e => e.Id == seed.AliId);
-        employee.IsDeleted = true;
-        await context.SaveChangesAsync();
-
-        var result = await service.RecordSalaryPaymentAsync(seed.FarmId, seed.AliId,
-            new RecordSalaryPaymentRequest { Amount = 100 });
-
-        Assert.Equal("NotFound", result.Error!.Code);
-    }
-
-    [Fact]
-    public async Task RecordSalaryPayment_SnapshotsRecordedByIdentity()
-    {
-        using var context = CreateContext();
-        var seed = await SeedAsync(context);
-        var service = new EmployeeService(context, new FixedCurrentUserWithEmail());
-
-        var result = await service.RecordSalaryPaymentAsync(seed.FarmId, seed.AliId,
-            new RecordSalaryPaymentRequest { Amount = 100 });
-
-        Assert.True(result.IsSuccess);
-        Assert.Equal("manager@farm.test", result.Value!.RecordedByEmail);
-        Assert.Equal("manager@farm.test", result.Value.RecordedByName); // no user row, so the email claim stands in
-        Assert.True(result.Value.RecordedAt <= DateTime.UtcNow);
-    }
-
-    [Fact]
-    public async Task GetSalaryPayments_ResolvesRecordedBy_FromUserAccounts()
-    {
-        using var context = CreateContext();
-        var seed = await SeedAsync(context);
-        var payerId = Guid.NewGuid();
-        context.Users.Add(new User
-        {
-            Id = payerId,
-            AccountId = Guid.NewGuid(),
-            Email = "bursar@farm.test",
-            FirstName = "Fatima",
-            LastName = "Noor",
-            PasswordHash = "x",
-            IsActive = true
-        });
-        await context.SaveChangesAsync();
-
-        var payment = new SalaryPayment
-        {
-            Id = Guid.NewGuid(), FarmId = seed.FarmId, EmployeeId = seed.AliId,
-            Amount = 500, PaymentDate = DateTime.UtcNow, CreatedAt = DateTime.UtcNow,
-            CreatedBy = payerId
-        };
-        context.SalaryPayments.Add(payment);
-        await context.SaveChangesAsync();
-
-        var service = CreateService(context);
-        var result = await service.GetSalaryPaymentsAsync(seed.FarmId, seed.AliId, 1, 20);
-
-        var row = result.Value!.Items.Single(p => p.Id == payment.Id);
-        Assert.Equal("Fatima Noor", row.RecordedByName);
-        Assert.Equal("bursar@farm.test", row.RecordedByEmail);
-    }
-
-    [Fact]
-    public async Task DeleteSalaryPayment_ReasonRequired_AndWrittenToAuditLog()
-    {
-        var userId = Guid.NewGuid();
-        var httpContextAccessor = new HttpContextAccessor
-        {
-            HttpContext = new DefaultHttpContext
-            {
-                User = new ClaimsPrincipal(new ClaimsIdentity(
-                    new[] { new Claim(ClaimTypes.NameIdentifier, userId.ToString()) }, "TestAuth"))
-            }
-        };
-        var options = new DbContextOptionsBuilder<FmsDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .AddInterceptors(new AuditLogInterceptor(httpContextAccessor))
-            .Options;
-        using var context = new FmsDbContext(options);
-        var seed = await SeedAsync(context);
-        var service = CreateService(context);
-
-        var missing = await service.DeleteSalaryPaymentAsync(seed.FarmId, seed.AliId, Guid.NewGuid(), "   ");
-        Assert.Equal("Validation", missing.Error!.Code);
-
-        var payment = await service.RecordSalaryPaymentAsync(seed.FarmId, seed.AliId,
-            new RecordSalaryPaymentRequest { Amount = 25000 });
-
-        var deleted = await service.DeleteSalaryPaymentAsync(seed.FarmId, seed.AliId, payment.Value!.Id, "Wrong employee");
-        Assert.True(deleted.IsSuccess);
-
-        var entry = await context.AuditLogs
-            .SingleAsync(l => l.EntityType == "SalaryPayment" && l.Action == AuditAction.Delete);
-        Assert.Contains("Wrong employee", entry.OldValues);
-        Assert.Contains("25000", entry.OldValues);
     }
 
     [Fact]

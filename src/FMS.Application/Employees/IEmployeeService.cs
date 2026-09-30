@@ -40,10 +40,6 @@ public interface IEmployeeService
     // Salary payments & payroll
     Task<Result<SalaryPaymentDto>> RecordSalaryPaymentAsync(Guid farmId, Guid employeeId, RecordSalaryPaymentRequest request);
     Task<Result<PagedResult<SalaryPaymentDto>>> GetSalaryPaymentsAsync(Guid farmId, Guid employeeId, int page, int pageSize);
-    /// <summary>
-    /// Hard-deletes a payment. A non-empty <paramref name="reason"/> is required and is
-    /// preserved in the audit log's delete entry — the only durable evidence of the payment.
-    /// </summary>
-    Task<Result> DeleteSalaryPaymentAsync(Guid farmId, Guid employeeId, Guid paymentId, string? reason);
+    Task<Result> DeleteSalaryPaymentAsync(Guid farmId, Guid employeeId, Guid paymentId);
     Task<Result<PayrollReportDto>> GetPayrollReportAsync(Guid farmId, DateTime? from, DateTime? to);
 }

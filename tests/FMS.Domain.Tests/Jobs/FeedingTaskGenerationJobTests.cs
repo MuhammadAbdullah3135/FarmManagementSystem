@@ -28,7 +28,6 @@ public class FeedingTaskGenerationJobTests
     private sealed class FixedCurrentUser : ICurrentUserService
     {
         public Guid? GetUserId() => Guid.NewGuid();
-        public string? GetUserEmail() => null;
     }
 
     private sealed record SeededFarm(Guid FarmId, Guid AnimalTypeId);

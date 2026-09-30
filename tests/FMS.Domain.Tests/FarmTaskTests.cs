@@ -26,7 +26,6 @@ public class FarmTaskTests
     {
         public Guid UserId { get; } = Guid.NewGuid();
         public Guid? GetUserId() => UserId;
-        public string? GetUserEmail() => null;
     }
 
     private sealed record SeedData(Guid FarmId, Guid EmployeeId, Guid AnimalId, Guid LocationId);

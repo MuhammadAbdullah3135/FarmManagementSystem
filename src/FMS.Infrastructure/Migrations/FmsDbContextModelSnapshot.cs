@@ -3079,16 +3079,6 @@ namespace FMS.Infrastructure.Migrations
                     b.Property<DateTime>("PaymentDate")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<int>("PaymentType")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime?>("PeriodCovered")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Reference")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
                     b.Property<int>("SalaryType")
                         .HasColumnType("integer");
 

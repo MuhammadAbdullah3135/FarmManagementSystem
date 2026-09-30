@@ -56,8 +56,6 @@ public class EmployeesController : ControllerBase
 
     // Salary payments & payroll
 
-    /// <summary>Writes to the payroll ledger are manager-only — this is the farm's money.</summary>
-    [Authorize(Roles = "SystemOwner,FarmManager")]
     [HttpPost("{id:guid}/salary-payments")]
     public async Task<IActionResult> RecordSalaryPayment(Guid farmId, Guid id, [FromBody] RecordSalaryPaymentRequest request)
     {
@@ -74,15 +72,10 @@ public class EmployeesController : ControllerBase
         return MapResult(result);
     }
 
-    /// <summary>
-    /// Deleting money history needs a reason (Validation when missing) and is manager-only.
-    /// The reason is preserved in the audit log's delete entry.
-    /// </summary>
-    [Authorize(Roles = "SystemOwner,FarmManager")]
     [HttpDelete("{id:guid}/salary-payments/{paymentId:guid}")]
-    public async Task<IActionResult> DeleteSalaryPayment(Guid farmId, Guid id, Guid paymentId, [FromBody] DeleteSalaryPaymentRequest? request)
+    public async Task<IActionResult> DeleteSalaryPayment(Guid farmId, Guid id, Guid paymentId)
     {
-        var result = await _employeeService.DeleteSalaryPaymentAsync(farmId, id, paymentId, request?.Reason);
+        var result = await _employeeService.DeleteSalaryPaymentAsync(farmId, id, paymentId);
         return result.IsSuccess ? NoContent() : MapError(result.Error!);
     }
 

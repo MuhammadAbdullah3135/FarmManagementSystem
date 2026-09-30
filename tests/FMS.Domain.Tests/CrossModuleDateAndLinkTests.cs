@@ -23,7 +23,6 @@ public class CrossModuleDateAndLinkTests
     {
         public Guid UserId { get; } = Guid.NewGuid();
         public Guid? GetUserId() => UserId;
-        public string? GetUserEmail() => null;
     }
 
     // ── Finance: year-1 date reset on update ─────────────────────────

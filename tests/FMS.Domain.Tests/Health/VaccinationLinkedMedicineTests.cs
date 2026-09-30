@@ -23,7 +23,6 @@ public class VaccinationLinkedMedicineTests
     {
         public Guid UserId { get; } = Guid.NewGuid();
         public Guid? GetUserId() => UserId;
-        public string? GetUserEmail() => null;
     }
 
     private static VaccineService CreateVaccineService(FmsDbContext context) =>

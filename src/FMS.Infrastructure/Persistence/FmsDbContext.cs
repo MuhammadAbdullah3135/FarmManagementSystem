@@ -11,14 +11,6 @@ public class FmsDbContext : DbContext
     // Flag to prevent audit log interceptor recursion
     internal bool IsSavingAuditLogs { get; set; }
 
-    /// <summary>
-    /// Delete reasons a service attaches to a hard delete in this save, keyed by the
-    /// entity's id. <see cref="Persistence.Interceptors.AuditLogInterceptor"/> consumes and
-    /// clears them, writing each reason into its delete entry's OldValues payload — the
-    /// only durable evidence a hard-deleted row leaves.
-    /// </summary>
-    internal Dictionary<Guid, string> DeleteReasons { get; } = new();
-
     public DbSet<Account> Accounts => Set<Account>();
     public DbSet<User> Users => Set<User>();
     public DbSet<Role> Roles => Set<Role>();

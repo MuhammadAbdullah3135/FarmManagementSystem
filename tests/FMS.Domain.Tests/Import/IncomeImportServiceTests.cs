@@ -290,6 +290,5 @@ public class IncomeImportServiceTests
     {
         public Guid UserId { get; } = Guid.NewGuid();
         public Guid? GetUserId() => UserId;
-        public string? GetUserEmail() => null;
     }
 }
