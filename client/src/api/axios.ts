@@ -193,8 +193,17 @@ api.interceptors.response.use(
           const accessToken = await refreshAccessToken();
           originalRequest.headers.Authorization = `Bearer ${accessToken}`;
           return api(originalRequest);
-        } catch {
-          endSession();
+        } catch (refreshError) {
+          // Only a *server* answer ends the session: it is the one thing that proves the
+          // refresh token itself is dead. A network failure (the Android WebView was
+          // backgrounded and dropped its sockets, airplane mode, an API blip) says nothing
+          // about the token, which is still valid — ending the session here used to log
+          // people out every time they switched away from the app and back. The offline
+          // queue already treats an unreachable API as a retryable condition, and the
+          // original 401 below is rejected as usual.
+          if ((refreshError as { response?: unknown } | null)?.response) {
+            endSession();
+          }
         }
       }
     }

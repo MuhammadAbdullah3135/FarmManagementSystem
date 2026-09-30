@@ -188,3 +188,56 @@ describe('sync support in the interceptors', () => {
     refresh.mockRestore();
   });
 });
+
+/*
+ * Backgrounding the Android WebView kills its sockets, so the next call 401s and the
+ * refresh POST fails with a network error — no HTTP response at all. A network failure says
+ * nothing about whether the refresh token is still valid, so the session must survive; only
+ * a server answer ("this token is dead") may end it. Ending it on a network error used to
+ * log the user out every time they switched away from the app and back.
+ */
+describe('401 with a failing refresh call', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    setFarmAccessDeniedHandler(null);
+    setSyncTriggerHandler(null);
+  });
+
+  it('keeps the session when the refresh call fails with a network error', async () => {
+    localStorage.setItem('accessToken', 'stale');
+    localStorage.setItem('refreshToken', 'r1');
+
+    failWith(401, {});
+    const refresh = vi.spyOn(axios, 'post').mockRejectedValue(new Error('Network Error'));
+
+    await expect(api.get('/farm/farm-a/animals')).rejects.toBeTruthy();
+
+    // The refresh was attempted and failed without a response — and nothing was wiped.
+    expect(refresh).toHaveBeenCalledTimes(1);
+    expect(refresh).toHaveBeenCalledWith(expect.stringContaining('/auth/refresh'), { refreshToken: 'r1' });
+    expect(localStorage.getItem('refreshToken')).toBe('r1');
+    expect(localStorage.getItem('accessToken')).toBe('stale');
+
+    refresh.mockRestore();
+  });
+
+  it('ends the session when the server rejects the refresh token', async () => {
+    localStorage.setItem('accessToken', 'stale');
+    localStorage.setItem('refreshToken', 'r1');
+    localStorage.setItem('user', JSON.stringify({ email: 'Test@apk.com' }));
+
+    failWith(401, {});
+    const refresh = vi.spyOn(axios, 'post').mockRejectedValue({
+      response: { status: 401, data: '', headers: {}, config: {}, statusText: '' },
+    });
+
+    await expect(api.get('/farm/farm-a/animals')).rejects.toBeTruthy();
+
+    // A server rejection of the refresh is the one proof the session itself is dead.
+    expect(localStorage.getItem('refreshToken')).toBeNull();
+    expect(localStorage.getItem('accessToken')).toBeNull();
+    expect(localStorage.getItem('user')).toBeNull();
+
+    refresh.mockRestore();
+  });
+});
