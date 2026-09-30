@@ -28,6 +28,10 @@ const FeedReportsPage: React.FC = () => {const { t } = useTranslation('feed');
   const [byLocation, setByLocation] = useState<LocationConsumption[]>([]);
   const [summary, setSummary] = useState<FeedCostSummary | null>(null);
   const [loading, setLoading] = useState(false);
+  // Controlled, because the headline figures below belong to one tab: without the activeKey
+  // guard antd keeps every visited pane mounted, so a row fetched on Cost Summary hung over
+  // every other tab for the rest of the visit.
+  const [activeKey, setActiveKey] = useState('trend');
 
   const from = range[0]?.toISOString();
   const to = range[1]?.toISOString();
@@ -83,8 +87,11 @@ const FeedReportsPage: React.FC = () => {const { t } = useTranslation('feed');
   const animalCols: ColumnsType<AnimalConsumption> = [
     { title: t('tag'), dataIndex: 'tagNumber', fixed: 'start', width: 100 },
     { title: t('name'), dataIndex: 'name', render: (n?: string) => n ?? '-' },
-    { title: t('quantity'), dataIndex: 'quantity', align: 'right' },
-    { title: t('cost'), dataIndex: 'cost', align: 'right' },
+    // Explicit widths on the number columns: without them these four lean columns nominally
+    // fit a 360px phone, so the global max-content scroll never engaged and Cost sat clipped
+    // at the right edge with no scrollbar to reach it.
+    { title: t('quantity'), dataIndex: 'quantity', align: 'right', width: 110 },
+    { title: t('cost'), dataIndex: 'cost', align: 'right', width: 110 },
   ];
 
   const locationCols: ColumnsType<LocationConsumption> = [
@@ -121,22 +128,13 @@ const FeedReportsPage: React.FC = () => {const { t } = useTranslation('feed');
         </Row>
       </Card>
 
-      {/* Two cards per row on phones, three on small tablets, all six on desktop. The
-          two-value gutter keeps a gap between the cards once they wrap. */}
-      {summary && (
-        <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-          <Col xs={12} sm={8} lg={4}><Card><Statistic title={t('consumed')} value={summary.totalConsumedQuantity} precision={2} suffix="kg" /></Card></Col>
-          <Col xs={12} sm={8} lg={4}><Card><Statistic title={t('consumedCost')} value={summary.totalConsumedCost} precision={2} prefix="$" /></Card></Col>
-          <Col xs={12} sm={8} lg={4}><Card><Statistic title={t('purchased')} value={summary.totalPurchasedQuantity} precision={2} suffix="kg" /></Card></Col>
-          <Col xs={12} sm={8} lg={4}><Card><Statistic title={t('purchasedCost')} value={summary.totalPurchasedCost} precision={2} prefix="$" /></Card></Col>
-          <Col xs={12} sm={8} lg={4}><Card><Statistic title={t('inventoryValue')} value={summary.currentInventoryValue} precision={2} prefix="$" /></Card></Col>
-          <Col xs={12} sm={8} lg={4}><Card><Statistic title={t('period')} value={`${dayjs(summary.from).format('MMM D')} – ${dayjs(summary.to).format('MMM D')}`} /></Card></Col>
-        </Row>
-      )}
-
       <Card>
         <Tabs
-          onChange={fetchTab}
+          activeKey={activeKey}
+          onChange={(key) => {
+            setActiveKey(key);
+            void fetchTab(key);
+          }}
           items={[
             {
               key: 'trend',
@@ -192,12 +190,26 @@ const FeedReportsPage: React.FC = () => {const { t } = useTranslation('feed');
               key: 'cost',
               label: 'Cost Summary',
               children: summary ? (
-                <Row gutter={[16, 16]}>
-                  <Col xs={12} md={6}><Card><Statistic title={t('consumedQty')} value={summary.totalConsumedQuantity} precision={2} /></Card></Col>
-                  <Col xs={12} md={6}><Card><Statistic title={t('consumedCost')} value={summary.totalConsumedCost} precision={2} prefix="$" /></Card></Col>
-                  <Col xs={12} md={6}><Card><Statistic title={t('purchasedQty')} value={summary.totalPurchasedQuantity} precision={2} /></Card></Col>
-                  <Col xs={12} md={6}><Card><Statistic title={t('purchasedCost')} value={summary.totalPurchasedCost} precision={2} prefix="$" /></Card></Col>
-                </Row>
+                <>
+                  {/* The six headline figures live inside their tab rather than above the
+                      tab bar: scoped by activeKey, because antd keeps visited panes mounted
+                      and a hidden pane would otherwise keep showing nothing — while an
+                      unscoped row kept hanging over tabs it has nothing to do with. */}
+                  <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
+                    <Col xs={12} sm={8} lg={4}><Card><Statistic title={t('consumed')} value={summary.totalConsumedQuantity} precision={2} suffix="kg" /></Card></Col>
+                    <Col xs={12} sm={8} lg={4}><Card><Statistic title={t('consumedCost')} value={summary.totalConsumedCost} precision={2} prefix="$" /></Card></Col>
+                    <Col xs={12} sm={8} lg={4}><Card><Statistic title={t('purchased')} value={summary.totalPurchasedQuantity} precision={2} suffix="kg" /></Card></Col>
+                    <Col xs={12} sm={8} lg={4}><Card><Statistic title={t('purchasedCost')} value={summary.totalPurchasedCost} precision={2} prefix="$" /></Card></Col>
+                    <Col xs={12} sm={8} lg={4}><Card><Statistic title={t('inventoryValue')} value={summary.currentInventoryValue} precision={2} prefix="$" /></Card></Col>
+                    <Col xs={12} sm={8} lg={4}><Card><Statistic title={t('period')} value={`${dayjs(summary.from).format('MMM D')} – ${dayjs(summary.to).format('MMM D')}`} /></Card></Col>
+                  </Row>
+                  <Row gutter={[16, 16]}>
+                    <Col xs={12} md={6}><Card><Statistic title={t('consumedQty')} value={summary.totalConsumedQuantity} precision={2} /></Card></Col>
+                    <Col xs={12} md={6}><Card><Statistic title={t('consumedCost')} value={summary.totalConsumedCost} precision={2} prefix="$" /></Card></Col>
+                    <Col xs={12} md={6}><Card><Statistic title={t('purchasedQty')} value={summary.totalPurchasedQuantity} precision={2} /></Card></Col>
+                    <Col xs={12} md={6}><Card><Statistic title={t('purchasedCost')} value={summary.totalPurchasedCost} precision={2} prefix="$" /></Card></Col>
+                  </Row>
+                </>
               ) : loading ? <Table loading columns={[]} dataSource={[]} pagination={false} /> : <p>{t('selectADateRangeAndClickThisTab')}</p>,
             },
           ]}

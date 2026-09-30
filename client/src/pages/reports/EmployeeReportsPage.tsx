@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Card, Col, Row, Statistic, Table, Spin, Empty, Typography, message } from 'antd';
+import { Card, Col, Row, Space, Statistic, Table, Spin, Empty, Typography, message } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
   BarChart, Bar,
@@ -49,7 +49,7 @@ const EmployeeReportsPage: React.FC = () => {const { t } = useTranslation('repor
 
   return (
     <div>
-      <Card style={{ marginBottom: 16 }} extra={<div style={{ display: 'flex', gap: 8 }}><DateRangeFilter onChange={(from, to) => void loadData(from, to)} /><ExportButton filename="employee-report" title={t('employeeReport')} headers={['Department', 'Employees', 'Total Paid']} rows={(report?.byDepartment ?? []).map(d => [d.departmentName, d.employeeCount, d.totalPaid])} /></div>}>
+      <Card style={{ marginBottom: 16 }} extra={<Space><DateRangeFilter onChange={(from, to) => void loadData(from, to)} /><ExportButton filename="employee-report" title={t('employeeReport')} headers={['Department', 'Employees', 'Total Paid']} rows={(report?.byDepartment ?? []).map(d => [d.departmentName, d.employeeCount, d.totalPaid])} /></Space>}>
         <Text type="secondary">{t('employeeListSalaryExpensesPaymentHistoryByDepartment')}</Text>
       </Card>
 

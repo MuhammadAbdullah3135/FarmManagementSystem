@@ -100,6 +100,16 @@ describe('FeedReportsPage mobile layout', () => {
     expect(pinnedCells).toEqual(expect.arrayContaining(['Tag', 'COW-001', 'COW-002']));
     // The rest of the row scrolls inside this container, header included.
     expect(container.querySelector('.ant-table-content')).not.toBeNull();
+
+    // The number columns carry explicit widths: four lean columns otherwise nominally fit a
+    // 360px phone, the global max-content scroll never engages, and Cost sits clipped at the
+    // right edge with no scrollbar to reach it.
+    const table = screen.getByText('COW-001').closest('.ant-table')!;
+    const cols = [...table.querySelectorAll('colgroup col')];
+    expect(cols).toHaveLength(4);
+    expect((cols[0] as HTMLElement).style.width).toBe('100px');
+    expect((cols[2] as HTMLElement).style.width).toBe('110px');
+    expect((cols[3] as HTMLElement).style.width).toBe('110px');
   });
 
   it('stacks the date range and period filters full width on phones', () => {
@@ -115,5 +125,26 @@ describe('FeedReportsPage mobile layout', () => {
 
     expect(document.querySelector('.ant-picker-range')).toHaveStyle({ width: '100%' });
     expect(document.querySelector('.ant-select')).toHaveStyle({ width: '100%' });
+  });
+
+  // antd keeps every visited tab pane mounted — hidden behind `aria-hidden` — so once the
+  // cost figures were fetched they used to hang above the tab bar on every tab for the rest
+  // of the visit. "Gone" from another tab therefore means *not visible*, not absent.
+  it('shows the cost cards only while the Cost Summary tab is open', async () => {
+    const user = userEvent.setup();
+    const { container } = render(<FeedReportsPage />);
+
+    const visibleStats = () =>
+      [...container.querySelectorAll('.ant-statistic')].filter(
+        (el) => el.closest('[aria-hidden="true"]') === null,
+      );
+
+    expect(visibleStats()).toHaveLength(0);
+
+    await user.click(screen.getByRole('tab', { name: 'Cost Summary' }));
+    await waitFor(() => expect(visibleStats()).toHaveLength(10));
+
+    await user.click(screen.getByRole('tab', { name: 'Trend' }));
+    expect(visibleStats()).toHaveLength(0);
   });
 });

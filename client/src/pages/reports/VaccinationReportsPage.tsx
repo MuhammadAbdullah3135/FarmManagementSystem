@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Card, Col, Row, Statistic, Table, Tag, Spin, Empty, Typography, message } from 'antd';
+import { Card, Col, Row, Space, Statistic, Table, Tag, Spin, Empty, Typography, message } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
   BarChart, Bar,
@@ -59,7 +59,7 @@ const VaccinationReportsPage: React.FC = () => {const { t } = useTranslation('re
 
   return (
     <div>
-      <Card style={{ marginBottom: 16 }} extra={<div style={{ display: 'flex', gap: 8 }}><DateRangeFilter onChange={(from, to) => void loadData(from, to)} /><ExportButton filename="vaccination-report" title={t('vaccinationReport')} headers={['Vaccine', 'Count', 'Cost']} rows={(report?.byVaccine ?? []).map(v => [v.vaccineName, v.count, v.totalCost])} /></div>}>
+      <Card style={{ marginBottom: 16 }} extra={<Space><DateRangeFilter onChange={(from, to) => void loadData(from, to)} /><ExportButton filename="vaccination-report" title={t('vaccinationReport')} headers={['Vaccine', 'Count', 'Cost']} rows={(report?.byVaccine ?? []).map(v => [v.vaccineName, v.count, v.totalCost])} /></Space>}>
         <Text type="secondary">{t('vaccinationHistoryUpcomingSchedulesOverdueAlerts')}</Text>
       </Card>
 

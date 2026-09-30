@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  Alert, Card, Col, Descriptions, Empty, Row, Spin, Statistic, Table, Tag, Tooltip, Typography, message,
+  Alert, Card, Col, Descriptions, Empty, Row, Space, Spin, Statistic, Table, Tag, Tooltip, Typography, message,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { InfoCircleOutlined } from '@ant-design/icons';
@@ -123,7 +123,7 @@ const CostPerAnimalPage: React.FC = () => {const { t } = useTranslation('reports
       <Card
         style={{ marginBottom: 16 }}
         extra={
-          <div style={{ display: 'flex', gap: 8 }}>
+          <Space>
             <DateRangeFilter onChange={(from, to) => void loadData(from, to)} />
             <ExportButton
               filename="cost-per-animal"
@@ -135,7 +135,7 @@ const CostPerAnimalPage: React.FC = () => {const { t } = useTranslation('reports
               ])}
               disabled={!report}
             />
-          </div>
+          </Space>
         }
       >
         <Text type="secondary">

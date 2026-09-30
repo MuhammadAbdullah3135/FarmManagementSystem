@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Card, Col, Row, Statistic, Table, Spin, Empty, Typography, message } from 'antd';
+import { Card, Col, Row, Space, Statistic, Table, Spin, Empty, Typography, message } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
   LineChart, Line,
@@ -47,7 +47,7 @@ const AnimalReportsPage: React.FC = () => {const { t: translate } = useTranslati
 
   return (
     <div>
-      <Card style={{ marginBottom: 16 }} extra={<div style={{ display: 'flex', gap: 8 }}><DateRangeFilter onChange={(from, to) => void loadData(from, to)} /><ExportButton filename="animal-report" title={translate('animalReport')} headers={['Type', 'Count', 'Mortality', 'Transfers']} rows={(report?.byType ?? []).map(t => [t.name, t.count, '', '']).concat([['Total', report?.totalCount ?? 0, report?.mortalityCount ?? 0, report?.transferCount ?? 0]])} /></div>}>
+      <Card style={{ marginBottom: 16 }} extra={<Space><DateRangeFilter onChange={(from, to) => void loadData(from, to)} /><ExportButton filename="animal-report" title={translate('animalReport')} headers={['Type', 'Count', 'Mortality', 'Transfers']} rows={(report?.byType ?? []).map(t => [t.name, t.count, '', '']).concat([['Total', report?.totalCount ?? 0, report?.mortalityCount ?? 0, report?.transferCount ?? 0]])} /></Space>}>
         <Text type="secondary">{translate('animalInventoryStatusBreakdownGrowthTrendsMortalityAnd')}</Text>
       </Card>
 
