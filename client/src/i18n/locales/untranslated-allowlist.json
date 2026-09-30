@@ -14,80 +14,114 @@
     {
       "key": "breeding:kg",
       "value": "kg",
-      "locales": ["es"],
+      "locales": [
+        "es"
+      ],
       "reason": "SI unit symbol, identical in Spanish. Capitals and spelling are fixed by the unit, not by the language. (Arabic writes كجم.)"
     },
     {
       "key": "feed:kg",
       "value": "kg",
-      "locales": ["es"],
+      "locales": [
+        "es"
+      ],
       "reason": "SI unit symbol, identical in Spanish. Used as the unit suffix beside a number. (Arabic writes كجم.)"
     },
     {
       "key": "breeding:x",
       "value": "x",
-      "locales": ["es"],
+      "locales": [
+        "es"
+      ],
       "reason": "A multiplication symbol joining two figures in a chart label, not a word. (Arabic uses the multiplication sign ×.)"
     },
     {
       "key": "configuration:no",
       "value": "No",
-      "locales": ["es"],
+      "locales": [
+        "es"
+      ],
       "reason": "Spanish for \"no\" is also \"no\", so the answer to a yes/no question is the same word. (Arabic answers لا.)"
     },
     {
       "key": "health:no",
       "value": "No",
-      "locales": ["es"],
+      "locales": [
+        "es"
+      ],
       "reason": "Spanish for \"no\" is also \"no\"; this is the value shown for a false condition. (Arabic answers لا.)"
     },
     {
       "key": "health:stock",
       "value": "Stock",
-      "locales": ["es"],
+      "locales": [
+        "es"
+      ],
       "reason": "Kept in English on purpose per the glossary in locales/README.md: \"stock\" is understood across Latin America and is shorter than \"existencias\". Arabic uses its own word, المخزون."
     },
     {
       "key": "finance:total",
       "value": "Total",
-      "locales": ["es"],
+      "locales": [
+        "es"
+      ],
       "reason": "A true Spanish cognate: the word for a column total is also \"total\", with the same spelling. (Arabic writes الإجمالي.)"
     },
     {
       "key": "health:total",
       "value": "Total",
-      "locales": ["es"],
+      "locales": [
+        "es"
+      ],
       "reason": "A true Spanish cognate: the word for a column total is also \"total\", with the same spelling. (Arabic writes الإجمالي.)"
     },
     {
       "key": "breeding:animal",
       "value": "Animal",
-      "locales": ["es"],
+      "locales": [
+        "es"
+      ],
       "reason": "A true Spanish cognate: the word for a single animal is also \"animal\", with the same spelling. (Arabic writes الحيوان.)"
     },
     {
       "key": "feed:animal",
       "value": "Animal",
-      "locales": ["es"],
+      "locales": [
+        "es"
+      ],
       "reason": "A true Spanish cognate: the word for a single animal is also \"animal\", with the same spelling. (Arabic writes الحيوان.)"
     },
     {
       "key": "finance:animal",
       "value": "Animal",
-      "locales": ["es"],
+      "locales": [
+        "es"
+      ],
       "reason": "A true Spanish cognate: the word for a single animal is also \"animal\", with the same spelling. (Arabic writes الحيوان.)"
     },
     {
       "key": "health:animal",
       "value": "Animal",
-      "locales": ["es"],
+      "locales": [
+        "es"
+      ],
       "reason": "A true Spanish cognate: the word for a single animal is also \"animal\", with the same spelling. (Arabic writes الحيوان.)"
     },
     {
       "key": "offline:animal",
       "value": "Animal",
-      "locales": ["es"],
+      "locales": [
+        "es"
+      ],
       "reason": "A true Spanish cognate: the word for a single animal is also \"animal\", with the same spelling. (Arabic writes الحيوان.)"
+    },
+    {
+      "key": "hr:paymentTypeCheque",
+      "value": "Cheque",
+      "locales": [
+        "es"
+      ],
+      "reason": "A true Spanish cognate: Spanish spells the bank instrument \"cheque\" exactly as English does (RAE). (Arabic writes شيك.)"
     }
   ]
 }
