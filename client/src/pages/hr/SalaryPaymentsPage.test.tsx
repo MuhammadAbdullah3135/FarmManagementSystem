@@ -1,7 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import SalaryPaymentsPage from './SalaryPaymentsPage';
 import { salaryPaymentsApi, payrollApi, employeesApi } from '../../api/hr';
+import type { SalaryPayment } from '../../types';
 
 vi.mock('../../api/hr', () => ({
   salaryPaymentsApi: { list: vi.fn(), record: vi.fn(), remove: vi.fn() },
@@ -12,6 +14,24 @@ vi.mock('../../api/hr', () => ({
 const EMPLOYEES = [
   { id: 'e1', firstName: 'Ayesha', lastName: 'Khan', phone: '0300', email: 'a@example.com', hireDate: '2025-01-15', salaryType: 'Monthly', salaryRate: 50000, isActive: true },
 ];
+
+const PAYMENT: SalaryPayment = {
+  id: 'p1',
+  employeeId: 'e1',
+  employeeName: 'Ayesha Khan',
+  amount: 50000,
+  paymentDate: '2026-09-01T00:00:00Z',
+  salaryType: 'Monthly',
+  salaryTypeName: 'Monthly',
+  paymentType: 'BankTransfer',
+  paymentTypeName: 'BankTransfer',
+  reference: 'TXN-991',
+  periodCovered: '2026-08-01T00:00:00Z',
+  notes: 'August wages',
+  recordedByName: 'Fatima Noor',
+  recordedByEmail: 'bursar@farm.test',
+  recordedAt: '2026-09-01T09:00:00Z',
+};
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -76,4 +96,104 @@ describe('SalaryPaymentsPage card heads', () => {
     expect([...head!.querySelectorAll('.ant-card-extra button')].map((btn) => btn.textContent))
       .toEqual(['Refresh']);
   });
+});
+
+/*
+ * The ledger's whole point is answering "who was paid, by whom, how". A payment row must show
+ * its method, reference, covered period and — critically — the person who recorded it, and the
+ * record-payment modal must send those fields. Deletion must demand a reason (the server
+ * rejects an empty one) and passing it on.
+ */
+
+const modal = () => document.querySelector('.ant-modal') as HTMLElement;
+
+const formItem = (label: string) =>
+  screen.getByText(label, { selector: 'label' }).closest('.ant-form-item') as HTMLElement;
+
+/** antd v6 renders select options as hidden a11y mirrors; click the content element. */
+const findOptionContent = (label: string) => {
+  for (const dropdown of [...document.querySelectorAll('.ant-select-dropdown')].reverse()) {
+    const match = within(dropdown as HTMLElement).queryAllByText(label, { selector: '.ant-select-item-option-content' });
+    if (match.length > 0) return match[0];
+  }
+  return null;
+};
+
+const selectOption = async (label: string) => {
+  await waitFor(() => expect(findOptionContent(label)).not.toBeNull());
+  fireEvent.click(findOptionContent(label)!.closest('.ant-select-item-option') as HTMLElement);
+};
+
+/** The employee picker lives in the Salary Payments card head; the table needs it chosen. */
+const selectEmployee = async (user: { click: (el: Element) => Promise<void> }) => {
+  const head = screen.getByText('Salary Payments').closest('.ant-card-head') as HTMLElement;
+  await user.click(within(head).getByRole('combobox'));
+  await selectOption('Ayesha Khan');
+  await waitFor(() => expect(salaryPaymentsApi.list).toHaveBeenCalled());
+};
+
+describe('SalaryPaymentsPage ledger record', () => {
+  it('shows payment method, reference, period and who recorded each payment', async () => {
+    vi.mocked(salaryPaymentsApi.list).mockResolvedValue({
+      data: { items: [PAYMENT], totalCount: 1, page: 1, pageSize: 10 },
+    } as never);
+    const user = userEvent.setup();
+    render(<SalaryPaymentsPage />);
+
+    await selectEmployee(user);
+
+    expect(await screen.findByText('Bank Transfer')).toBeInTheDocument();
+    expect(screen.getByText('TXN-991')).toBeInTheDocument();
+    expect(screen.getByText('Fatima Noor')).toBeInTheDocument();
+  });
+
+  it('records a payment with the ledger fields and refreshes the payroll report', async () => {
+    const user = userEvent.setup();
+    render(<SalaryPaymentsPage />);
+
+    await selectEmployee(user);
+    await user.click(await screen.findByRole('button', { name: /record payment/i }));
+
+    await user.type(await screen.findByLabelText('Amount'), '50000');
+    await user.click(within(formItem('Payment Method')).getByRole('combobox'));
+    await selectOption('Bank Transfer');
+    await user.type(screen.getByLabelText('Reference'), 'TXN-777');
+
+    await user.click(modal().querySelector('.ant-modal-footer .ant-btn-primary') as HTMLElement);
+
+    await waitFor(() => expect(salaryPaymentsApi.record).toHaveBeenCalled());
+    const payload = vi.mocked(salaryPaymentsApi.record).mock.calls[0][1];
+    expect(payload.amount).toBe(50000);
+    expect(payload.paymentType).toBe('BankTransfer');
+    expect(payload.reference).toBe('TXN-777');
+
+    // The report reloads after the write, so its totals are never stale.
+    await waitFor(() =>
+      expect(vi.mocked(payrollApi.report).mock.calls.length).toBeGreaterThanOrEqual(2));
+  });
+
+  it('demands a reason before deleting a payment and sends it', async () => {
+    vi.mocked(salaryPaymentsApi.list).mockResolvedValue({
+      data: { items: [PAYMENT], totalCount: 1, page: 1, pageSize: 10 },
+    } as never);
+    const user = userEvent.setup();
+    render(<SalaryPaymentsPage />);
+
+    await selectEmployee(user);
+    await user.click(await screen.findByRole('button', { name: 'Delete' }));
+
+    // With no reason typed, the popover's OK stays disabled and the API is untouched.
+    expect(await screen.findByRole('button', { name: 'OK' })).toBeDisabled();
+    expect(salaryPaymentsApi.remove).not.toHaveBeenCalled();
+
+    fireEvent.change(document.querySelector('[data-testid="delete-reason-p1"]')!, {
+      target: { value: 'Wrong employee' },
+    });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'OK' })).toBeEnabled());
+    await user.click(screen.getByRole('button', { name: 'OK' }));
+
+    await waitFor(() => expect(salaryPaymentsApi.remove).toHaveBeenCalledWith('e1', 'p1', 'Wrong employee'));
+    // The popover interaction is slow in jsdom under a fully parallel suite, so
+    // this one test gets more headroom than the 5s default (see MembersPage.test.tsx).
+  }, 20000);
 });

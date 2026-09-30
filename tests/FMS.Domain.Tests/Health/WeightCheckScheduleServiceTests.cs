@@ -20,6 +20,7 @@ public class WeightCheckScheduleServiceTests
     {
         public Guid UserId { get; } = Guid.NewGuid();
         public Guid? GetUserId() => UserId;
+        public string? GetUserEmail() => null;
     }
 
     private sealed record SeedData(Guid FarmId, Guid AnimalTypeId, Guid BreedId, Guid AgeCategoryId, Guid AnimalId, Guid OtherAnimalId, Guid ThirdAnimalId);

@@ -387,6 +387,8 @@ export interface Employee {
   notes?: string;
 }
 
+export type SalaryPaymentType = 'Unspecified' | 'Cash' | 'BankTransfer' | 'MobileMoney' | 'Cheque' | 'Other';
+
 export interface SalaryPayment {
   id: string;
   employeeId: string;
@@ -395,7 +397,16 @@ export interface SalaryPayment {
   paymentDate: string;
   salaryType: SalaryType;
   salaryTypeName: string;
+  paymentType: SalaryPaymentType;
+  paymentTypeName: string;
+  reference?: string;
+  /** The payroll period this payment settles (the month/week the salary is for). */
+  periodCovered?: string;
   notes?: string;
+  /** Who recorded the payment — a name when the account has one, otherwise the email. */
+  recordedByName?: string;
+  recordedByEmail?: string;
+  recordedAt: string;
 }
 
 export interface PayrollReport {

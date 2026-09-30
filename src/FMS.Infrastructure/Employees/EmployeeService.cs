@@ -512,7 +512,7 @@ public class EmployeeService : IEmployeeService
     public async Task<Result<SalaryPaymentDto>> RecordSalaryPaymentAsync(Guid farmId, Guid employeeId, RecordSalaryPaymentRequest request)
     {
         var employee = await _context.Employees
-            .FirstOrDefaultAsync(e => e.Id == employeeId && e.FarmId == farmId);
+            .FirstOrDefaultAsync(e => e.Id == employeeId && e.FarmId == farmId && !e.IsDeleted);
         if (employee == null)
             return Result<SalaryPaymentDto>.NotFound("Employee not found");
 
@@ -523,6 +523,13 @@ public class EmployeeService : IEmployeeService
         if (paymentDate > DateTime.UtcNow.AddMinutes(5))
             return Result<SalaryPaymentDto>.Validation("Payment date cannot be in the future");
 
+        if (request.PeriodCovered.HasValue && request.PeriodCovered.Value > DateTime.UtcNow.AddMinutes(5))
+            return Result<SalaryPaymentDto>.Validation("Period covered cannot be in the future");
+
+        if (request.Reference is { Length: > 100 })
+            return Result<SalaryPaymentDto>.Validation("Reference cannot exceed 100 characters");
+
+        var now = DateTime.UtcNow;
         var payment = new SalaryPayment
         {
             Id = Guid.NewGuid(),
@@ -531,13 +538,25 @@ public class EmployeeService : IEmployeeService
             Amount = Math.Round(request.Amount, 2),
             PaymentDate = paymentDate,
             SalaryType = employee.SalaryType,
+            PaymentType = request.PaymentType,
+            Reference = string.IsNullOrWhiteSpace(request.Reference) ? null : request.Reference.Trim(),
+            PeriodCovered = request.PeriodCovered,
             Notes = request.Notes,
-            CreatedAt = DateTime.UtcNow,
+            CreatedAt = now,
             CreatedBy = _currentUser.GetUserId()
         };
 
         _context.SalaryPayments.Add(payment);
         await _context.SaveChangesAsync();
+
+        // The ledger's "who paid" answer, captured at write time: the account's own name
+        // (its email otherwise). Resolve from the Users table when the account exists there,
+        // fall back to the token's email claim for callers whose account row is gone.
+        var payer = await _context.Users
+            .AsNoTracking()
+            .Where(u => u.Id == payment.CreatedBy)
+            .Select(u => new { Name = u.FirstName + " " + u.LastName, u.Email })
+            .FirstOrDefaultAsync();
 
         return Result<SalaryPaymentDto>.Success(new SalaryPaymentDto
         {
@@ -548,7 +567,14 @@ public class EmployeeService : IEmployeeService
             PaymentDate = payment.PaymentDate,
             SalaryType = payment.SalaryType,
             SalaryTypeName = payment.SalaryType.ToString(),
-            Notes = payment.Notes
+            PaymentType = payment.PaymentType,
+            PaymentTypeName = payment.PaymentType.ToString(),
+            Reference = payment.Reference,
+            PeriodCovered = payment.PeriodCovered,
+            Notes = payment.Notes,
+            RecordedByName = NameOrEmail(payer?.Name, payer?.Email, _currentUser.GetUserEmail()),
+            RecordedByEmail = payer?.Email ?? _currentUser.GetUserEmail(),
+            RecordedAt = payment.CreatedAt
         });
     }
 
@@ -575,22 +601,42 @@ public class EmployeeService : IEmployeeService
             .Take(pageSize)
             .ToListAsync();
 
+        // Who recorded each payment. One lookup for the page rather than a join per row:
+        // distinct CreatedBy ids from these rows, resolved to (name, email) in one query.
+        var recorderIds = payments
+            .Where(p => p.CreatedBy.HasValue)
+            .Select(p => p.CreatedBy!.Value)
+            .Distinct()
+            .ToList();
+        var recorders = await _context.Users
+            .AsNoTracking()
+            .Where(u => recorderIds.Contains(u.Id))
+            .Select(u => new { u.Id, Name = u.FirstName + " " + u.LastName, u.Email })
+            .ToDictionaryAsync(u => u.Id, u => (u.Name, u.Email));
+
         return Result<PagedResult<SalaryPaymentDto>>.Success(new PagedResult<SalaryPaymentDto>
         {
-            Items = payments.Select(MapPayment).ToList(),
+            Items = payments.Select(p => MapPayment(p, recorders)).ToList(),
             Page = page,
             PageSize = pageSize,
             TotalCount = totalCount
         });
     }
 
-    public async Task<Result> DeleteSalaryPaymentAsync(Guid farmId, Guid employeeId, Guid paymentId)
+    public async Task<Result> DeleteSalaryPaymentAsync(Guid farmId, Guid employeeId, Guid paymentId, string? reason)
     {
+        if (string.IsNullOrWhiteSpace(reason))
+            return Result.Validation("A reason is required to delete a salary payment");
+
         var payment = await _context.SalaryPayments
             .FirstOrDefaultAsync(p => p.Id == paymentId && p.EmployeeId == employeeId && p.FarmId == farmId);
         if (payment == null)
             return Result.NotFound("Salary payment not found");
 
+        // A delete is a hard delete by design (the offline-sync tombstones read it from the
+        // audit log), so the only durable evidence is the audit entry. Give that entry the
+        // reason: stash it on the context and let the interceptor add it to OldValues.
+        _context.DeleteReasons[payment.Id] = reason.Trim();
         _context.SalaryPayments.Remove(payment);
         await _context.SaveChangesAsync();
 
@@ -697,7 +743,7 @@ public class EmployeeService : IEmployeeService
         Notes = employee.Notes
     };
 
-    private static SalaryPaymentDto MapPayment(SalaryPayment payment) => new()
+    private static SalaryPaymentDto MapPayment(SalaryPayment payment, IReadOnlyDictionary<Guid, (string Name, string Email)> recorders) => new()
     {
         Id = payment.Id,
         EmployeeId = payment.EmployeeId,
@@ -706,6 +752,21 @@ public class EmployeeService : IEmployeeService
         PaymentDate = payment.PaymentDate,
         SalaryType = payment.SalaryType,
         SalaryTypeName = payment.SalaryType.ToString(),
-        Notes = payment.Notes
+        PaymentType = payment.PaymentType,
+        PaymentTypeName = payment.PaymentType.ToString(),
+        Reference = payment.Reference,
+        PeriodCovered = payment.PeriodCovered,
+        Notes = payment.Notes,
+        RecordedByName = payment.CreatedBy is { } createdBy && recorders.TryGetValue(createdBy, out var recorder)
+            ? NameOrEmail(recorder.Name, recorder.Email, null)
+            : null,
+        RecordedByEmail = payment.CreatedBy is { } recorderId && recorders.TryGetValue(recorderId, out var byEmail)
+            ? byEmail.Email
+            : null,
+        RecordedAt = payment.CreatedAt
     };
+
+    /// <summary>A person's display name; their email when the account has no name parts.</summary>
+    private static string? NameOrEmail(string? name, string? email, string? fallbackEmail) =>
+        string.IsNullOrWhiteSpace(name) ? (email ?? fallbackEmail) : name.Trim();
 }

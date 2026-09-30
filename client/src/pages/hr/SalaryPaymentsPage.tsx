@@ -8,10 +8,13 @@ import type { ColumnsType } from 'antd/es/table';
 import dayjs, { Dayjs } from 'dayjs';
 import { salaryPaymentsApi, payrollApi, employeesApi } from '../../api/hr';
 import { getApiError } from '../../api/farmApi';
-import type { Employee, PayrollReport, SalaryPayment } from '../../types';
+import type { Employee, PayrollReport, SalaryPayment, SalaryPaymentType } from '../../types';
 import { useTranslation } from 'react-i18next';
 
-const SalaryPaymentsPage: React.FC = () => {const { t } = useTranslation('hr'); 
+const PAYMENT_TYPES: SalaryPaymentType[] = ['Cash', 'BankTransfer', 'MobileMoney', 'Cheque', 'Other'];
+
+const SalaryPaymentsPage: React.FC = () => {
+  const { t } = useTranslation('hr');
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [selectedEmp, setSelectedEmp] = useState<string>('');
   const [payments, setPayments] = useState<SalaryPayment[]>([]);
@@ -19,7 +22,11 @@ const SalaryPaymentsPage: React.FC = () => {const { t } = useTranslation('hr');
   const [paymentPage, setPaymentPage] = useState(1);
   const [report, setReport] = useState<PayrollReport | null>(null);
   const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
+  // The reason a delete confirmation is collecting, so its OK button stays disabled
+  // until a non-empty reason exists — the server refuses a delete without one.
+  const [deleteReason, setDeleteReason] = useState<{ id: string; text: string } | null>(null);
   const [payRange, setPayRange] = useState<[Dayjs | null, Dayjs | null]>([
     dayjs().subtract(30, 'day'), dayjs(),
   ]);
@@ -74,39 +81,97 @@ const SalaryPaymentsPage: React.FC = () => {const { t } = useTranslation('hr');
   const handleRecord = async () => {
     try {
       const values = await form.validateFields();
+      setSubmitting(true);
       await salaryPaymentsApi.record(selectedEmp, {
         amount: values.amount,
         paymentDate: values.paymentDate?.toISOString(),
+        paymentType: values.paymentType,
+        reference: values.reference?.trim() || undefined,
+        periodCovered: values.periodCovered?.toISOString(),
         notes: values.notes,
       });
       message.success(t('paymentRecorded'));
       setModalOpen(false);
-      loadPayments(selectedEmp, paymentPage);
+      loadPayments(selectedEmp, 1);
+      loadReport();
     } catch (err) {
       if ((err as { errorFields?: unknown }).errorFields) return;
+      message.error(getApiError(err));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDeletePayment = async (paymentId: string, reason: string) => {
+    try {
+      await salaryPaymentsApi.remove(selectedEmp, paymentId, reason);
+      message.success(t('paymentDeleted'));
+      loadPayments(selectedEmp, paymentPage);
+      loadReport();
+    } catch (err) {
       message.error(getApiError(err));
     }
   };
 
-  const handleDeletePayment = async (paymentId: string) => {
-    try {
-      await salaryPaymentsApi.remove(selectedEmp, paymentId);
-      message.success(t('paymentDeleted'));
-      loadPayments(selectedEmp, paymentPage);
-    } catch (err) {
-      message.error(getApiError(err));
-    }
-  };
+  const paymentTypeName = (pt: SalaryPaymentType) => t(`paymentType${pt}`);
 
   const payCols: ColumnsType<SalaryPayment> = [
     { title: t('date'), dataIndex: 'paymentDate', render: (d: string) => formatDate(d) },
     { title: t('amount'), dataIndex: 'amount', align: 'right', render: (v: number) => formatMoney(v) },
     { title: t('type'), dataIndex: 'salaryTypeName' },
-    { title: t('notes'), dataIndex: 'notes', render: (n?: string) => n ?? '-' },
+    {
+      title: t('paymentMethod'),
+      dataIndex: 'paymentType',
+      render: (pt: SalaryPaymentType) =>
+        pt === 'Unspecified' ? <span style={{ color: '#999' }}>—</span> : paymentTypeName(pt),
+    },
+    {
+      title: t('reference'),
+      dataIndex: 'reference',
+      render: (r?: string) => r ?? '-',
+    },
+    {
+      title: t('periodCovered'),
+      dataIndex: 'periodCovered',
+      render: (d?: string) => (d ? formatDate(d) : '-'),
+    },
+    { title: t('notes'), dataIndex: 'notes', ellipsis: true, render: (n?: string) => n ?? '-' },
+    {
+      title: t('recordedBy'),
+      dataIndex: 'recordedByName',
+      ellipsis: true,
+      render: (name?: string, r?: SalaryPayment) => {
+        const label = name ?? r?.recordedByEmail;
+        if (!label) return <span style={{ color: '#999' }}>—</span>;
+        return (
+          <span title={r?.recordedAt ? formatDate(r.recordedAt) : undefined}>
+            {label}
+          </span>
+        );
+      },
+    },
     {
       title: '',
       render: (_, r) => (
-        <Popconfirm title={t('deletePayment')} onConfirm={() => handleDeletePayment(r.id)}>
+        <Popconfirm
+          title={t('deletePayment')}
+          description={
+            <div style={{ minWidth: 260 }}>
+              <p style={{ margin: '4px 0' }}>{t('deletePaymentReason')}</p>
+              <Input.TextArea
+                id={`delete-reason-${r.id}`}
+                data-testid={`delete-reason-${r.id}`}
+                rows={2}
+                maxLength={500}
+                value={deleteReason?.id === r.id ? deleteReason.text : ''}
+                onChange={(e) => setDeleteReason({ id: r.id, text: e.target.value })}
+              />
+            </div>
+          }
+          onOpenChange={(open) => { if (open) setDeleteReason({ id: r.id, text: '' }); }}
+          okButtonProps={{ danger: true, disabled: !deleteReason?.text.trim() }}
+          onConfirm={() => handleDeletePayment(r.id, deleteReason!.text.trim())}
+        >
           <Button size="small" danger>{t('delete')}</Button>
         </Popconfirm>
       ),
@@ -142,7 +207,7 @@ const SalaryPaymentsPage: React.FC = () => {const { t } = useTranslation('hr');
                 }))}
               />
               {selectedEmp && (
-                <Button type="primary" icon={<PlusOutlined />} onClick={() => { form.resetFields(); form.setFieldsValue({ paymentDate: dayjs() }); setModalOpen(true); }}>
+                <Button type="primary" icon={<PlusOutlined />} onClick={() => { form.resetFields(); form.setFieldsValue({ paymentDate: dayjs(), paymentType: 'Cash' }); setModalOpen(true); }}>
                   {t('recordPayment')}
                 </Button>
               )}
@@ -154,6 +219,7 @@ const SalaryPaymentsPage: React.FC = () => {const { t } = useTranslation('hr');
                 columns={payCols}
                 dataSource={payments}
                 loading={loading}
+                scroll={{ x: 'max-content' }}
                 pagination={{ current: paymentPage, total: paymentTotal, pageSize: 10, onChange: (p) => loadPayments(selectedEmp, p) }}
               />
             ) : (
@@ -194,13 +260,31 @@ const SalaryPaymentsPage: React.FC = () => {const { t } = useTranslation('hr');
         </Col>
       </Row>
 
-      <Modal title={t('recordPayment')} open={modalOpen} onOk={handleRecord} onCancel={() => setModalOpen(false)} destroyOnClose>
+      <Modal
+        title={t('recordPayment')}
+        open={modalOpen}
+        onOk={handleRecord}
+        onCancel={() => setModalOpen(false)}
+        confirmLoading={submitting}
+        destroyOnClose
+      >
         <Form form={form} layout="vertical">
           <Form.Item name="amount" label={t('amount')} rules={[{ required: true }]}>
             <InputNumber min={0.01} style={{ width: '100%' }} prefix="$" />
           </Form.Item>
           <Form.Item name="paymentDate" label={t('paymentDate')}>
             <DatePicker style={{ width: '100%' }} />
+          </Form.Item>
+          <Form.Item name="paymentType" label={t('paymentMethod')} initialValue="Cash">
+            <Select
+              options={PAYMENT_TYPES.map((pt) => ({ value: pt, label: paymentTypeName(pt) }))}
+            />
+          </Form.Item>
+          <Form.Item name="reference" label={t('reference')} rules={[{ max: 100 }]}>
+            <Input maxLength={100} />
+          </Form.Item>
+          <Form.Item name="periodCovered" label={t('periodCovered')} extra={t('periodCoveredHint')}>
+            <DatePicker picker="month" style={{ width: '100%' }} />
           </Form.Item>
           <Form.Item name="notes" label={t('notes')}>
             <Input.TextArea rows={2} maxLength={1000} />

@@ -58,6 +58,7 @@ public class NotificationDispatcherTests
     private sealed class FixedCurrentUser : ICurrentUserService
     {
         public Guid? GetUserId() => Guid.NewGuid();
+        public string? GetUserEmail() => null;
     }
 
     /// <summary>Captures digests, and can be made to fail for one address.</summary>

@@ -80,10 +80,17 @@ export const salaryPaymentsApi = {
     }),
   record: (
     employeeId: string,
-    data: { amount: number; paymentDate?: string; notes?: string }
+    data: {
+      amount: number;
+      paymentDate?: string;
+      paymentType?: string;
+      reference?: string;
+      periodCovered?: string;
+      notes?: string;
+    }
   ) => api.post<SalaryPayment>(farmUrl(`/employees/${employeeId}/salary-payments`), data),
-  remove: (employeeId: string, paymentId: string) =>
-    api.delete(farmUrl(`/employees/${employeeId}/salary-payments/${paymentId}`)),
+  remove: (employeeId: string, paymentId: string, reason: string) =>
+    api.delete(farmUrl(`/employees/${employeeId}/salary-payments/${paymentId}`), { data: { reason } }),
 };
 
 export const payrollApi = {

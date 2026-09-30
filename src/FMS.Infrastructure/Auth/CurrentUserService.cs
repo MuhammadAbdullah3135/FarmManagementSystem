@@ -18,4 +18,9 @@ public class CurrentUserService : ICurrentUserService
         var value = _httpContextAccessor.HttpContext?.User.FindFirstValue(ClaimTypes.NameIdentifier);
         return Guid.TryParse(value, out var id) ? id : null;
     }
+
+    public string? GetUserEmail()
+    {
+        return _httpContextAccessor.HttpContext?.User.FindFirstValue(ClaimTypes.Email);
+    }
 }
