@@ -118,9 +118,9 @@ const FeedReportsPage: React.FC = () => {const { t } = useTranslation('feed');
               value={period}
               onChange={setPeriod}
               options={[
-                { value: 'day', label: 'Daily' },
-                { value: 'week', label: 'Weekly' },
-                { value: 'month', label: 'Monthly' },
+                { value: 'day', label: t('daily') },
+                { value: 'week', label: t('weekly') },
+                { value: 'month', label: t('monthly') },
               ]}
               style={{ width: '100%' }}
             />
@@ -139,7 +139,7 @@ const FeedReportsPage: React.FC = () => {const { t } = useTranslation('feed');
             {
               key: 'trend',
               // Short label: five full-length names cannot fit a phone-width tab bar.
-              label: 'Trend',
+              label: t('trendTab'),
               children: (
                 <>
                   {trend.length > 0 ? (
@@ -161,7 +161,7 @@ const FeedReportsPage: React.FC = () => {const { t } = useTranslation('feed');
             },
             {
               key: 'byType',
-              label: 'By Type',
+              label: t('typeTab'),
               children: (
                 <>
                   {byType.length > 0 ? (
@@ -178,17 +178,17 @@ const FeedReportsPage: React.FC = () => {const { t } = useTranslation('feed');
             },
             {
               key: 'byAnimal',
-              label: 'By Animal',
+              label: t('animalTab'),
               children: <Table rowKey="animalId" columns={animalCols} dataSource={byAnimal} loading={loading} pagination={false} />,
             },
             {
               key: 'byLocation',
-              label: 'By Location',
+              label: t('locationTab'),
               children: <Table rowKey="locationId" columns={locationCols} dataSource={byLocation} loading={loading} pagination={false} />,
             },
             {
               key: 'cost',
-              label: 'Cost Summary',
+              label: t('costSummary'),
               children: summary ? (
                 <>
                   {/* The six headline figures live inside their tab rather than above the

@@ -112,6 +112,14 @@ describe('scanSource', () => {
     expect(rules('/** `tree-branch` renders \u21B3 in English. */\nconst x = 1;')).toEqual([]);
   });
 
+  it('scans a CRLF checkout exactly as CI scans LF, so a comment is still a comment', () => {
+    // The Windows checkout hands the scanner \r\n; before the normalization, `$` never
+    // matched before the \r, `//` comments survived stripping, and the arrow in the doc
+    // comment above was reported as user-facing text on a developer machine but not in CI.
+    const crlf = '/** `tree-branch` renders \u21B3 in English. */\r\nconst x = 1;\r\n';
+    expect(rules(crlf)).toEqual([]);
+  });
+
   it('catches a physically pinned table column', () => {
     expect(rules("const columns = [{ fixed: 'left' }];")).toEqual(['fixed-column']);
     expect(rules("const columns = [{ fixed: 'start' }];")).toEqual([]);

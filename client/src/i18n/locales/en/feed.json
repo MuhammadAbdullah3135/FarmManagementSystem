@@ -13,6 +13,7 @@
   "any": "Any",
   "category": "Category",
   "complete": "Complete",
+  "costSummary": "Cost Summary",
   "completeTask": "Complete Task",
   "consumed": "Consumed",
   "consumedCost": "Consumed Cost",
@@ -23,6 +24,7 @@
   "currentStock": "Current Stock",
   "dailyFeedRecords": "Daily Feed Records",
   "date": "Date",
+  "daily": "Daily",
   "delete": "Delete",
   "deleteThisDietPlan": "Delete this diet plan?",
   "deleteThisFeedType": "Delete this feed type?",
@@ -62,6 +64,11 @@
   "kg": "kg",
   "label": "Label",
   "location": "Location",
+  "locationTab": "By Location",
+  "monthly": "Monthly",
+  "trendTab": "Trend",
+  "typeTab": "By Type",
+  "animalTab": "By Animal",
   "maxWeightKg": "Max Weight (kg)",
   "minWeightKg": "Min Weight (kg)",
   "movementType": "Movement Type",
@@ -103,5 +110,6 @@
   "timeOfDay": "Time of Day",
   "type": "Type",
   "unit": "Unit",
-  "unitCostPurchases": "Unit Cost (purchases)"
+  "unitCostPurchases": "Unit Cost (purchases)",
+  "weekly": "Weekly"
 }

@@ -13,6 +13,7 @@
   "any": "أي",
   "category": "الفئة",
   "complete": "مكتمل",
+  "costSummary": "ملخص التكاليف",
   "completeTask": "إكمال المهمة",
   "consumed": "المستهلك",
   "consumedCost": "تكلفة المستهلك",
@@ -23,6 +24,7 @@
   "currentStock": "المخزون الحالي",
   "dailyFeedRecords": "سجلات العلف اليومية",
   "date": "التاريخ",
+  "daily": "يومي",
   "delete": "حذف",
   "deleteThisDietPlan": "حذف خطة التغذية هذه؟",
   "deleteThisFeedType": "حذف نوع العلف هذا؟",
@@ -62,6 +64,11 @@
   "kg": "كجم",
   "label": "التسمية",
   "location": "الموقع",
+  "locationTab": "حسب الموقع",
+  "monthly": "شهري",
+  "trendTab": "الاتجاه",
+  "typeTab": "حسب النوع",
+  "animalTab": "حسب الحيوان",
   "maxWeightKg": "أقصى وزن (كجم)",
   "minWeightKg": "أدنى وزن (كجم)",
   "movementType": "نوع الحركة",
@@ -103,5 +110,6 @@
   "timeOfDay": "وقت اليوم",
   "type": "النوع",
   "unit": "الوحدة",
-  "unitCostPurchases": "تكلفة الوحدة (المشتريات)"
+  "unitCostPurchases": "تكلفة الوحدة (المشتريات)",
+  "weekly": "أسبوعي"
 }

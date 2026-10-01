@@ -108,7 +108,10 @@ const stripLineComment = (line) => line.replace(/\/\/.*$/, '');
 function scanWith(rules, text, { numeric = false } = {}) {
   const out = [];
   const numericHits = [];
-  text.split('\n').forEach((raw, index) => {
+  // CRLF checkouts (Windows) must scan identically to the LF files CI sees: without
+  // this, `$` never matches before the `\r`, `//` comments survive stripping, and a
+  // glyph inside a comment gets scanned as if it were user-facing text.
+  text.replace(/\r\n/g, '\n').split('\n').forEach((raw, index) => {
     const line = stripLineComment(raw);
     for (const { rule, re, target } of rules) {
       if (re.test(line)) {

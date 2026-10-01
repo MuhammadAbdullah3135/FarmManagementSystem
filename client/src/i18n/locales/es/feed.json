@@ -13,6 +13,7 @@
   "any": "Cualquiera",
   "category": "Categoría",
   "complete": "Completar",
+  "costSummary": "Resumen de costos",
   "completeTask": "Completar tarea",
   "consumed": "Consumido",
   "consumedCost": "Costo consumido",
@@ -23,6 +24,7 @@
   "currentStock": "Stock actual",
   "dailyFeedRecords": "Registros diarios de alimentación",
   "date": "Fecha",
+  "daily": "Diario",
   "delete": "Eliminar",
   "deleteThisDietPlan": "¿Eliminar este plan de alimentación?",
   "deleteThisFeedType": "¿Eliminar este tipo de alimento?",
@@ -62,6 +64,11 @@
   "kg": "kg",
   "label": "Etiqueta",
   "location": "Ubicación",
+  "locationTab": "Por ubicación",
+  "monthly": "Mensual",
+  "trendTab": "Tendencia",
+  "typeTab": "Por tipo",
+  "animalTab": "Por animal",
   "maxWeightKg": "Peso máximo (kg)",
   "minWeightKg": "Peso mínimo (kg)",
   "movementType": "Tipo de movimiento",
@@ -103,5 +110,6 @@
   "timeOfDay": "Hora del día",
   "type": "Tipo",
   "unit": "Unidad",
-  "unitCostPurchases": "Costo unitario (compras)"
+  "unitCostPurchases": "Costo unitario (compras)",
+  "weekly": "Semanal"
 }
