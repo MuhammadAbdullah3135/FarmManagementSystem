@@ -65,9 +65,17 @@ export function scanSource(rel, code) {
     }
     if (ts.isJsxAttribute(node)) {
       const name = node.name.getText(sf);
-      if (USER_ATTRS.has(name) && node.initializer && ts.isStringLiteral(node.initializer)) {
-        add('attribute', node.initializer.text);
+      if (node.initializer && ts.isStringLiteral(node.initializer)) {
+        if (USER_ATTRS.has(name)) add('attribute', node.initializer.text);
+        return;
       }
+      // Not a plain string: an array of tab/option objects, an inline object, an
+      // expression. User copy can sit in a nested label property here, so the
+      // subtree is visited rather than skipped and the property branch below
+      // still decides what is copy. This is the blind spot that let a Tabs items={[{
+      // label: 'Feed Types' }]} literal ship untranslated while the identical
+      // literal as a plain object was flagged.
+      if (node.initializer) ts.forEachChild(node.initializer, visit);
       return;
     }
     if (ts.isCallExpression(node)) {
@@ -112,6 +120,22 @@ function walkFiles(dir, acc = []) {
   return acc;
 }
 
+// Baseline schema: each reviewed string carries the reason it was accepted, so an
+// entry documents itself instead of pointing at a review nobody can find later.
+// Bare strings from the pre-reason file still parse, so old checkouts keep working.
+export const DEFAULT_BASELINE_REASON = 'reviewed — see docs/I18N.md';
+
+export function baselineIdsFrom(file) {
+  return new Set((file?.strings ?? []).map((s) => (typeof s === 'string' ? s : s.id)));
+}
+
+export function buildBaselineEntries(previousStrings, currentIds) {
+  const previousReasons = new Map(
+    (previousStrings ?? []).map((s) => (typeof s === 'string' ? [s, DEFAULT_BASELINE_REASON] : [s.id, s.reason ?? DEFAULT_BASELINE_REASON])),
+  );
+  return [...currentIds].sort().map((id) => ({ id, reason: previousReasons.get(id) ?? DEFAULT_BASELINE_REASON }));
+}
+
 const idOf = (v) => `${v.rel}::${v.kind}::${v.value}`;
 
 /** Ids present now that the baseline does not already cover — the CI failure set. */
@@ -140,14 +164,21 @@ function main() {
   const currentIds = new Set(current.map(idOf));
 
   if (update) {
-    const list = [...currentIds].sort();
-    fs.writeFileSync(BASELINE, `${JSON.stringify({ note: 'Reviewed hardcoded strings; see docs/I18N.md.', strings: list }, null, 2)}\n`, 'utf8');
-    console.log(`baseline updated with ${list.length} reviewed strings`);
+    // An existing entry keeps its reason; a new one lands with the placeholder a
+    // reviewer replaces. --update never silently strips what was written before.
+    const previous = fs.existsSync(BASELINE) ? JSON.parse(fs.readFileSync(BASELINE, 'utf8')).strings ?? [] : [];
+    const entries = buildBaselineEntries(previous, currentIds);
+    fs.writeFileSync(
+      BASELINE,
+      JSON.stringify({ note: 'Reviewed hardcoded strings, each with a reason; see docs/I18N.md.', strings: entries }, null, 2) + '\n',
+      'utf8',
+    );
+    console.log('baseline updated with ' + entries.length + ' reviewed strings');
     return 0;
   }
 
   const baseline = fs.existsSync(BASELINE)
-    ? new Set(JSON.parse(fs.readFileSync(BASELINE, 'utf8')).strings)
+    ? baselineIdsFrom(JSON.parse(fs.readFileSync(BASELINE, 'utf8')))
     : new Set();
 
   const added = newStrings(current, baseline);

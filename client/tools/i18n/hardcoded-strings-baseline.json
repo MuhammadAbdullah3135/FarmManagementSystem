@@ -1,41 +1,501 @@
 {
-  "note": "Reviewed hardcoded strings; see docs/I18N.md.",
+  "note": "Reviewed hardcoded strings, each with a reason; see docs/I18N.md.",
   "strings": [
-    "components/lookupQuickAdd.ts::property::Active",
-    "components/lookupQuickAdd.ts::property::Age Category",
-    "components/lookupQuickAdd.ts::property::Animal Type",
-    "components/lookupQuickAdd.ts::property::Average Gestation (days)",
-    "components/lookupQuickAdd.ts::property::Breed",
-    "components/lookupQuickAdd.ts::property::Category",
-    "components/lookupQuickAdd.ts::property::Contact information",
-    "components/lookupQuickAdd.ts::property::Cost per Unit",
-    "components/lookupQuickAdd.ts::property::Customer",
-    "components/lookupQuickAdd.ts::property::Default Dosage",
-    "components/lookupQuickAdd.ts::property::Department",
-    "components/lookupQuickAdd.ts::property::Description",
-    "components/lookupQuickAdd.ts::property::Expense Category",
-    "components/lookupQuickAdd.ts::property::Feed Type",
-    "components/lookupQuickAdd.ts::property::Income Category",
-    "components/lookupQuickAdd.ts::property::Location",
-    "components/lookupQuickAdd.ts::property::Location Type",
-    "components/lookupQuickAdd.ts::property::Max Age (days)",
-    "components/lookupQuickAdd.ts::property::Medicine",
-    "components/lookupQuickAdd.ts::property::Min Age (days)",
-    "components/lookupQuickAdd.ts::property::None (top level)",
-    "components/lookupQuickAdd.ts::property::Notes",
-    "components/lookupQuickAdd.ts::property::Parent Location (optional)",
-    "components/lookupQuickAdd.ts::property::Payment Method",
-    "components/lookupQuickAdd.ts::property::Products supplied",
-    "components/lookupQuickAdd.ts::property::Role",
-    "components/lookupQuickAdd.ts::property::Select location type",
-    "components/lookupQuickAdd.ts::property::Sex",
-    "components/lookupQuickAdd.ts::property::Status",
-    "components/lookupQuickAdd.ts::property::Supplier",
-    "components/lookupQuickAdd.ts::property::Unit",
-    "components/lookupQuickAdd.ts::property::Vaccine Type",
-    "components/lookupQuickAdd.ts::property::Value",
-    "components/lookupQuickAdd.ts::property::e.g. 5ml",
-    "components/lookupQuickAdd.ts::property::e.g. Female",
-    "components/lookupQuickAdd.ts::property::e.g. doses, ml, tablets"
+    {
+      "id": "components/ImportWizard.tsx::property::Done",
+      "reason": "Remaining English item 12 / 7.5 validation & empty-state copy"
+    },
+    {
+      "id": "components/ImportWizard.tsx::property::Map columns",
+      "reason": "Remaining English item 12 / 7.5 validation & empty-state copy"
+    },
+    {
+      "id": "components/ImportWizard.tsx::property::Review",
+      "reason": "Remaining English item 12 / 7.5 validation & empty-state copy"
+    },
+    {
+      "id": "components/ImportWizard.tsx::property::Upload",
+      "reason": "Remaining English item 12 / 7.5 validation & empty-state copy"
+    },
+    {
+      "id": "components/lookupQuickAdd.ts::property::Active",
+      "reason": "reviewed chrome — lookupQuickAdd field labels (docs/I18N.md)"
+    },
+    {
+      "id": "components/lookupQuickAdd.ts::property::Age Category",
+      "reason": "reviewed chrome — lookupQuickAdd field labels (docs/I18N.md)"
+    },
+    {
+      "id": "components/lookupQuickAdd.ts::property::Animal Type",
+      "reason": "reviewed chrome — lookupQuickAdd field labels (docs/I18N.md)"
+    },
+    {
+      "id": "components/lookupQuickAdd.ts::property::Average Gestation (days)",
+      "reason": "reviewed chrome — lookupQuickAdd field labels (docs/I18N.md)"
+    },
+    {
+      "id": "components/lookupQuickAdd.ts::property::Breed",
+      "reason": "reviewed chrome — lookupQuickAdd field labels (docs/I18N.md)"
+    },
+    {
+      "id": "components/lookupQuickAdd.ts::property::Category",
+      "reason": "reviewed chrome — lookupQuickAdd field labels (docs/I18N.md)"
+    },
+    {
+      "id": "components/lookupQuickAdd.ts::property::Contact information",
+      "reason": "reviewed chrome — lookupQuickAdd field labels (docs/I18N.md)"
+    },
+    {
+      "id": "components/lookupQuickAdd.ts::property::Cost per Unit",
+      "reason": "reviewed chrome — lookupQuickAdd field labels (docs/I18N.md)"
+    },
+    {
+      "id": "components/lookupQuickAdd.ts::property::Customer",
+      "reason": "reviewed chrome — lookupQuickAdd field labels (docs/I18N.md)"
+    },
+    {
+      "id": "components/lookupQuickAdd.ts::property::Default Dosage",
+      "reason": "reviewed chrome — lookupQuickAdd field labels (docs/I18N.md)"
+    },
+    {
+      "id": "components/lookupQuickAdd.ts::property::Department",
+      "reason": "reviewed chrome — lookupQuickAdd field labels (docs/I18N.md)"
+    },
+    {
+      "id": "components/lookupQuickAdd.ts::property::Description",
+      "reason": "reviewed chrome — lookupQuickAdd field labels (docs/I18N.md)"
+    },
+    {
+      "id": "components/lookupQuickAdd.ts::property::Expense Category",
+      "reason": "reviewed chrome — lookupQuickAdd field labels (docs/I18N.md)"
+    },
+    {
+      "id": "components/lookupQuickAdd.ts::property::Feed Type",
+      "reason": "reviewed chrome — lookupQuickAdd field labels (docs/I18N.md)"
+    },
+    {
+      "id": "components/lookupQuickAdd.ts::property::Income Category",
+      "reason": "reviewed chrome — lookupQuickAdd field labels (docs/I18N.md)"
+    },
+    {
+      "id": "components/lookupQuickAdd.ts::property::Location",
+      "reason": "reviewed chrome — lookupQuickAdd field labels (docs/I18N.md)"
+    },
+    {
+      "id": "components/lookupQuickAdd.ts::property::Location Type",
+      "reason": "reviewed chrome — lookupQuickAdd field labels (docs/I18N.md)"
+    },
+    {
+      "id": "components/lookupQuickAdd.ts::property::Max Age (days)",
+      "reason": "reviewed chrome — lookupQuickAdd field labels (docs/I18N.md)"
+    },
+    {
+      "id": "components/lookupQuickAdd.ts::property::Medicine",
+      "reason": "reviewed chrome — lookupQuickAdd field labels (docs/I18N.md)"
+    },
+    {
+      "id": "components/lookupQuickAdd.ts::property::Min Age (days)",
+      "reason": "reviewed chrome — lookupQuickAdd field labels (docs/I18N.md)"
+    },
+    {
+      "id": "components/lookupQuickAdd.ts::property::None (top level)",
+      "reason": "reviewed chrome — lookupQuickAdd field labels (docs/I18N.md)"
+    },
+    {
+      "id": "components/lookupQuickAdd.ts::property::Notes",
+      "reason": "reviewed chrome — lookupQuickAdd field labels (docs/I18N.md)"
+    },
+    {
+      "id": "components/lookupQuickAdd.ts::property::Parent Location (optional)",
+      "reason": "reviewed chrome — lookupQuickAdd field labels (docs/I18N.md)"
+    },
+    {
+      "id": "components/lookupQuickAdd.ts::property::Payment Method",
+      "reason": "reviewed chrome — lookupQuickAdd field labels (docs/I18N.md)"
+    },
+    {
+      "id": "components/lookupQuickAdd.ts::property::Products supplied",
+      "reason": "reviewed chrome — lookupQuickAdd field labels (docs/I18N.md)"
+    },
+    {
+      "id": "components/lookupQuickAdd.ts::property::Role",
+      "reason": "reviewed chrome — lookupQuickAdd field labels (docs/I18N.md)"
+    },
+    {
+      "id": "components/lookupQuickAdd.ts::property::Select location type",
+      "reason": "reviewed chrome — lookupQuickAdd field labels (docs/I18N.md)"
+    },
+    {
+      "id": "components/lookupQuickAdd.ts::property::Sex",
+      "reason": "reviewed chrome — lookupQuickAdd field labels (docs/I18N.md)"
+    },
+    {
+      "id": "components/lookupQuickAdd.ts::property::Status",
+      "reason": "reviewed chrome — lookupQuickAdd field labels (docs/I18N.md)"
+    },
+    {
+      "id": "components/lookupQuickAdd.ts::property::Supplier",
+      "reason": "reviewed chrome — lookupQuickAdd field labels (docs/I18N.md)"
+    },
+    {
+      "id": "components/lookupQuickAdd.ts::property::Unit",
+      "reason": "reviewed chrome — lookupQuickAdd field labels (docs/I18N.md)"
+    },
+    {
+      "id": "components/lookupQuickAdd.ts::property::Vaccine Type",
+      "reason": "reviewed chrome — lookupQuickAdd field labels (docs/I18N.md)"
+    },
+    {
+      "id": "components/lookupQuickAdd.ts::property::Value",
+      "reason": "reviewed chrome — lookupQuickAdd field labels (docs/I18N.md)"
+    },
+    {
+      "id": "components/lookupQuickAdd.ts::property::e.g. 5ml",
+      "reason": "reviewed chrome — lookupQuickAdd field labels (docs/I18N.md)"
+    },
+    {
+      "id": "components/lookupQuickAdd.ts::property::e.g. Female",
+      "reason": "reviewed chrome — lookupQuickAdd field labels (docs/I18N.md)"
+    },
+    {
+      "id": "components/lookupQuickAdd.ts::property::e.g. doses, ml, tablets",
+      "reason": "reviewed chrome — lookupQuickAdd field labels (docs/I18N.md)"
+    },
+    {
+      "id": "pages/ConfirmResetPasswordPage.tsx::property::Password must be at least 8 characters",
+      "reason": "Remaining English item 12 / 7.5 validation & empty-state copy"
+    },
+    {
+      "id": "pages/ConfirmResetPasswordPage.tsx::property::Please confirm your new password",
+      "reason": "Remaining English item 12 / 7.5 validation & empty-state copy"
+    },
+    {
+      "id": "pages/ConfirmResetPasswordPage.tsx::property::Please enter a new password",
+      "reason": "Remaining English item 12 / 7.5 validation & empty-state copy"
+    },
+    {
+      "id": "pages/LoginPage.tsx::property::Please enter a valid email",
+      "reason": "Remaining English item 12 / 7.5 validation & empty-state copy"
+    },
+    {
+      "id": "pages/LoginPage.tsx::property::Please enter your password",
+      "reason": "Remaining English item 12 / 7.5 validation & empty-state copy"
+    },
+    {
+      "id": "pages/RegisterPage.tsx::property::Password must be at least 8 characters",
+      "reason": "Remaining English item 12 / 7.5 validation & empty-state copy"
+    },
+    {
+      "id": "pages/RegisterPage.tsx::property::Please confirm password",
+      "reason": "Remaining English item 12 / 7.5 validation & empty-state copy"
+    },
+    {
+      "id": "pages/RegisterPage.tsx::property::Please enter a valid email",
+      "reason": "Remaining English item 12 / 7.5 validation & empty-state copy"
+    },
+    {
+      "id": "pages/RegisterPage.tsx::property::Please enter account name",
+      "reason": "Remaining English item 12 / 7.5 validation & empty-state copy"
+    },
+    {
+      "id": "pages/RegisterPage.tsx::property::Please enter first name",
+      "reason": "Remaining English item 12 / 7.5 validation & empty-state copy"
+    },
+    {
+      "id": "pages/RegisterPage.tsx::property::Please enter last name",
+      "reason": "Remaining English item 12 / 7.5 validation & empty-state copy"
+    },
+    {
+      "id": "pages/ResetPasswordPage.tsx::property::Please enter a valid email",
+      "reason": "Remaining English item 12 / 7.5 validation & empty-state copy"
+    },
+    {
+      "id": "pages/admin/AuditLogPage.tsx::property::Create",
+      "reason": "enum chrome — migrated to the enums namespace in this pass"
+    },
+    {
+      "id": "pages/admin/AuditLogPage.tsx::property::Delete",
+      "reason": "enum chrome — migrated to the enums namespace in this pass"
+    },
+    {
+      "id": "pages/admin/AuditLogPage.tsx::property::Update",
+      "reason": "enum chrome — migrated to the enums namespace in this pass"
+    },
+    {
+      "id": "pages/animals/AnimalDetailPage.tsx::property::Notes",
+      "reason": "Remaining English item 12 / 7.5 validation & empty-state copy"
+    },
+    {
+      "id": "pages/animals/AnimalDetailPage.tsx::property::Status",
+      "reason": "Remaining English item 12 / 7.5 validation & empty-state copy"
+    },
+    {
+      "id": "pages/animals/AnimalDetailPage.tsx::property::Taken",
+      "reason": "Remaining English item 12 / 7.5 validation & empty-state copy"
+    },
+    {
+      "id": "pages/animals/AnimalDetailPage.tsx::property::Weight",
+      "reason": "Remaining English item 12 / 7.5 validation & empty-state copy"
+    },
+    {
+      "id": "pages/animals/AnimalDetailPage.tsx::template::`No weights loaded (server count: ${weightRecordsCount})`",
+      "reason": "Remaining English item 12 / 7.5 validation & empty-state copy"
+    },
+    {
+      "id": "pages/breeding/BirthRecordingPage.tsx::property::Name",
+      "reason": "Remaining English item 12 / 7.5 validation & empty-state copy"
+    },
+    {
+      "id": "pages/breeding/BirthRecordingPage.tsx::property::Outcome",
+      "reason": "Remaining English item 12 / 7.5 validation & empty-state copy"
+    },
+    {
+      "id": "pages/breeding/BirthRecordingPage.tsx::property::Required",
+      "reason": "Remaining English item 12 / 7.5 validation & empty-state copy"
+    },
+    {
+      "id": "pages/breeding/BirthRecordingPage.tsx::property::Select birth date",
+      "reason": "Remaining English item 12 / 7.5 validation & empty-state copy"
+    },
+    {
+      "id": "pages/breeding/BirthRecordingPage.tsx::property::Select the dam",
+      "reason": "Remaining English item 12 / 7.5 validation & empty-state copy"
+    },
+    {
+      "id": "pages/breeding/BirthRecordingPage.tsx::property::Sex",
+      "reason": "Remaining English item 12 / 7.5 validation & empty-state copy"
+    },
+    {
+      "id": "pages/breeding/BirthRecordingPage.tsx::property::Tag",
+      "reason": "Remaining English item 12 / 7.5 validation & empty-state copy"
+    },
+    {
+      "id": "pages/breeding/BirthRecordingPage.tsx::property::Weight",
+      "reason": "Remaining English item 12 / 7.5 validation & empty-state copy"
+    },
+    {
+      "id": "pages/breeding/BreedingRecordsPage.tsx::property::Artificial Insemination",
+      "reason": "enum chrome — migrated to the enums namespace in this pass"
+    },
+    {
+      "id": "pages/breeding/BreedingRecordsPage.tsx::property::Confirmed",
+      "reason": "enum chrome — migrated to the enums namespace in this pass"
+    },
+    {
+      "id": "pages/breeding/BreedingRecordsPage.tsx::property::Failed",
+      "reason": "enum chrome — migrated to the enums namespace in this pass"
+    },
+    {
+      "id": "pages/breeding/BreedingRecordsPage.tsx::property::Natural",
+      "reason": "enum chrome — migrated to the enums namespace in this pass"
+    },
+    {
+      "id": "pages/breeding/BreedingRecordsPage.tsx::property::Pending",
+      "reason": "enum chrome — migrated to the enums namespace in this pass"
+    },
+    {
+      "id": "pages/configuration/ConfigurationPage.tsx::property::Animal type is required",
+      "reason": "Remaining English item 12 / 7.5 validation & empty-state copy"
+    },
+    {
+      "id": "pages/configuration/ConfigurationPage.tsx::property::Location type is required",
+      "reason": "Remaining English item 12 / 7.5 validation & empty-state copy"
+    },
+    {
+      "id": "pages/configuration/ConfigurationPage.tsx::property::Name is required",
+      "reason": "Remaining English item 12 / 7.5 validation & empty-state copy"
+    },
+    {
+      "id": "pages/configuration/ConfigurationPage.tsx::property::Value is required",
+      "reason": "Remaining English item 12 / 7.5 validation & empty-state copy"
+    },
+    {
+      "id": "pages/farm/MembersPage.tsx::property::No pending invitations.",
+      "reason": "Remaining English item 12 / 7.5 validation & empty-state copy"
+    },
+    {
+      "id": "pages/farm/MembersPage.tsx::property::Please choose a role",
+      "reason": "Remaining English item 12 / 7.5 validation & empty-state copy"
+    },
+    {
+      "id": "pages/farm/MembersPage.tsx::property::Please enter a valid email address",
+      "reason": "Remaining English item 12 / 7.5 validation & empty-state copy"
+    },
+    {
+      "id": "pages/farm/MembersPage.tsx::property::Please enter an email address",
+      "reason": "Remaining English item 12 / 7.5 validation & empty-state copy"
+    },
+    {
+      "id": "pages/feed/DietPlansPage.tsx::property::Name is required",
+      "reason": "Remaining English item 12 / 7.5 validation & empty-state copy"
+    },
+    {
+      "id": "pages/feed/DietPlansPage.tsx::property::Required",
+      "reason": "Remaining English item 12 / 7.5 validation & empty-state copy"
+    },
+    {
+      "id": "pages/feed/FeedRecordsPage.tsx::property::Individual animal",
+      "reason": "enum chrome — migrated to the enums namespace in this pass"
+    },
+    {
+      "id": "pages/feed/FeedRecordsPage.tsx::property::Location (group)",
+      "reason": "enum chrome — migrated to the enums namespace in this pass"
+    },
+    {
+      "id": "pages/feed/FeedTypesPage.tsx::property::Current Stock",
+      "reason": "enum chrome — migrated to the enums namespace in this pass"
+    },
+    {
+      "id": "pages/feed/FeedTypesPage.tsx::property::Feed Types",
+      "reason": "enum chrome — migrated to the enums namespace in this pass"
+    },
+    {
+      "id": "pages/feed/FeedTypesPage.tsx::property::Name is required",
+      "reason": "Remaining English item 12 / 7.5 validation & empty-state copy"
+    },
+    {
+      "id": "pages/feed/FeedTypesPage.tsx::property::Stock Movements",
+      "reason": "enum chrome — migrated to the enums namespace in this pass"
+    },
+    {
+      "id": "pages/feed/FeedingTasksPage.tsx::property::Feed Type",
+      "reason": "Remaining English item 12 / 7.5 validation & empty-state copy"
+    },
+    {
+      "id": "pages/feed/FeedingTasksPage.tsx::property::Quantity per Feeding",
+      "reason": "Remaining English item 12 / 7.5 validation & empty-state copy"
+    },
+    {
+      "id": "pages/finance/ExpensesPage.tsx::property::Amount is required",
+      "reason": "Remaining English item 12 / 7.5 validation & empty-state copy"
+    },
+    {
+      "id": "pages/finance/ExpensesPage.tsx::property::Category is required",
+      "reason": "Remaining English item 12 / 7.5 validation & empty-state copy"
+    },
+    {
+      "id": "pages/finance/ExpensesPage.tsx::property::Date is required",
+      "reason": "Remaining English item 12 / 7.5 validation & empty-state copy"
+    },
+    {
+      "id": "pages/finance/ExpensesPage.tsx::property::Description cannot exceed 1000 characters",
+      "reason": "Remaining English item 12 / 7.5 validation & empty-state copy"
+    },
+    {
+      "id": "pages/finance/ExpensesPage.tsx::property::Payment method is required",
+      "reason": "Remaining English item 12 / 7.5 validation & empty-state copy"
+    },
+    {
+      "id": "pages/finance/FinanceReportsPage.tsx::property::No expenses in this period",
+      "reason": "Remaining English item 12 / 7.5 validation & empty-state copy"
+    },
+    {
+      "id": "pages/finance/FinanceReportsPage.tsx::property::No income in this period",
+      "reason": "Remaining English item 12 / 7.5 validation & empty-state copy"
+    },
+    {
+      "id": "pages/finance/IncomesPage.tsx::property::Amount is required",
+      "reason": "Remaining English item 12 / 7.5 validation & empty-state copy"
+    },
+    {
+      "id": "pages/finance/IncomesPage.tsx::property::Category is required",
+      "reason": "Remaining English item 12 / 7.5 validation & empty-state copy"
+    },
+    {
+      "id": "pages/finance/IncomesPage.tsx::property::Date is required",
+      "reason": "Remaining English item 12 / 7.5 validation & empty-state copy"
+    },
+    {
+      "id": "pages/finance/IncomesPage.tsx::property::Description cannot exceed 1000 characters",
+      "reason": "Remaining English item 12 / 7.5 validation & empty-state copy"
+    },
+    {
+      "id": "pages/finance/IncomesPage.tsx::property::Payment method is required",
+      "reason": "Remaining English item 12 / 7.5 validation & empty-state copy"
+    },
+    {
+      "id": "pages/health/MedicalRecordsPage.tsx::property::Select an animal",
+      "reason": "Remaining English item 12 / 7.5 validation & empty-state copy"
+    },
+    {
+      "id": "pages/health/MedicalRecordsPage.tsx::property::Symptoms are required",
+      "reason": "Remaining English item 12 / 7.5 validation & empty-state copy"
+    },
+    {
+      "id": "pages/health/MedicinesPage.tsx::property::Medicine name is required",
+      "reason": "Remaining English item 12 / 7.5 validation & empty-state copy"
+    },
+    {
+      "id": "pages/health/MedicinesPage.tsx::property::Unit is required",
+      "reason": "Remaining English item 12 / 7.5 validation & empty-state copy"
+    },
+    {
+      "id": "pages/health/VaccinationRecordsPage.tsx::property::Select an animal",
+      "reason": "Remaining English item 12 / 7.5 validation & empty-state copy"
+    },
+    {
+      "id": "pages/health/VaccinationRecordsPage.tsx::property::Select vaccine type",
+      "reason": "Remaining English item 12 / 7.5 validation & empty-state copy"
+    },
+    {
+      "id": "pages/health/VaccinationSchedulePage.tsx::property::Select vaccine type",
+      "reason": "Remaining English item 12 / 7.5 validation & empty-state copy"
+    },
+    {
+      "id": "pages/health/VaccineTypesPage.tsx::property::Vaccine name is required",
+      "reason": "Remaining English item 12 / 7.5 validation & empty-state copy"
+    },
+    {
+      "id": "pages/inventory/InventoryItemsPage.tsx::property::Item name is required",
+      "reason": "Remaining English item 12 / 7.5 validation & empty-state copy"
+    },
+    {
+      "id": "pages/inventory/InventoryItemsPage.tsx::property::No inventory items yet. Add equipment, supplies, or consumables to get started.",
+      "reason": "Remaining English item 12 / 7.5 validation & empty-state copy"
+    },
+    {
+      "id": "pages/inventory/InventoryItemsPage.tsx::property::Quantity is required",
+      "reason": "Remaining English item 12 / 7.5 validation & empty-state copy"
+    },
+    {
+      "id": "pages/inventory/InventoryItemsPage.tsx::property::Unit is required",
+      "reason": "Remaining English item 12 / 7.5 validation & empty-state copy"
+    },
+    {
+      "id": "pages/inventory/InventoryMovementsPage.tsx::property::No stock movements found.",
+      "reason": "Remaining English item 12 / 7.5 validation & empty-state copy"
+    },
+    {
+      "id": "pages/inventory/InventoryReportsPage.tsx::property::All inventory items are above their reorder levels.",
+      "reason": "Remaining English item 12 / 7.5 validation & empty-state copy"
+    },
+    {
+      "id": "pages/offline/RecordWeightPage.tsx::property::Choose an animal",
+      "reason": "Remaining English item 12 / 7.5 validation & empty-state copy"
+    },
+    {
+      "id": "pages/offline/RecordWeightPage.tsx::property::Enter a weight",
+      "reason": "Remaining English item 12 / 7.5 validation & empty-state copy"
+    },
+    {
+      "id": "pages/offline/RecordWeightPage.tsx::property::Weight must be greater than zero",
+      "reason": "Remaining English item 12 / 7.5 validation & empty-state copy"
+    },
+    {
+      "id": "pages/reports/CostPerAnimalPage.tsx::property::No cost recorded for this animal",
+      "reason": "Remaining English item 12 / 7.5 validation & empty-state copy"
+    },
+    {
+      "id": "pages/reports/CostPerAnimalPage.tsx::property::No revenue recorded for this animal",
+      "reason": "Remaining English item 12 / 7.5 validation & empty-state copy"
+    },
+    {
+      "id": "pages/reports/VaccinationReportsPage.tsx::property::Animal",
+      "reason": "Remaining English item 12 / 7.5 validation & empty-state copy"
+    },
+    {
+      "id": "pages/reports/VaccinationReportsPage.tsx::property::Vaccine",
+      "reason": "Remaining English item 12 / 7.5 validation & empty-state copy"
+    }
   ]
 }
