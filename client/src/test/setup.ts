@@ -3,7 +3,7 @@ import '@testing-library/jest-dom/vitest';
 // `useTranslation` would return raw keys and every text assertion would fail; with it,
 // the suite asserts the very English copy the app ships.
 import '../i18n';
-import { cleanup } from '@testing-library/react';
+import { cleanup, configure } from '@testing-library/react';
 import { afterEach } from 'vitest';
 import { Modal, message, notification } from 'antd';
 
@@ -11,6 +11,17 @@ import { Modal, message, notification } from 'antd';
 // `@vitest-environment node`. It used to dereference `window` unconditionally, which failed such
 // a file's whole environment with "window is not defined" before a single test ran.
 const hasDom = typeof window !== 'undefined' && typeof document !== 'undefined';
+
+// How long `findBy*`/`waitFor` may wait before failing, per query. The library default is
+// one second, which is enough on a laptop but not on a CI runner executing 79 test files in
+// parallel: AttendancePage's boot (IndexedDB open + employee fetch) took longer than that
+// there, and the suite failed on a query whose page was about to render. Five seconds is
+// the budget the antd-heavy suites already give their whole tests; giving it to the queries
+// removes the load-dependent coin toss without hiding a genuinely missing element — a
+// passing query still resolves the moment it matches.
+if (hasDom) {
+  configure({ asyncUtilTimeout: 5_000 });
+}
 
 afterEach(async () => {
   if (!hasDom) return;
