@@ -40,5 +40,12 @@
   "weightsYouRecordShowUpHereUntilThe": "Los pesos que registres aparecen aquí hasta que el servidor los tenga.",
   "workRecordedOnThisDeviceIsSentOldest": "El trabajo registrado en este dispositivo se envía del más antiguo al más reciente. No se elimina nada\n          hasta que el servidor lo ha aceptado.",
   "youAreOffline": "Estás sin conexión",
-  "yourSessionExpiredBeforeTheseRecordsCouldBe": "Tu sesión caducó antes de que se pudieran enviar estos registros"
+  "yourSessionExpiredBeforeTheseRecordsCouldBe": "Tu sesión caducó antes de que se pudieran enviar estos registros",
+  "mutationKindWeightRecord": "Peso",
+  "mutationKindAttendanceCheckIn": "Entrada",
+  "mutationKindAttendanceCheckOut": "Salida",
+  "mutationKindTaskComplete": "Finalización de tarea",
+  "mutationKindCheckedIn": "Registró entrada",
+  "mutationKindCheckedOut": "Registró salida",
+  "mutationKindCompleted": "Completada"
 }

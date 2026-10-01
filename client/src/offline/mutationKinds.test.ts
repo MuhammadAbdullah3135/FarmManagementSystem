@@ -153,6 +153,35 @@ describe('mutation kinds', () => {
     expect(kindLabel('animal.create')).toBe('animal.create');
   });
 
+  it('resolves every kind label in en, es and ar, and summarises in the active language', async () => {
+    const kinds = Object.keys(MUTATION_KINDS);
+    const locales = ['en', 'es', 'ar'] as const;
+
+    for (const kind of kinds) {
+      // Every kind carries a key the offline namespace actually holds.
+      expect(i18n.exists(getMutationKind(kind)!.labelKey, { ns: 'offline' })).toBe(true);
+    }
+
+    for (const lng of locales) {
+      await i18n.changeLanguage(lng);
+      for (const kind of kinds) {
+        // The label follows the language, never the raw kind string.
+        expect(kindLabel(kind)).not.toBe(kind);
+      }
+    }
+
+    // The wording mirrors the established HR terminology for the same words.
+    await i18n.changeLanguage('es');
+    expect(kindLabel(ATTENDANCE_CHECK_IN)).toBe('Entrada');
+    expect(describeItem(item(ATTENDANCE_CHECK_IN, { employeeId: 'e-1', occurredAt: 'x' }, 'e-1') as OutboxItem, 'Grace Otieno'))
+      .toBe('Registró entrada · Grace Otieno');
+    await i18n.changeLanguage('ar');
+    expect(kindLabel(ATTENDANCE_CHECK_IN)).toBe('تسجيل الحضور');
+
+    await i18n.changeLanguage('en');
+    expect(kindLabel(ATTENDANCE_CHECK_IN)).toBe('Check-in');
+  });
+
   it('has a translation key and a colour for every status the queue can be in', () => {
     const statuses: OutboxStatus[] = ['pending', 'applied', 'quarantined', 'dismissed'];
 

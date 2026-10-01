@@ -40,5 +40,12 @@
   "weightsYouRecordShowUpHereUntilThe": "Weights you record show up here until the server has them.",
   "workRecordedOnThisDeviceIsSentOldest": "Work recorded on this device is sent oldest first. Nothing is removed until the server\n          has accepted it.",
   "youAreOffline": "You are offline",
-  "yourSessionExpiredBeforeTheseRecordsCouldBe": "Your session expired before these records could be sent"
+  "yourSessionExpiredBeforeTheseRecordsCouldBe": "Your session expired before these records could be sent",
+  "mutationKindWeightRecord": "Weight",
+  "mutationKindAttendanceCheckIn": "Check-in",
+  "mutationKindAttendanceCheckOut": "Check-out",
+  "mutationKindTaskComplete": "Task completion",
+  "mutationKindCheckedIn": "Checked in",
+  "mutationKindCheckedOut": "Checked out",
+  "mutationKindCompleted": "Completed"
 }

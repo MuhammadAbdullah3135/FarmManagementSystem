@@ -40,5 +40,12 @@
   "weightsYouRecordShowUpHereUntilThe": "تظهر الأوزان التي تسجّلها هنا إلى أن تصل إلى الخادم.",
   "workRecordedOnThisDeviceIsSentOldest": "يُرسل العمل المسجّل على هذا الجهاز من الأقدم إلى الأحدث. ولا يُحذف شيء قبل أن يقبله\n          الخادم.",
   "youAreOffline": "أنت دون اتصال",
-  "yourSessionExpiredBeforeTheseRecordsCouldBe": "انتهت صلاحية جلستك قبل إرسال هذه السجلات"
+  "yourSessionExpiredBeforeTheseRecordsCouldBe": "انتهت صلاحية جلستك قبل إرسال هذه السجلات",
+  "mutationKindWeightRecord": "الوزن",
+  "mutationKindAttendanceCheckIn": "تسجيل الحضور",
+  "mutationKindAttendanceCheckOut": "تسجيل الانصراف",
+  "mutationKindTaskComplete": "إكمال المهمة",
+  "mutationKindCheckedIn": "تم تسجيل الحضور",
+  "mutationKindCheckedOut": "تم تسجيل الانصراف",
+  "mutationKindCompleted": "مكتملة"
 }

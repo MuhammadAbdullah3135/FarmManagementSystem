@@ -18,6 +18,7 @@
  */
 
 import type { OutboxItem, OutboxStatus } from './db';
+import i18n from '../i18n';
 
 export interface WeightRecordPayload {
   animalId: string;
@@ -54,8 +55,8 @@ export interface MutationEnvelope<TPayload = unknown> {
 export interface MutationKindDefinition<TPayload> {
   /** The kind stored on the item and the operation sent to the server. */
   kind: string;
-  /** A short noun for the sync screen's group headings and toasts. */
-  label: string;
+  /** Key (offline namespace) of the short noun for the queue UI's headings and toasts. */
+  labelKey: string;
   /** Builds the wire item. The payload goes out exactly as it was stored. */
   toEnvelope: (item: OutboxItem<TPayload>) => MutationEnvelope<TPayload>;
   /** The entity the mutation is about, derived from the payload at enqueue. */
@@ -70,7 +71,7 @@ const WEIGHT_RECORD_KIND = 'weight.record';
 
 const weightRecord: MutationKindDefinition<WeightRecordPayload> = {
   kind: WEIGHT_RECORD_KIND,
-  label: 'Weight',
+  labelKey: 'mutationKindWeightRecord',
 
   toEnvelope: (item) => ({
     operation: WEIGHT_RECORD_KIND,
@@ -107,11 +108,11 @@ const TASK_COMPLETE_KIND = 'task.complete';
  */
 const attendanceKind = (
   kind: string,
-  label: string,
-  verb: string,
+  labelKey: string,
+  verbKey: string,
 ): MutationKindDefinition<AttendanceMutationPayload> => ({
   kind,
-  label,
+  labelKey,
 
   toEnvelope: (item) => ({
     operation: kind,
@@ -125,15 +126,23 @@ const attendanceKind = (
   targetIdOf: (payload) => payload.employeeId,
   occurredAtOf: (payload) => payload.occurredAt,
 
-  summarize: (item, targetLabel) => `${verb} · ${targetLabel ?? item.targetId}`,
+  summarize: (item, targetLabel) => `${i18n.t(verbKey, { ns: 'offline' })} · ${targetLabel ?? item.targetId}`,
 });
 
-const attendanceCheckIn = attendanceKind(ATTENDANCE_CHECK_IN_KIND, 'Check-in', 'Checked in');
-const attendanceCheckOut = attendanceKind(ATTENDANCE_CHECK_OUT_KIND, 'Check-out', 'Checked out');
+const attendanceCheckIn = attendanceKind(
+  ATTENDANCE_CHECK_IN_KIND,
+  'mutationKindAttendanceCheckIn',
+  'mutationKindCheckedIn',
+);
+const attendanceCheckOut = attendanceKind(
+  ATTENDANCE_CHECK_OUT_KIND,
+  'mutationKindAttendanceCheckOut',
+  'mutationKindCheckedOut',
+);
 
 const taskComplete: MutationKindDefinition<TaskCompletionPayload> = {
   kind: TASK_COMPLETE_KIND,
-  label: 'Task completion',
+  labelKey: 'mutationKindTaskComplete',
 
   toEnvelope: (item) => ({
     operation: TASK_COMPLETE_KIND,
@@ -148,7 +157,7 @@ const taskComplete: MutationKindDefinition<TaskCompletionPayload> = {
   targetIdOf: (payload) => payload.taskId,
   occurredAtOf: (payload) => payload.occurredAt,
 
-  summarize: (item, targetLabel) => `Completed · ${targetLabel ?? item.targetId}`,
+  summarize: (item, targetLabel) => `${i18n.t('mutationKindCompleted', { ns: 'offline' })} · ${targetLabel ?? item.targetId}`,
 };
 
 export const MUTATION_KINDS: Record<string, MutationKindDefinition<any>> = {
@@ -187,5 +196,6 @@ export function describeItem(item: OutboxItem, targetLabel?: string | null): str
 }
 
 export function kindLabel(kind: string): string {
-  return getMutationKind(kind)?.label ?? kind;
+  const definition = getMutationKind(kind);
+  return definition ? i18n.t(definition.labelKey, { ns: 'offline' }) : kind;
 }
