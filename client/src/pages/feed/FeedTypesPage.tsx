@@ -197,7 +197,7 @@ const FeedTypesPage: React.FC = () => {const { t: translate } = useTranslation('
         items={[
           {
             key: 'types',
-            label: 'Feed Types',
+            label: translate('feedTypes'),
             children: (
               <Card
                 title={translate('feedTypes')}
@@ -213,7 +213,7 @@ const FeedTypesPage: React.FC = () => {const { t: translate } = useTranslation('
           },
           {
             key: 'stock',
-            label: 'Current Stock',
+            label: translate('currentStock'),
             children: (
               <Card title={translate('currentStock')}>
                 <Table rowKey="feedTypeId" columns={stockColumns} dataSource={stock} loading={loading} pagination={false} />
@@ -222,7 +222,7 @@ const FeedTypesPage: React.FC = () => {const { t: translate } = useTranslation('
           },
           {
             key: 'movements',
-            label: 'Stock Movements',
+            label: translate('stockMovements'),
             children: (
               <Card title={translate('stockMovements')}>
                 <Table

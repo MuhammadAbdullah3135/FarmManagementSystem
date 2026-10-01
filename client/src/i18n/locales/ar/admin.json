@@ -37,6 +37,12 @@
   "succeeded": "نجحت",
   "system": "النظام",
   "timestamp": "الطابع الزمني",
+  "totalRecords_few": "الإجمالي: {{count}} سجلات",
+  "totalRecords_many": "الإجمالي: {{count}} سجلًا",
+  "totalRecords_one": "الإجمالي: سجل واحد",
+  "totalRecords_other": "الإجمالي: {{count}} سجل",
+  "totalRecords_two": "الإجمالي: سجلان",
+  "totalRecords_zero": "الإجمالي: لا سجلات",
   "unknown": "غير معروف",
   "user": "المستخدم"
 }

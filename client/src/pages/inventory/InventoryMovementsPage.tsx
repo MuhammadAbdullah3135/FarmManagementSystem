@@ -6,8 +6,10 @@ import { inventoryApi } from '../../api/inventory';
 import { getApiError } from '../../api/farmApi';
 import type { InventoryItem, StockMovement } from '../../types';
 import { useTranslation } from 'react-i18next';
+import { useEnumOptions } from '../../i18n/enumOptions';
 
 const InventoryMovementsPage: React.FC = () => {const { t } = useTranslation('inventory'); 
+  const movementTypeOptions = useEnumOptions('movementType');
   const [movements, setMovements] = useState<StockMovement[]>([]);
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [total, setTotal] = useState(0);
@@ -42,7 +44,7 @@ const InventoryMovementsPage: React.FC = () => {const { t } = useTranslation('in
     { title: t('reason'), dataIndex: 'reason', render: (value?: string) => value || '-' },
   ];
 
-  return <Card title={t('stockMovements')} extra={<Space wrap><Select allowClear placeholder={t('allItems')} style={{ width: 180 }} value={itemId} onChange={setItemId} options={items.map((item) => ({ value: item.id, label: item.name }))} /><Select allowClear placeholder={t('allMovementTypes')} style={{ width: 170 }} value={movementType} onChange={setMovementType} options={['Purchase', 'Consumption', 'Transfer', 'Adjustment'].map((value) => ({ value, label: value }))} /><DatePicker.RangePicker value={dates} onChange={(value) => setDates(value as [Dayjs, Dayjs] | null)} /></Space>}>
+  return <Card title={t('stockMovements')} extra={<Space wrap><Select allowClear placeholder={t('allItems')} style={{ width: 180 }} value={itemId} onChange={setItemId} options={items.map((item) => ({ value: item.id, label: item.name }))} /><Select allowClear placeholder={t('allMovementTypes')} style={{ width: 170 }} value={movementType} onChange={setMovementType} options={movementTypeOptions} /><DatePicker.RangePicker value={dates} onChange={(value) => setDates(value as [Dayjs, Dayjs] | null)} /></Space>}>
     <Table rowKey="id" columns={columns} dataSource={movements} loading={loading} pagination={{ current: page, total, pageSize: 10, showSizeChanger: false, onChange: (nextPage) => void load(nextPage) }} locale={{ emptyText: 'No stock movements found.' }} />
   </Card>;
 };

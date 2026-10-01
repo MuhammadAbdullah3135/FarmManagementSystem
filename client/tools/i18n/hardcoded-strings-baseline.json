@@ -210,18 +210,6 @@
       "reason": "Remaining English item 12 / 7.5 validation & empty-state copy"
     },
     {
-      "id": "pages/admin/AuditLogPage.tsx::property::Create",
-      "reason": "enum chrome — migrated to the enums namespace in this pass"
-    },
-    {
-      "id": "pages/admin/AuditLogPage.tsx::property::Delete",
-      "reason": "enum chrome — migrated to the enums namespace in this pass"
-    },
-    {
-      "id": "pages/admin/AuditLogPage.tsx::property::Update",
-      "reason": "enum chrome — migrated to the enums namespace in this pass"
-    },
-    {
       "id": "pages/animals/AnimalDetailPage.tsx::property::Notes",
       "reason": "Remaining English item 12 / 7.5 validation & empty-state copy"
     },
@@ -274,26 +262,6 @@
       "reason": "Remaining English item 12 / 7.5 validation & empty-state copy"
     },
     {
-      "id": "pages/breeding/BreedingRecordsPage.tsx::property::Artificial Insemination",
-      "reason": "enum chrome — migrated to the enums namespace in this pass"
-    },
-    {
-      "id": "pages/breeding/BreedingRecordsPage.tsx::property::Confirmed",
-      "reason": "enum chrome — migrated to the enums namespace in this pass"
-    },
-    {
-      "id": "pages/breeding/BreedingRecordsPage.tsx::property::Failed",
-      "reason": "enum chrome — migrated to the enums namespace in this pass"
-    },
-    {
-      "id": "pages/breeding/BreedingRecordsPage.tsx::property::Natural",
-      "reason": "enum chrome — migrated to the enums namespace in this pass"
-    },
-    {
-      "id": "pages/breeding/BreedingRecordsPage.tsx::property::Pending",
-      "reason": "enum chrome — migrated to the enums namespace in this pass"
-    },
-    {
       "id": "pages/configuration/ConfigurationPage.tsx::property::Animal type is required",
       "reason": "Remaining English item 12 / 7.5 validation & empty-state copy"
     },
@@ -334,28 +302,8 @@
       "reason": "Remaining English item 12 / 7.5 validation & empty-state copy"
     },
     {
-      "id": "pages/feed/FeedRecordsPage.tsx::property::Individual animal",
-      "reason": "enum chrome — migrated to the enums namespace in this pass"
-    },
-    {
-      "id": "pages/feed/FeedRecordsPage.tsx::property::Location (group)",
-      "reason": "enum chrome — migrated to the enums namespace in this pass"
-    },
-    {
-      "id": "pages/feed/FeedTypesPage.tsx::property::Current Stock",
-      "reason": "enum chrome — migrated to the enums namespace in this pass"
-    },
-    {
-      "id": "pages/feed/FeedTypesPage.tsx::property::Feed Types",
-      "reason": "enum chrome — migrated to the enums namespace in this pass"
-    },
-    {
       "id": "pages/feed/FeedTypesPage.tsx::property::Name is required",
       "reason": "Remaining English item 12 / 7.5 validation & empty-state copy"
-    },
-    {
-      "id": "pages/feed/FeedTypesPage.tsx::property::Stock Movements",
-      "reason": "enum chrome — migrated to the enums namespace in this pass"
     },
     {
       "id": "pages/feed/FeedingTasksPage.tsx::property::Feed Type",

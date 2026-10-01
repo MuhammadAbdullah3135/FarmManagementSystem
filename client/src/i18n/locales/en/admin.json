@@ -37,6 +37,8 @@
   "succeeded": "Succeeded",
   "system": "System",
   "timestamp": "Timestamp",
+  "totalRecords": "Total {{count}} record",
+  "totalRecords_other": "Total {{count}} records",
   "unknown": "Unknown",
   "user": "User"
 }

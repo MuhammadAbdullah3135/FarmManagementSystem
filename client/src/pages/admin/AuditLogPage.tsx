@@ -7,6 +7,7 @@ import { auditLogsApi } from '../../api/auditLogs';
 import type { AuditLogEntry, PagedResult } from '../../api/auditLogs';
 import { useFarmStore } from '../../stores/farmStore';
 import { useTranslation } from 'react-i18next';
+import { enumLabelOf, useEnumOptions } from '../../i18n/enumOptions';
 
 const { RangePicker } = DatePicker;
 const { Text } = Typography;
@@ -26,6 +27,7 @@ const entityTypes = [
 ];
 
 const AuditLogPage: React.FC = () => {const { t: translate } = useTranslation('admin'); 
+  const actionOptions = useEnumOptions('auditAction');
   const { activeFarm } = useFarmStore();
   const [data, setData] = useState<PagedResult<AuditLogEntry> | null>(null);
   const [loading, setLoading] = useState(false);
@@ -79,7 +81,7 @@ const AuditLogPage: React.FC = () => {const { t: translate } = useTranslation('a
       dataIndex: 'action',
       key: 'action',
       width: 100,
-      render: (v: string) => <Tag color={actionColors[v] || 'default'}>{v}</Tag>,
+      render: (v: string) => <Tag color={actionColors[v] || 'default'}>{enumLabelOf('auditAction', v)}</Tag>,
     },
     {
       title: translate('entityType'),
@@ -155,11 +157,7 @@ const AuditLogPage: React.FC = () => {const { t: translate } = useTranslation('a
           style={{ width: 120 }}
           value={action}
           onChange={setAction}
-          options={[
-            { label: 'Create', value: 'Create' },
-            { label: 'Update', value: 'Update' },
-            { label: 'Delete', value: 'Delete' },
-          ]}
+          options={actionOptions}
         />
         <Input
           placeholder={translate('search')}
@@ -188,7 +186,7 @@ const AuditLogPage: React.FC = () => {const { t: translate } = useTranslation('a
           total: data?.totalCount || 0,
           showSizeChanger: true,
           pageSizeOptions: ['10', '20', '50', '100'],
-          showTotal: (total) => `Total ${total} records`,
+          showTotal: (total) => translate('totalRecords', { count: total }),
           onChange: (p, ps) => { setPage(p); setPageSize(ps); },
         }}
         size="small"

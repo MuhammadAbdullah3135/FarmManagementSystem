@@ -11,6 +11,7 @@ import { lookupsApi } from '../../api/attendance';
 import { getApiError } from '../../api/farmApi';
 import type { MedicalRecordListItem, MedicalRecordStatus } from '../../types';
 import { useTranslation } from 'react-i18next';
+import { useEnumOptions } from '../../i18n/enumOptions';
 
 const STATUS_COLORS: Record<MedicalRecordStatus, string> = {
   Open: 'gold',
@@ -25,6 +26,7 @@ interface AnimalOption {
 }
 
 const MedicalRecordsPage: React.FC = () => {const { t } = useTranslation('health'); 
+  const statusOptions = useEnumOptions('medicalStatus');
   const [records, setRecords] = useState<MedicalRecordListItem[]>([]);
   const [animals, setAnimals] = useState<AnimalOption[]>([]);
   const [total, setTotal] = useState(0);
@@ -231,7 +233,7 @@ const MedicalRecordsPage: React.FC = () => {const { t } = useTranslation('health
               style={{ width: 130 }}
               value={filters.status}
               onChange={(v) => setFilters((f) => ({ ...f, status: v }))}
-              options={['Open', 'InProgress', 'Resolved'].map((s) => ({ value: s, label: s }))}
+              options={statusOptions}
             />
             <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
               {t('newRecord')}
@@ -314,7 +316,7 @@ const MedicalRecordsPage: React.FC = () => {const { t } = useTranslation('health
             </Col>
           </Row>
           <Form.Item name="status" label={t('status')} rules={[{ required: true }]}>
-            <Select options={['Open', 'InProgress', 'Resolved'].map((s) => ({ value: s, label: s }))} />
+            <Select options={statusOptions} />
           </Form.Item>
           <Form.Item name="notes" label={t('notes')}>
             <Input.TextArea rows={2} maxLength={2000} placeholder={t('additionalNotes')} />

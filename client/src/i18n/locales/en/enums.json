@@ -1,0 +1,47 @@
+{
+  "auditAction": {
+    "Create": "Create",
+    "Update": "Update",
+    "Delete": "Delete"
+  },
+  "taskStatus": {
+    "Pending": "Pending",
+    "InProgress": "In progress",
+    "Completed": "Completed",
+    "Cancelled": "Cancelled"
+  },
+  "taskPriority": {
+    "Low": "Low",
+    "Medium": "Medium",
+    "High": "High"
+  },
+  "movementType": {
+    "Purchase": "Purchase",
+    "Consumption": "Consumption",
+    "Transfer": "Transfer",
+    "Adjustment": "Adjustment"
+  },
+  "medicalStatus": {
+    "Open": "Open",
+    "InProgress": "In progress",
+    "Resolved": "Resolved"
+  },
+  "feedingTaskStatus": {
+    "Pending": "Pending",
+    "Completed": "Completed",
+    "Skipped": "Skipped"
+  },
+  "breedingMethod": {
+    "natural": "Natural",
+    "artificialInsemination": "Artificial Insemination"
+  },
+  "breedingResult": {
+    "pending": "Pending",
+    "confirmed": "Confirmed",
+    "failed": "Failed"
+  },
+  "feedTargetMode": {
+    "animal": "Individual animal",
+    "location": "Location (group)"
+  }
+}

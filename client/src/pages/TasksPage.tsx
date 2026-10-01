@@ -23,6 +23,7 @@ import { useAuthStore } from '../stores/authStore';
 import { useFarmStore } from '../stores/farmStore';
 import type { Employee, FarmTask, FarmTaskPriority, FarmTaskStatus } from '../types';
 import { useTranslation } from 'react-i18next';
+import { useEnumOptions } from '../i18n/enumOptions';
 
 const { Text } = Typography;
 
@@ -30,6 +31,8 @@ const PRIORITY_COLORS: Record<FarmTaskPriority, string> = { Low: 'default', Medi
 const STATUS_COLORS: Record<FarmTaskStatus, string> = { Pending: 'gold', InProgress: 'processing', Completed: 'green', Cancelled: 'default' };
 
 const TasksPage: React.FC = () => {const { t } = useTranslation('tasks'); 
+  const statusOptions = useEnumOptions('taskStatus');
+  const priorityOptions = useEnumOptions('taskPriority');
   const [page, setPage] = useState(1);
   const [filters, setFilters] = useState<{
     status?: string;
@@ -310,10 +313,10 @@ const TasksPage: React.FC = () => {const { t } = useTranslation('tasks');
         <Space wrap>
           <Select allowClear placeholder={t('status')} style={{ width: 120 }} value={filters.status}
             onChange={(v) => setFilters((f) => ({ ...f, status: v }))}
-            options={['Pending', 'InProgress', 'Completed', 'Cancelled'].map((s) => ({ value: s, label: s }))} />
+            options={statusOptions} />
           <Select allowClear placeholder={t('priority')} style={{ width: 120 }} value={filters.priority}
             onChange={(v) => setFilters((f) => ({ ...f, priority: v }))}
-            options={['Low', 'Medium', 'High'].map((p) => ({ value: p, label: p }))} />
+            options={priorityOptions} />
           <Select allowClear placeholder={t('assignee')} style={{ width: 180 }} value={filters.assignee}
             onChange={(v) => setFilters((f) => ({ ...f, assignee: v }))}
             options={employees.map((e) => ({ value: e.id, label: `${e.firstName} ${e.lastName}` }))} />
@@ -391,7 +394,7 @@ const TasksPage: React.FC = () => {const { t } = useTranslation('tasks');
           <Row gutter={[16, 16]}>
             <Col xs={24} sm={12}>
               <Form.Item name="priority" label={t('priority')} rules={[{ required: true }]}>
-                <Select options={['Low', 'Medium', 'High'].map((p) => ({ value: p, label: p }))} style={{ width: '100%' }} />
+                <Select options={priorityOptions} style={{ width: '100%' }} />
               </Form.Item>
             </Col>
             <Col xs={24} sm={12}>

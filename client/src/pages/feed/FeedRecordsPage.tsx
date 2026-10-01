@@ -12,6 +12,7 @@ import { getApiError } from '../../api/farmApi';
 import LookupQuickAddSelect from '../../components/LookupQuickAddSelect';
 import type { FeedRecord, FeedType } from '../../types';
 import { useTranslation } from 'react-i18next';
+import { useEnumOptions } from '../../i18n/enumOptions';
 
 interface AnimalOption {
   id: string;
@@ -25,6 +26,7 @@ interface LocationOption {
 }
 
 const FeedRecordsPage: React.FC = () => {const { t: translate } = useTranslation('feed'); 
+  const targetModeOptions = useEnumOptions('feedTargetMode');
   const [records, setRecords] = useState<FeedRecord[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -224,10 +226,7 @@ const FeedRecordsPage: React.FC = () => {const { t: translate } = useTranslation
                 <Radio.Group
                   value={targetMode}
                   onChange={(e) => setTargetMode(e.target.value)}
-                  options={[
-                    { value: 'animal', label: 'Individual animal' },
-                    { value: 'location', label: 'Location (group)' },
-                  ]}
+options={targetModeOptions}
                   optionType="button"
                   buttonStyle="solid"
                 />

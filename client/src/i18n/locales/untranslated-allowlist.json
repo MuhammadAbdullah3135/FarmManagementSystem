@@ -122,6 +122,14 @@
         "es"
       ],
       "reason": "A true Spanish cognate: Spanish spells the bank instrument \"cheque\" exactly as English does (RAE). (Arabic writes شيك.)"
+    },
+    {
+      "key": "enums:breedingMethod.natural",
+      "value": "Natural",
+      "locales": [
+        "es"
+      ],
+      "reason": "A true Spanish cognate: the breeding method is \"natural\" (or \"monta natural\") in Spanish, same spelling. (Arabic writes طبيعي.)"
     }
   ]
 }

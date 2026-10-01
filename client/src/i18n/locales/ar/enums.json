@@ -1,0 +1,47 @@
+{
+  "auditAction": {
+    "Create": "إنشاء",
+    "Update": "تحديث",
+    "Delete": "حذف"
+  },
+  "taskStatus": {
+    "Pending": "قيد الانتظار",
+    "InProgress": "قيد التنفيذ",
+    "Completed": "مكتملة",
+    "Cancelled": "ملغاة"
+  },
+  "taskPriority": {
+    "Low": "منخفضة",
+    "Medium": "متوسطة",
+    "High": "عالية"
+  },
+  "movementType": {
+    "Purchase": "شراء",
+    "Consumption": "استهلاك",
+    "Transfer": "تحويل",
+    "Adjustment": "تسوية"
+  },
+  "medicalStatus": {
+    "Open": "مفتوحة",
+    "InProgress": "قيد التنفيذ",
+    "Resolved": "محلولة"
+  },
+  "feedingTaskStatus": {
+    "Pending": "قيد الانتظار",
+    "Completed": "مكتملة",
+    "Skipped": "تم تخطيها"
+  },
+  "breedingMethod": {
+    "natural": "طبيعي",
+    "artificialInsemination": "تلقيح اصطناعي"
+  },
+  "breedingResult": {
+    "pending": "قيد الانتظار",
+    "confirmed": "مؤكدة",
+    "failed": "فاشلة"
+  },
+  "feedTargetMode": {
+    "animal": "حيوان فردي",
+    "location": "الموقع (مجموعة)"
+  }
+}

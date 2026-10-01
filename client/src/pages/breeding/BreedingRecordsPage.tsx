@@ -11,6 +11,7 @@ import dayjs from 'dayjs';
 import { useNavigate } from 'react-router-dom';
 import type { BreedingRecord } from '../../types';
 import { useTranslation } from 'react-i18next';
+import { useEnumOptions } from '../../i18n/enumOptions';
 
 interface AnimalOption {
   id: string;
@@ -23,6 +24,8 @@ const RESULT_LABELS: Record<number, string> = { 0: 'Pending', 1: 'Confirmed', 2:
 const RESULT_COLORS: Record<number, string> = { 0: 'orange', 1: 'green', 2: 'red' };
 
 export default function BreedingRecordsPage() {const { t } = useTranslation('breeding'); 
+  const methodOptions = useEnumOptions('breedingMethod');
+  const resultOptions = useEnumOptions('breedingResult');
   const navigate = useNavigate();
   const [data, setData] = useState<BreedingRecord[]>([]);
   const [total, setTotal] = useState(0);
@@ -278,10 +281,7 @@ export default function BreedingRecordsPage() {const { t } = useTranslation('bre
             <Col xs={24} sm={12}>
               <Form.Item name="method" label={t('method')} rules={[{ required: true }]}>
                 <Select
-                  options={[
-                    { value: 0, label: 'Natural' },
-                    { value: 1, label: 'Artificial Insemination' },
-                  ]}
+options={methodOptions}
                   style={{ width: '100%' }}
                   popupMatchSelectWidth={false}
                 />
@@ -291,11 +291,7 @@ export default function BreedingRecordsPage() {const { t } = useTranslation('bre
           {editing && (
             <Form.Item name="result" label={t('result')} rules={[{ required: true }]}>
               <Select
-                options={[
-                  { value: 0, label: 'Pending' },
-                  { value: 1, label: 'Confirmed' },
-                  { value: 2, label: 'Failed' },
-                ]}
+options={resultOptions}
               />
             </Form.Item>
           )}

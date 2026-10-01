@@ -10,6 +10,7 @@ import { feedingTasksApi } from '../../api/feed';
 import { getApiError } from '../../api/farmApi';
 import type { DietPlanItem, FeedingTask, FeedingTaskStatus } from '../../types';
 import { useTranslation } from 'react-i18next';
+import { useEnumOptions } from '../../i18n/enumOptions';
 
 const STATUS_COLORS: Record<FeedingTaskStatus, string> = {
   Pending: 'gold',
@@ -18,6 +19,7 @@ const STATUS_COLORS: Record<FeedingTaskStatus, string> = {
 };
 
 const FeedingTasksPage: React.FC = () => {const { t } = useTranslation('feed'); 
+  const statusOptions = useEnumOptions('feedingTaskStatus');
   const [tasks, setTasks] = useState<FeedingTask[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -140,7 +142,7 @@ const FeedingTasksPage: React.FC = () => {const { t } = useTranslation('feed');
             style={{ width: 120 }}
             value={statusFilter}
             onChange={setStatusFilter}
-            options={['Pending', 'Completed', 'Skipped'].map((s) => ({ value: s, label: s }))}
+            options={statusOptions}
           />
           <Button icon={<ThunderboltOutlined />} loading={genLoading} onClick={handleGenerate}>
             {t('generate')}

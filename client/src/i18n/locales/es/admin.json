@@ -37,6 +37,9 @@
   "succeeded": "Correcto",
   "system": "Sistema",
   "timestamp": "Marca de tiempo",
+  "totalRecords_many": "Total {{count}} registros",
+  "totalRecords_one": "Total {{count}} registro",
+  "totalRecords_other": "Total {{count}} registros",
   "unknown": "Desconocido",
   "user": "Usuario"
 }

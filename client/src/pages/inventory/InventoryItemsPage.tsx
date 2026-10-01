@@ -8,6 +8,7 @@ import { getApiError } from '../../api/farmApi';
 import { formatNumber } from '../../i18n/format';
 import type { InventoryItem } from '../../types';
 import { useTranslation } from 'react-i18next';
+import { useEnumOptions } from '../../i18n/enumOptions';
 
 /**
  * Money in this table has no currency symbol — the column headers say what the figure is,
@@ -18,6 +19,7 @@ const money = (value: number): string =>
   formatNumber(value, undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 const InventoryItemsPage: React.FC = () => {const { t } = useTranslation('inventory'); 
+  const movementTypeOptions = useEnumOptions('movementType');
   const navigate = useNavigate();
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [total, setTotal] = useState(0);
@@ -173,7 +175,7 @@ const InventoryItemsPage: React.FC = () => {const { t } = useTranslation('invent
     <Modal title={movementItem ? `Adjust stock — ${movementItem.name}` : t('adjustStock')} open={movementModalOpen} onOk={() => void saveMovement()} onCancel={() => setMovementModalOpen(false)} destroyOnClose>
       <Form form={movementForm} layout="vertical">
         <Form.Item name="movementType" label={t('movementType')} rules={[{ required: true }]}>
-          <Select options={['Purchase', 'Consumption', 'Transfer', 'Adjustment'].map((value) => ({ value, label: value }))} style={{ width: '100%' }} />
+          <Select options={movementTypeOptions} style={{ width: '100%' }} />
         </Form.Item>
         <Form.Item name="quantity" label={t('quantity')} extra={t('useANegativeQuantityForADownwardAdjustment')} rules={[{ required: true, message: 'Quantity is required' }]}>
           <InputNumber precision={3} style={{ width: '100%' }} />
