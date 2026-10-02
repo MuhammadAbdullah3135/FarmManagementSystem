@@ -44,6 +44,35 @@
   "breeding": {
     "recordInUse": "This breeding record is still referenced by gestation records, so it cannot be deleted. Delete those records first."
   },
+  "conflict": {
+    "alreadyCheckedOut": "Employee has already checked out today",
+    "alreadyMember": "That person is already a member of this farm",
+    "attendanceAlreadyRecorded": "Employee already has an attendance record for that day",
+    "customerHasSales": "Cannot delete a customer with sales history",
+    "departmentHasEmployees": "Cannot delete a department that has employees",
+    "dietPlanHasGeneratedTasks": "Cannot delete a diet plan that has generated feeding tasks; deactivate it instead",
+    "duplicateIdentification": "Duplicate identification values in request",
+    "emailAlreadyRegistered": "Email already registered",
+    "expenseCategoryInUse": "Cannot delete an expense category that has expenses",
+    "feedTypeHasFeedRecords": "Cannot delete a feed type that has feed records",
+    "feedTypeHasStockMovements": "Cannot delete a feed type that has stock movements",
+    "feedTypeInDietPlan": "Cannot delete a feed type that is used in a diet plan",
+    "incomeCategoryInUse": "Cannot delete an income category that has income records",
+    "inventoryItemHasHistory": "Cannot delete an inventory item with stock movement history",
+    "invitationNotPending": "Only pending invitations can be revoked",
+    "invitationPending": "An invitation for that email is already pending",
+    "lastOwner": "A farm must keep at least one owner",
+    "locationHasChildren": "Cannot delete location with children",
+    "medicineNameExists": "A medicine with this name already exists",
+    "paymentMethodInUse": "Cannot delete a payment method that has expenses",
+    "pregnancyAlreadyConfirmed": "Pregnancy already confirmed for this breeding record",
+    "roleHasEmployees": "Cannot delete a role that has employees",
+    "scheduleHasGeneratedTasks": "Cannot delete a schedule that has generated tasks; deactivate it instead",
+    "supplierHasPurchases": "Cannot delete a supplier with purchase history",
+    "taskClosed": "Closed tasks cannot be edited. Reopen the task first.",
+    "taskCompletionNotesDiffer": "This task was already completed with different completion notes",
+    "vaccineTypeNameExists": "A vaccine type with this name already exists"
+  },
   "customer": {
     "contactInfoMaxLength": "Contact information cannot exceed {{max}} characters",
     "nameMaxLength": "Customer name cannot exceed {{max}} characters",
@@ -151,6 +180,10 @@
     "vaccineTypeInFarm": "Vaccine type not found in this farm",
     "weightCheckSchedule": "Weight check schedule not found",
     "weightRecord": "Weight record not found"
+  },
+  "supersede": {
+    "completionAlreadyApplied": "This completion was already applied",
+    "taskAlreadyCompleted": "Task is already completed"
   },
   "supplier": {
     "contactInfoMaxLength": "Contact information cannot exceed {{max}} characters",

@@ -95,7 +95,7 @@ public class VaccineService : IVaccineService
         var exists = await _context.VaccineTypes
             .AnyAsync(v => v.FarmId == farmId && v.Name == request.Name);
         if (exists)
-            return Result<VaccineTypeDto>.Conflict("A vaccine type with this name already exists");
+            return Result<VaccineTypeDto>.Conflict("A vaccine type with this name already exists", DomainMessageKeys.VaccineTypeNameExists);
 
         if (request.LinkedMedicineId.HasValue)
         {
@@ -147,7 +147,7 @@ public class VaccineService : IVaccineService
         var nameExists = await _context.VaccineTypes
             .AnyAsync(v => v.FarmId == farmId && v.Name == request.Name && v.Id != id);
         if (nameExists)
-            return Result<VaccineTypeDto>.Conflict("A vaccine type with this name already exists");
+            return Result<VaccineTypeDto>.Conflict("A vaccine type with this name already exists", DomainMessageKeys.VaccineTypeNameExists);
 
         if (request.LinkedMedicineId.HasValue)
         {

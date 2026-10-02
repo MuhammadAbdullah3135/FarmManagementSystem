@@ -74,7 +74,7 @@ public class AttendanceService : IAttendanceService
         // endpoint's original behaviour down to the wording.
         if (deviceTime is null)
             return Result<AttendanceRecordDto>.Conflict(
-                "Employee already has an attendance record for that day");
+                "Employee already has an attendance record for that day", DomainMessageKeys.AttendanceAlreadyRecorded);
 
         // A record with no check-in time is somebody's deliberate manual entry (a Leave, an
         // Absent) rather than a shift start, so there is no time for "earliest wins" to beat.
@@ -89,7 +89,7 @@ public class AttendanceService : IAttendanceService
         // later case is "already satisfied", not an error — the day does have a check-in.
         if (deviceTime.Value >= existing.CheckInAt.Value)
             return Result<AttendanceRecordDto>.Superseded(
-                "Employee already has an attendance record for that day");
+                "Employee already has an attendance record for that day", DomainMessageKeys.AttendanceAlreadyRecorded);
 
         existing.CheckInAt = occurredAt;
 
@@ -127,13 +127,13 @@ public class AttendanceService : IAttendanceService
             // shift ended, so a live check-out on a day that is already closed is the same
             // conflict it has always been.
             if (deviceTime is null)
-                return Result<AttendanceRecordDto>.Conflict("Employee has already checked out today");
+                return Result<AttendanceRecordDto>.Conflict("Employee has already checked out today", DomainMessageKeys.AlreadyCheckedOut);
 
             // Latest check-out wins — the mirror of the check-in rule. The row records when the
             // shift actually ended, so a device reporting a later time moves it forward rather
             // than being refused, and an earlier one leaves the later time standing.
             if (deviceTime.Value <= record.CheckOutAt.Value)
-                return Result<AttendanceRecordDto>.Superseded("Employee has already checked out today");
+                return Result<AttendanceRecordDto>.Superseded("Employee has already checked out today", DomainMessageKeys.AlreadyCheckedOut);
         }
 
         if (occurredAt < record.CheckInAt)

@@ -72,7 +72,7 @@ public class SupplierService : ISupplierService
     {
         var supplier = await _context.Suppliers.FirstOrDefaultAsync(s => s.FarmId == farmId && s.Id == id);
         if (supplier == null) return Result.NotFound("Supplier not found", DomainMessageKeys.SupplierNotFound);
-        if (await _context.SupplierPurchases.AnyAsync(p => p.SupplierId == id)) return Result.Conflict("Cannot delete a supplier with purchase history");
+        if (await _context.SupplierPurchases.AnyAsync(p => p.SupplierId == id)) return Result.Conflict("Cannot delete a supplier with purchase history", DomainMessageKeys.SupplierHasPurchaseHistory);
         _context.Suppliers.Remove(supplier); await _context.SaveChangesAsync(); return Result.Success();
     }
 

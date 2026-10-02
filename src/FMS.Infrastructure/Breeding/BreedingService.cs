@@ -390,7 +390,7 @@ public class BreedingService : IBreedingService
             .FirstOrDefaultAsync(gr => gr.BreedingRecordId == request.BreedingRecordId && gr.ConfirmedDate != null);
 
         if (existingGestation != null)
-            return Result<GestationRecordDto>.Conflict("Pregnancy already confirmed for this breeding record");
+            return Result<GestationRecordDto>.Conflict("Pregnancy already confirmed for this breeding record", DomainMessageKeys.PregnancyAlreadyConfirmed);
 
         var breed = await _context.Breeds.FindAsync(breedingRecord.Dam.BreedId);
         var gestationDays = breed?.AverageGestationDays ?? 283;

@@ -52,7 +52,7 @@ public class CustomerService : ICustomerService
     public async Task<Result> DeleteCustomerAsync(Guid farmId, Guid id)
     {
         var customer = await _context.Customers.FirstOrDefaultAsync(c => c.FarmId == farmId && c.Id == id); if (customer == null) return Result.NotFound("Customer not found", DomainMessageKeys.CustomerNotFound);
-        if (await _context.CustomerSales.AnyAsync(s => s.CustomerId == id)) return Result.Conflict("Cannot delete a customer with sales history");
+        if (await _context.CustomerSales.AnyAsync(s => s.CustomerId == id)) return Result.Conflict("Cannot delete a customer with sales history", DomainMessageKeys.CustomerHasSalesHistory);
         _context.Customers.Remove(customer); await _context.SaveChangesAsync(); return Result.Success();
     }
 

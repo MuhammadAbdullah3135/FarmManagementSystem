@@ -110,17 +110,17 @@ public class FeedService : IFeedService
         var hasMovements = await _context.FeedStockMovements
             .AnyAsync(m => m.FeedTypeId == id);
         if (hasMovements)
-            return Result.Conflict("Cannot delete a feed type that has stock movements");
+            return Result.Conflict("Cannot delete a feed type that has stock movements", DomainMessageKeys.FeedTypeHasStockMovements);
 
         var hasRecords = await _context.FeedRecords
             .AnyAsync(r => r.FeedTypeId == id);
         if (hasRecords)
-            return Result.Conflict("Cannot delete a feed type that has feed records");
+            return Result.Conflict("Cannot delete a feed type that has feed records", DomainMessageKeys.FeedTypeHasFeedRecords);
 
         var hasPlanItems = await _context.DietPlanItems
             .AnyAsync(i => i.FeedTypeId == id);
         if (hasPlanItems)
-            return Result.Conflict("Cannot delete a feed type that is used in a diet plan");
+            return Result.Conflict("Cannot delete a feed type that is used in a diet plan", DomainMessageKeys.FeedTypeUsedInDietPlan);
 
         _context.FeedTypes.Remove(feedType);
         await _context.SaveChangesAsync();
@@ -654,7 +654,7 @@ public class FeedService : IFeedService
         var hasTasks = await _context.FeedingTasks
             .AnyAsync(t => t.DietPlanId == id);
         if (hasTasks)
-            return Result.Conflict("Cannot delete a diet plan that has generated feeding tasks; deactivate it instead");
+            return Result.Conflict("Cannot delete a diet plan that has generated feeding tasks; deactivate it instead", DomainMessageKeys.DietPlanHasGeneratedTasks);
 
         var items = await _context.DietPlanItems.Where(i => i.DietPlanId == id).ToListAsync();
         var schedules = await _context.FeedingSchedules.Where(s => s.DietPlanId == id).ToListAsync();
@@ -803,7 +803,7 @@ public class FeedService : IFeedService
         var hasTasks = await _context.FeedingTasks
             .AnyAsync(t => t.FeedingScheduleId == id);
         if (hasTasks)
-            return Result.Conflict("Cannot delete a schedule that has generated tasks; deactivate it instead");
+            return Result.Conflict("Cannot delete a schedule that has generated tasks; deactivate it instead", DomainMessageKeys.ScheduleHasGeneratedTasks);
 
         _context.FeedingSchedules.Remove(schedule);
         await _context.SaveChangesAsync();

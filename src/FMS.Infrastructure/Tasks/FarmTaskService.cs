@@ -175,7 +175,7 @@ public class FarmTaskService : IFarmTaskService
             return Result<FarmTaskDto>.NotFound("Task not found", DomainMessageKeys.TaskNotFound);
 
         if (task.Status == FarmTaskStatus.Completed || task.Status == FarmTaskStatus.Cancelled)
-            return Result<FarmTaskDto>.Conflict("Closed tasks cannot be edited. Reopen the task first.");
+            return Result<FarmTaskDto>.Conflict("Closed tasks cannot be edited. Reopen the task first.", DomainMessageKeys.ClosedTaskCannotBeEdited);
 
         var validationError = ValidateDetails(request.Title, request.Description, request.DueDate);
         if (validationError != null)
@@ -355,11 +355,11 @@ public class FarmTaskService : IFarmTaskService
         // The same queued mutation already completed this task: a replay that arrived before
         // its ledger row existed (a crash between the apply and the record).
         if (mutationId.HasValue && task.CompletionClientMutationId == mutationId)
-            return Result<FarmTaskDto>.Superseded("This completion was already applied");
+            return Result<FarmTaskDto>.Superseded("This completion was already applied", DomainMessageKeys.CompletionAlreadyApplied);
 
         return NotesMatch(task.CompletionNotes, incomingNotes)
-            ? Result<FarmTaskDto>.Superseded("Task is already completed")
-            : Result<FarmTaskDto>.Conflict("This task was already completed with different completion notes");
+            ? Result<FarmTaskDto>.Superseded("Task is already completed", DomainMessageKeys.TaskAlreadyCompleted)
+            : Result<FarmTaskDto>.Conflict("This task was already completed with different completion notes", DomainMessageKeys.TaskCompletionNotesDiffer);
     }
 
     /// <summary>

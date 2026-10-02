@@ -44,6 +44,35 @@
   "breeding": {
     "recordInUse": "Este registro de cría todavía está referenciado por registros de gestación, así que no se puede eliminar. Elimina esos registros primero."
   },
+  "conflict": {
+    "alreadyCheckedOut": "El empleado ya ha registrado su salida hoy",
+    "alreadyMember": "Esa persona ya es miembro de esta granja",
+    "attendanceAlreadyRecorded": "El empleado ya tiene un registro de asistencia para ese día",
+    "customerHasSales": "No se puede eliminar un cliente con historial de ventas",
+    "departmentHasEmployees": "No se puede eliminar un departamento que tiene empleados",
+    "dietPlanHasGeneratedTasks": "No se puede eliminar un plan de dieta que ya generó tareas de alimentación; desactívelo en su lugar",
+    "duplicateIdentification": "Valores de identificación duplicados en la solicitud",
+    "emailAlreadyRegistered": "El correo electrónico ya está registrado",
+    "expenseCategoryInUse": "No se puede eliminar una categoría de gasto que tiene gastos",
+    "feedTypeHasFeedRecords": "No se puede eliminar un tipo de alimento que tiene registros de alimentación",
+    "feedTypeHasStockMovements": "No se puede eliminar un tipo de alimento que tiene movimientos de existencias",
+    "feedTypeInDietPlan": "No se puede eliminar un tipo de alimento que se usa en un plan de dieta",
+    "incomeCategoryInUse": "No se puede eliminar una categoría de ingreso que tiene registros de ingresos",
+    "inventoryItemHasHistory": "No se puede eliminar un artículo de inventario con historial de movimientos de existencias",
+    "invitationNotPending": "Solo se pueden revocar las invitaciones pendientes",
+    "invitationPending": "Ya hay una invitación pendiente para ese correo electrónico",
+    "lastOwner": "Una granja debe conservar al menos un propietario",
+    "locationHasChildren": "No se puede eliminar una ubicación con elementos dependientes",
+    "medicineNameExists": "Ya existe un medicamento con este nombre",
+    "paymentMethodInUse": "No se puede eliminar un método de pago que tiene gastos",
+    "pregnancyAlreadyConfirmed": "Ya se ha confirmado el embarazo para este registro de cría",
+    "roleHasEmployees": "No se puede eliminar un rol que tiene empleados",
+    "scheduleHasGeneratedTasks": "No se puede eliminar un horario que ya generó tareas; desactívelo en su lugar",
+    "supplierHasPurchases": "No se puede eliminar un proveedor con historial de compras",
+    "taskClosed": "Las tareas cerradas no se pueden editar. Reabre primero la tarea.",
+    "taskCompletionNotesDiffer": "Esta tarea ya se completó con notas de finalización diferentes",
+    "vaccineTypeNameExists": "Ya existe un tipo de vacuna con este nombre"
+  },
   "customer": {
     "contactInfoMaxLength": "La información de contacto no puede superar los {{max}} caracteres",
     "nameMaxLength": "El nombre del cliente no puede superar los {{max}} caracteres",
@@ -151,6 +180,10 @@
     "vaccineTypeInFarm": "No se encontró el tipo de vacuna en esta granja",
     "weightCheckSchedule": "No se encontró el horario de control de peso",
     "weightRecord": "No se encontró el registro de peso"
+  },
+  "supersede": {
+    "completionAlreadyApplied": "Esta finalización ya se aplicó",
+    "taskAlreadyCompleted": "La tarea ya está completada"
   },
   "supplier": {
     "contactInfoMaxLength": "La información de contacto no puede superar los {{max}} caracteres",

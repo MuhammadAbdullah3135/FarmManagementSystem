@@ -67,7 +67,7 @@ public class EmployeeService : IEmployeeService
         var hasEmployees = await _context.Employees
             .AnyAsync(e => e.DepartmentId == id);
         if (hasEmployees)
-            return Result.Conflict("Cannot delete a department that has employees");
+            return Result.Conflict("Cannot delete a department that has employees", DomainMessageKeys.DepartmentHasEmployees);
 
         _context.Departments.Remove(department);
         await _context.SaveChangesAsync();
@@ -132,7 +132,7 @@ public class EmployeeService : IEmployeeService
         var hasEmployees = await _context.Employees
             .AnyAsync(e => e.EmployeeRoleId == id);
         if (hasEmployees)
-            return Result.Conflict("Cannot delete a role that has employees");
+            return Result.Conflict("Cannot delete a role that has employees", DomainMessageKeys.RoleHasEmployees);
 
         _context.EmployeeRoles.Remove(role);
         await _context.SaveChangesAsync();

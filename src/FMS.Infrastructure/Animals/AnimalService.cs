@@ -1773,7 +1773,7 @@ public class AnimalService : IAnimalService
             .GroupBy(i => new { i.IdentificationTypeId, Value = i.Value.Trim() })
             .Any(g => g.Count() > 1);
         if (duplicatesInRequest)
-            return Result.Conflict("Duplicate identification values in request");
+            return Result.Conflict("Duplicate identification values in request", DomainMessageKeys.DuplicateIdentification);
 
         var typeIds = identifications.Select(i => i.IdentificationTypeId).Distinct().ToList();
         var foundTypeCount = await _context.IdentificationTypes

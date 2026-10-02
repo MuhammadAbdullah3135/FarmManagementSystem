@@ -227,4 +227,103 @@ public static class DomainMessageKeys
 
     /// <summary>The exact English this API has always answered: “Weight record not found”.</summary>
     public const string WeightRecordNotFound = "validation.lookup.weightRecord";
+
+    // ── conflict ─────────────────────────────────────────────────────────────────────────
+    // One constant per sentence, shared across the services that answer with it:
+    // “Duplicate identification values in request” is said by 15 service files, and each one
+    // gets the same sentence in the reader's language rather than its own English.
+
+    /// <summary>The exact English this API has always answered: “Employee has already checked out today”</summary>
+    public const string AlreadyCheckedOut = "validation.conflict.alreadyCheckedOut";
+
+    /// <summary>The exact English this API has always answered: “That person is already a member of this farm”</summary>
+    public const string AlreadyFarmMember = "validation.conflict.alreadyMember";
+
+    /// <summary>The exact English this API has always answered: “Employee already has an attendance record for that day”</summary>
+    public const string AttendanceAlreadyRecorded = "validation.conflict.attendanceAlreadyRecorded";
+
+    /// <summary>The exact English this API has always answered: “Cannot delete a customer with sales history”</summary>
+    public const string CustomerHasSalesHistory = "validation.conflict.customerHasSales";
+
+    /// <summary>The exact English this API has always answered: “Cannot delete a department that has employees”</summary>
+    public const string DepartmentHasEmployees = "validation.conflict.departmentHasEmployees";
+
+    /// <summary>The exact English this API has always answered: “Cannot delete a diet plan that has generated feeding tasks; deactivate it instead”</summary>
+    public const string DietPlanHasGeneratedTasks = "validation.conflict.dietPlanHasGeneratedTasks";
+
+    /// <summary>The exact English this API has always answered: “Duplicate identification values in request”</summary>
+    public const string DuplicateIdentification = "validation.conflict.duplicateIdentification";
+
+    /// <summary>The exact English this API has always answered: “Email already registered”</summary>
+    public const string EmailAlreadyRegistered = "validation.conflict.emailAlreadyRegistered";
+
+    /// <summary>The exact English this API has always answered: “Cannot delete an expense category that has expenses”</summary>
+    public const string ExpenseCategoryHasExpenses = "validation.conflict.expenseCategoryInUse";
+
+    /// <summary>The exact English this API has always answered: “Cannot delete a feed type that has feed records”</summary>
+    public const string FeedTypeHasFeedRecords = "validation.conflict.feedTypeHasFeedRecords";
+
+    /// <summary>The exact English this API has always answered: “Cannot delete a feed type that has stock movements”</summary>
+    public const string FeedTypeHasStockMovements = "validation.conflict.feedTypeHasStockMovements";
+
+    /// <summary>The exact English this API has always answered: “Cannot delete a feed type that is used in a diet plan”</summary>
+    public const string FeedTypeUsedInDietPlan = "validation.conflict.feedTypeInDietPlan";
+
+    /// <summary>The exact English this API has always answered: “Cannot delete an income category that has income records”</summary>
+    public const string IncomeCategoryHasRecords = "validation.conflict.incomeCategoryInUse";
+
+    /// <summary>The exact English this API has always answered: “Cannot delete an inventory item with stock movement history”</summary>
+    public const string InventoryItemHasStockHistory = "validation.conflict.inventoryItemHasHistory";
+
+    /// <summary>The exact English this API has always answered: “Only pending invitations can be revoked”</summary>
+    public const string OnlyPendingInvitationsRevocable = "validation.conflict.invitationNotPending";
+
+    /// <summary>The exact English this API has always answered: “An invitation for that email is already pending”</summary>
+    public const string InvitationAlreadyPending = "validation.conflict.invitationPending";
+
+    /// <summary>The exact English this API has always answered: “A farm must keep at least one owner”</summary>
+    public const string FarmMustKeepAnOwner = "validation.conflict.lastOwner";
+
+    /// <summary>The exact English this API has always answered: “Cannot delete location with children”</summary>
+    public const string LocationHasChildren = "validation.conflict.locationHasChildren";
+
+    /// <summary>The exact English this API has always answered: “A medicine with this name already exists”</summary>
+    public const string MedicineNameExists = "validation.conflict.medicineNameExists";
+
+    /// <summary>The exact English this API has always answered: “Cannot delete a payment method that has expenses”</summary>
+    public const string PaymentMethodHasExpenses = "validation.conflict.paymentMethodInUse";
+
+    /// <summary>The exact English this API has always answered: “Pregnancy already confirmed for this breeding record”</summary>
+    public const string PregnancyAlreadyConfirmed = "validation.conflict.pregnancyAlreadyConfirmed";
+
+    /// <summary>The exact English this API has always answered: “Cannot delete a role that has employees”</summary>
+    public const string RoleHasEmployees = "validation.conflict.roleHasEmployees";
+
+    /// <summary>The exact English this API has always answered: “Cannot delete a schedule that has generated tasks; deactivate it instead”</summary>
+    public const string ScheduleHasGeneratedTasks = "validation.conflict.scheduleHasGeneratedTasks";
+
+    /// <summary>The exact English this API has always answered: “Cannot delete a supplier with purchase history”</summary>
+    public const string SupplierHasPurchaseHistory = "validation.conflict.supplierHasPurchases";
+
+    /// <summary>The exact English this API has always answered: “Closed tasks cannot be edited. Reopen the task first.”</summary>
+    public const string ClosedTaskCannotBeEdited = "validation.conflict.taskClosed";
+
+    /// <summary>The exact English this API has always answered: “This task was already completed with different completion notes”</summary>
+    public const string TaskCompletionNotesDiffer = "validation.conflict.taskCompletionNotesDiffer";
+
+    /// <summary>The exact English this API has always answered: “A vaccine type with this name already exists”</summary>
+    public const string VaccineTypeNameExists = "validation.conflict.vaccineTypeNameExists";
+
+
+    // ── supersede ─────────────────────────────────────────────────────────────────────────
+    // One constant per sentence, shared across the services that answer with it:
+    // “This completion was already applied” is said by 1 service files, and each one
+    // gets the same sentence in the reader's language rather than its own English.
+
+    /// <summary>The exact English this API has always answered: “This completion was already applied”</summary>
+    public const string CompletionAlreadyApplied = "validation.supersede.completionAlreadyApplied";
+
+    /// <summary>The exact English this API has always answered: “Task is already completed”</summary>
+    public const string TaskAlreadyCompleted = "validation.supersede.taskAlreadyCompleted";
+
 }

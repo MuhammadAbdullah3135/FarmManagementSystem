@@ -208,7 +208,7 @@ public class InventoryService : IInventoryService
         var item = await _context.InventoryItems.FirstOrDefaultAsync(i => i.FarmId == farmId && i.Id == id);
         if (item == null) return Result.NotFound("Inventory item not found", DomainMessageKeys.InventoryItemNotFound);
         if (await _context.StockMovements.AnyAsync(m => m.InventoryItemId == id))
-            return Result.Conflict("Cannot delete an inventory item with stock movement history");
+            return Result.Conflict("Cannot delete an inventory item with stock movement history", DomainMessageKeys.InventoryItemHasStockHistory);
         _context.InventoryItems.Remove(item);
         await _context.SaveChangesAsync();
         return Result.Success();

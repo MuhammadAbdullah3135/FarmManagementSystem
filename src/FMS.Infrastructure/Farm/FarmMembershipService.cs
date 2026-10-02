@@ -81,7 +81,7 @@ public class FarmMembershipService : IFarmMembershipService
         if (member.Role == FarmRoles.SystemOwner && request.Role != FarmRoles.SystemOwner &&
             await IsLastOwnerAsync(farmId, memberUserId))
         {
-            return Result<FarmMemberDto>.Conflict("A farm must keep at least one owner");
+            return Result<FarmMemberDto>.Conflict("A farm must keep at least one owner", DomainMessageKeys.FarmMustKeepAnOwner);
         }
 
         member.Role = request.Role;
@@ -106,7 +106,7 @@ public class FarmMembershipService : IFarmMembershipService
             return Result.NotFound("That user is not a member of this farm");
 
         if (member.Role == FarmRoles.SystemOwner && await IsLastOwnerAsync(farmId, memberUserId))
-            return Result.Conflict("A farm must keep at least one owner");
+            return Result.Conflict("A farm must keep at least one owner", DomainMessageKeys.FarmMustKeepAnOwner);
 
         _context.UserFarms.Remove(member);
 
@@ -153,7 +153,7 @@ public class FarmMembershipService : IFarmMembershipService
             var alreadyMember = await _context.UserFarms
                 .AnyAsync(uf => uf.FarmId == farmId && uf.UserId == existingUser.Id);
             if (alreadyMember)
-                return Result<FarmInvitationDto>.Conflict("That person is already a member of this farm");
+                return Result<FarmInvitationDto>.Conflict("That person is already a member of this farm", DomainMessageKeys.AlreadyFarmMember);
         }
 
         var now = DateTime.UtcNow;
@@ -164,7 +164,7 @@ public class FarmMembershipService : IFarmMembershipService
             i.ExpiresAt > now);
 
         if (alreadyInvited)
-            return Result<FarmInvitationDto>.Conflict("An invitation for that email is already pending");
+            return Result<FarmInvitationDto>.Conflict("An invitation for that email is already pending", DomainMessageKeys.InvitationAlreadyPending);
 
         var rawToken = _jwtTokenService.GenerateRefreshToken();
         var invitation = new FarmInvitation
@@ -245,7 +245,7 @@ public class FarmMembershipService : IFarmMembershipService
         if (invitation is null)
             return Result.NotFound("Invitation not found", DomainMessageKeys.InvitationNotFound);
         if (invitation.Status != FarmInvitationStatus.Pending)
-            return Result.Conflict("Only pending invitations can be revoked");
+            return Result.Conflict("Only pending invitations can be revoked", DomainMessageKeys.OnlyPendingInvitationsRevocable);
 
         invitation.Status = FarmInvitationStatus.Revoked;
         invitation.RespondedAt = DateTime.UtcNow;

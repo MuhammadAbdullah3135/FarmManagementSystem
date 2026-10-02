@@ -109,7 +109,7 @@ public class FinanceService : IFinanceService
 
         var hasExpenses = await _context.Expenses.AnyAsync(e => e.ExpenseCategoryId == id);
         if (hasExpenses)
-            return Result.Conflict("Cannot delete an expense category that has expenses");
+            return Result.Conflict("Cannot delete an expense category that has expenses", DomainMessageKeys.ExpenseCategoryHasExpenses);
 
         _context.ExpenseCategories.Remove(category);
         await _context.SaveChangesAsync();
@@ -210,7 +210,7 @@ public class FinanceService : IFinanceService
 
         var hasExpenses = await _context.Expenses.AnyAsync(e => e.PaymentMethodId == id);
         if (hasExpenses)
-            return Result.Conflict("Cannot delete a payment method that has expenses");
+            return Result.Conflict("Cannot delete a payment method that has expenses", DomainMessageKeys.PaymentMethodHasExpenses);
 
         _context.PaymentMethods.Remove(method);
         await _context.SaveChangesAsync();
@@ -437,7 +437,7 @@ public class FinanceService : IFinanceService
 
         var hasRecords = await _context.IncomeRecords.AnyAsync(r => r.IncomeCategoryId == id);
         if (hasRecords)
-            return Result.Conflict("Cannot delete an income category that has income records");
+            return Result.Conflict("Cannot delete an income category that has income records", DomainMessageKeys.IncomeCategoryHasRecords);
 
         _context.IncomeCategories.Remove(category);
         await _context.SaveChangesAsync();

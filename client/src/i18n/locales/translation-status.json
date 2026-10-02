@@ -50,6 +50,11 @@
         "tool": "Codebuff agent (GLM)",
         "date": "2026-10-02",
         "reviewed": false
+      },
+      {
+        "files": [
+          "es/validation.json (conflict + supersede)"
+        ]
       }
     ]
   },
@@ -105,6 +110,11 @@
         "tool": "Codebuff agent (GLM)",
         "date": "2026-10-02",
         "reviewed": false
+      },
+      {
+        "files": [
+          "ar/validation.json (conflict + supersede)"
+        ]
       }
     ]
   }

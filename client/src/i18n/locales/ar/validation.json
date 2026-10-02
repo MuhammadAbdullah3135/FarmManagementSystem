@@ -44,6 +44,35 @@
   "breeding": {
     "recordInUse": "لا يزال هذا السجل التناسلي مرتبطًا بسجلات الحمل، لذلك لا يمكن حذفه. احذف تلك السجلات أولاً."
   },
+  "conflict": {
+    "alreadyCheckedOut": "سجل الموظف خروجه اليوم بالفعل",
+    "alreadyMember": "هذا الشخص عضو بالفعل في هذه المزرعة",
+    "attendanceAlreadyRecorded": "الموظف لديه بالفعل سجل حضور لذلك اليوم",
+    "customerHasSales": "لا يمكن حذف عميل لديه سجل مبيعات",
+    "departmentHasEmployees": "لا يمكن حذف قسم يحتوي على موظفين",
+    "dietPlanHasGeneratedTasks": "لا يمكن حذف نظام غذائي أنشأ مهام تغذية بالفعل؛ عطّله بدلاً من ذلك",
+    "duplicateIdentification": "قيم تعريف مكررة في الطلب",
+    "emailAlreadyRegistered": "البريد الإلكتروني مسجل بالفعل",
+    "expenseCategoryInUse": "لا يمكن حذف فئة مصروفات لديها مصروفات",
+    "feedTypeHasFeedRecords": "لا يمكن حذف نوع علف لديه سجلات تغذية",
+    "feedTypeHasStockMovements": "لا يمكن حذف نوع علف لديه حركات مخزون",
+    "feedTypeInDietPlan": "لا يمكن حذف نوع علف مستخدم في نظام غذائي",
+    "incomeCategoryInUse": "لا يمكن حذف فئة إيرادات لديها سجلات إيرادات",
+    "inventoryItemHasHistory": "لا يمكن حذف عنصر مخزون لديه سجل حركات مخزون",
+    "invitationNotPending": "يمكن إلغاء الدعوات المعلقة فقط",
+    "invitationPending": "توجد دعوة معلقة بالفعل لعنوان البريد الإلكتروني هذا",
+    "lastOwner": "يجب أن تحتفظ المزرعة بمالك واحد على الأقل",
+    "locationHasChildren": "لا يمكن حذف موقع يحتوي على عناصر فرعية",
+    "medicineNameExists": "يوجد دواء بهذا الاسم بالفعل",
+    "paymentMethodInUse": "لا يمكن حذف وسيلة دفع لديها مصروفات",
+    "pregnancyAlreadyConfirmed": "تم تأكيد الحمل بالفعل لسجل التربية هذا",
+    "roleHasEmployees": "لا يمكن حذف دور يحتوي على موظفين",
+    "scheduleHasGeneratedTasks": "لا يمكن حذف جدول أنشأ مهام بالفعل؛ عطّله بدلاً من ذلك",
+    "supplierHasPurchases": "لا يمكن حذف مورد لديه سجل مشتريات",
+    "taskClosed": "لا يمكن تعديل المهام المغلقة. أعد فتح المهمة أولاً.",
+    "taskCompletionNotesDiffer": "تمت إكمال هذه المهمة بالفعل بملاحظات إكمال مختلفة",
+    "vaccineTypeNameExists": "يوجد نوع لقاح بهذا الاسم بالفعل"
+  },
   "customer": {
     "contactInfoMaxLength": "لا يمكن أن تتجاوز معلومات التواصل {{max}} حرفًا",
     "nameMaxLength": "لا يمكن أن يتجاوز اسم العميل {{max}} حرفًا",
@@ -151,6 +180,10 @@
     "vaccineTypeInFarm": "لم يتم العثور على نوع اللقاح في هذه المزرعة",
     "weightCheckSchedule": "لم يتم العثور على جدول فحص الوزن",
     "weightRecord": "لم يتم العثور على سجل الوزن"
+  },
+  "supersede": {
+    "completionAlreadyApplied": "تم تطبيق هذا الإكمال بالفعل",
+    "taskAlreadyCompleted": "المهمة مكتملة بالفعل"
   },
   "supplier": {
     "contactInfoMaxLength": "لا يمكن أن تتجاوز معلومات التواصل {{max}} حرفًا",

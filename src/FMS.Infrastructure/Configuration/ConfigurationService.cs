@@ -538,7 +538,7 @@ public class ConfigurationService : IConfigurationService
 
         var hasChildren = await _context.Locations.AnyAsync(l => l.ParentLocationId == id);
         if (hasChildren)
-            return Result.Conflict("Cannot delete location with children");
+            return Result.Conflict("Cannot delete location with children", DomainMessageKeys.LocationHasChildren);
 
         var animals = await _context.Animals.CountAsync(a => a.LocationId == id);
         var transfers = await _context.AnimalTransfers.CountAsync(t =>

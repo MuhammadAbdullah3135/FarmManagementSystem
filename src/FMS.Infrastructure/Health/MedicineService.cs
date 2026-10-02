@@ -96,7 +96,7 @@ public class MedicineService : IMedicineService
         var exists = await _context.Medicines
             .AnyAsync(m => m.FarmId == farmId && m.Name == request.Name);
         if (exists)
-            return Result<MedicineDto>.Conflict("A medicine with this name already exists");
+            return Result<MedicineDto>.Conflict("A medicine with this name already exists", DomainMessageKeys.MedicineNameExists);
 
         var userId = _currentUser.GetUserId();
 
@@ -144,7 +144,7 @@ public class MedicineService : IMedicineService
         var nameExists = await _context.Medicines
             .AnyAsync(m => m.FarmId == farmId && m.Name == request.Name && m.Id != id);
         if (nameExists)
-            return Result<MedicineDto>.Conflict("A medicine with this name already exists");
+            return Result<MedicineDto>.Conflict("A medicine with this name already exists", DomainMessageKeys.MedicineNameExists);
 
         var userId = _currentUser.GetUserId();
 

@@ -19,6 +19,30 @@ describe('renderKeyedMessage', () => {
     expect(canRenderMessageKey(null)).toBe(false);
   });
 
+  it('says the "already happened" refusals in the reader’s language', async () => {
+    // Slice 2's first half: the conflict and supersede sentences that take no argument. These
+    // travel as a bare header, so this is the whole mechanism end to end for them — the key the
+    // server attaches, the bundle entry, and the language it comes out in.
+    const refusals: [string, string, string][] = [
+      ['validation.conflict.emailAlreadyRegistered', 'El correo electrónico ya está registrado', 'البريد الإلكتروني مسجل بالفعل'],
+      ['validation.conflict.dietPlanHasGeneratedTasks', 'No se puede eliminar un plan de dieta que ya generó tareas de alimentación; desactívelo en su lugar', 'لا يمكن حذف نظام غذائي أنشأ مهام تغذية بالفعل؛ عطّله بدلاً من ذلك'],
+      ['validation.supersede.taskAlreadyCompleted', 'La tarea ya está completada', 'المهمة مكتملة بالفعل'],
+      ['validation.conflict.inventoryItemHasHistory', 'No se puede eliminar un artículo de inventario con historial de movimientos de existencias', 'لا يمكن حذف عنصر مخزون لديه سجل حركات مخزون'],
+    ];
+
+    for (const [key, spanish, arabic] of refusals) {
+      await i18n.changeLanguage('es');
+      const inSpanish = renderKeyedMessage(key, null, 'the English the server sent');
+      expect(inSpanish).toBe(spanish);
+      expect(inSpanish).not.toContain('{{');
+
+      await i18n.changeLanguage('ar');
+      const inArabic = renderKeyedMessage(key, null, 'the English the server sent');
+      expect(inArabic).toBe(arabic);
+      expect(inArabic).not.toContain('{{');
+    }
+  });
+
   it('never hands a reader a raw placeholder', async () => {
     // The defect this guards: the server sent the key but dropped its arguments, so
     // i18next left {{max}} in place and the reader got a broken sentence in their own

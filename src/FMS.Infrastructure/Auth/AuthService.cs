@@ -35,7 +35,7 @@ public class AuthService : IAuthService
     public async Task<Result<AuthResponse>> RegisterAsync(RegisterRequest request)
     {
         if (await _context.Users.AnyAsync(u => u.Email == request.Email))
-            return Result<AuthResponse>.Conflict("Email already registered");
+            return Result<AuthResponse>.Conflict("Email already registered", DomainMessageKeys.EmailAlreadyRegistered);
 
         // Create account
         var account = new Account
