@@ -83,6 +83,97 @@ public class ControllerMessageKeyTests
         Assert.True(offenders.Count == 0, string.Join(Environment.NewLine, offenders));
     }
 
+    /// <summary>
+    /// An inline mapping: <c>return result.Error?.Code switch { ... }</c> written in the action
+    /// rather than delegated to a <c>MapError</c> method.
+    /// </summary>
+    private static readonly Regex InlineMapping = new(@"\.Code\s+switch", RegexOptions.Compiled);
+
+    /// <summary>How far above an inline mapping an attach may sit.</summary>
+    private const int AttachLookbackLines = 3;
+
+    [Fact]
+    public void Every_inline_mapping_attaches_its_own_key()
+    {
+        // The rule above is per *file*, and that is not strong enough. A controller can attach
+        // in one method and drop the key in another, and did: AuthController had a private
+        // MapError that attached, so the file passed, while register, login, refresh and
+        // confirm-reset each mapped inline and answered with bare English. A live probe of v51
+        // is what found it - `POST /auth/register` with an address that already existed returned
+        // 409, the body "Email already registered", and no header at all.
+        //
+        // So this counts per mapping site: an inline switch must be preceded by an attach.
+        // Delegated mappers are already covered by the rule above; what slipped through is
+        // exactly the code that does not go through one.
+        var offenders = new List<string>();
+
+        foreach (var file in ControllerSources())
+        {
+            var lines = Comments.Replace(File.ReadAllText(file), "$1").Split('\n');
+            for (var index = 0; index < lines.Length; index++)
+            {
+                if (!InlineMapping.IsMatch(lines[index]))
+                {
+                    continue;
+                }
+
+                var above = string.Join(
+                    "\n",
+                    lines.Skip(Math.Max(0, index - AttachLookbackLines)).Take(AttachLookbackLines));
+
+                if (!above.Contains("ApiMessageKeys.Attach", StringComparison.Ordinal))
+                {
+                    offenders.Add(
+                        $"{Path.GetFileName(file)}:{index + 1} maps a domain failure inline without "
+                        + "attaching its key, so this response loses the key while the rest of the "
+                        + "file keeps it. Add ApiMessageKeys.Attach(Response, error); above it.");
+                }
+            }
+        }
+
+        Assert.True(offenders.Count == 0, string.Join(Environment.NewLine, offenders));
+    }
+
+    [Fact]
+    public void The_inline_rule_would_notice_a_mapping_that_forgets_to_attach()
+    {
+        // The shape that shipped, and the shape that is now required, run through the same
+        // window the real rule uses.
+        const string forgetting = @"
+            if (result.IsSuccess)
+                return Ok();
+
+            return result.Error?.Code switch
+            {
+                ""Conflict"" => Conflict(result.Error.Message),
+                _ => StatusCode(500, result.Error?.Message)
+            };";
+
+        const string remembering = @"
+            if (result.IsSuccess)
+                return Ok();
+
+            ApiMessageKeys.Attach(Response, result.Error);
+            return result.Error?.Code switch
+            {
+                ""Conflict"" => Conflict(result.Error.Message),
+                _ => StatusCode(500, result.Error?.Message)
+            };";
+
+        Assert.True(InlineMapping.IsMatch(forgetting));
+        Assert.True(InlineMapping.IsMatch(remembering));
+
+        // The distinction the rule turns on, stated as the rule states it: the attach has to be
+        // within the lines above the mapping.
+        var window = (string source) => string.Join(
+            "\n",
+            source.Split('\n').Skip(Math.Max(0, source.Split('\n').ToList().FindIndex(l => InlineMapping.IsMatch(l)) - AttachLookbackLines))
+                .Take(AttachLookbackLines));
+
+        Assert.DoesNotContain("ApiMessageKeys.Attach", window(forgetting));
+        Assert.Contains("ApiMessageKeys.Attach", window(remembering));
+    }
+
     [Fact]
     public void The_rule_would_notice_a_mapper_that_forgets_to_attach()
     {

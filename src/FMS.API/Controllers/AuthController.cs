@@ -25,6 +25,7 @@ public class AuthController : ControllerBase
         if (result.IsSuccess)
             return Created("", result.Value);
 
+        ApiMessageKeys.Attach(Response, result.Error);
         return result.Error?.Code switch
         {
             "Conflict" => Conflict(result.Error.Message),
@@ -41,6 +42,7 @@ public class AuthController : ControllerBase
         if (result.IsSuccess)
             return Ok(result.Value);
 
+        ApiMessageKeys.Attach(Response, result.Error);
         return result.Error?.Code switch
         {
             "Unauthorized" => Unauthorized(result.Error.Message),
@@ -56,6 +58,7 @@ public class AuthController : ControllerBase
         if (result.IsSuccess)
             return Ok(result.Value);
 
+        ApiMessageKeys.Attach(Response, result.Error);
         return result.Error?.Code switch
         {
             "Unauthorized" => Unauthorized(result.Error.Message),
@@ -71,6 +74,7 @@ public class AuthController : ControllerBase
         if (result.IsSuccess)
             return Ok();
 
+        ApiMessageKeys.Attach(Response, result.Error);
         return StatusCode(500, result.Error?.Message);
     }
 
@@ -82,6 +86,7 @@ public class AuthController : ControllerBase
         if (result.IsSuccess)
             return Ok();
 
+        ApiMessageKeys.Attach(Response, result.Error);
         return result.Error?.Code switch
         {
             "Validation" => BadRequest(result.Error.Message),
@@ -98,6 +103,7 @@ public class AuthController : ControllerBase
         if (result.IsSuccess)
             return Ok();
 
+        ApiMessageKeys.Attach(Response, result.Error);
         return result.Error?.Code switch
         {
             "NotFound" => NotFound(result.Error.Message),

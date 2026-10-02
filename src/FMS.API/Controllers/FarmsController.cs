@@ -28,6 +28,7 @@ public class FarmsController : ControllerBase
         if (result.IsSuccess)
             return CreatedAtAction(nameof(GetById), new { id = result.Value!.Id }, result.Value);
 
+        ApiMessageKeys.Attach(Response, result.Error);
         return result.Error?.Code switch
         {
             "Validation" => BadRequest(result.Error.Message),
@@ -43,6 +44,7 @@ public class FarmsController : ControllerBase
         if (result.IsSuccess)
             return Ok(result.Value);
 
+        ApiMessageKeys.Attach(Response, result.Error);
         return result.Error?.Code switch
         {
             "NotFound" => NotFound(result.Error.Message),
@@ -58,6 +60,7 @@ public class FarmsController : ControllerBase
         if (result.IsSuccess)
             return Ok(result.Value);
 
+        ApiMessageKeys.Attach(Response, result.Error);
         return StatusCode(500, result.Error?.Message);
     }
 
@@ -69,6 +72,7 @@ public class FarmsController : ControllerBase
         if (result.IsSuccess)
             return Ok(result.Value);
 
+        ApiMessageKeys.Attach(Response, result.Error);
         return result.Error?.Code switch
         {
             "NotFound" => NotFound(result.Error.Message),
@@ -85,6 +89,7 @@ public class FarmsController : ControllerBase
         if (result.IsSuccess)
             return NoContent();
 
+        ApiMessageKeys.Attach(Response, result.Error);
         return result.Error?.Code switch
         {
             "NotFound" => NotFound(result.Error.Message),

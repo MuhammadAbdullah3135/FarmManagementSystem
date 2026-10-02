@@ -52,15 +52,24 @@ public static class ApiMessageKeys
     /// </summary>
     public const int MaxArgsHeaderLength = 4096;
 
-    /// <summary>Adds the headers when the failure has a key; a keyless failure is left alone.</summary>
-    public static void Attach(HttpResponse response, Error error)
+    /// <summary>
+    /// Adds the headers when the failure has a key; a keyless or absent failure is left alone.
+    /// <para>
+    /// The parameter is nullable so a call site can pass <c>result.Error</c> straight from a
+    /// <c>Result</c> without a null check first. That is not a convenience: an inline mapping
+    /// such as <c>return result.Error?.Code switch { ... }</c> has nowhere to put one, and
+    /// nine of them silently dropped their key because the signature demanded a non-null error
+    /// at a point where proving it was null would have meant restructuring the method.
+    /// </para>
+    /// </summary>
+    public static void Attach(HttpResponse response, Error? error)
     {
-        if (string.IsNullOrEmpty(error.MessageKey))
+        if (string.IsNullOrEmpty(error?.MessageKey))
         {
             return;
         }
 
-        response.Headers[HeaderName] = error.MessageKey;
+        response.Headers[HeaderName] = error!.MessageKey;
         AttachArgs(response, error.MessageArgs);
     }
 
