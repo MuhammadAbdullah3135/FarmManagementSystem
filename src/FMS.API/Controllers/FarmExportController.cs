@@ -103,13 +103,19 @@ public class FarmExportController : ControllerBase
     private bool TryGetUserId(out Guid userId) =>
         Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out userId);
 
-    private IActionResult MapError(Error error) => error.Code switch
+    private IActionResult MapError(Error error)
     {
-        Error.UnavailableCode => StatusCode(StatusCodes.Status503ServiceUnavailable, error.Message),
-        "NotFound" => NotFound(error.Message),
-        "Validation" => BadRequest(error.Message),
-        "Conflict" => Conflict(error.Message),
-        "Unauthorized" => Unauthorized(error.Message),
-        _ => StatusCode(StatusCodes.Status500InternalServerError, error.Message)
-    };
+        // The key rides on the response; the body stays the English text every existing
+        // caller and test asserts on. See ApiMessageKeys.
+        ApiMessageKeys.Attach(Response, error);
+        return error.Code switch
+        {
+            Error.UnavailableCode => StatusCode(StatusCodes.Status503ServiceUnavailable, error.Message),
+            "NotFound" => NotFound(error.Message),
+            "Validation" => BadRequest(error.Message),
+            "Conflict" => Conflict(error.Message),
+            "Unauthorized" => Unauthorized(error.Message),
+            _ => StatusCode(StatusCodes.Status500InternalServerError, error.Message)
+        };
+    }
 }

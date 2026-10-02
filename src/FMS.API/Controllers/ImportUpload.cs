@@ -58,12 +58,21 @@ public static class ImportUpload
     }
 
     /// <summary>The service error's status code, in the shape the rest of the API uses.</summary>
-    public static IActionResult MapError(Error error) => error.Code switch
+    /// <summary>
+    /// Shared by every import controller. The response is passed in rather than reached for,
+    /// because this is static and <c>Response</c> is not: without the key a refused row
+    /// reaches a translated reader in English.
+    /// </summary>
+    public static IActionResult MapError(Error error, HttpResponse response)
     {
-        "NotFound" => new NotFoundObjectResult(error.Message),
-        "Validation" => new BadRequestObjectResult(error.Message),
-        "Conflict" => new ConflictObjectResult(error.Message),
-        "Unauthorized" => new UnauthorizedObjectResult(error.Message),
-        _ => new ObjectResult(error.Message) { StatusCode = 500 }
-    };
+        ApiMessageKeys.Attach(response, error);
+        return error.Code switch
+        {
+            "NotFound" => new NotFoundObjectResult(error.Message),
+            "Validation" => new BadRequestObjectResult(error.Message),
+            "Conflict" => new ConflictObjectResult(error.Message),
+            "Unauthorized" => new UnauthorizedObjectResult(error.Message),
+            _ => new ObjectResult(error.Message) { StatusCode = 500 }
+        };
+    }
 }

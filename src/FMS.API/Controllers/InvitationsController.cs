@@ -47,13 +47,22 @@ public class InvitationsController : ControllerBase
         return result.IsSuccess ? Ok() : MapError(result.Error);
     }
 
-    private IActionResult MapError(Error? error) =>
-        error?.Code switch
+    private IActionResult MapError(Error? error)
+    {
+        // The key rides on the response; the body stays the English text every existing
+        // caller and test asserts on. See ApiMessageKeys.
+        if (error is not null)
         {
-            "NotFound" => NotFound(error.Message),
-            "Validation" => BadRequest(error.Message),
-            "Conflict" => Conflict(error.Message),
-            "Unauthorized" => Forbid(),
-            _ => StatusCode(500, error?.Message)
+            ApiMessageKeys.Attach(Response, error);
+        }
+
+        return error?.Code switch
+        {
+                "NotFound" => NotFound(error.Message),
+                "Validation" => BadRequest(error.Message),
+                "Conflict" => Conflict(error.Message),
+                "Unauthorized" => Forbid(),
+                _ => StatusCode(500, error?.Message)
         };
+    }
 }

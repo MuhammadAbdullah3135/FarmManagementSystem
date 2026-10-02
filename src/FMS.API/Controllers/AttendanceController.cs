@@ -60,16 +60,22 @@ public class AttendanceController : ControllerBase
         ? Ok(result.Value)
         : MapError(result.Error!);
 
-    private IActionResult MapError(Error error) => error.Code switch
+    private IActionResult MapError(Error error)
     {
-        "NotFound" => NotFound(error.Message),
-        "Validation" => BadRequest(error.Message),
-        "Conflict" => Conflict(error.Message),
-        // "Your intent is already satisfied" is a conflict over HTTP too — nothing was written —
-        // and it has always answered 409 here. The distinct code exists for the queued path,
-        // where the caller has to tell it apart from a refusal without reading message text.
-        Error.SupersededCode => Conflict(error.Message),
-        "Unauthorized" => Unauthorized(error.Message),
-        _ => StatusCode(500, error.Message)
-    };
+        // The key rides on the response; the body stays the English text every existing
+        // caller and test asserts on. See ApiMessageKeys.
+        ApiMessageKeys.Attach(Response, error);
+        return error.Code switch
+        {
+            "NotFound" => NotFound(error.Message),
+            "Validation" => BadRequest(error.Message),
+            "Conflict" => Conflict(error.Message),
+            // "Your intent is already satisfied" is a conflict over HTTP too — nothing was written —
+            // and it has always answered 409 here. The distinct code exists for the queued path,
+            // where the caller has to tell it apart from a refusal without reading message text.
+            Error.SupersededCode => Conflict(error.Message),
+            "Unauthorized" => Unauthorized(error.Message),
+            _ => StatusCode(500, error.Message)
+        };
+    }
 }

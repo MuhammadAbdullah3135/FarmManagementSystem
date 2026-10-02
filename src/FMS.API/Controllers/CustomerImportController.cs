@@ -67,10 +67,10 @@ public class CustomerImportController : ControllerBase
         if (commit)
         {
             var outcome = await _import.CommitAsync(farmId, stream, file.FileName, mapping, cancellationToken);
-            return outcome.IsSuccess ? Ok(outcome.Value) : ImportUpload.MapError(outcome.Error!);
+            return outcome.IsSuccess ? Ok(outcome.Value) : ImportUpload.MapError(outcome.Error!, Response);
         }
 
         var preview = await _import.PreviewAsync(farmId, stream, file.FileName, mapping, cancellationToken);
-        return preview.IsSuccess ? Ok(preview.Value) : ImportUpload.MapError(preview.Error!);
+        return preview.IsSuccess ? Ok(preview.Value) : ImportUpload.MapError(preview.Error!, Response);
     }
 }
