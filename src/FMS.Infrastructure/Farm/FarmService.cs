@@ -56,7 +56,7 @@ public class FarmService : IFarmService
             .FirstOrDefaultAsync(uf => uf.FarmId == farmId && uf.UserId == userId);
 
         if (userFarm == null)
-            return Result<FarmDto>.NotFound("Farm not found or access denied");
+            return Result<FarmDto>.NotFound("Farm not found or access denied", DomainMessageKeys.FarmOrAccessDeniedNotFound);
 
         return Result<FarmDto>.Success(MapToDto(userFarm.Farm, userFarm.Role));
     }
@@ -86,7 +86,7 @@ public class FarmService : IFarmService
             .FirstOrDefaultAsync(uf => uf.FarmId == farmId && uf.UserId == userId);
 
         if (userFarm == null)
-            return Result<FarmDto>.NotFound("Farm not found or access denied");
+            return Result<FarmDto>.NotFound("Farm not found or access denied", DomainMessageKeys.FarmOrAccessDeniedNotFound);
 
         if (!FarmRoles.IsFarmAdmin(userFarm.Role))
             return Result<FarmDto>.Unauthorized("Only farm owners and managers can update farm details");
@@ -110,7 +110,7 @@ public class FarmService : IFarmService
             .FirstOrDefaultAsync(uf => uf.FarmId == farmId && uf.UserId == userId);
 
         if (userFarm == null)
-            return Result.NotFound("Farm not found or access denied");
+            return Result.NotFound("Farm not found or access denied", DomainMessageKeys.FarmOrAccessDeniedNotFound);
 
         if (userFarm.Role != FarmRoles.SystemOwner)
             return Result.Unauthorized("Only farm owners can delete farms");

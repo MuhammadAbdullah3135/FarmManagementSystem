@@ -82,7 +82,7 @@ public class VaccineService : IVaccineService
             .FirstOrDefaultAsync();
 
         if (vax == null)
-            return Result<VaccineTypeDto>.NotFound("Vaccine type not found");
+            return Result<VaccineTypeDto>.NotFound("Vaccine type not found", DomainMessageKeys.VaccineTypeNotFound);
 
         return Result<VaccineTypeDto>.Success(vax);
     }
@@ -102,7 +102,7 @@ public class VaccineService : IVaccineService
             var medicine = await _context.Medicines
                 .FirstOrDefaultAsync(m => m.Id == request.LinkedMedicineId.Value && m.FarmId == farmId);
             if (medicine == null)
-                return Result<VaccineTypeDto>.Validation("Linked medicine not found in this farm");
+                return Result<VaccineTypeDto>.Validation("Linked medicine not found in this farm", DomainMessageKeys.LinkedMedicineNotFoundInFarm);
         }
 
         var userId = _currentUser.GetUserId();
@@ -139,7 +139,7 @@ public class VaccineService : IVaccineService
             .FirstOrDefaultAsync(v => v.FarmId == farmId && v.Id == id);
 
         if (vax == null)
-            return Result<VaccineTypeDto>.NotFound("Vaccine type not found");
+            return Result<VaccineTypeDto>.NotFound("Vaccine type not found", DomainMessageKeys.VaccineTypeNotFound);
 
         if (string.IsNullOrWhiteSpace(request.Name))
             return Result<VaccineTypeDto>.Validation("Vaccine name is required");
@@ -154,7 +154,7 @@ public class VaccineService : IVaccineService
             var medicine = await _context.Medicines
                 .FirstOrDefaultAsync(m => m.Id == request.LinkedMedicineId.Value && m.FarmId == farmId);
             if (medicine == null)
-                return Result<VaccineTypeDto>.Validation("Linked medicine not found in this farm");
+                return Result<VaccineTypeDto>.Validation("Linked medicine not found in this farm", DomainMessageKeys.LinkedMedicineNotFoundInFarm);
         }
 
         var userId = _currentUser.GetUserId();
@@ -190,7 +190,7 @@ public class VaccineService : IVaccineService
             .FirstOrDefaultAsync(v => v.FarmId == farmId && v.Id == id);
 
         if (vax == null)
-            return Result.NotFound("Vaccine type not found");
+            return Result.NotFound("Vaccine type not found", DomainMessageKeys.VaccineTypeNotFound);
 
         var hasRecords = await _context.VaccinationRecords.AnyAsync(vr => vr.VaccineTypeId == id);
         if (hasRecords)
@@ -293,7 +293,7 @@ public class VaccineService : IVaccineService
             .FirstOrDefaultAsync();
 
         if (record == null)
-            return Result<VaccinationRecordDto>.NotFound("Vaccination record not found");
+            return Result<VaccinationRecordDto>.NotFound("Vaccination record not found", DomainMessageKeys.VaccinationRecordNotFound);
 
         return Result<VaccinationRecordDto>.Success(record);
     }
@@ -342,12 +342,12 @@ public class VaccineService : IVaccineService
         var animal = await _context.Animals
             .FirstOrDefaultAsync(a => a.Id == request.AnimalId && a.FarmId == farmId);
         if (animal == null)
-            return Result<VaccinationRecordDto>.Validation("Animal not found in this farm");
+            return Result<VaccinationRecordDto>.Validation("Animal not found in this farm", DomainMessageKeys.AnimalNotFoundInFarm);
 
         var vaxType = await _context.VaccineTypes
             .FirstOrDefaultAsync(v => v.Id == request.VaccineTypeId && v.FarmId == farmId);
         if (vaxType == null)
-            return Result<VaccinationRecordDto>.Validation("Vaccine type not found in this farm");
+            return Result<VaccinationRecordDto>.Validation("Vaccine type not found in this farm", DomainMessageKeys.VaccineTypeNotFoundInFarm);
 
         var userId = _currentUser.GetUserId();
 
@@ -497,14 +497,14 @@ public class VaccineService : IVaccineService
             .FirstOrDefaultAsync(vr => vr.FarmId == farmId && vr.Id == id);
 
         if (record == null)
-            return Result<VaccinationRecordDto>.NotFound("Vaccination record not found");
+            return Result<VaccinationRecordDto>.NotFound("Vaccination record not found", DomainMessageKeys.VaccinationRecordNotFound);
 
         if (record.AnimalId != request.AnimalId)
         {
             var animal = await _context.Animals
                 .FirstOrDefaultAsync(a => a.Id == request.AnimalId && a.FarmId == farmId);
             if (animal == null)
-                return Result<VaccinationRecordDto>.Validation("Animal not found in this farm");
+                return Result<VaccinationRecordDto>.Validation("Animal not found in this farm", DomainMessageKeys.AnimalNotFoundInFarm);
         }
 
         if (record.VaccineTypeId != request.VaccineTypeId)
@@ -512,7 +512,7 @@ public class VaccineService : IVaccineService
             var vaxType = await _context.VaccineTypes
                 .FirstOrDefaultAsync(v => v.Id == request.VaccineTypeId && v.FarmId == farmId);
             if (vaxType == null)
-                return Result<VaccinationRecordDto>.Validation("Vaccine type not found in this farm");
+                return Result<VaccinationRecordDto>.Validation("Vaccine type not found in this farm", DomainMessageKeys.VaccineTypeNotFoundInFarm);
         }
 
         var userId = _currentUser.GetUserId();
@@ -559,7 +559,7 @@ public class VaccineService : IVaccineService
             .FirstOrDefaultAsync(vr => vr.FarmId == farmId && vr.Id == id);
 
         if (record == null)
-            return Result.NotFound("Vaccination record not found");
+            return Result.NotFound("Vaccination record not found", DomainMessageKeys.VaccinationRecordNotFound);
 
         _context.VaccinationRecords.Remove(record);
         await _context.SaveChangesAsync();
@@ -614,7 +614,7 @@ public class VaccineService : IVaccineService
         var vaxType = await _context.VaccineTypes
             .FirstOrDefaultAsync(v => v.Id == request.VaccineTypeId && v.FarmId == farmId);
         if (vaxType == null)
-            return Result<VaccinationScheduleDto>.Validation("Vaccine type not found in this farm");
+            return Result<VaccinationScheduleDto>.Validation("Vaccine type not found in this farm", DomainMessageKeys.VaccineTypeNotFoundInFarm);
 
         if (request.RecurrenceDays <= 0)
             return Result<VaccinationScheduleDto>.Validation("Recurrence interval must be greater than zero");
@@ -624,7 +624,7 @@ public class VaccineService : IVaccineService
             var animalType = await _context.AnimalTypes
                 .FirstOrDefaultAsync(a => a.Id == request.AnimalTypeId.Value && a.FarmId == farmId);
             if (animalType == null)
-                return Result<VaccinationScheduleDto>.Validation("Animal type not found in this farm");
+                return Result<VaccinationScheduleDto>.Validation("Animal type not found in this farm", DomainMessageKeys.AnimalTypeNotFoundInFarm);
         }
 
         if (request.BreedId.HasValue)
@@ -632,7 +632,7 @@ public class VaccineService : IVaccineService
             var breed = await _context.Breeds
                 .FirstOrDefaultAsync(b => b.Id == request.BreedId.Value);
             if (breed == null)
-                return Result<VaccinationScheduleDto>.Validation("Breed not found");
+                return Result<VaccinationScheduleDto>.Validation("Breed not found", DomainMessageKeys.BreedNotFound);
         }
 
         var userId = _currentUser.GetUserId();
@@ -674,12 +674,12 @@ public class VaccineService : IVaccineService
             .FirstOrDefaultAsync(s => s.Id == id && s.FarmId == farmId);
 
         if (schedule == null)
-            return Result<VaccinationScheduleDto>.NotFound("Vaccination schedule not found");
+            return Result<VaccinationScheduleDto>.NotFound("Vaccination schedule not found", DomainMessageKeys.VaccinationScheduleNotFound);
 
         var vaxType = await _context.VaccineTypes
             .FirstOrDefaultAsync(v => v.Id == request.VaccineTypeId && v.FarmId == farmId);
         if (vaxType == null)
-            return Result<VaccinationScheduleDto>.Validation("Vaccine type not found in this farm");
+            return Result<VaccinationScheduleDto>.Validation("Vaccine type not found in this farm", DomainMessageKeys.VaccineTypeNotFoundInFarm);
 
         if (request.RecurrenceDays <= 0)
             return Result<VaccinationScheduleDto>.Validation("Recurrence interval must be greater than zero");
@@ -719,7 +719,7 @@ public class VaccineService : IVaccineService
             .FirstOrDefaultAsync(s => s.Id == id && s.FarmId == farmId);
 
         if (schedule == null)
-            return Result.NotFound("Vaccination schedule not found");
+            return Result.NotFound("Vaccination schedule not found", DomainMessageKeys.VaccinationScheduleNotFound);
 
         _context.VaccinationSchedules.Remove(schedule);
         await _context.SaveChangesAsync();

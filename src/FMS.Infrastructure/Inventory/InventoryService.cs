@@ -48,7 +48,7 @@ public class InventoryService : IInventoryService
         var item = await _context.InventoryItems.AsNoTracking()
             .FirstOrDefaultAsync(i => i.FarmId == farmId && i.Id == id);
         return item == null
-            ? Result<InventoryItemDto>.NotFound("Inventory item not found")
+            ? Result<InventoryItemDto>.NotFound("Inventory item not found", DomainMessageKeys.InventoryItemNotFound)
             : Result<InventoryItemDto>.Success(ToDto(item));
     }
 
@@ -181,7 +181,7 @@ public class InventoryService : IInventoryService
     public async Task<Result<InventoryItemDto>> UpdateItemAsync(Guid farmId, Guid id, UpdateInventoryItemRequest request)
     {
         var item = await _context.InventoryItems.FirstOrDefaultAsync(i => i.FarmId == farmId && i.Id == id);
-        if (item == null) return Result<InventoryItemDto>.NotFound("Inventory item not found");
+        if (item == null) return Result<InventoryItemDto>.NotFound("Inventory item not found", DomainMessageKeys.InventoryItemNotFound);
 
         var error = InventoryItemRules.Validate(
             request.Name, request.Category, request.Unit, 0,
@@ -206,7 +206,7 @@ public class InventoryService : IInventoryService
     public async Task<Result> DeleteItemAsync(Guid farmId, Guid id)
     {
         var item = await _context.InventoryItems.FirstOrDefaultAsync(i => i.FarmId == farmId && i.Id == id);
-        if (item == null) return Result.NotFound("Inventory item not found");
+        if (item == null) return Result.NotFound("Inventory item not found", DomainMessageKeys.InventoryItemNotFound);
         if (await _context.StockMovements.AnyAsync(m => m.InventoryItemId == id))
             return Result.Conflict("Cannot delete an inventory item with stock movement history");
         _context.InventoryItems.Remove(item);
@@ -217,7 +217,7 @@ public class InventoryService : IInventoryService
     public async Task<Result<StockMovementDto>> RecordMovementAsync(Guid farmId, RecordStockMovementRequest request)
     {
         var item = await _context.InventoryItems.FirstOrDefaultAsync(i => i.FarmId == farmId && i.Id == request.InventoryItemId);
-        if (item == null) return Result<StockMovementDto>.NotFound("Inventory item not found");
+        if (item == null) return Result<StockMovementDto>.NotFound("Inventory item not found", DomainMessageKeys.InventoryItemNotFound);
         if (!Enum.IsDefined(request.MovementType)) return Result<StockMovementDto>.Validation("Invalid movement type");
 
         var signedQuantity = request.MovementType switch

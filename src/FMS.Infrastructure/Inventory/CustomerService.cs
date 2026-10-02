@@ -28,7 +28,7 @@ public class CustomerService : ICustomerService
     {
         var customer = await _context.Customers.AsNoTracking().Where(c => c.FarmId == farmId && c.Id == id)
             .Select(c => new CustomerDto { Id = c.Id, FarmId = c.FarmId, Name = c.Name, ContactInfo = c.ContactInfo, SaleCount = c.Sales.Count, TotalSales = c.Sales.Sum(s => (decimal?)s.TotalAmount) ?? 0 }).FirstOrDefaultAsync();
-        return customer == null ? Result<CustomerDto>.NotFound("Customer not found") : Result<CustomerDto>.Success(customer);
+        return customer == null ? Result<CustomerDto>.NotFound("Customer not found", DomainMessageKeys.CustomerNotFound) : Result<CustomerDto>.Success(customer);
     }
 
     public async Task<Result<CustomerDto>> CreateCustomerAsync(Guid farmId, CreateCustomerRequest request)
@@ -43,7 +43,7 @@ public class CustomerService : ICustomerService
 
     public async Task<Result<CustomerDto>> UpdateCustomerAsync(Guid farmId, Guid id, UpdateCustomerRequest request)
     {
-        var customer = await _context.Customers.FirstOrDefaultAsync(c => c.FarmId == farmId && c.Id == id); if (customer == null) return Result<CustomerDto>.NotFound("Customer not found");
+        var customer = await _context.Customers.FirstOrDefaultAsync(c => c.FarmId == farmId && c.Id == id); if (customer == null) return Result<CustomerDto>.NotFound("Customer not found", DomainMessageKeys.CustomerNotFound);
         var errors = CustomerRules.Validate(request.Name, request.ContactInfo); if (errors.Count > 0) return Result<CustomerDto>.Validation(errors[0].Message, errors[0].MessageKey, errors[0].MessageArgs);
         var name = request.Name.Trim(); if (await _context.Customers.AnyAsync(c => c.FarmId == farmId && c.Id != id && c.Name == name)) return Result<CustomerDto>.Conflict(CustomerRules.DuplicateNameMessage);
         customer.Name = name; customer.ContactInfo = CustomerRules.Clean(request.ContactInfo); customer.ModifiedAt = DateTime.UtcNow; customer.ModifiedBy = _currentUser.GetUserId(); await _context.SaveChangesAsync(); return await GetCustomerAsync(farmId, id);
@@ -51,7 +51,7 @@ public class CustomerService : ICustomerService
 
     public async Task<Result> DeleteCustomerAsync(Guid farmId, Guid id)
     {
-        var customer = await _context.Customers.FirstOrDefaultAsync(c => c.FarmId == farmId && c.Id == id); if (customer == null) return Result.NotFound("Customer not found");
+        var customer = await _context.Customers.FirstOrDefaultAsync(c => c.FarmId == farmId && c.Id == id); if (customer == null) return Result.NotFound("Customer not found", DomainMessageKeys.CustomerNotFound);
         if (await _context.CustomerSales.AnyAsync(s => s.CustomerId == id)) return Result.Conflict("Cannot delete a customer with sales history");
         _context.Customers.Remove(customer); await _context.SaveChangesAsync(); return Result.Success();
     }
@@ -171,8 +171,8 @@ public class CustomerService : ICustomerService
     {
         if (request.Quantity <= 0) return Result<CustomerSaleDto>.Validation("Quantity must be greater than zero");
         if (request.TotalAmount < 0) return Result<CustomerSaleDto>.Validation("Total amount cannot be negative");
-        var customer = await _context.Customers.FirstOrDefaultAsync(c => c.FarmId == farmId && c.Id == request.CustomerId); if (customer == null) return Result<CustomerSaleDto>.NotFound("Customer not found");
-        var item = await _context.InventoryItems.FirstOrDefaultAsync(i => i.FarmId == farmId && i.Id == request.InventoryItemId); if (item == null) return Result<CustomerSaleDto>.NotFound("Inventory item not found");
+        var customer = await _context.Customers.FirstOrDefaultAsync(c => c.FarmId == farmId && c.Id == request.CustomerId); if (customer == null) return Result<CustomerSaleDto>.NotFound("Customer not found", DomainMessageKeys.CustomerNotFound);
+        var item = await _context.InventoryItems.FirstOrDefaultAsync(i => i.FarmId == farmId && i.Id == request.InventoryItemId); if (item == null) return Result<CustomerSaleDto>.NotFound("Inventory item not found", DomainMessageKeys.InventoryItemNotFound);
         if (item.Quantity < request.Quantity) return Result<CustomerSaleDto>.Conflict($"Insufficient stock: available quantity is {item.Quantity} {item.Unit}");
         var date = request.SaleDate ?? DateTime.UtcNow; if (date > DateTime.UtcNow.AddMinutes(5)) return Result<CustomerSaleDto>.Validation("Sale date cannot be in the future");
         var incomeCategoryId = request.IncomeCategoryId ?? await GetOrCreateIncomeCategoryAsync(farmId);

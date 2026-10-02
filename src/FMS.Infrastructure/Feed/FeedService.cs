@@ -38,7 +38,7 @@ public class FeedService : IFeedService
             .FirstOrDefaultAsync(ft => ft.Id == id && ft.FarmId == farmId);
 
         if (feedType == null)
-            return Result<FeedTypeDto>.NotFound("Feed type not found");
+            return Result<FeedTypeDto>.NotFound("Feed type not found", DomainMessageKeys.FeedTypeNotFound);
 
         return Result<FeedTypeDto>.Success(MapFeedType(feedType));
     }
@@ -77,7 +77,7 @@ public class FeedService : IFeedService
         var feedType = await _context.FeedTypes
             .FirstOrDefaultAsync(ft => ft.Id == id && ft.FarmId == farmId);
         if (feedType == null)
-            return Result<FeedTypeDto>.NotFound("Feed type not found");
+            return Result<FeedTypeDto>.NotFound("Feed type not found", DomainMessageKeys.FeedTypeNotFound);
 
         var validationError = ValidateDetails(request.Name, request.CostPerUnit);
         if (validationError != null)
@@ -105,7 +105,7 @@ public class FeedService : IFeedService
         var feedType = await _context.FeedTypes
             .FirstOrDefaultAsync(ft => ft.Id == id && ft.FarmId == farmId);
         if (feedType == null)
-            return Result.NotFound("Feed type not found");
+            return Result.NotFound("Feed type not found", DomainMessageKeys.FeedTypeNotFound);
 
         var hasMovements = await _context.FeedStockMovements
             .AnyAsync(m => m.FeedTypeId == id);
@@ -135,7 +135,7 @@ public class FeedService : IFeedService
         var feedType = await _context.FeedTypes
             .FirstOrDefaultAsync(ft => ft.Id == request.FeedTypeId && ft.FarmId == farmId);
         if (feedType == null)
-            return Result<StockMovementDto>.NotFound("Feed type not found");
+            return Result<StockMovementDto>.NotFound("Feed type not found", DomainMessageKeys.FeedTypeNotFound);
 
         if (request.MovementType == StockMovementType.Adjustment)
         {
@@ -267,7 +267,7 @@ public class FeedService : IFeedService
 
         var stock = allStock.Value!.FirstOrDefault(s => s.FeedTypeId == feedTypeId);
         if (stock == null)
-            return Result<FeedStockDto>.NotFound("Feed type not found");
+            return Result<FeedStockDto>.NotFound("Feed type not found", DomainMessageKeys.FeedTypeNotFound);
 
         return Result<FeedStockDto>.Success(stock);
     }
@@ -279,7 +279,7 @@ public class FeedService : IFeedService
         var feedType = await _context.FeedTypes
             .FirstOrDefaultAsync(ft => ft.Id == request.FeedTypeId && ft.FarmId == farmId);
         if (feedType == null)
-            return Result<FeedRecordDto>.NotFound("Feed type not found");
+            return Result<FeedRecordDto>.NotFound("Feed type not found", DomainMessageKeys.FeedTypeNotFound);
 
         if (request.Quantity <= 0)
             return Result<FeedRecordDto>.Validation("Quantity must be greater than zero");
@@ -295,7 +295,7 @@ public class FeedService : IFeedService
             animal = await _context.Animals
                 .FirstOrDefaultAsync(a => a.Id == request.AnimalId.Value && a.FarmId == farmId && !a.IsDeleted);
             if (animal == null)
-                return Result<FeedRecordDto>.NotFound("Animal not found");
+                return Result<FeedRecordDto>.NotFound("Animal not found", DomainMessageKeys.AnimalNotFound);
         }
 
         Location? location = null;
@@ -304,7 +304,7 @@ public class FeedService : IFeedService
             location = await _context.Locations
                 .FirstOrDefaultAsync(l => l.Id == request.LocationId.Value && l.FarmId == farmId);
             if (location == null)
-                return Result<FeedRecordDto>.NotFound("Location not found");
+                return Result<FeedRecordDto>.NotFound("Location not found", DomainMessageKeys.LocationNotFound);
         }
 
         var fedAt = request.FedAt ?? DateTime.UtcNow;
@@ -381,7 +381,7 @@ public class FeedService : IFeedService
             .Include(r => r.Location)
             .FirstOrDefaultAsync(r => r.Id == id && r.FarmId == farmId);
         if (record == null)
-            return Result<FeedRecordDto>.NotFound("Feed record not found");
+            return Result<FeedRecordDto>.NotFound("Feed record not found", DomainMessageKeys.FeedRecordNotFound);
 
         return Result<FeedRecordDto>.Success(MapFeedRecord(record));
     }
@@ -432,7 +432,7 @@ public class FeedService : IFeedService
             .Include(r => r.FeedType)
             .FirstOrDefaultAsync(r => r.Id == id && r.FarmId == farmId);
         if (record == null)
-            return Result<FeedRecordDto>.NotFound("Feed record not found");
+            return Result<FeedRecordDto>.NotFound("Feed record not found", DomainMessageKeys.FeedRecordNotFound);
 
         if (request.Quantity <= 0)
             return Result<FeedRecordDto>.Validation("Quantity must be greater than zero");
@@ -504,7 +504,7 @@ public class FeedService : IFeedService
             .Include(r => r.FeedType)
             .FirstOrDefaultAsync(r => r.Id == id && r.FarmId == farmId);
         if (record == null)
-            return Result.NotFound("Feed record not found");
+            return Result.NotFound("Feed record not found", DomainMessageKeys.FeedRecordNotFound);
 
         var userId = _currentUser.GetUserId();
         var now = DateTime.UtcNow;
@@ -566,7 +566,7 @@ public class FeedService : IFeedService
             .Include(p => p.Schedules)
             .FirstOrDefaultAsync(p => p.Id == id && p.FarmId == farmId);
         if (plan == null)
-            return Result<DietPlanDto>.NotFound("Diet plan not found");
+            return Result<DietPlanDto>.NotFound("Diet plan not found", DomainMessageKeys.DietPlanNotFound);
 
         return Result<DietPlanDto>.Success(MapDietPlan(plan));
     }
@@ -618,7 +618,7 @@ public class FeedService : IFeedService
         var plan = await _context.DietPlans
             .FirstOrDefaultAsync(p => p.Id == id && p.FarmId == farmId);
         if (plan == null)
-            return Result<DietPlanDto>.NotFound("Diet plan not found");
+            return Result<DietPlanDto>.NotFound("Diet plan not found", DomainMessageKeys.DietPlanNotFound);
 
         var validationError = ValidateDietPlanDetails(request.Name, request.MinWeightKg, request.MaxWeightKg);
         if (validationError != null)
@@ -649,7 +649,7 @@ public class FeedService : IFeedService
         var plan = await _context.DietPlans
             .FirstOrDefaultAsync(p => p.Id == id && p.FarmId == farmId);
         if (plan == null)
-            return Result.NotFound("Diet plan not found");
+            return Result.NotFound("Diet plan not found", DomainMessageKeys.DietPlanNotFound);
 
         var hasTasks = await _context.FeedingTasks
             .AnyAsync(t => t.DietPlanId == id);
@@ -671,7 +671,7 @@ public class FeedService : IFeedService
         var plan = await _context.DietPlans
             .FirstOrDefaultAsync(p => p.Id == dietPlanId && p.FarmId == farmId);
         if (plan == null)
-            return Result<DietPlanDto>.NotFound("Diet plan not found");
+            return Result<DietPlanDto>.NotFound("Diet plan not found", DomainMessageKeys.DietPlanNotFound);
 
         var error = await AddItemsToPlanInternalAsync(farmId, plan,
             new List<AddDietPlanItemRequest> { request }, _currentUser.GetUserId(), DateTime.UtcNow);
@@ -689,7 +689,7 @@ public class FeedService : IFeedService
             .Include(i => i.DietPlan)
             .FirstOrDefaultAsync(i => i.Id == itemId && i.DietPlanId == dietPlanId && i.DietPlan.FarmId == farmId);
         if (item == null)
-            return Result.NotFound("Diet plan item not found");
+            return Result.NotFound("Diet plan item not found", DomainMessageKeys.DietPlanItemNotFound);
 
         _context.DietPlanItems.Remove(item);
         await _context.SaveChangesAsync();
@@ -720,7 +720,7 @@ public class FeedService : IFeedService
         var plan = await _context.DietPlans
             .FirstOrDefaultAsync(p => p.Id == request.DietPlanId && p.FarmId == farmId);
         if (plan == null)
-            return Result<FeedingScheduleDto>.NotFound("Diet plan not found");
+            return Result<FeedingScheduleDto>.NotFound("Diet plan not found", DomainMessageKeys.DietPlanNotFound);
 
         if (!TryParseTimeOfDay(request.TimeOfDay, out var timeOfDay))
             return Result<FeedingScheduleDto>.Validation("TimeOfDay must be in HH:mm format (e.g. 07:30)");
@@ -757,7 +757,7 @@ public class FeedService : IFeedService
             .Include(s => s.DietPlan)
             .FirstOrDefaultAsync(s => s.Id == id && s.FarmId == farmId);
         if (schedule == null)
-            return Result<FeedingScheduleDto>.NotFound("Feeding schedule not found");
+            return Result<FeedingScheduleDto>.NotFound("Feeding schedule not found", DomainMessageKeys.FeedingScheduleNotFound);
 
         var timeOfDay = schedule.TimeOfDay;
         if (request.TimeOfDay != null)
@@ -798,7 +798,7 @@ public class FeedService : IFeedService
         var schedule = await _context.FeedingSchedules
             .FirstOrDefaultAsync(s => s.Id == id && s.FarmId == farmId);
         if (schedule == null)
-            return Result.NotFound("Feeding schedule not found");
+            return Result.NotFound("Feeding schedule not found", DomainMessageKeys.FeedingScheduleNotFound);
 
         var hasTasks = await _context.FeedingTasks
             .AnyAsync(t => t.FeedingScheduleId == id);
@@ -929,7 +929,7 @@ public class FeedService : IFeedService
             .Include(t => t.DietPlan)
             .FirstOrDefaultAsync(t => t.Id == id && t.FarmId == farmId);
         if (task == null)
-            return Result<FeedingTaskDto>.NotFound("Feeding task not found");
+            return Result<FeedingTaskDto>.NotFound("Feeding task not found", DomainMessageKeys.FeedingTaskNotFound);
 
         if (task.Status != FeedingTaskStatus.Pending)
             return Result<FeedingTaskDto>.Conflict($"Task is already {task.Status}");
@@ -1153,7 +1153,7 @@ public class FeedService : IFeedService
     {
         if (animalTypeId.HasValue &&
             !await _context.AnimalTypes.AnyAsync(at => at.Id == animalTypeId.Value && at.FarmId == farmId))
-            return Error.NotFound("Animal type not found");
+            return Error.NotFound("Animal type not found", DomainMessageKeys.AnimalTypeNotFound);
 
         if (breedId.HasValue)
         {
@@ -1161,14 +1161,14 @@ public class FeedService : IFeedService
                 .Include(b => b.AnimalType)
                 .FirstOrDefaultAsync(b => b.Id == breedId.Value && b.AnimalType.FarmId == farmId);
             if (breed == null)
-                return Error.NotFound("Breed not found");
+                return Error.NotFound("Breed not found", DomainMessageKeys.BreedNotFound);
             if (animalTypeId.HasValue && breed.AnimalTypeId != animalTypeId.Value)
                 return Error.Validation("Breed does not belong to the specified animal type");
         }
 
         if (ageCategoryId.HasValue &&
             !await _context.AgeCategories.AnyAsync(ac => ac.Id == ageCategoryId.Value && ac.FarmId == farmId))
-            return Error.NotFound("Age category not found");
+            return Error.NotFound("Age category not found", DomainMessageKeys.AgeCategoryNotFound);
 
         return null;
     }
@@ -1185,7 +1185,7 @@ public class FeedService : IFeedService
             var feedType = await _context.FeedTypes
                 .FirstOrDefaultAsync(ft => ft.Id == request.FeedTypeId && ft.FarmId == farmId);
             if (feedType == null)
-                return Error.NotFound("Feed type not found");
+                return Error.NotFound("Feed type not found", DomainMessageKeys.FeedTypeNotFound);
 
             var alreadyInRequest = plan.Items.Any(i => i.FeedTypeId == request.FeedTypeId) ||
                                    requests.Count(r => r.FeedTypeId == request.FeedTypeId) > 1;

@@ -22,7 +22,7 @@ public class PerformanceService : IPerformanceService
         var review = await QueryReviews(farmId)
             .FirstOrDefaultAsync(r => r.Id == id);
         if (review == null)
-            return Result<PerformanceReviewDto>.NotFound("Performance review not found");
+            return Result<PerformanceReviewDto>.NotFound("Performance review not found", DomainMessageKeys.PerformanceReviewNotFound);
 
         return Result<PerformanceReviewDto>.Success(MapReview(review));
     }
@@ -76,7 +76,7 @@ public class PerformanceService : IPerformanceService
         var employee = await _context.Employees
             .FirstOrDefaultAsync(e => e.Id == request.EmployeeId && e.FarmId == farmId);
         if (employee == null)
-            return Result<PerformanceReviewDto>.NotFound("Employee not found");
+            return Result<PerformanceReviewDto>.NotFound("Employee not found", DomainMessageKeys.EmployeeNotFound);
 
         var now = DateTime.UtcNow;
         var review = new PerformanceReview
@@ -107,7 +107,7 @@ public class PerformanceService : IPerformanceService
         var review = await _context.PerformanceReviews
             .FirstOrDefaultAsync(r => r.Id == id && r.FarmId == farmId);
         if (review == null)
-            return Result<PerformanceReviewDto>.NotFound("Performance review not found");
+            return Result<PerformanceReviewDto>.NotFound("Performance review not found", DomainMessageKeys.PerformanceReviewNotFound);
 
         var validationError = Validate(request.Rating, request.ReviewDate, request.PeriodStart, request.PeriodEnd,
             request.Strengths, request.AreasForImprovement, request.Comments);
@@ -134,7 +134,7 @@ public class PerformanceService : IPerformanceService
         var review = await _context.PerformanceReviews
             .FirstOrDefaultAsync(r => r.Id == id && r.FarmId == farmId);
         if (review == null)
-            return Result.NotFound("Performance review not found");
+            return Result.NotFound("Performance review not found", DomainMessageKeys.PerformanceReviewNotFound);
 
         _context.PerformanceReviews.Remove(review);
         await _context.SaveChangesAsync();

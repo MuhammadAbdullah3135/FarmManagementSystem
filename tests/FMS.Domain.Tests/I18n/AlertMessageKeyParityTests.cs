@@ -35,75 +35,32 @@ namespace FMS.Domain.Tests.I18n;
 /// </summary>
 public class AlertMessageKeyParityTests
 {
-    /// <summary>The client's resource directory, found by walking up from the test binary.</summary>
-    private static string LocalesDirectory()
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null)
-        {
-            var candidate = Path.Combine(directory.FullName, "client", "src", "i18n", "locales");
-            if (Directory.Exists(candidate)) return candidate;
-            directory = directory.Parent;
-        }
+    // The bundle-reading and key-enumerating helpers now live in ClientBundles, shared with
+    // DomainMessageKeyParityTests. They used to be private here, which meant a second copy of
+    // the directory walk to forget when a language was added.
 
-        throw new DirectoryNotFoundException(
-            "client/src/i18n/locales was not found above the test binary. This test compares the " +
-            "server's message keys with the client's bundles, so it needs the whole repository.");
-    }
-
-    private static Dictionary<string, string> Bundle(string locale, string namespaceName)
-    {
-        var file = Path.Combine(LocalesDirectory(), locale, $"{namespaceName}.json");
-        using var document = JsonDocument.Parse(File.ReadAllText(file));
-        return document.RootElement.EnumerateObject()
-            .ToDictionary(property => property.Name, property => property.Value.GetString() ?? string.Empty);
-    }
-
-    /// <summary>Every `const string` the server declares as a message key.</summary>
-    private static List<string> DeclaredKeys(Type type) =>
-        type.GetFields(BindingFlags.Public | BindingFlags.Static)
-            .Where(field => field.IsLiteral && field.FieldType == typeof(string))
-            .Select(field => (string)field.GetRawConstantValue()!)
-            .Where(value => value.Contains('.'))
-            .OrderBy(value => value, StringComparer.Ordinal)
-            .ToList();
-
-    /// <summary>
-    /// Every locale directory the client ships apart from English, in a stable order.
-    /// </summary>
-    private static List<string> TranslatedLocales()
-    {
-        var root = LocalesDirectory();
-        var locales = Directory.GetDirectories(root)
-            .Select(Path.GetFileName)
-            .Where(name => !string.IsNullOrEmpty(name) && name != "en")
-            .OrderBy(name => name, StringComparer.Ordinal)
-            .ToList();
-
-        Assert.NotEmpty(locales);
-        return locales!;
-    }
+    private static List<string> DeclaredKeys() => ClientBundles.DeclaredKeys(typeof(AlertMessageKeys));
 
     [Fact]
     public void Every_alert_template_key_exists_in_every_client_bundle()
     {
-        var keys = DeclaredKeys(typeof(AlertMessageKeys));
+        var keys = DeclaredKeys();
         Assert.NotEmpty(keys);
 
-        var english = Bundle("en", "notifications");
+        var english = ClientBundles.Bundle("en", "notifications");
 
         foreach (var key in keys)
         {
             // `notifications.alertOverdueVaccinationTitle` names the flat key inside the
             // notifications namespace — the client splits on the first dot for exactly this.
-            var (namespaceName, path) = (key.Split('.')[0], key[(key.IndexOf('.') + 1)..]);
+            var (namespaceName, path) = ClientBundles.SplitKey(key);
             Assert.Equal("notifications", namespaceName);
 
             Assert.True(english.ContainsKey(path), $"{key} is missing from en/notifications.json");
 
-            foreach (var locale in TranslatedLocales())
+            foreach (var locale in ClientBundles.TranslatedLocales())
             {
-                var bundle = Bundle(locale, "notifications");
+                var bundle = ClientBundles.Bundle(locale, "notifications");
                 Assert.True(bundle.ContainsKey(path), $"{key} is missing from {locale}/notifications.json");
                 Assert.False(string.IsNullOrWhiteSpace(bundle[path]), $"{key} is blank in {locale}");
             }
@@ -127,17 +84,17 @@ public class AlertMessageKeyParityTests
 
         Assert.NotEmpty(types);
 
-        var english = Bundle("en", "notifications");
+        var english = ClientBundles.Bundle("en", "notifications");
 
         foreach (var type in types)
         {
             var key = $"alertType{type}";
             Assert.True(english.ContainsKey(key), $"{key} is missing from en/notifications.json");
 
-            foreach (var locale in TranslatedLocales())
+            foreach (var locale in ClientBundles.TranslatedLocales())
             {
                 Assert.True(
-                    Bundle(locale, "notifications").ContainsKey(key),
+                    ClientBundles.Bundle(locale, "notifications").ContainsKey(key),
                     $"{key} is missing from {locale}/notifications.json");
             }
         }
@@ -149,7 +106,7 @@ public class AlertMessageKeyParityTests
         // The two halves are kept in step by hand (`SupportedLocales.All` and the resource
         // directories), so this is the check that notices when one gains a language the other
         // does not have: storing a language the client cannot render is a silent English page.
-        var clientLocales = TranslatedLocales();
+        var clientLocales = ClientBundles.TranslatedLocales();
         var serverLocales = FMS.Application.Common.SupportedLocales.All
             .Where(locale => locale != FMS.Application.Common.SupportedLocales.Default)
             .OrderBy(locale => locale, StringComparer.Ordinal)

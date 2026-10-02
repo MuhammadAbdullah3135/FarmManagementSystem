@@ -72,7 +72,7 @@ public class WeightCheckScheduleService : IWeightCheckScheduleService
             var animalType = await _context.AnimalTypes
                 .FirstOrDefaultAsync(a => a.Id == request.AnimalTypeId.Value && a.FarmId == farmId);
             if (animalType == null)
-                return Result<WeightCheckScheduleDto>.Validation("Animal type not found in this farm");
+                return Result<WeightCheckScheduleDto>.Validation("Animal type not found in this farm", DomainMessageKeys.AnimalTypeNotFoundInFarm);
         }
 
         if (request.BreedId.HasValue)
@@ -80,7 +80,7 @@ public class WeightCheckScheduleService : IWeightCheckScheduleService
             var breed = await _context.Breeds
                 .FirstOrDefaultAsync(b => b.Id == request.BreedId.Value);
             if (breed == null)
-                return Result<WeightCheckScheduleDto>.Validation("Breed not found");
+                return Result<WeightCheckScheduleDto>.Validation("Breed not found", DomainMessageKeys.BreedNotFound);
         }
 
         if (request.AgeCategoryId.HasValue)
@@ -88,7 +88,7 @@ public class WeightCheckScheduleService : IWeightCheckScheduleService
             var ageCategory = await _context.AgeCategories
                 .FirstOrDefaultAsync(a => a.Id == request.AgeCategoryId.Value && a.FarmId == farmId);
             if (ageCategory == null)
-                return Result<WeightCheckScheduleDto>.Validation("Age category not found in this farm");
+                return Result<WeightCheckScheduleDto>.Validation("Age category not found in this farm", DomainMessageKeys.AgeCategoryNotFoundInFarm);
         }
 
         var userId = _currentUser.GetUserId();
@@ -130,7 +130,7 @@ public class WeightCheckScheduleService : IWeightCheckScheduleService
             .FirstOrDefaultAsync(s => s.Id == id && s.FarmId == farmId);
 
         if (schedule == null)
-            return Result<WeightCheckScheduleDto>.NotFound("Weight check schedule not found");
+            return Result<WeightCheckScheduleDto>.NotFound("Weight check schedule not found", DomainMessageKeys.WeightCheckScheduleNotFound);
 
         if (request.RecurrenceDays <= 0)
             return Result<WeightCheckScheduleDto>.Validation("Recurrence interval must be greater than zero");
@@ -140,7 +140,7 @@ public class WeightCheckScheduleService : IWeightCheckScheduleService
             var animalType = await _context.AnimalTypes
                 .FirstOrDefaultAsync(a => a.Id == request.AnimalTypeId.Value && a.FarmId == farmId);
             if (animalType == null)
-                return Result<WeightCheckScheduleDto>.Validation("Animal type not found in this farm");
+                return Result<WeightCheckScheduleDto>.Validation("Animal type not found in this farm", DomainMessageKeys.AnimalTypeNotFoundInFarm);
         }
 
         if (request.BreedId.HasValue)
@@ -148,7 +148,7 @@ public class WeightCheckScheduleService : IWeightCheckScheduleService
             var breed = await _context.Breeds
                 .FirstOrDefaultAsync(b => b.Id == request.BreedId.Value);
             if (breed == null)
-                return Result<WeightCheckScheduleDto>.Validation("Breed not found");
+                return Result<WeightCheckScheduleDto>.Validation("Breed not found", DomainMessageKeys.BreedNotFound);
         }
 
         if (request.AgeCategoryId.HasValue)
@@ -156,7 +156,7 @@ public class WeightCheckScheduleService : IWeightCheckScheduleService
             var ageCategory = await _context.AgeCategories
                 .FirstOrDefaultAsync(a => a.Id == request.AgeCategoryId.Value && a.FarmId == farmId);
             if (ageCategory == null)
-                return Result<WeightCheckScheduleDto>.Validation("Age category not found in this farm");
+                return Result<WeightCheckScheduleDto>.Validation("Age category not found in this farm", DomainMessageKeys.AgeCategoryNotFoundInFarm);
         }
 
         var userId = _currentUser.GetUserId();
@@ -194,7 +194,7 @@ public class WeightCheckScheduleService : IWeightCheckScheduleService
             .FirstOrDefaultAsync(s => s.Id == id && s.FarmId == farmId);
 
         if (schedule == null)
-            return Result.NotFound("Weight check schedule not found");
+            return Result.NotFound("Weight check schedule not found", DomainMessageKeys.WeightCheckScheduleNotFound);
 
         _context.WeightCheckSchedules.Remove(schedule);
         await _context.SaveChangesAsync();

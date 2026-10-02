@@ -74,7 +74,7 @@ public class FinanceService : IFinanceService
         var category = await _context.ExpenseCategories
             .FirstOrDefaultAsync(c => c.Id == id && c.FarmId == farmId);
         if (category == null)
-            return Result<ExpenseCategoryDto>.NotFound("Expense category not found");
+            return Result<ExpenseCategoryDto>.NotFound("Expense category not found", DomainMessageKeys.ExpenseCategoryNotFound);
 
         var validationError = ValidateLookup(request.Name, request.Description);
         if (validationError != null)
@@ -105,7 +105,7 @@ public class FinanceService : IFinanceService
         var category = await _context.ExpenseCategories
             .FirstOrDefaultAsync(c => c.Id == id && c.FarmId == farmId);
         if (category == null)
-            return Result.NotFound("Expense category not found");
+            return Result.NotFound("Expense category not found", DomainMessageKeys.ExpenseCategoryNotFound);
 
         var hasExpenses = await _context.Expenses.AnyAsync(e => e.ExpenseCategoryId == id);
         if (hasExpenses)
@@ -175,7 +175,7 @@ public class FinanceService : IFinanceService
         var method = await _context.PaymentMethods
             .FirstOrDefaultAsync(m => m.Id == id && m.FarmId == farmId);
         if (method == null)
-            return Result<PaymentMethodDto>.NotFound("Payment method not found");
+            return Result<PaymentMethodDto>.NotFound("Payment method not found", DomainMessageKeys.PaymentMethodNotFound);
 
         var validationError = ValidateLookup(request.Name, request.Description);
         if (validationError != null)
@@ -206,7 +206,7 @@ public class FinanceService : IFinanceService
         var method = await _context.PaymentMethods
             .FirstOrDefaultAsync(m => m.Id == id && m.FarmId == farmId);
         if (method == null)
-            return Result.NotFound("Payment method not found");
+            return Result.NotFound("Payment method not found", DomainMessageKeys.PaymentMethodNotFound);
 
         var hasExpenses = await _context.Expenses.AnyAsync(e => e.PaymentMethodId == id);
         if (hasExpenses)
@@ -229,7 +229,7 @@ public class FinanceService : IFinanceService
             .Include(e => e.Location)
             .FirstOrDefaultAsync(e => e.Id == id && e.FarmId == farmId && !e.IsDeleted);
         if (expense == null)
-            return Result<ExpenseDto>.NotFound("Expense not found");
+            return Result<ExpenseDto>.NotFound("Expense not found", DomainMessageKeys.ExpenseNotFound);
 
         return Result<ExpenseDto>.Success(MapExpense(expense));
     }
@@ -307,7 +307,7 @@ public class FinanceService : IFinanceService
         var expense = await _context.Expenses
             .FirstOrDefaultAsync(e => e.Id == id && e.FarmId == farmId && !e.IsDeleted);
         if (expense == null)
-            return Result<ExpenseDto>.NotFound("Expense not found");
+            return Result<ExpenseDto>.NotFound("Expense not found", DomainMessageKeys.ExpenseNotFound);
 
         var errors = ExpenseRules.Validate(request.Amount, request.ExpenseDate, request.Description);
         if (errors.Count > 0)
@@ -337,7 +337,7 @@ public class FinanceService : IFinanceService
         var expense = await _context.Expenses
             .FirstOrDefaultAsync(e => e.Id == id && e.FarmId == farmId && !e.IsDeleted);
         if (expense == null)
-            return Result.NotFound("Expense not found");
+            return Result.NotFound("Expense not found", DomainMessageKeys.ExpenseNotFound);
 
         _context.Expenses.Remove(expense);
         await _context.SaveChangesAsync();
@@ -402,7 +402,7 @@ public class FinanceService : IFinanceService
         var category = await _context.IncomeCategories
             .FirstOrDefaultAsync(c => c.Id == id && c.FarmId == farmId);
         if (category == null)
-            return Result<IncomeCategoryDto>.NotFound("Income category not found");
+            return Result<IncomeCategoryDto>.NotFound("Income category not found", DomainMessageKeys.IncomeCategoryNotFound);
 
         var validationError = ValidateLookup(request.Name, request.Description);
         if (validationError != null)
@@ -433,7 +433,7 @@ public class FinanceService : IFinanceService
         var category = await _context.IncomeCategories
             .FirstOrDefaultAsync(c => c.Id == id && c.FarmId == farmId);
         if (category == null)
-            return Result.NotFound("Income category not found");
+            return Result.NotFound("Income category not found", DomainMessageKeys.IncomeCategoryNotFound);
 
         var hasRecords = await _context.IncomeRecords.AnyAsync(r => r.IncomeCategoryId == id);
         if (hasRecords)
@@ -456,7 +456,7 @@ public class FinanceService : IFinanceService
             .Include(r => r.Location)
             .FirstOrDefaultAsync(r => r.Id == id && r.FarmId == farmId);
         if (record == null)
-            return Result<IncomeRecordDto>.NotFound("Income record not found");
+            return Result<IncomeRecordDto>.NotFound("Income record not found", DomainMessageKeys.IncomeRecordNotFound);
 
         return Result<IncomeRecordDto>.Success(MapIncome(record));
     }
@@ -534,7 +534,7 @@ public class FinanceService : IFinanceService
         var record = await _context.IncomeRecords
             .FirstOrDefaultAsync(r => r.Id == id && r.FarmId == farmId);
         if (record == null)
-            return Result<IncomeRecordDto>.NotFound("Income record not found");
+            return Result<IncomeRecordDto>.NotFound("Income record not found", DomainMessageKeys.IncomeRecordNotFound);
 
         var errors = IncomeRules.Validate(request.Amount, request.IncomeDate, request.Description);
         if (errors.Count > 0)
@@ -564,7 +564,7 @@ public class FinanceService : IFinanceService
         var record = await _context.IncomeRecords
             .FirstOrDefaultAsync(r => r.Id == id && r.FarmId == farmId);
         if (record == null)
-            return Result.NotFound("Income record not found");
+            return Result.NotFound("Income record not found", DomainMessageKeys.IncomeRecordNotFound);
 
         _context.IncomeRecords.Remove(record);
         await _context.SaveChangesAsync();
@@ -952,18 +952,18 @@ public class FinanceService : IFinanceService
     private async Task<Error?> ValidateReferencesAsync(Guid farmId, Guid expenseCategoryId, Guid paymentMethodId, Guid? animalId, Guid? locationId)
     {
         if (!await _context.ExpenseCategories.AnyAsync(c => c.Id == expenseCategoryId && c.FarmId == farmId))
-            return Error.NotFound("Expense category not found");
+            return Error.NotFound("Expense category not found", DomainMessageKeys.ExpenseCategoryNotFound);
 
         if (!await _context.PaymentMethods.AnyAsync(m => m.Id == paymentMethodId && m.FarmId == farmId))
-            return Error.NotFound("Payment method not found");
+            return Error.NotFound("Payment method not found", DomainMessageKeys.PaymentMethodNotFound);
 
         if (animalId.HasValue &&
             !await _context.Animals.AnyAsync(a => a.Id == animalId.Value && a.FarmId == farmId && !a.IsDeleted))
-            return Error.NotFound("Animal not found");
+            return Error.NotFound("Animal not found", DomainMessageKeys.AnimalNotFound);
 
         if (locationId.HasValue &&
             !await _context.Locations.AnyAsync(l => l.Id == locationId.Value && l.FarmId == farmId))
-            return Error.NotFound("Location not found");
+            return Error.NotFound("Location not found", DomainMessageKeys.LocationNotFound);
 
         return null;
     }
@@ -971,18 +971,18 @@ public class FinanceService : IFinanceService
     private async Task<Error?> ValidateIncomeReferencesAsync(Guid farmId, Guid incomeCategoryId, Guid paymentMethodId, Guid? animalId, Guid? locationId)
     {
         if (!await _context.IncomeCategories.AnyAsync(c => c.Id == incomeCategoryId && c.FarmId == farmId))
-            return Error.NotFound("Income category not found");
+            return Error.NotFound("Income category not found", DomainMessageKeys.IncomeCategoryNotFound);
 
         if (!await _context.PaymentMethods.AnyAsync(m => m.Id == paymentMethodId && m.FarmId == farmId))
-            return Error.NotFound("Payment method not found");
+            return Error.NotFound("Payment method not found", DomainMessageKeys.PaymentMethodNotFound);
 
         if (animalId.HasValue &&
             !await _context.Animals.AnyAsync(a => a.Id == animalId.Value && a.FarmId == farmId && !a.IsDeleted))
-            return Error.NotFound("Animal not found");
+            return Error.NotFound("Animal not found", DomainMessageKeys.AnimalNotFound);
 
         if (locationId.HasValue &&
             !await _context.Locations.AnyAsync(l => l.Id == locationId.Value && l.FarmId == farmId))
-            return Error.NotFound("Location not found");
+            return Error.NotFound("Location not found", DomainMessageKeys.LocationNotFound);
 
         return null;
     }

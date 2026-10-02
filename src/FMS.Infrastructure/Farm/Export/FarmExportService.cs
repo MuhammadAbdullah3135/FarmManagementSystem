@@ -48,7 +48,7 @@ public class FarmExportService : IFarmExportService
 
         if (farmName is null)
         {
-            return Result<FarmExportDto>.NotFound("Farm not found");
+            return Result<FarmExportDto>.NotFound("Farm not found", DomainMessageKeys.FarmNotFound);
         }
 
         // Refused rather than accepted: with the job subsystem off, nothing in this

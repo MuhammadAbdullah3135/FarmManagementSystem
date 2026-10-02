@@ -81,7 +81,7 @@ public class MedicineService : IMedicineService
             .FirstOrDefaultAsync();
 
         if (medicine == null)
-            return Result<MedicineDto>.NotFound("Medicine not found");
+            return Result<MedicineDto>.NotFound("Medicine not found", DomainMessageKeys.MedicineNotFound);
 
         return Result<MedicineDto>.Success(medicine);
     }
@@ -134,7 +134,7 @@ public class MedicineService : IMedicineService
             .FirstOrDefaultAsync(m => m.FarmId == farmId && m.Id == id);
 
         if (medicine == null)
-            return Result<MedicineDto>.NotFound("Medicine not found");
+            return Result<MedicineDto>.NotFound("Medicine not found", DomainMessageKeys.MedicineNotFound);
 
         if (string.IsNullOrWhiteSpace(request.Name))
             return Result<MedicineDto>.Validation("Medicine name is required");
@@ -185,7 +185,7 @@ public class MedicineService : IMedicineService
             .FirstOrDefaultAsync(m => m.FarmId == farmId && m.Id == id);
 
         if (medicine == null)
-            return Result.NotFound("Medicine not found");
+            return Result.NotFound("Medicine not found", DomainMessageKeys.MedicineNotFound);
 
         var hasUsages = await _context.MedicineUsages.AnyAsync(u => u.MedicineId == id);
         if (hasUsages)
@@ -204,7 +204,7 @@ public class MedicineService : IMedicineService
         var medicine = await _context.Medicines
             .FirstOrDefaultAsync(m => m.FarmId == farmId && m.Id == medicineId);
         if (medicine == null)
-            return Result<List<MedicineStockDto>>.NotFound("Medicine not found");
+            return Result<List<MedicineStockDto>>.NotFound("Medicine not found", DomainMessageKeys.MedicineNotFound);
 
         var batches = await _context.MedicineStocks
             .AsNoTracking()
@@ -231,7 +231,7 @@ public class MedicineService : IMedicineService
         var medicine = await _context.Medicines
             .FirstOrDefaultAsync(m => m.FarmId == farmId && m.Id == medicineId);
         if (medicine == null)
-            return Result<MedicineStockDto>.NotFound("Medicine not found");
+            return Result<MedicineStockDto>.NotFound("Medicine not found", DomainMessageKeys.MedicineNotFound);
 
         if (string.IsNullOrWhiteSpace(request.BatchNumber))
             return Result<MedicineStockDto>.Validation("Batch number is required");
@@ -274,7 +274,7 @@ public class MedicineService : IMedicineService
         var stock = await _context.MedicineStocks
             .FirstOrDefaultAsync(s => s.Id == stockId && s.MedicineId == medicineId);
         if (stock == null)
-            return Result.NotFound("Stock batch not found");
+            return Result.NotFound("Stock batch not found", DomainMessageKeys.StockBatchNotFound);
 
         var hasUsages = await _context.MedicineUsages.AnyAsync(u => u.MedicineStockId == stockId);
         if (hasUsages)
@@ -293,7 +293,7 @@ public class MedicineService : IMedicineService
         var medicine = await _context.Medicines
             .FirstOrDefaultAsync(m => m.FarmId == farmId && m.Id == request.MedicineId);
         if (medicine == null)
-            return Result<MedicineUsageDto>.NotFound("Medicine not found");
+            return Result<MedicineUsageDto>.NotFound("Medicine not found", DomainMessageKeys.MedicineNotFound);
 
         if (request.QuantityUsed <= 0)
             return Result<MedicineUsageDto>.Validation("Quantity must be greater than zero");

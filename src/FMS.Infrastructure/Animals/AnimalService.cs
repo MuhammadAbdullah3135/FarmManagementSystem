@@ -174,7 +174,7 @@ public class AnimalService : IAnimalService
         // the record — which is also what makes a scanned label from another farm resolve to
         // nothing rather than to somebody else's animal.
         if (animal == null)
-            return Result<AnimalQrLabelDto>.NotFound("Animal not found");
+            return Result<AnimalQrLabelDto>.NotFound("Animal not found", DomainMessageKeys.AnimalNotFound);
 
         return Result<AnimalQrLabelDto>.Success(new AnimalQrLabelDto
         {
@@ -236,7 +236,7 @@ public class AnimalService : IAnimalService
             .FirstOrDefaultAsync(a => a.Id == id && a.FarmId == farmId && !a.IsDeleted);
 
         if (animal == null)
-            return Result<AnimalDetailDto>.NotFound("Animal not found");
+            return Result<AnimalDetailDto>.NotFound("Animal not found", DomainMessageKeys.AnimalNotFound);
 
         var weightCount = await _context.WeightRecords.CountAsync(w => w.AnimalId == id);
         var imageCount = await _context.AnimalImages.CountAsync(i => i.AnimalId == id);
@@ -365,7 +365,7 @@ public class AnimalService : IAnimalService
         var animal = await _context.Animals
             .FirstOrDefaultAsync(a => a.Id == id && a.FarmId == farmId && !a.IsDeleted);
         if (animal == null)
-            return Result<AnimalDetailDto>.NotFound("Animal not found");
+            return Result<AnimalDetailDto>.NotFound("Animal not found", DomainMessageKeys.AnimalNotFound);
 
         if (string.IsNullOrWhiteSpace(request.TagNumber))
             return Result<AnimalDetailDto>.Validation("Tag number is required");
@@ -381,20 +381,20 @@ public class AnimalService : IAnimalService
             var breed = await _context.Breeds
                 .FirstOrDefaultAsync(b => b.Id == request.BreedId.Value && b.AnimalTypeId == animal.AnimalTypeId);
             if (breed == null)
-                return Result<AnimalDetailDto>.Validation("Breed not found or does not belong to the animal's type");
+                return Result<AnimalDetailDto>.Validation("Breed not found or does not belong to the animal's type", DomainMessageKeys.BreedWrongAnimalType);
         }
 
         var sex = await _context.SexOptions
             .FirstOrDefaultAsync(s => s.Id == request.SexOptionId && s.FarmId == farmId);
         if (sex == null)
-            return Result<AnimalDetailDto>.NotFound("Sex option not found");
+            return Result<AnimalDetailDto>.NotFound("Sex option not found", DomainMessageKeys.SexOptionNotFound);
 
         if (request.AgeCategoryId.HasValue)
         {
             var ageCategory = await _context.AgeCategories
                 .FirstOrDefaultAsync(ac => ac.Id == request.AgeCategoryId.Value && ac.FarmId == farmId);
             if (ageCategory == null)
-                return Result<AnimalDetailDto>.NotFound("Age category not found");
+                return Result<AnimalDetailDto>.NotFound("Age category not found", DomainMessageKeys.AgeCategoryNotFound);
         }
 
         if (request.LocationId.HasValue)
@@ -402,7 +402,7 @@ public class AnimalService : IAnimalService
             var location = await _context.Locations
                 .FirstOrDefaultAsync(l => l.Id == request.LocationId.Value && l.FarmId == farmId);
             if (location == null)
-                return Result<AnimalDetailDto>.NotFound("Location not found");
+                return Result<AnimalDetailDto>.NotFound("Location not found", DomainMessageKeys.LocationNotFound);
         }
 
         // A parent is only re-examined when this request changes it. The farm already holds
@@ -449,7 +449,7 @@ public class AnimalService : IAnimalService
         var animal = await _context.Animals
             .FirstOrDefaultAsync(a => a.Id == id && a.FarmId == farmId && !a.IsDeleted);
         if (animal == null)
-            return Result.NotFound("Animal not found");
+            return Result.NotFound("Animal not found", DomainMessageKeys.AnimalNotFound);
 
         animal.IsDeleted = true;
         animal.DeletedAt = DateTime.UtcNow;
@@ -467,12 +467,12 @@ public class AnimalService : IAnimalService
         var animal = await _context.Animals
             .FirstOrDefaultAsync(a => a.Id == id && a.FarmId == farmId && !a.IsDeleted);
         if (animal == null)
-            return Result<AnimalDetailDto>.NotFound("Animal not found");
+            return Result<AnimalDetailDto>.NotFound("Animal not found", DomainMessageKeys.AnimalNotFound);
 
         var newStatus = await _context.AnimalStatuses
             .FirstOrDefaultAsync(s => s.Id == request.NewStatusId && s.FarmId == farmId);
         if (newStatus == null)
-            return Result<AnimalDetailDto>.NotFound("Animal status not found");
+            return Result<AnimalDetailDto>.NotFound("Animal status not found", DomainMessageKeys.AnimalStatusNotFound);
 
         if (animal.AnimalStatusId == newStatus.Id)
             return Result<AnimalDetailDto>.Validation("Animal already has this status");
@@ -519,7 +519,7 @@ public class AnimalService : IAnimalService
             .Include(a => a.Identifications)
             .FirstOrDefaultAsync(a => a.Id == animalId && a.FarmId == farmId && !a.IsDeleted);
         if (animal == null)
-            return Result<AnimalIdentificationDto>.NotFound("Animal not found");
+            return Result<AnimalIdentificationDto>.NotFound("Animal not found", DomainMessageKeys.AnimalNotFound);
 
         if (string.IsNullOrWhiteSpace(request.Value))
             return Result<AnimalIdentificationDto>.Validation("Identification value is required");
@@ -527,7 +527,7 @@ public class AnimalService : IAnimalService
         var identificationType = await _context.IdentificationTypes
             .FirstOrDefaultAsync(it => it.Id == request.IdentificationTypeId && it.FarmId == farmId);
         if (identificationType == null)
-            return Result<AnimalIdentificationDto>.NotFound("Identification type not found");
+            return Result<AnimalIdentificationDto>.NotFound("Identification type not found", DomainMessageKeys.IdentificationTypeNotFound);
 
         var value = request.Value.Trim();
         var duplicate = await _context.AnimalIdentifications
@@ -579,7 +579,7 @@ public class AnimalService : IAnimalService
             .FirstOrDefaultAsync(i => i.Id == identificationId && i.AnimalId == animalId && i.FarmId == farmId);
 
         if (identification == null || identification.DateRemoved != null)
-            return Result.NotFound("Identification not found");
+            return Result.NotFound("Identification not found", DomainMessageKeys.IdentificationNotFound);
 
         identification.DateRemoved = DateTime.UtcNow;
         identification.ModifiedAt = DateTime.UtcNow;
@@ -594,7 +594,7 @@ public class AnimalService : IAnimalService
         var animalExists = await _context.Animals
             .AnyAsync(a => a.Id == animalId && a.FarmId == farmId && !a.IsDeleted);
         if (!animalExists)
-            return Result<PagedResult<WeightRecordDto>>.NotFound("Animal not found");
+            return Result<PagedResult<WeightRecordDto>>.NotFound("Animal not found", DomainMessageKeys.AnimalNotFound);
 
         page = page < 1 ? 1 : page;
         pageSize = pageSize < 1 ? 20 : Math.Min(pageSize, 200);
@@ -640,7 +640,7 @@ public class AnimalService : IAnimalService
         var animal = await _context.Animals
             .FirstOrDefaultAsync(a => a.Id == animalId && a.FarmId == farmId && !a.IsDeleted);
         if (animal == null)
-            return Result<WeightRecordDto>.NotFound("Animal not found");
+            return Result<WeightRecordDto>.NotFound("Animal not found", DomainMessageKeys.AnimalNotFound);
 
         if (request.WeightKg <= 0)
             return Result<WeightRecordDto>.Validation("Weight must be greater than zero");
@@ -711,7 +711,7 @@ public class AnimalService : IAnimalService
         var record = await _context.WeightRecords
             .FirstOrDefaultAsync(w => w.Id == weightId && w.AnimalId == animalId && w.FarmId == farmId);
         if (record == null)
-            return Result<WeightRecordDto>.NotFound("Weight record not found");
+            return Result<WeightRecordDto>.NotFound("Weight record not found", DomainMessageKeys.WeightRecordNotFound);
 
         if (request.WeightKg <= 0)
             return Result<WeightRecordDto>.Validation("Weight must be greater than zero");
@@ -763,7 +763,7 @@ public class AnimalService : IAnimalService
         var record = await _context.WeightRecords
             .FirstOrDefaultAsync(w => w.Id == weightId && w.AnimalId == animalId && w.FarmId == farmId);
         if (record == null)
-            return Result.NotFound("Weight record not found");
+            return Result.NotFound("Weight record not found", DomainMessageKeys.WeightRecordNotFound);
 
         var userId = _currentUser.GetUserId();
         var now = DateTime.UtcNow;
@@ -793,7 +793,7 @@ public class AnimalService : IAnimalService
             .AsNoTracking()
             .FirstOrDefaultAsync(a => a.Id == animalId && a.FarmId == farmId && !a.IsDeleted);
         if (animal == null)
-            return Result<WeightReportDto>.NotFound("Animal not found");
+            return Result<WeightReportDto>.NotFound("Animal not found", DomainMessageKeys.AnimalNotFound);
 
         var points = await _context.WeightRecords
             .AsNoTracking()
@@ -839,7 +839,7 @@ public class AnimalService : IAnimalService
         var animalExists = await _context.Animals
             .AnyAsync(a => a.Id == animalId && a.FarmId == farmId && !a.IsDeleted);
         if (!animalExists)
-            return Result<AnimalImageDto>.NotFound("Animal not found");
+            return Result<AnimalImageDto>.NotFound("Animal not found", DomainMessageKeys.AnimalNotFound);
 
         var saved = await _fileStorage.SaveAsync(
             $"farms/{farmId}/animals/{animalId}/images",
@@ -897,7 +897,7 @@ public class AnimalService : IAnimalService
         var animalExists = await _context.Animals
             .AnyAsync(a => a.Id == animalId && a.FarmId == farmId && !a.IsDeleted);
         if (!animalExists)
-            return Result<List<AnimalImageDto>>.NotFound("Animal not found");
+            return Result<List<AnimalImageDto>>.NotFound("Animal not found", DomainMessageKeys.AnimalNotFound);
 
         var images = await _context.AnimalImages
             .AsNoTracking()
@@ -914,7 +914,7 @@ public class AnimalService : IAnimalService
         var image = await _context.AnimalImages
             .FirstOrDefaultAsync(i => i.Id == imageId && i.AnimalId == animalId && i.FarmId == farmId);
         if (image == null)
-            return Result.NotFound("Image not found");
+            return Result.NotFound("Image not found", DomainMessageKeys.ImageNotFound);
 
         await _fileStorage.DeleteAsync(image.StoragePath);
         _context.AnimalImages.Remove(image);
@@ -928,7 +928,7 @@ public class AnimalService : IAnimalService
         var image = await _context.AnimalImages
             .FirstOrDefaultAsync(i => i.Id == imageId && i.AnimalId == animalId && i.FarmId == farmId);
         if (image == null)
-            return Result<AnimalImageDto>.NotFound("Image not found");
+            return Result<AnimalImageDto>.NotFound("Image not found", DomainMessageKeys.ImageNotFound);
 
         await DemotePrimaryImagesAsync(animalId);
 
@@ -949,7 +949,7 @@ public class AnimalService : IAnimalService
         var animalExists = await _context.Animals
             .AnyAsync(a => a.Id == animalId && a.FarmId == farmId && !a.IsDeleted);
         if (!animalExists)
-            return Result<AnimalDocumentDto>.NotFound("Animal not found");
+            return Result<AnimalDocumentDto>.NotFound("Animal not found", DomainMessageKeys.AnimalNotFound);
 
         if (string.IsNullOrWhiteSpace(category))
             return Result<AnimalDocumentDto>.Validation("Category is required");
@@ -1004,7 +1004,7 @@ public class AnimalService : IAnimalService
         var animalExists = await _context.Animals
             .AnyAsync(a => a.Id == animalId && a.FarmId == farmId && !a.IsDeleted);
         if (!animalExists)
-            return Result<List<AnimalDocumentDto>>.NotFound("Animal not found");
+            return Result<List<AnimalDocumentDto>>.NotFound("Animal not found", DomainMessageKeys.AnimalNotFound);
 
         var query = _context.AnimalDocuments.AsNoTracking().Where(d => d.AnimalId == animalId);
 
@@ -1023,7 +1023,7 @@ public class AnimalService : IAnimalService
         var document = await _context.AnimalDocuments
             .FirstOrDefaultAsync(d => d.Id == documentId && d.AnimalId == animalId && d.FarmId == farmId);
         if (document == null)
-            return Result.NotFound("Document not found");
+            return Result.NotFound("Document not found", DomainMessageKeys.DocumentNotFound);
 
         await _fileStorage.DeleteAsync(document.StoragePath);
         _context.AnimalDocuments.Remove(document);
@@ -1038,7 +1038,7 @@ public class AnimalService : IAnimalService
             .AsNoTracking()
             .FirstOrDefaultAsync(d => d.Id == documentId && d.AnimalId == animalId && d.FarmId == farmId);
         if (document == null)
-            return Result<AnimalFileDownload>.NotFound("Document not found");
+            return Result<AnimalFileDownload>.NotFound("Document not found", DomainMessageKeys.DocumentNotFound);
 
         if (!await _fileStorage.ExistsAsync(document.StoragePath))
             return Result<AnimalFileDownload>.NotFound("Document file is missing from storage");
@@ -1057,7 +1057,7 @@ public class AnimalService : IAnimalService
             .AsNoTracking()
             .FirstOrDefaultAsync(i => i.Id == imageId && i.AnimalId == animalId && i.FarmId == farmId);
         if (image == null)
-            return Result<AnimalFileDownload>.NotFound("Image not found");
+            return Result<AnimalFileDownload>.NotFound("Image not found", DomainMessageKeys.ImageNotFound);
 
         if (!await _fileStorage.ExistsAsync(image.StoragePath))
             return Result<AnimalFileDownload>.NotFound("Image file is missing from storage");
@@ -1075,12 +1075,12 @@ public class AnimalService : IAnimalService
         var animal = await _context.Animals
             .FirstOrDefaultAsync(a => a.Id == animalId && a.FarmId == farmId && !a.IsDeleted);
         if (animal == null)
-            return Result<AnimalTransferDto>.NotFound("Animal not found");
+            return Result<AnimalTransferDto>.NotFound("Animal not found", DomainMessageKeys.AnimalNotFound);
 
         var toLocation = await _context.Locations
             .FirstOrDefaultAsync(l => l.Id == request.ToLocationId && l.FarmId == farmId);
         if (toLocation == null)
-            return Result<AnimalTransferDto>.NotFound("Destination location not found");
+            return Result<AnimalTransferDto>.NotFound("Destination location not found", DomainMessageKeys.DestinationLocationNotFound);
 
         if (animal.LocationId == request.ToLocationId)
             return Result<AnimalTransferDto>.Validation("Animal is already in this location");
@@ -1157,7 +1157,7 @@ public class AnimalService : IAnimalService
         var status = await _context.AnimalStatuses
             .FirstOrDefaultAsync(s => s.Id == request.NewStatusId && s.FarmId == farmId);
         if (status == null)
-            return Result<BulkOperationResultDto>.NotFound("Animal status not found");
+            return Result<BulkOperationResultDto>.NotFound("Animal status not found", DomainMessageKeys.AnimalStatusNotFound);
 
         var ids = request.AnimalIds.Distinct().ToList();
         var animals = await _context.Animals
@@ -1219,7 +1219,7 @@ public class AnimalService : IAnimalService
         var toLocation = await _context.Locations
             .FirstOrDefaultAsync(l => l.Id == request.ToLocationId && l.FarmId == farmId);
         if (toLocation == null)
-            return Result<BulkOperationResultDto>.NotFound("Destination location not found");
+            return Result<BulkOperationResultDto>.NotFound("Destination location not found", DomainMessageKeys.DestinationLocationNotFound);
 
         var ids = request.AnimalIds.Distinct().ToList();
         var animals = await _context.Animals
@@ -1297,7 +1297,7 @@ public class AnimalService : IAnimalService
         var animalExists = await _context.Animals
             .AnyAsync(a => a.Id == animalId && a.FarmId == farmId && !a.IsDeleted);
         if (!animalExists)
-            return Result<PagedResult<AnimalTimelineEventDto>>.NotFound("Animal not found");
+            return Result<PagedResult<AnimalTimelineEventDto>>.NotFound("Animal not found", DomainMessageKeys.AnimalNotFound);
 
         var query = _context.AnimalTimelineEvents
             .AsNoTracking()
@@ -1555,7 +1555,7 @@ public class AnimalService : IAnimalService
     }
 
     private static Error? CheckAnimalType(CreateAnimalRequest request, CreationLookups lookups) =>
-        lookups.AnimalTypes.ContainsKey(request.AnimalTypeId) ? null : Error.NotFound("Animal type not found");
+        lookups.AnimalTypes.ContainsKey(request.AnimalTypeId) ? null : Error.NotFound("Animal type not found", DomainMessageKeys.AnimalTypeNotFound);
 
     private static Error? CheckBreed(CreateAnimalRequest request, CreationLookups lookups)
     {
@@ -1565,11 +1565,11 @@ public class AnimalService : IAnimalService
         return lookups.Breeds.TryGetValue(request.BreedId.Value, out var breed) &&
                breed.AnimalTypeId == request.AnimalTypeId
             ? null
-            : Error.Validation("Breed not found or does not belong to the selected animal type");
+            : Error.Validation("Breed not found or does not belong to the selected animal type", DomainMessageKeys.BreedNotInSelectedAnimalType);
     }
 
     private static Error? CheckSex(CreateAnimalRequest request, CreationLookups lookups) =>
-        lookups.SexOptions.ContainsKey(request.SexOptionId) ? null : Error.NotFound("Sex option not found");
+        lookups.SexOptions.ContainsKey(request.SexOptionId) ? null : Error.NotFound("Sex option not found", DomainMessageKeys.SexOptionNotFound);
 
     private static Error? CheckAgeCategory(CreateAnimalRequest request, CreationLookups lookups)
     {
@@ -1578,18 +1578,18 @@ public class AnimalService : IAnimalService
 
         return lookups.AgeCategories.ContainsKey(request.AgeCategoryId.Value)
             ? null
-            : Error.NotFound("Age category not found");
+            : Error.NotFound("Age category not found", DomainMessageKeys.AgeCategoryNotFound);
     }
 
     private static Error? CheckStatus(CreateAnimalRequest request, CreationLookups lookups) =>
-        lookups.AnimalStatuses.ContainsKey(request.AnimalStatusId) ? null : Error.NotFound("Animal status not found");
+        lookups.AnimalStatuses.ContainsKey(request.AnimalStatusId) ? null : Error.NotFound("Animal status not found", DomainMessageKeys.AnimalStatusNotFound);
 
     private static Error? CheckLocation(CreateAnimalRequest request, CreationLookups lookups)
     {
         if (!request.LocationId.HasValue)
             return null;
 
-        return lookups.Locations.ContainsKey(request.LocationId.Value) ? null : Error.NotFound("Location not found");
+        return lookups.Locations.ContainsKey(request.LocationId.Value) ? null : Error.NotFound("Location not found", DomainMessageKeys.LocationNotFound);
     }
 
     /// <summary>
@@ -1779,7 +1779,7 @@ public class AnimalService : IAnimalService
         var foundTypeCount = await _context.IdentificationTypes
             .CountAsync(it => it.FarmId == farmId && typeIds.Contains(it.Id));
         if (foundTypeCount != typeIds.Count)
-            return Result.NotFound("Identification type not found");
+            return Result.NotFound("Identification type not found", DomainMessageKeys.IdentificationTypeNotFound);
 
         foreach (var identification in identifications)
         {

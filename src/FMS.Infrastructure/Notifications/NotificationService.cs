@@ -66,7 +66,7 @@ public class NotificationService : INotificationService
             // Deliberately the same answer for "does not exist" and "belongs to
             // somebody else": a notification's existence is not the caller's
             // business, and the recipient filter above is what makes it private.
-            return Result<NotificationDto>.NotFound("Notification not found");
+            return Result<NotificationDto>.NotFound("Notification not found", DomainMessageKeys.NotificationNotFound);
         }
 
         if (notification.ReadAtUtc is null)
@@ -107,7 +107,7 @@ public class NotificationService : INotificationService
         var notification = await QueryFor(farmId, userId).FirstOrDefaultAsync(n => n.Id == notificationId);
         if (notification is null)
         {
-            return Result<NotificationDto>.NotFound("Notification not found");
+            return Result<NotificationDto>.NotFound("Notification not found", DomainMessageKeys.NotificationNotFound);
         }
 
         if (notification.DismissedAtUtc is null)

@@ -39,7 +39,7 @@ public class FarmMembershipService : IFarmMembershipService
     {
         var requester = await GetMembershipAsync(farmId, requestingUserId);
         if (requester is null)
-            return Result<List<FarmMemberDto>>.NotFound("Farm not found or access denied");
+            return Result<List<FarmMemberDto>>.NotFound("Farm not found or access denied", DomainMessageKeys.FarmOrAccessDeniedNotFound);
 
         var members = await _context.UserFarms
             .Include(uf => uf.User)
@@ -64,7 +64,7 @@ public class FarmMembershipService : IFarmMembershipService
     {
         var requester = await GetMembershipAsync(farmId, requestingUserId);
         if (requester is null)
-            return Result<FarmMemberDto>.NotFound("Farm not found or access denied");
+            return Result<FarmMemberDto>.NotFound("Farm not found or access denied", DomainMessageKeys.FarmOrAccessDeniedNotFound);
         if (!FarmRoles.IsFarmAdmin(requester.Role))
             return Result<FarmMemberDto>.Unauthorized("Only farm owners and managers can change member roles");
         if (!FarmRoles.IsValid(request.Role))
@@ -95,7 +95,7 @@ public class FarmMembershipService : IFarmMembershipService
     {
         var requester = await GetMembershipAsync(farmId, requestingUserId);
         if (requester is null)
-            return Result.NotFound("Farm not found or access denied");
+            return Result.NotFound("Farm not found or access denied", DomainMessageKeys.FarmOrAccessDeniedNotFound);
         if (!FarmRoles.IsFarmAdmin(requester.Role))
             return Result.Unauthorized("Only farm owners and managers can remove members");
 
@@ -132,7 +132,7 @@ public class FarmMembershipService : IFarmMembershipService
     {
         var requester = await GetMembershipAsync(farmId, invitedByUserId);
         if (requester is null)
-            return Result<FarmInvitationDto>.NotFound("Farm not found or access denied");
+            return Result<FarmInvitationDto>.NotFound("Farm not found or access denied", DomainMessageKeys.FarmOrAccessDeniedNotFound);
         if (!FarmRoles.IsFarmAdmin(requester.Role))
             return Result<FarmInvitationDto>.Unauthorized("Only farm owners and managers can invite members");
         if (!FarmRoles.IsValid(request.Role))
@@ -144,7 +144,7 @@ public class FarmMembershipService : IFarmMembershipService
 
         var farm = await _context.Farms.FirstOrDefaultAsync(f => f.Id == farmId);
         if (farm is null)
-            return Result<FarmInvitationDto>.NotFound("Farm not found or access denied");
+            return Result<FarmInvitationDto>.NotFound("Farm not found or access denied", DomainMessageKeys.FarmOrAccessDeniedNotFound);
 
         var existingUser = await _context.Users
             .FirstOrDefaultAsync(u => u.Email.ToLower() == normalizedEmail);
@@ -210,7 +210,7 @@ public class FarmMembershipService : IFarmMembershipService
     {
         var requester = await GetMembershipAsync(farmId, requestingUserId);
         if (requester is null)
-            return Result<List<FarmInvitationDto>>.NotFound("Farm not found or access denied");
+            return Result<List<FarmInvitationDto>>.NotFound("Farm not found or access denied", DomainMessageKeys.FarmOrAccessDeniedNotFound);
         if (!FarmRoles.IsFarmAdmin(requester.Role))
             return Result<List<FarmInvitationDto>>.Unauthorized("Only farm owners and managers can view invitations");
 
@@ -235,7 +235,7 @@ public class FarmMembershipService : IFarmMembershipService
     {
         var requester = await GetMembershipAsync(farmId, requestingUserId);
         if (requester is null)
-            return Result.NotFound("Farm not found or access denied");
+            return Result.NotFound("Farm not found or access denied", DomainMessageKeys.FarmOrAccessDeniedNotFound);
         if (!FarmRoles.IsFarmAdmin(requester.Role))
             return Result.Unauthorized("Only farm owners and managers can revoke invitations");
 
@@ -243,7 +243,7 @@ public class FarmMembershipService : IFarmMembershipService
             .FirstOrDefaultAsync(i => i.Id == invitationId && i.FarmId == farmId);
 
         if (invitation is null)
-            return Result.NotFound("Invitation not found");
+            return Result.NotFound("Invitation not found", DomainMessageKeys.InvitationNotFound);
         if (invitation.Status != FarmInvitationStatus.Pending)
             return Result.Conflict("Only pending invitations can be revoked");
 
@@ -261,7 +261,7 @@ public class FarmMembershipService : IFarmMembershipService
         // not depend on which email claim the auth handler happens to map.
         var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
         if (user is null)
-            return Result<List<PendingInvitationDto>>.Unauthorized("User not found");
+            return Result<List<PendingInvitationDto>>.Unauthorized("User not found", DomainMessageKeys.UserNotFound);
 
         var normalizedEmail = Normalize(user.Email);
         var now = DateTime.UtcNow;
@@ -298,7 +298,7 @@ public class FarmMembershipService : IFarmMembershipService
     {
         var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
         if (user is null)
-            return Result<FarmMemberDto>.Unauthorized("User not found");
+            return Result<FarmMemberDto>.Unauthorized("User not found", DomainMessageKeys.UserNotFound);
 
         var (invitation, error) = await ResolveInvitationAsync(user.Email, token);
         if (invitation is null)
@@ -334,7 +334,7 @@ public class FarmMembershipService : IFarmMembershipService
     {
         var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
         if (user is null)
-            return Result.Unauthorized("User not found");
+            return Result.Unauthorized("User not found", DomainMessageKeys.UserNotFound);
 
         var (invitation, error) = await ResolveInvitationAsync(user.Email, token);
         if (invitation is null)

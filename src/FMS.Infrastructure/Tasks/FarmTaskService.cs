@@ -27,7 +27,7 @@ public class FarmTaskService : IFarmTaskService
         var task = await QueryTasks(farmId)
             .FirstOrDefaultAsync(t => t.Id == id);
         if (task == null)
-            return Result<FarmTaskDto>.NotFound("Task not found");
+            return Result<FarmTaskDto>.NotFound("Task not found", DomainMessageKeys.TaskNotFound);
 
         return Result<FarmTaskDto>.Success(MapTask(task));
     }
@@ -172,7 +172,7 @@ public class FarmTaskService : IFarmTaskService
         var task = await _context.FarmTasks
             .FirstOrDefaultAsync(t => t.Id == id && t.FarmId == farmId);
         if (task == null)
-            return Result<FarmTaskDto>.NotFound("Task not found");
+            return Result<FarmTaskDto>.NotFound("Task not found", DomainMessageKeys.TaskNotFound);
 
         if (task.Status == FarmTaskStatus.Completed || task.Status == FarmTaskStatus.Cancelled)
             return Result<FarmTaskDto>.Conflict("Closed tasks cannot be edited. Reopen the task first.");
@@ -206,7 +206,7 @@ public class FarmTaskService : IFarmTaskService
         var task = await _context.FarmTasks
             .FirstOrDefaultAsync(t => t.Id == id && t.FarmId == farmId);
         if (task == null)
-            return Result.NotFound("Task not found");
+            return Result.NotFound("Task not found", DomainMessageKeys.TaskNotFound);
 
         _context.FarmTasks.Remove(task);
         await _context.SaveChangesAsync();
@@ -219,7 +219,7 @@ public class FarmTaskService : IFarmTaskService
         var task = await _context.FarmTasks
             .FirstOrDefaultAsync(t => t.Id == id && t.FarmId == farmId);
         if (task == null)
-            return Result<FarmTaskDto>.NotFound("Task not found");
+            return Result<FarmTaskDto>.NotFound("Task not found", DomainMessageKeys.TaskNotFound);
 
         if (task.Status != FarmTaskStatus.Pending)
             return Result<FarmTaskDto>.Conflict($"Only pending tasks can be started. Current status: {task.Status}");
@@ -239,7 +239,7 @@ public class FarmTaskService : IFarmTaskService
         var task = await _context.FarmTasks
             .FirstOrDefaultAsync(t => t.Id == id && t.FarmId == farmId);
         if (task == null)
-            return Result<FarmTaskDto>.NotFound("Task not found");
+            return Result<FarmTaskDto>.NotFound("Task not found", DomainMessageKeys.TaskNotFound);
 
         if (task.Status == FarmTaskStatus.Completed)
             return AlreadyCompleted(task, mutationId, request.CompletionNotes);
@@ -294,7 +294,7 @@ public class FarmTaskService : IFarmTaskService
         var task = await _context.FarmTasks
             .FirstOrDefaultAsync(t => t.Id == id && t.FarmId == farmId);
         if (task == null)
-            return Result<FarmTaskDto>.NotFound("Task not found");
+            return Result<FarmTaskDto>.NotFound("Task not found", DomainMessageKeys.TaskNotFound);
 
         if (task.Status != FarmTaskStatus.Pending && task.Status != FarmTaskStatus.InProgress)
             return Result<FarmTaskDto>.Conflict($"Open tasks only can be cancelled. Current status: {task.Status}");
@@ -318,7 +318,7 @@ public class FarmTaskService : IFarmTaskService
         var task = await _context.FarmTasks
             .FirstOrDefaultAsync(t => t.Id == id && t.FarmId == farmId);
         if (task == null)
-            return Result<FarmTaskDto>.NotFound("Task not found");
+            return Result<FarmTaskDto>.NotFound("Task not found", DomainMessageKeys.TaskNotFound);
 
         if (task.Status != FarmTaskStatus.Completed && task.Status != FarmTaskStatus.Cancelled)
             return Result<FarmTaskDto>.Conflict($"Only completed or cancelled tasks can be reopened. Current status: {task.Status}");
@@ -388,7 +388,7 @@ public class FarmTaskService : IFarmTaskService
     {
         var task = await LoadFullAsync(farmId, taskId);
         return task == null
-            ? Result<FarmTaskDto>.NotFound("Task not found")
+            ? Result<FarmTaskDto>.NotFound("Task not found", DomainMessageKeys.TaskNotFound)
             : Result<FarmTaskDto>.Success(MapTask(task));
     }
 

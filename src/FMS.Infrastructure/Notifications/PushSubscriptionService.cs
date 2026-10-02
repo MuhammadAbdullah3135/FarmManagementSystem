@@ -159,7 +159,7 @@ public class PushSubscriptionService : IPushSubscriptionService
 
         if (subscription is null)
         {
-            return Result.NotFound("Push subscription not found");
+            return Result.NotFound("Push subscription not found", DomainMessageKeys.PushSubscriptionNotFound);
         }
 
         // Deleted rather than disabled: this one is a deliberate act by the user, not a

@@ -90,7 +90,7 @@ public class MedicalRecordService : IMedicalRecordService
             .FirstOrDefaultAsync();
 
         if (record == null)
-            return Result<MedicalRecordDto>.NotFound("Medical record not found");
+            return Result<MedicalRecordDto>.NotFound("Medical record not found", DomainMessageKeys.MedicalRecordNotFound);
 
         return Result<MedicalRecordDto>.Success(MapToDto(record));
     }
@@ -141,7 +141,7 @@ public class MedicalRecordService : IMedicalRecordService
             .FirstOrDefaultAsync(a => a.Id == request.AnimalId && a.FarmId == farmId && !a.IsDeleted);
 
         if (animal == null)
-            return Result<MedicalRecordDto>.Validation("Animal not found in this farm");
+            return Result<MedicalRecordDto>.Validation("Animal not found in this farm", DomainMessageKeys.AnimalNotFoundInFarm);
 
         if (string.IsNullOrWhiteSpace(request.Symptoms))
             return Result<MedicalRecordDto>.Validation("Symptoms are required");
@@ -230,7 +230,7 @@ public class MedicalRecordService : IMedicalRecordService
             .FirstOrDefaultAsync();
 
         if (record == null)
-            return Result<MedicalRecordDto>.NotFound("Medical record not found");
+            return Result<MedicalRecordDto>.NotFound("Medical record not found", DomainMessageKeys.MedicalRecordNotFound);
 
         if (string.IsNullOrWhiteSpace(request.Symptoms))
             return Result<MedicalRecordDto>.Validation("Symptoms are required");
@@ -240,7 +240,7 @@ public class MedicalRecordService : IMedicalRecordService
             var animal = await _context.Animals
                 .FirstOrDefaultAsync(a => a.Id == request.AnimalId && a.FarmId == farmId && !a.IsDeleted);
             if (animal == null)
-                return Result<MedicalRecordDto>.Validation("Animal not found in this farm");
+                return Result<MedicalRecordDto>.Validation("Animal not found in this farm", DomainMessageKeys.AnimalNotFoundInFarm);
         }
 
         var userId = _currentUser.GetUserId();
@@ -284,7 +284,7 @@ public class MedicalRecordService : IMedicalRecordService
             .FirstOrDefaultAsync(m => m.FarmId == farmId && m.Id == id);
 
         if (record == null)
-            return Result.NotFound("Medical record not found");
+            return Result.NotFound("Medical record not found", DomainMessageKeys.MedicalRecordNotFound);
 
         var deletedBy = _currentUser.GetUserId();
         record.IsDeleted = true;

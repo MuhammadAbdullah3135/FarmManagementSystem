@@ -62,7 +62,7 @@ public class EmployeeService : IEmployeeService
         var department = await _context.Departments
             .FirstOrDefaultAsync(d => d.Id == id && d.FarmId == farmId);
         if (department == null)
-            return Result.NotFound("Department not found");
+            return Result.NotFound("Department not found", DomainMessageKeys.DepartmentNotFound);
 
         var hasEmployees = await _context.Employees
             .AnyAsync(e => e.DepartmentId == id);
@@ -127,7 +127,7 @@ public class EmployeeService : IEmployeeService
         var role = await _context.EmployeeRoles
             .FirstOrDefaultAsync(r => r.Id == id && r.FarmId == farmId);
         if (role == null)
-            return Result.NotFound("Role not found");
+            return Result.NotFound("Role not found", DomainMessageKeys.RoleNotFound);
 
         var hasEmployees = await _context.Employees
             .AnyAsync(e => e.EmployeeRoleId == id);
@@ -149,7 +149,7 @@ public class EmployeeService : IEmployeeService
             .Include(e => e.EmployeeRole)
             .FirstOrDefaultAsync(e => e.Id == id && e.FarmId == farmId && !e.IsDeleted);
         if (employee == null)
-            return Result<EmployeeDto>.NotFound("Employee not found");
+            return Result<EmployeeDto>.NotFound("Employee not found", DomainMessageKeys.EmployeeNotFound);
 
         return Result<EmployeeDto>.Success(MapEmployee(employee));
     }
@@ -438,7 +438,7 @@ public class EmployeeService : IEmployeeService
         var employee = await _context.Employees
             .FirstOrDefaultAsync(e => e.Id == id && e.FarmId == farmId && !e.IsDeleted);
         if (employee == null)
-            return Result<EmployeeDto>.NotFound("Employee not found");
+            return Result<EmployeeDto>.NotFound("Employee not found", DomainMessageKeys.EmployeeNotFound);
 
         var validation = EmployeeRules.ValidateDetails(
             request.FirstName, request.LastName, request.Email, request.Phone,
@@ -490,7 +490,7 @@ public class EmployeeService : IEmployeeService
         var employee = await _context.Employees
             .FirstOrDefaultAsync(e => e.Id == id && e.FarmId == farmId && !e.IsDeleted);
         if (employee == null)
-            return Result.NotFound("Employee not found");
+            return Result.NotFound("Employee not found", DomainMessageKeys.EmployeeNotFound);
 
         var userId = _currentUser.GetUserId();
         var now = DateTime.UtcNow;
@@ -514,7 +514,7 @@ public class EmployeeService : IEmployeeService
         var employee = await _context.Employees
             .FirstOrDefaultAsync(e => e.Id == employeeId && e.FarmId == farmId && !e.IsDeleted);
         if (employee == null)
-            return Result<SalaryPaymentDto>.NotFound("Employee not found");
+            return Result<SalaryPaymentDto>.NotFound("Employee not found", DomainMessageKeys.EmployeeNotFound);
 
         if (request.Amount <= 0)
             return Result<SalaryPaymentDto>.Validation("Amount must be greater than zero");
@@ -586,7 +586,7 @@ public class EmployeeService : IEmployeeService
         var employeeExists = await _context.Employees
             .AnyAsync(e => e.Id == employeeId && e.FarmId == farmId);
         if (!employeeExists)
-            return Result<PagedResult<SalaryPaymentDto>>.NotFound("Employee not found");
+            return Result<PagedResult<SalaryPaymentDto>>.NotFound("Employee not found", DomainMessageKeys.EmployeeNotFound);
 
         var query = _context.SalaryPayments
             .Include(p => p.Employee)
@@ -631,7 +631,7 @@ public class EmployeeService : IEmployeeService
         var payment = await _context.SalaryPayments
             .FirstOrDefaultAsync(p => p.Id == paymentId && p.EmployeeId == employeeId && p.FarmId == farmId);
         if (payment == null)
-            return Result.NotFound("Salary payment not found");
+            return Result.NotFound("Salary payment not found", DomainMessageKeys.SalaryPaymentNotFound);
 
         // A delete is a hard delete by design (the offline-sync tombstones read it from the
         // audit log), so the only durable evidence is the audit entry. Give that entry the
@@ -714,11 +714,11 @@ public class EmployeeService : IEmployeeService
     {
         if (departmentId.HasValue &&
             !await _context.Departments.AnyAsync(d => d.Id == departmentId.Value && d.FarmId == farmId))
-            return Error.NotFound("Department not found");
+            return Error.NotFound("Department not found", DomainMessageKeys.DepartmentNotFound);
 
         if (employeeRoleId.HasValue &&
             !await _context.EmployeeRoles.AnyAsync(r => r.Id == employeeRoleId.Value && r.FarmId == farmId))
-            return Error.NotFound("Role not found");
+            return Error.NotFound("Role not found", DomainMessageKeys.RoleNotFound);
 
         return null;
     }

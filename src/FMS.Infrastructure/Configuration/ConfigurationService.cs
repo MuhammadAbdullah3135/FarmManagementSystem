@@ -84,7 +84,7 @@ public class ConfigurationService : IConfigurationService
             .FirstOrDefaultAsync(at => at.Id == id && at.FarmId == farmId);
 
         if (animalType == null)
-            return Result.NotFound("Animal type not found");
+            return Result.NotFound("Animal type not found", DomainMessageKeys.AnimalTypeNotFound);
 
         // The type's breeds are cascade-deleted with it, so the guard must also cover rows that
         // reference one of those breeds.
@@ -141,7 +141,7 @@ public class ConfigurationService : IConfigurationService
             .FirstOrDefaultAsync(at => at.Id == request.AnimalTypeId && at.FarmId == farmId);
 
         if (animalType == null)
-            return Result<BreedDto>.NotFound("Animal type not found");
+            return Result<BreedDto>.NotFound("Animal type not found", DomainMessageKeys.AnimalTypeNotFound);
 
         var breed = new Breed
         {
@@ -171,7 +171,7 @@ public class ConfigurationService : IConfigurationService
             .FirstOrDefaultAsync(b => b.Id == id && b.AnimalType.FarmId == farmId);
 
         if (breed == null)
-            return Result.NotFound("Breed not found");
+            return Result.NotFound("Breed not found", DomainMessageKeys.BreedNotFound);
 
         var animals = await _context.Animals.CountAsync(a => a.BreedId == id);
         var dietPlans = await _context.DietPlans.CountAsync(p => p.BreedId == id);
@@ -222,7 +222,7 @@ public class ConfigurationService : IConfigurationService
             .FirstOrDefaultAsync(so => so.Id == id && so.FarmId == farmId);
 
         if (sexOption == null)
-            return Result.NotFound("Sex option not found");
+            return Result.NotFound("Sex option not found", DomainMessageKeys.SexOptionNotFound);
 
         var animals = await _context.Animals.CountAsync(a => a.SexOptionId == id);
         var offspring = await _context.BirthOffspring.CountAsync(o => o.SexOptionId == id);
@@ -284,7 +284,7 @@ public class ConfigurationService : IConfigurationService
             .FirstOrDefaultAsync(ac => ac.Id == id && ac.FarmId == farmId);
 
         if (category == null)
-            return Result.NotFound("Age category not found");
+            return Result.NotFound("Age category not found", DomainMessageKeys.AgeCategoryNotFound);
 
         var animals = await _context.Animals.CountAsync(a => a.AgeCategoryId == id);
         var dietPlans = await _context.DietPlans.CountAsync(p => p.AgeCategoryId == id);
@@ -341,7 +341,7 @@ public class ConfigurationService : IConfigurationService
             .FirstOrDefaultAsync(a => a.Id == id && a.FarmId == farmId);
 
         if (status == null)
-            return Result.NotFound("Animal status not found");
+            return Result.NotFound("Animal status not found", DomainMessageKeys.AnimalStatusNotFound);
 
         // The UI hides Delete for seeded statuses, but the API is the only layer that can enforce it.
         if (status.IsSystemDefined)
@@ -392,7 +392,7 @@ public class ConfigurationService : IConfigurationService
             .FirstOrDefaultAsync(it => it.Id == id && it.FarmId == farmId);
 
         if (type == null)
-            return Result.NotFound("Identification type not found");
+            return Result.NotFound("Identification type not found", DomainMessageKeys.IdentificationTypeNotFound);
 
         _context.IdentificationTypes.Remove(type);
         await _context.SaveChangesAsync();
@@ -433,7 +433,7 @@ public class ConfigurationService : IConfigurationService
             .FirstOrDefaultAsync(lt => lt.Id == id && lt.FarmId == farmId);
 
         if (type == null)
-            return Result.NotFound("Location type not found");
+            return Result.NotFound("Location type not found", DomainMessageKeys.LocationTypeNotFound);
 
         var locations = await _context.Locations.CountAsync(l => l.LocationTypeId == id);
 
@@ -494,7 +494,7 @@ public class ConfigurationService : IConfigurationService
             .FirstOrDefaultAsync(lt => lt.Id == request.LocationTypeId && lt.FarmId == farmId);
 
         if (locationType == null)
-            return Result<LocationDto>.NotFound("Location type not found");
+            return Result<LocationDto>.NotFound("Location type not found", DomainMessageKeys.LocationTypeNotFound);
 
         if (request.ParentLocationId.HasValue)
         {
@@ -502,7 +502,7 @@ public class ConfigurationService : IConfigurationService
                 .FirstOrDefaultAsync(l => l.Id == request.ParentLocationId.Value && l.FarmId == farmId);
 
             if (parent == null)
-                return Result<LocationDto>.NotFound("Parent location not found");
+                return Result<LocationDto>.NotFound("Parent location not found", DomainMessageKeys.ParentLocationNotFound);
         }
 
         var location = new Location
@@ -534,7 +534,7 @@ public class ConfigurationService : IConfigurationService
             .FirstOrDefaultAsync(l => l.Id == id && l.FarmId == farmId);
 
         if (location == null)
-            return Result.NotFound("Location not found");
+            return Result.NotFound("Location not found", DomainMessageKeys.LocationNotFound);
 
         var hasChildren = await _context.Locations.AnyAsync(l => l.ParentLocationId == id);
         if (hasChildren)
@@ -609,7 +609,7 @@ public class ConfigurationService : IConfigurationService
             .FirstOrDefaultAsync(cf => cf.Id == id && cf.FarmId == farmId);
 
         if (field == null)
-            return Result.NotFound("Custom field not found");
+            return Result.NotFound("Custom field not found", DomainMessageKeys.CustomFieldNotFound);
 
         _context.CustomFieldDefinitions.Remove(field);
         await _context.SaveChangesAsync();
@@ -675,7 +675,7 @@ public class ConfigurationService : IConfigurationService
             .FirstOrDefaultAsync(fc => fc.FarmId == farmId && fc.Key == key);
 
         if (config == null)
-            return Result.NotFound("Configuration not found");
+            return Result.NotFound("Configuration not found", DomainMessageKeys.ConfigurationNotFound);
 
         _context.FarmConfigurations.Remove(config);
         await _context.SaveChangesAsync();

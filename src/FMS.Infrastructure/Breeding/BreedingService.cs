@@ -86,7 +86,7 @@ public class BreedingService : IBreedingService
             .FirstOrDefaultAsync(br => br.Id == id && br.FarmId == farmId);
 
         if (record == null)
-            return Result<BreedingRecordDto>.NotFound("Breeding record not found");
+            return Result<BreedingRecordDto>.NotFound("Breeding record not found", DomainMessageKeys.BreedingRecordNotFound);
 
         return Result<BreedingRecordDto>.Success(MapToDto(record));
     }
@@ -96,12 +96,12 @@ public class BreedingService : IBreedingService
         var sire = await _context.Animals
             .FirstOrDefaultAsync(a => a.Id == request.SireId && a.FarmId == farmId && !a.IsDeleted);
         if (sire == null)
-            return Result<BreedingRecordDto>.NotFound("Sire animal not found");
+            return Result<BreedingRecordDto>.NotFound("Sire animal not found", DomainMessageKeys.SireNotFound);
 
         var dam = await _context.Animals
             .FirstOrDefaultAsync(a => a.Id == request.DamId && a.FarmId == farmId && !a.IsDeleted);
         if (dam == null)
-            return Result<BreedingRecordDto>.NotFound("Dam animal not found");
+            return Result<BreedingRecordDto>.NotFound("Dam animal not found", DomainMessageKeys.DamNotFound);
 
         if (request.SireId == request.DamId)
             return Result<BreedingRecordDto>.Validation("Sire and dam must be different animals");
@@ -170,17 +170,17 @@ public class BreedingService : IBreedingService
             .FirstOrDefaultAsync(br => br.Id == id && br.FarmId == farmId);
 
         if (record == null)
-            return Result<BreedingRecordDto>.NotFound("Breeding record not found");
+            return Result<BreedingRecordDto>.NotFound("Breeding record not found", DomainMessageKeys.BreedingRecordNotFound);
 
         var sire = await _context.Animals
             .FirstOrDefaultAsync(a => a.Id == request.SireId && a.FarmId == farmId && !a.IsDeleted);
         if (sire == null)
-            return Result<BreedingRecordDto>.NotFound("Sire animal not found");
+            return Result<BreedingRecordDto>.NotFound("Sire animal not found", DomainMessageKeys.SireNotFound);
 
         var dam = await _context.Animals
             .FirstOrDefaultAsync(a => a.Id == request.DamId && a.FarmId == farmId && !a.IsDeleted);
         if (dam == null)
-            return Result<BreedingRecordDto>.NotFound("Dam animal not found");
+            return Result<BreedingRecordDto>.NotFound("Dam animal not found", DomainMessageKeys.DamNotFound);
 
         if (request.SireId == request.DamId)
             return Result<BreedingRecordDto>.Validation("Sire and dam must be different animals");
@@ -229,7 +229,7 @@ public class BreedingService : IBreedingService
             .FirstOrDefaultAsync(br => br.Id == id && br.FarmId == farmId);
 
         if (record == null)
-            return Result.NotFound("Breeding record not found");
+            return Result.NotFound("Breeding record not found", DomainMessageKeys.BreedingRecordNotFound);
 
         // Counted by the foreign key alone, with no farm filter: the constraint that will reject
         // the write does not know about farms, so a guard that added one could disagree with it.
@@ -348,7 +348,7 @@ public class BreedingService : IBreedingService
             .FirstOrDefaultAsync(g => g.Id == id && g.FarmId == farmId);
 
         if (gr == null)
-            return Result<GestationRecordDto>.NotFound("Gestation record not found");
+            return Result<GestationRecordDto>.NotFound("Gestation record not found", DomainMessageKeys.GestationRecordNotFound);
 
         var now = DateTime.UtcNow;
         return Result<GestationRecordDto>.Success(new GestationRecordDto
@@ -381,7 +381,7 @@ public class BreedingService : IBreedingService
             .FirstOrDefaultAsync(br => br.Id == request.BreedingRecordId && br.FarmId == farmId);
 
         if (breedingRecord == null)
-            return Result<GestationRecordDto>.NotFound("Breeding record not found");
+            return Result<GestationRecordDto>.NotFound("Breeding record not found", DomainMessageKeys.BreedingRecordNotFound);
 
         if (breedingRecord.Result == BreedingResult.Failed)
             return Result<GestationRecordDto>.Validation("Cannot confirm pregnancy for a failed breeding record");
@@ -461,7 +461,7 @@ public class BreedingService : IBreedingService
             .FirstOrDefaultAsync(g => g.Id == gestationRecordId && g.FarmId == farmId);
 
         if (gestation == null)
-            return Result.NotFound("Gestation record not found");
+            return Result.NotFound("Gestation record not found", DomainMessageKeys.GestationRecordNotFound);
 
         var userId = _currentUser.GetUserId();
         var now = DateTime.UtcNow;
@@ -517,7 +517,7 @@ public class BreedingService : IBreedingService
             .FirstOrDefaultAsync(g => g.Id == gestationRecordId && g.FarmId == farmId);
 
         if (gestation == null)
-            return Result<List<GestationHealthCheckDto>>.NotFound("Gestation record not found");
+            return Result<List<GestationHealthCheckDto>>.NotFound("Gestation record not found", DomainMessageKeys.GestationRecordNotFound);
 
         var checks = await _context.GestationHealthChecks
             .AsNoTracking()
@@ -544,7 +544,7 @@ public class BreedingService : IBreedingService
             .FirstOrDefaultAsync(g => g.Id == gestationRecordId && g.FarmId == farmId);
 
         if (gestation == null)
-            return Result<GestationHealthCheckDto>.NotFound("Gestation record not found");
+            return Result<GestationHealthCheckDto>.NotFound("Gestation record not found", DomainMessageKeys.GestationRecordNotFound);
 
         var userId = _currentUser.GetUserId();
         var now = DateTime.UtcNow;
@@ -694,7 +694,7 @@ public class BreedingService : IBreedingService
             .FirstOrDefaultAsync(br => br.Id == id && br.FarmId == farmId);
 
         if (record == null)
-            return Result<BirthRecordDto>.NotFound("Birth record not found");
+            return Result<BirthRecordDto>.NotFound("Birth record not found", DomainMessageKeys.BirthRecordNotFound);
 
         return Result<BirthRecordDto>.Success(MapBirthToDto(record));
     }
@@ -710,7 +710,7 @@ public class BreedingService : IBreedingService
         var dam = await _context.Animals
             .FirstOrDefaultAsync(a => a.Id == request.DamId && a.FarmId == farmId && !a.IsDeleted);
         if (dam == null)
-            return Result<BirthRecordDto>.NotFound("Dam animal not found");
+            return Result<BirthRecordDto>.NotFound("Dam animal not found", DomainMessageKeys.DamNotFound);
 
         // Validate optional gestation record
         GestationRecord? gestationRecord = null;
@@ -719,7 +719,7 @@ public class BreedingService : IBreedingService
             gestationRecord = await _context.GestationRecords
                 .FirstOrDefaultAsync(g => g.Id == request.GestationRecordId.Value && g.FarmId == farmId && g.AnimalId == request.DamId);
             if (gestationRecord == null)
-                return Result<BirthRecordDto>.NotFound("Gestation record not found");
+                return Result<BirthRecordDto>.NotFound("Gestation record not found", DomainMessageKeys.GestationRecordNotFound);
         }
 
         // Validate optional breeding record
@@ -728,7 +728,7 @@ public class BreedingService : IBreedingService
             var breedingExists = await _context.BreedingRecords
                 .AnyAsync(br => br.Id == request.BreedingRecordId.Value && br.FarmId == farmId && br.DamId == request.DamId);
             if (!breedingExists)
-                return Result<BirthRecordDto>.NotFound("Breeding record not found");
+                return Result<BirthRecordDto>.NotFound("Breeding record not found", DomainMessageKeys.BreedingRecordNotFound);
         }
 
         // Validate sex options exist
@@ -920,7 +920,7 @@ public class BreedingService : IBreedingService
             .FirstOrDefaultAsync(br => br.Id == id && br.FarmId == farmId);
 
         if (record == null)
-            return Result.NotFound("Birth record not found");
+            return Result.NotFound("Birth record not found", DomainMessageKeys.BirthRecordNotFound);
 
         _context.BirthRecords.Remove(record);
         await _context.SaveChangesAsync();
@@ -974,7 +974,7 @@ public class BreedingService : IBreedingService
             .FirstOrDefaultAsync(a => a.Id == animalId && a.FarmId == farmId && !a.IsDeleted);
 
         if (root == null)
-            return Result<LineageResponse>.NotFound("Animal not found");
+            return Result<LineageResponse>.NotFound("Animal not found", DomainMessageKeys.AnimalNotFound);
 
         // Build ancestor map: childId -> { sireId, damId }
         var parentMap = new Dictionary<Guid, (Guid? SireId, Guid? DamId)>();

@@ -134,7 +134,7 @@ public class AuthService : IAuthService
             .FirstOrDefaultAsync(u => u.Id == userId);
 
         if (user == null)
-            return Result<UserProfileResponse>.NotFound("User not found");
+            return Result<UserProfileResponse>.NotFound("User not found", DomainMessageKeys.UserNotFound);
 
         return Result<UserProfileResponse>.Success(new UserProfileResponse
         {
@@ -165,7 +165,7 @@ public class AuthService : IAuthService
 
         var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
         if (user == null)
-            return Result<string?>.NotFound("User not found");
+            return Result<string?>.NotFound("User not found", DomainMessageKeys.UserNotFound);
 
         user.Locale = normalized;
         user.ModifiedAt = DateTime.UtcNow;
@@ -415,7 +415,7 @@ public class AuthService : IAuthService
             .FirstOrDefaultAsync(rt => rt.Token == refreshToken && !rt.IsRevoked);
 
         if (storedToken == null)
-            return Result.NotFound("Token not found");
+            return Result.NotFound("Token not found", DomainMessageKeys.TokenNotFound);
 
         storedToken.IsRevoked = true;
         await _context.SaveChangesAsync();

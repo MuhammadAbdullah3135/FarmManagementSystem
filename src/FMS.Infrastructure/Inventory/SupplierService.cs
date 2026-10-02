@@ -38,7 +38,7 @@ public class SupplierService : ISupplierService
     {
         var supplier = await _context.Suppliers.AsNoTracking().Where(s => s.FarmId == farmId && s.Id == id)
             .Select(s => new SupplierDto { Id = s.Id, FarmId = s.FarmId, Name = s.Name, ContactInfo = s.ContactInfo, ProductsSupplied = s.ProductsSupplied, PurchaseCount = s.Purchases.Count, TotalPurchased = s.Purchases.Sum(p => (decimal?)p.TotalCost) ?? 0 }).FirstOrDefaultAsync();
-        return supplier == null ? Result<SupplierDto>.NotFound("Supplier not found") : Result<SupplierDto>.Success(supplier);
+        return supplier == null ? Result<SupplierDto>.NotFound("Supplier not found", DomainMessageKeys.SupplierNotFound) : Result<SupplierDto>.Success(supplier);
     }
 
     public async Task<Result<SupplierDto>> CreateSupplierAsync(Guid farmId, CreateSupplierRequest request)
@@ -58,7 +58,7 @@ public class SupplierService : ISupplierService
     public async Task<Result<SupplierDto>> UpdateSupplierAsync(Guid farmId, Guid id, UpdateSupplierRequest request)
     {
         var supplier = await _context.Suppliers.FirstOrDefaultAsync(s => s.FarmId == farmId && s.Id == id);
-        if (supplier == null) return Result<SupplierDto>.NotFound("Supplier not found");
+        if (supplier == null) return Result<SupplierDto>.NotFound("Supplier not found", DomainMessageKeys.SupplierNotFound);
         var errors = SupplierRules.Validate(request.Name, request.ContactInfo, request.ProductsSupplied);
         if (errors.Count > 0) return Result<SupplierDto>.Validation(errors[0].Message, errors[0].MessageKey, errors[0].MessageArgs);
         var name = request.Name.Trim();
@@ -71,7 +71,7 @@ public class SupplierService : ISupplierService
     public async Task<Result> DeleteSupplierAsync(Guid farmId, Guid id)
     {
         var supplier = await _context.Suppliers.FirstOrDefaultAsync(s => s.FarmId == farmId && s.Id == id);
-        if (supplier == null) return Result.NotFound("Supplier not found");
+        if (supplier == null) return Result.NotFound("Supplier not found", DomainMessageKeys.SupplierNotFound);
         if (await _context.SupplierPurchases.AnyAsync(p => p.SupplierId == id)) return Result.Conflict("Cannot delete a supplier with purchase history");
         _context.Suppliers.Remove(supplier); await _context.SaveChangesAsync(); return Result.Success();
     }
@@ -196,13 +196,13 @@ public class SupplierService : ISupplierService
         if (request.Quantity <= 0) return Result<SupplierPurchaseDto>.Validation("Quantity must be greater than zero");
         if (request.TotalCost < 0) return Result<SupplierPurchaseDto>.Validation("Total cost cannot be negative");
         var supplier = await _context.Suppliers.FirstOrDefaultAsync(s => s.FarmId == farmId && s.Id == request.SupplierId);
-        if (supplier == null) return Result<SupplierPurchaseDto>.NotFound("Supplier not found");
+        if (supplier == null) return Result<SupplierPurchaseDto>.NotFound("Supplier not found", DomainMessageKeys.SupplierNotFound);
         var item = await _context.InventoryItems.FirstOrDefaultAsync(i => i.FarmId == farmId && i.Id == request.InventoryItemId);
-        if (item == null) return Result<SupplierPurchaseDto>.NotFound("Inventory item not found");
+        if (item == null) return Result<SupplierPurchaseDto>.NotFound("Inventory item not found", DomainMessageKeys.InventoryItemNotFound);
         var date = request.PurchaseDate ?? DateTime.UtcNow;
         if (date > DateTime.UtcNow.AddMinutes(5)) return Result<SupplierPurchaseDto>.Validation("Purchase date cannot be in the future");
-        if (request.ExpenseCategoryId.HasValue && !await _context.ExpenseCategories.AnyAsync(c => c.FarmId == farmId && c.Id == request.ExpenseCategoryId.Value)) return Result<SupplierPurchaseDto>.NotFound("Expense category not found");
-        if (request.PaymentMethodId.HasValue && !await _context.PaymentMethods.AnyAsync(m => m.FarmId == farmId && m.Id == request.PaymentMethodId.Value)) return Result<SupplierPurchaseDto>.NotFound("Payment method not found");
+        if (request.ExpenseCategoryId.HasValue && !await _context.ExpenseCategories.AnyAsync(c => c.FarmId == farmId && c.Id == request.ExpenseCategoryId.Value)) return Result<SupplierPurchaseDto>.NotFound("Expense category not found", DomainMessageKeys.ExpenseCategoryNotFound);
+        if (request.PaymentMethodId.HasValue && !await _context.PaymentMethods.AnyAsync(m => m.FarmId == farmId && m.Id == request.PaymentMethodId.Value)) return Result<SupplierPurchaseDto>.NotFound("Payment method not found", DomainMessageKeys.PaymentMethodNotFound);
         if (request.ExpenseCategoryId.HasValue != request.PaymentMethodId.HasValue) return Result<SupplierPurchaseDto>.Validation("Expense category and payment method must be provided together");
 
         var userId = _currentUser.GetUserId(); var now = DateTime.UtcNow; var unitCost = request.TotalCost / request.Quantity;

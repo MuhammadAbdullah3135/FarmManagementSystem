@@ -25,7 +25,7 @@ public class AttendanceService : IAttendanceService
         var employee = await _context.Employees
             .FirstOrDefaultAsync(e => e.Id == employeeId && e.FarmId == farmId);
         if (employee == null)
-            return Result<AttendanceRecordDto>.NotFound("Employee not found");
+            return Result<AttendanceRecordDto>.NotFound("Employee not found", DomainMessageKeys.EmployeeNotFound);
 
         // A queued check-in carries the time the device was at the gate, so the record belongs
         // to that day rather than to the day the sync happened to reach the server. A live
@@ -159,7 +159,7 @@ public class AttendanceService : IAttendanceService
         var employee = await _context.Employees
             .FirstOrDefaultAsync(e => e.Id == request.EmployeeId && e.FarmId == farmId);
         if (employee == null)
-            return Result<AttendanceRecordDto>.NotFound("Employee not found");
+            return Result<AttendanceRecordDto>.NotFound("Employee not found", DomainMessageKeys.EmployeeNotFound);
 
         var date = request.Date.Date;
         if (date > DateTime.UtcNow.Date)
@@ -249,7 +249,7 @@ public class AttendanceService : IAttendanceService
         var record = await _context.AttendanceRecords
             .FirstOrDefaultAsync(r => r.Id == id && r.FarmId == farmId);
         if (record == null)
-            return Result.NotFound("Attendance record not found");
+            return Result.NotFound("Attendance record not found", DomainMessageKeys.AttendanceRecordNotFound);
 
         _context.AttendanceRecords.Remove(record);
         await _context.SaveChangesAsync();
