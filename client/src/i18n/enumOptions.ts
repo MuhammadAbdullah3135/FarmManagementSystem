@@ -31,6 +31,19 @@ export const ENUM_DEFS = {
   breedingMethod: { values: [0, 1], keyOf: (v: number) => (v === 0 ? 'natural' : 'artificialInsemination') },
   breedingResult: { values: [0, 1, 2], keyOf: (v: number) => (v === 0 ? 'pending' : v === 1 ? 'confirmed' : 'failed') },
   feedTargetMode: { values: ['animal', 'location'], keyOf: (v: string) => v },
+  // The audit log's entity types are the server's own class names. The filter offers the
+  // farm-data subset (ENTITY_TYPE_FILTERS in AuditLogPage); rows can also carry values the
+  // filter never offered (RefreshToken, AnimalTimelineEvent), which enumLabelOf still
+  // translates — anything genuinely unknown falls back to the raw name.
+  auditEntityType: {
+    values: [
+      'Animal', 'WeightRecord', 'FeedRecord', 'FeedType', 'DietPlan', 'Employee', 'Expense',
+      'IncomeRecord', 'MedicalRecord', 'Medicine', 'VaccinationRecord', 'BreedingRecord',
+      'BirthRecord', 'InventoryItem', 'StockMovement', 'Supplier', 'Customer', 'FarmTask',
+      'SalaryPayment', 'AttendanceRecord', 'PerformanceReview', 'RefreshToken', 'AnimalTimelineEvent',
+    ],
+    keyOf: (v: string) => v,
+  },
 } as const;
 
 export type EnumName = keyof typeof ENUM_DEFS;

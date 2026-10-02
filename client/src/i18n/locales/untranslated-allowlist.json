@@ -130,6 +130,14 @@
         "es"
       ],
       "reason": "A true Spanish cognate: the breeding method is \"natural\" (or \"monta natural\") in Spanish, same spelling. (Arabic writes طبيعي.)"
+    },
+    {
+      "key": "enums:auditEntityType.Animal",
+      "value": "Animal",
+      "locales": [
+        "es"
+      ],
+      "reason": "True cognate: the Spanish word for the animal is spelled exactly like the English entity name. (Arabic renders it حيوان.)"
     }
   ]
 }

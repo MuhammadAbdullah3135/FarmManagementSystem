@@ -39,6 +39,31 @@
     "Leave": "Permiso",
     "Holiday": "Festivo"
   },
+  "auditEntityType": {
+    "Animal": "Animal",
+    "WeightRecord": "Registro de peso",
+    "FeedRecord": "Registro de alimentación",
+    "FeedType": "Tipo de alimento",
+    "DietPlan": "Plan de dieta",
+    "Employee": "Empleado",
+    "Expense": "Gasto",
+    "IncomeRecord": "Registro de ingreso",
+    "MedicalRecord": "Registro médico",
+    "Medicine": "Medicamento",
+    "VaccinationRecord": "Registro de vacunación",
+    "BreedingRecord": "Registro de reproducción",
+    "BirthRecord": "Registro de nacimiento",
+    "InventoryItem": "Artículo de inventario",
+    "StockMovement": "Movimiento de stock",
+    "Supplier": "Proveedor",
+    "Customer": "Cliente",
+    "FarmTask": "Tarea de granja",
+    "SalaryPayment": "Pago de salario",
+    "AttendanceRecord": "Registro de asistencia",
+    "PerformanceReview": "Evaluación de desempeño",
+    "RefreshToken": "Token de sesión",
+    "AnimalTimelineEvent": "Evento de línea de tiempo"
+  },
   "breedingMethod": {
     "natural": "Natural",
     "artificialInsemination": "Inseminación artificial"

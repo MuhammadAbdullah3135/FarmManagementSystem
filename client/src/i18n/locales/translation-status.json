@@ -23,6 +23,15 @@
         "tool": "Codebuff agent (GLM)",
         "date": "2026-10-02",
         "reviewed": false
+      },
+      {
+        "files": [
+          "es/enums.json (auditEntityType)"
+        ],
+        "source": "en",
+        "tool": "Codebuff agent (GLM)",
+        "date": "2026-10-02",
+        "reviewed": false
       }
     ]
   },
@@ -46,6 +55,15 @@
       {
         "files": [
           "ar/enums.json (attendanceStatus)"
+        ],
+        "source": "en",
+        "tool": "Codebuff agent (GLM)",
+        "date": "2026-10-02",
+        "reviewed": false
+      },
+      {
+        "files": [
+          "ar/enums.json (auditEntityType)"
         ],
         "source": "en",
         "tool": "Codebuff agent (GLM)",

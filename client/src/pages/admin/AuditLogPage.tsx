@@ -18,16 +18,24 @@ const actionColors: Record<string, string> = {
   Delete: 'red',
 };
 
-const entityTypes = [
+/**
+ * The entity types the filter offers: the farm-data subset a user searches by.
+ * Wire values, like appMenuItems keys — the labels come from the auditEntityType
+ * enum, so this list stays language-free. Rows can carry types this list omits
+ * (RefreshToken, AnimalTimelineEvent); the column translates those too, via
+ * enumLabelOf, without offering them as filters.
+ */
+const ENTITY_TYPE_FILTERS = [
   'Animal', 'WeightRecord', 'FeedRecord', 'FeedType', 'DietPlan',
   'Employee', 'Expense', 'IncomeRecord', 'MedicalRecord', 'Medicine',
   'VaccinationRecord', 'BreedingRecord', 'BirthRecord', 'InventoryItem',
   'StockMovement', 'Supplier', 'Customer', 'FarmTask', 'SalaryPayment',
   'AttendanceRecord', 'PerformanceReview',
-];
+] as const;
 
 const AuditLogPage: React.FC = () => {const { t: translate } = useTranslation('admin'); 
   const actionOptions = useEnumOptions('auditAction');
+  const entityTypeOptions = useEnumOptions('auditEntityType');
   const { activeFarm } = useFarmStore();
   const [data, setData] = useState<PagedResult<AuditLogEntry> | null>(null);
   const [loading, setLoading] = useState(false);
@@ -89,6 +97,7 @@ const AuditLogPage: React.FC = () => {const { t: translate } = useTranslation('a
       dataIndex: 'entityType',
       key: 'entityType',
       width: 150,
+      render: (v: string) => enumLabelOf('auditEntityType', v),
     },
     {
       title: translate('entityId'),
@@ -150,7 +159,7 @@ const AuditLogPage: React.FC = () => {const { t: translate } = useTranslation('a
           style={{ width: 180 }}
           value={entityType}
           onChange={setEntityType}
-          options={entityTypes.map(t => ({ label: t, value: t }))}
+          options={entityTypeOptions.filter((o) => (ENTITY_TYPE_FILTERS as readonly string[]).includes(o.value))}
         />
         <Select
           placeholder={translate('action')}

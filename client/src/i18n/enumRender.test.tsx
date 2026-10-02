@@ -123,7 +123,7 @@ describe('the audit log in Spanish', () => {
   it('shows translated actions and a localized total, with no English enum word left', async () => {
     await i18n.changeLanguage('es');
     vi.mocked(auditLogsApi.getLogs).mockResolvedValue({
-      data: { items: Array.from({ length: 8 }, (_, i) => auditEntry({ id: `log-${i}` })), totalCount: 8 },
+      data: { items: Array.from({ length: 8 }, (_, i) => auditEntry({ id: `log-${i}`, entityType: i === 0 ? 'WeightRecord' : 'Animal' })), totalCount: 8 },
     } as never);
 
     const { container } = renderAt(<AuditLogPage />, '/dashboard/admin/audit-log');
@@ -131,6 +131,11 @@ describe('the audit log in Spanish', () => {
     // Every action tag reads Crear, and the raw wire word is nowhere on screen.
     expect((await screen.findAllByText(wording('es', 'enums', 'auditAction.Create'))).length).toBeGreaterThan(0);
     expect(screen.queryByText('Create')).toBeNull();
+
+    // The entity type of the first row is translated too — a server class name, and
+    // none of them survive to the screen.
+expect((await screen.findAllByText(wording('es', 'enums', 'auditEntityType.WeightRecord'))).length).toBeGreaterThan(0);
+expect(screen.queryByText('WeightRecord')).toBeNull();
 
     // The pagination total is the localized sentence, not "Total N records".
     expect(await screen.findByText('Total 8 registros')).toBeInTheDocument();

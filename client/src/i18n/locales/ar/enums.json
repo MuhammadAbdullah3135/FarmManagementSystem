@@ -39,6 +39,31 @@
     "Leave": "إجازة",
     "Holiday": "عطلة"
   },
+  "auditEntityType": {
+    "Animal": "حيوان",
+    "WeightRecord": "سجل وزن",
+    "FeedRecord": "سجل تغذية",
+    "FeedType": "نوع العلف",
+    "DietPlan": "خطة غذاء",
+    "Employee": "موظف",
+    "Expense": "مصروف",
+    "IncomeRecord": "سجل دخل",
+    "MedicalRecord": "سجل طبي",
+    "Medicine": "دواء",
+    "VaccinationRecord": "سجل تطعيم",
+    "BreedingRecord": "سجل تربية",
+    "BirthRecord": "سجل ولادة",
+    "InventoryItem": "عنصر مخزون",
+    "StockMovement": "حركة مخزون",
+    "Supplier": "مورد",
+    "Customer": "عميل",
+    "FarmTask": "مهمة مزرعة",
+    "SalaryPayment": "دفعة راتب",
+    "AttendanceRecord": "سجل حضور",
+    "PerformanceReview": "تقييم أداء",
+    "RefreshToken": "رمز الجلسة",
+    "AnimalTimelineEvent": "حدث المخطط الزمني"
+  },
   "breedingMethod": {
     "natural": "طبيعي",
     "artificialInsemination": "تلقيح اصطناعي"

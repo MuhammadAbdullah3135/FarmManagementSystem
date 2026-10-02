@@ -39,6 +39,31 @@
     "Leave": "Leave",
     "Holiday": "Holiday"
   },
+  "auditEntityType": {
+    "Animal": "Animal",
+    "WeightRecord": "Weight record",
+    "FeedRecord": "Feed record",
+    "FeedType": "Feed type",
+    "DietPlan": "Diet plan",
+    "Employee": "Employee",
+    "Expense": "Expense",
+    "IncomeRecord": "Income record",
+    "MedicalRecord": "Medical record",
+    "Medicine": "Medicine",
+    "VaccinationRecord": "Vaccination record",
+    "BreedingRecord": "Breeding record",
+    "BirthRecord": "Birth record",
+    "InventoryItem": "Inventory item",
+    "StockMovement": "Stock movement",
+    "Supplier": "Supplier",
+    "Customer": "Customer",
+    "FarmTask": "Farm task",
+    "SalaryPayment": "Salary payment",
+    "AttendanceRecord": "Attendance record",
+    "PerformanceReview": "Performance review",
+    "RefreshToken": "Session token",
+    "AnimalTimelineEvent": "Timeline event"
+  },
   "breedingMethod": {
     "natural": "Natural",
     "artificialInsemination": "Artificial Insemination"
