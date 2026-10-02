@@ -1198,6 +1198,76 @@ still delivers nothing:
 
 ---
 
+## Pre-ship record — the i18n enum-chrome release (pushed 2026-10-02)
+
+This section is the record of the release that closed the enum-chrome i18n gaps (audit
+actions, task status/priority, movement types, medical and feeding status, breeding
+method/result, feed target mode, and the offline queue kind labels), written **before**
+the push so the rollback targets below were captured while they were still current.
+
+### Rollback targets — the state this release replaces
+
+| Surface | Before this release | How to roll back |
+|---|---|---|
+| API (Heroku) | release **v40**, deployed from commit `929856f` (2026-10-01 12:18 UTC) | `heroku rollback v40 --app fms-api` |
+| Frontend (GitHub Pages) | commit **`929856f`** (workflow run of 2026-10-01 12:13 UTC) | re-run `pages-deploy.yml` on that commit (`gh workflow run pages-deploy.yml --ref 929856f`) — Pages serves the newest green run on the default branch, so re-deploying the old SHA *is* the rollback |
+
+Both surfaces were CI-green and production-live on `929856f` when these were recorded.
+
+### What shipped (the commits between `929856f` and this push)
+
+1. Checker hardening + baseline tagging — `scanSource` recurses into non-string JSX
+   attribute initializers (an `items={[{ label }]}` was invisible); every baseline entry now
+   carries a reason; 15 checker tests.
+2. The enum mechanism — `ENUM_DEFS` + `useEnumOptions`/`enumLabelOf`, es/ar wording in
+   `enums.json` (with the Arabic plural set for the audit total), 13 Class A render leaks
+   migrated; provenance recorded in `translation-status.json`.
+3. Offline queue labels — `mutationKinds` labelKey/verbKey, 7 keys x 3 locales.
+4. Guard tests (25 new: per-enum key existence and translation, real-page es/ar render with
+   the wire-value-survives criterion) + the last same-class Tag fixes (tasks, breeding,
+   feeding, inventory).
+5. Lint triage — all 13 oxlint warnings (9 set-state-in-effect, 4 only-export-components)
+   now carry a line-level disable with a one-line justification; `0 warnings` so the next
+   one is visible. Real fixes are future work, not pre-ship churn.
+
+### Gates run on the final commit, in this environment
+
+| Gate | Result |
+|---|---|
+| `tsc -b` | clean |
+| `npm run lint` (oxlint + 3 i18n guards) | clean: 0 warnings; baseline 111 reviewed; 1447/1447 keys per locale |
+| `npm run test` (solo) | **81 files, 739 tests passed** |
+| backend, non-E2E half | Passed 853, skipped 8 (the documented Postgres-gated tests) |
+| backend, E2E half | Passed 198, skipped 9 (same class) |
+| `vite build` (production, `VITE_BUILD_SHA` stamped) | clean (pre-existing >500 kB chunk warning) |
+| 360x800 browser pass, es **and** ar | audit log, inventory movements, tasks: enum Tags and the pagination total translated, `dir=rtl` + `lang` correct in Arabic, no raw keys or English leaks on screen |
+
+The browser pass ran the built bundle through a same-origin preview proxy to the Heroku API
+(the API CORS allowlist does not include localhost, so the pass also proved the refresh
+interceptor: every navigation stale-token 401 recovered via `POST /auth/refresh` and the
+retry answered 200). Language was switched through the app own user menu, which is what a
+user does; the QA account stored locale was left as `ar`, its documented value.
+
+### Known deviations, stated rather than hidden
+
+- Two pages hold the **same class** of raw-enum render this release fixed elsewhere and were
+  deliberately **not** migrated (out of the approved scope):
+  `client/src/pages/hr/AttendancePage.tsx` (~L215, `{s}` in a Tag for `AttendanceStatus`) and
+  `client/src/pages/animals/AnimalDetailPage.tsx` (~L393/399, local `methodLabels`/`resultLabels`
+  maps). They are the natural first item of any follow-up.
+- The enum wording in es/ar is machine-translated and recorded as such
+  (`translation-status.json`, `reviewed: false`); the one true cognate (Spanish `Natural`) is
+  allowlisted with its reason.
+- Class A coverage: 16 of the ~33 originally-planned leak sites were reachable within the
+  approved Class A definition (cap <= 40); the rest are the two deviations above plus the
+  deferred item-12 strings already recorded in `docs/I18N.md`.
+
+### Post-push acceptance
+
+CI green on both workflows, then `FMS_SMOKE_SHA=<full sha> node scripts/qa-smoke.mjs --read-only`
+must report 17/17 against the new release (the script asserts the FULL sha; a short sha reads
+as a failure). If it does not: `heroku rollback v40 --app fms-api` and re-run Pages on
+`929856f`, then investigate before any fix-forward.
 ## Automated QA scripts
 
 Three dependency-free scripts in `scripts/` run against the deployed API
