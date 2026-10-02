@@ -31,6 +31,14 @@
     "Completed": "Completed",
     "Skipped": "Skipped"
   },
+  "attendanceStatus": {
+    "Present": "Present",
+    "Absent": "Absent",
+    "Late": "Late",
+    "HalfDay": "Half day",
+    "Leave": "Leave",
+    "Holiday": "Holiday"
+  },
   "breedingMethod": {
     "natural": "Natural",
     "artificialInsemination": "Artificial Insemination"

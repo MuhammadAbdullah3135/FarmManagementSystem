@@ -19,6 +19,7 @@ import { formatDate } from '../../i18n/format';
 import dayjs from 'dayjs';
 import type { AnimalDetail, BreedingRecord, WeightCheckStatus } from '../../types';
 import { useTranslation } from 'react-i18next';
+import { enumLabelOf } from '../../i18n/enumOptions';
 
 /** One row of the merged weights view: the server's copy, or this device's queued one. */
 interface WeightRow {
@@ -357,8 +358,6 @@ export default function AnimalDetailPage() {const { t } = useTranslation('animal
     );
   }
 
-  const methodLabels: Record<number, string> = { 0: 'Natural', 1: 'AI' };
-  const resultLabels: Record<number, string> = { 0: 'Pending', 1: 'Confirmed', 2: 'Failed' };
   const resultColors: Record<number, string> = { 0: 'orange', 1: 'green', 2: 'red' };
 
   const breedingColumns = [
@@ -390,13 +389,13 @@ export default function AnimalDetailPage() {const { t } = useTranslation('animal
       title: t('method'),
       dataIndex: 'method',
       key: 'method',
-      render: (val: number) => methodLabels[val] || 'Unknown',
+      render: (val: number) => enumLabelOf('breedingMethod', val),
     },
     {
       title: t('result'),
       dataIndex: 'result',
       key: 'result',
-      render: (val: number) => <Tag color={resultColors[val]}>{resultLabels[val]}</Tag>,
+      render: (val: number) => <Tag color={resultColors[val]}>{enumLabelOf('breedingResult', val)}</Tag>,
     },
     {
       title: t('vet'),

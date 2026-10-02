@@ -27,6 +27,7 @@ export const ENUM_DEFS = {
   movementType: { values: ['Purchase', 'Consumption', 'Transfer', 'Adjustment'], keyOf: (v: string) => v },
   medicalStatus: { values: ['Open', 'InProgress', 'Resolved'], keyOf: (v: string) => v },
   feedingTaskStatus: { values: ['Pending', 'Completed', 'Skipped'], keyOf: (v: string) => v },
+  attendanceStatus: { values: ['Present', 'Absent', 'Late', 'HalfDay', 'Leave', 'Holiday'], keyOf: (v: string) => v },
   breedingMethod: { values: [0, 1], keyOf: (v: number) => (v === 0 ? 'natural' : 'artificialInsemination') },
   breedingResult: { values: [0, 1, 2], keyOf: (v: number) => (v === 0 ? 'pending' : v === 1 ? 'confirmed' : 'failed') },
   feedTargetMode: { values: ['animal', 'location'], keyOf: (v: string) => v },

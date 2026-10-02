@@ -31,6 +31,14 @@
     "Completed": "مكتملة",
     "Skipped": "تم تخطيها"
   },
+  "attendanceStatus": {
+    "Present": "حاضر",
+    "Absent": "غائب",
+    "Late": "متأخر",
+    "HalfDay": "نصف يوم",
+    "Leave": "إجازة",
+    "Holiday": "عطلة"
+  },
   "breedingMethod": {
     "natural": "طبيعي",
     "artificialInsemination": "تلقيح اصطناعي"

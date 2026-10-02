@@ -14,6 +14,15 @@
         "tool": "Codebuff agent (GLM)",
         "date": "2026-10-01",
         "reviewed": false
+      },
+      {
+        "files": [
+          "es/enums.json (attendanceStatus)"
+        ],
+        "source": "en",
+        "tool": "Codebuff agent (GLM)",
+        "date": "2026-10-02",
+        "reviewed": false
       }
     ]
   },
@@ -33,6 +42,15 @@
         "date": "2026-10-01",
         "reviewed": false,
         "note": "enums:totalRecords adapted to the six Arabic plural forms by hand from the machine translation; the intervalDays precedent applies."
+      },
+      {
+        "files": [
+          "ar/enums.json (attendanceStatus)"
+        ],
+        "source": "en",
+        "tool": "Codebuff agent (GLM)",
+        "date": "2026-10-02",
+        "reviewed": false
       }
     ]
   }

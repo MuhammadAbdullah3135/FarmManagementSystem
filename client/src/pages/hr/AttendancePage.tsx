@@ -27,6 +27,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { useFarmStore } from '../../stores/farmStore';
 import type { AttendanceRecord, AttendanceStatus, Employee } from '../../types';
 import { useTranslation } from 'react-i18next';
+import { enumLabelOf, useEnumOptions } from '../../i18n/enumOptions';
 
 const { Text } = Typography;
 
@@ -38,8 +39,6 @@ const STATUS_COLORS: Record<AttendanceStatus, string> = {
   Leave: 'purple',
   Holiday: 'cyan',
 };
-
-const ATTENDANCE_STATUSES: AttendanceStatus[] = ['Present', 'Absent', 'Late', 'HalfDay', 'Leave', 'Holiday'];
 
 /**
  * Attendance, with or without a connection.
@@ -60,6 +59,7 @@ const ATTENDANCE_STATUSES: AttendanceStatus[] = ['Present', 'Absent', 'Late', 'H
  * fieldwork, and 4.5.5's offline targets are the check-in and the check-out.
  */
 const AttendancePage: React.FC = () => {const { t } = useTranslation('hr'); 
+  const statusOptions = useEnumOptions('attendanceStatus');
   const [page, setPage] = useState(1);
   const [dateRange, setDateRange] = useState<[Dayjs | null, Dayjs | null]>([dayjs(), dayjs()]);
   const [modalOpen, setModalOpen] = useState(false);
@@ -212,7 +212,7 @@ const AttendancePage: React.FC = () => {const { t } = useTranslation('hr');
     {
       title: t('status'),
       dataIndex: 'status',
-      render: (s: AttendanceStatus) => <Tag color={STATUS_COLORS[s]}>{s}</Tag>,
+      render: (s: AttendanceStatus) => <Tag color={STATUS_COLORS[s]}>{enumLabelOf('attendanceStatus', s)}</Tag>,
     },
     {
       title: t('checkIn'),
@@ -372,7 +372,7 @@ const AttendancePage: React.FC = () => {const { t } = useTranslation('hr');
             <DatePicker style={{ width: '100%' }} />
           </Form.Item>
           <Form.Item name="status" label={t('status')} rules={[{ required: true }]}>
-            <Select options={ATTENDANCE_STATUSES.map((s) => ({ value: s, label: s }))} style={{ width: '100%' }} />
+            <Select options={statusOptions} style={{ width: '100%' }} />
           </Form.Item>
           <Row gutter={[16, 16]}>
             <Col xs={24} sm={12}>
