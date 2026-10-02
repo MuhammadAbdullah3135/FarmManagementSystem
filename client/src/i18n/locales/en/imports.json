@@ -34,5 +34,9 @@
   "theImportIsAllOrNothingSoNothing": "The import is all-or-nothing, so nothing will be written until every row is valid. Correct these rows in your file and upload it again.",
   "theSameColumnNamesAsThisAppThe": "the same column names as this app — the next step maps them.",
   "valueForEveryRow": "Value for every row",
-  "yyyyMmDd": "yyyy-MM-dd"
+  "yyyyMmDd": "yyyy-MM-dd",
+  "stepUpload": "Upload",
+  "stepMapColumns": "Map columns",
+  "stepReview": "Review",
+  "stepDone": "Done"
 }

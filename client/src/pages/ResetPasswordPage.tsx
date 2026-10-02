@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next';
 
 const { Title } = Typography;
 
-const ResetPasswordPage: React.FC = () => {const { t } = useTranslation('auth'); 
+const ResetPasswordPage: React.FC = () => {const { t } = useTranslation(['auth', 'validation']); 
   const [form] = Form.useForm();
   const { resetPassword, isLoading, error, clearError } = useAuthStore();
   const [success, setSuccess] = React.useState(false);
@@ -44,7 +44,7 @@ const ResetPasswordPage: React.FC = () => {const { t } = useTranslation('auth');
         )}
 
         <Form form={form} onFinish={onFinish} layout="vertical">
-          <Form.Item name="email" rules={[{ required: true, type: 'email', message: 'Please enter a valid email' }]}>
+          <Form.Item name="email" rules={[{ required: true, type: 'email', message: t('validation:common.emailInvalid') }]}>
             <Input prefix={<MailOutlined />} placeholder={t('email')} size="large" />
           </Form.Item>
 

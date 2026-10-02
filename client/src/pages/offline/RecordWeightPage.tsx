@@ -30,7 +30,7 @@ const { Text, Title } = Typography;
  * The animal can only be one the device holds: the picker reads the cached farm lookup, so
  * there is no way to type a tag number that might resolve to a different animal at sync time.
  */
-const RecordWeightPage: React.FC = () => {const { t } = useTranslation('offline'); 
+const RecordWeightPage: React.FC = () => {const { t } = useTranslation(['offline', 'validation']); 
   const [searchParams] = useSearchParams();
   const [form] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
@@ -157,7 +157,7 @@ const RecordWeightPage: React.FC = () => {const { t } = useTranslation('offline'
           <Form.Item
             name="animalId"
             label={t('animal')}
-            rules={[{ required: true, message: 'Choose an animal' }]}
+            rules={[{ required: true, message: t('validation:common.chooseAnimal') }]}
             extra={
               !isOnline && !hasCachedAnimals
                 ? t('noAnimalsAreStoredOnThisDeviceYet')
@@ -186,11 +186,11 @@ const RecordWeightPage: React.FC = () => {const { t } = useTranslation('offline'
             name="weightKg"
             label={t('weight')}
             rules={[
-              { required: true, message: 'Enter a weight' },
+              { required: true, message: t('validation:common.enterWeight') },
               {
                 type: 'number',
                 min: 0.01,
-                message: 'Weight must be greater than zero',
+                message: t('validation:common.weightPositive'),
               },
             ]}
           >

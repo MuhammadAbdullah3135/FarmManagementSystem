@@ -27,7 +27,7 @@ interface FormValues {
 const formatAmount = (amount: number) =>
   `$${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-const ExpensesPage: React.FC = () => {const { t } = useTranslation('finance'); 
+const ExpensesPage: React.FC = () => {const { t } = useTranslation(['finance', 'validation']); 
   const navigate = useNavigate();
   const actionRef = useRef<ActionType>(null);
   const [modalOpen, setModalOpen] = useState(false);
@@ -289,17 +289,17 @@ const ExpensesPage: React.FC = () => {const { t } = useTranslation('finance');
         <Form form={form} layout="vertical">
           <Row gutter={[16, 16]}>
             <Col xs={24} sm={12}>
-              <Form.Item name="expenseDate" label={t('date')} rules={[{ required: true, message: 'Date is required' }]}>
+              <Form.Item name="expenseDate" label={t('date')} rules={[{ required: true, message: t('validation:common.dateRequired') }]}>
                 <DatePicker style={{ width: '100%' }} />
               </Form.Item>
             </Col>
             <Col xs={24} sm={12}>
-              <Form.Item name="amount" label={t('amount')} rules={[{ required: true, message: 'Amount is required' }]}>
+              <Form.Item name="amount" label={t('amount')} rules={[{ required: true, message: t('validation:common.amountRequired') }]}>
                 <InputNumber min={0.01} precision={2} prefix="$" style={{ width: '100%' }} />
               </Form.Item>
             </Col>
           </Row>
-          <Form.Item name="expenseCategoryId" label={t('category')} rules={[{ required: true, message: 'Category is required' }]}>
+          <Form.Item name="expenseCategoryId" label={t('category')} rules={[{ required: true, message: t('validation:common.categoryRequired') }]}>
             <LookupQuickAddSelect
               kind="expenseCategory"
               placeholder={t('selectCategory')}
@@ -307,7 +307,7 @@ const ExpensesPage: React.FC = () => {const { t } = useTranslation('finance');
               onCreated={() => loadOptions()}
             />
           </Form.Item>
-          <Form.Item name="paymentMethodId" label={t('paymentMethod')} rules={[{ required: true, message: 'Payment method is required' }]}>
+          <Form.Item name="paymentMethodId" label={t('paymentMethod')} rules={[{ required: true, message: t('validation:common.paymentMethodRequired') }]}>
             <LookupQuickAddSelect
               kind="paymentMethod"
               placeholder={t('selectPaymentMethod')}
@@ -348,7 +348,7 @@ const ExpensesPage: React.FC = () => {const { t } = useTranslation('finance');
           <Form.Item
             name="description"
             label={t('description')}
-            rules={[{ max: 1000, message: 'Description cannot exceed 1000 characters' }]}
+            rules={[{ max: 1000, message: t('validation:expense.descriptionMaxLength', { max: 1000 }) }]}
           >
             <Input.TextArea rows={3} maxLength={1000} placeholder={t('eG500ForVeterinaryVisit')} />
           </Form.Item>

@@ -138,6 +138,14 @@
         "es"
       ],
       "reason": "True cognate: the Spanish word for the animal is spelled exactly like the English entity name. (Arabic renders it حيوان.)"
+    },
+    {
+      "key": "reports:animalColumn",
+      "value": "Animal",
+      "locales": [
+        "es"
+      ],
+      "reason": "True cognate: Spanish names the animal with the same word, spelled identically. (Arabic renders حيوان.)"
     }
   ]
 }

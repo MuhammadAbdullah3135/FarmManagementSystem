@@ -94,5 +94,8 @@
   "veterinarian": "Veterinario",
   "veterinarians": "Veterinarios",
   "weightGrowthTrend": "Tendencia de crecimiento del peso",
-  "whatEachAnimalCostAndEarnedInThe": "Lo que costó y generó cada animal en el rango. Los costos compartidos se reparten por\ndías-animal, y cada cifra asignada muestra los días y el fondo del que procede."
+  "whatEachAnimalCostAndEarnedInThe": "Lo que costó y generó cada animal en el rango. Los costos compartidos se reparten por\ndías-animal, y cada cifra asignada muestra los días y el fondo del que procede.",
+  "noCostRecorded": "Sin coste registrado para este animal",
+  "noRevenueRecorded": "Sin ingresos registrados para este animal",
+  "animalColumn": "Animal"
 }

@@ -45,7 +45,7 @@ const InventoryMovementsPage: React.FC = () => {const { t } = useTranslation('in
   ];
 
   return <Card title={t('stockMovements')} extra={<Space wrap><Select allowClear placeholder={t('allItems')} style={{ width: 180 }} value={itemId} onChange={setItemId} options={items.map((item) => ({ value: item.id, label: item.name }))} /><Select allowClear placeholder={t('allMovementTypes')} style={{ width: 170 }} value={movementType} onChange={setMovementType} options={movementTypeOptions} /><DatePicker.RangePicker value={dates} onChange={(value) => setDates(value as [Dayjs, Dayjs] | null)} /></Space>}>
-    <Table rowKey="id" columns={columns} dataSource={movements} loading={loading} pagination={{ current: page, total, pageSize: 10, showSizeChanger: false, onChange: (nextPage) => void load(nextPage) }} locale={{ emptyText: 'No stock movements found.' }} />
+    <Table rowKey="id" columns={columns} dataSource={movements} loading={loading} pagination={{ current: page, total, pageSize: 10, showSizeChanger: false, onChange: (nextPage) => void load(nextPage) }} locale={{ emptyText: t('noStockMovementsFound') }} />
   </Card>;
 };
 

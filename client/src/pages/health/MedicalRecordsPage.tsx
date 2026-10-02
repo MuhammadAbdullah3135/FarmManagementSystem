@@ -25,7 +25,7 @@ interface AnimalOption {
   name?: string;
 }
 
-const MedicalRecordsPage: React.FC = () => {const { t } = useTranslation('health'); 
+const MedicalRecordsPage: React.FC = () => {const { t } = useTranslation(['health', 'validation']); 
   const statusOptions = useEnumOptions('medicalStatus');
   const [records, setRecords] = useState<MedicalRecordListItem[]>([]);
   const [animals, setAnimals] = useState<AnimalOption[]>([]);
@@ -259,7 +259,7 @@ const MedicalRecordsPage: React.FC = () => {const { t } = useTranslation('health
         width={640}
       >
         <Form form={form} layout="vertical">
-          <Form.Item name="animalId" label={t('animal')} rules={[{ required: true, message: 'Select an animal' }]}>
+          <Form.Item name="animalId" label={t('animal')} rules={[{ required: true, message: t('validation:common.selectAnimal') }]}>
             <Select
               showSearch
               optionFilterProp="label"
@@ -270,7 +270,7 @@ const MedicalRecordsPage: React.FC = () => {const { t } = useTranslation('health
               }))}
             />
           </Form.Item>
-          <Form.Item name="symptoms" label={t('symptoms')} rules={[{ required: true, message: 'Symptoms are required' }]}>
+          <Form.Item name="symptoms" label={t('symptoms')} rules={[{ required: true, message: t('validation:common.symptomsRequired') }]}>
             <Input.TextArea rows={2} maxLength={2000} placeholder={t('describeSymptoms')} />
           </Form.Item>
           <Form.Item name="diagnosis" label={t('diagnosis')}>

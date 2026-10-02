@@ -34,5 +34,9 @@
   "theImportIsAllOrNothingSoNothing": "La importación es todo o nada, así que no se escribirá nada hasta que todas las filas sean válidas. Corrige estas filas en tu archivo y vuelve a subirlo.",
   "theSameColumnNamesAsThisAppThe": "los mismos nombres de columna que esta aplicación: el siguiente paso los asigna.",
   "valueForEveryRow": "Valor para todas las filas",
-  "yyyyMmDd": "yyyy-MM-dd"
+  "yyyyMmDd": "yyyy-MM-dd",
+  "stepUpload": "Subir",
+  "stepMapColumns": "Mapear columnas",
+  "stepReview": "Revisar",
+  "stepDone": "Hecho"
 }

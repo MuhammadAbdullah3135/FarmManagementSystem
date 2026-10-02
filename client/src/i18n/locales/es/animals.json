@@ -86,5 +86,9 @@
   "weightCheckStatus": "Estado del control de peso:",
   "weightRecords": "Registros de peso",
   "weights": "Pesos",
-  "worksOfflineTheWeightIsStoredOnThis": "Funciona sin conexión: el peso se guarda en este dispositivo y se envía cuando hay\n            conexión."
+  "worksOfflineTheWeightIsStoredOnThis": "Funciona sin conexión: el peso se guarda en este dispositivo y se envía cuando hay\n            conexión.",
+  "noWeightsLoadedWithCount": "Sin pesos cargados (total del servidor: {{count}})",
+  "taken": "Tomado",
+  "weightColumn": "Peso",
+  "weightRecordsWithCount": "Registros de peso: {{count}}"
 }

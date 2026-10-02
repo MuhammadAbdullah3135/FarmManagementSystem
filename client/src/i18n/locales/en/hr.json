@@ -107,5 +107,6 @@
   "todaySAttendance": "Today's Attendance",
   "totalPaid": "Total Paid",
   "type": "Type",
-  "youAreOffline": "You are offline"
+  "youAreOffline": "You are offline",
+  "noPendingInvitations": "No pending invitations."
 }

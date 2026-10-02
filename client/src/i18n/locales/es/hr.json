@@ -107,5 +107,6 @@
   "todaySAttendance": "Asistencia de hoy",
   "totalPaid": "Total pagado",
   "type": "Tipo",
-  "youAreOffline": "Estás sin conexión"
+  "youAreOffline": "Estás sin conexión",
+  "noPendingInvitations": "No hay invitaciones pendientes."
 }

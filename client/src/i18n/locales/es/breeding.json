@@ -112,5 +112,7 @@
   "viewLineage": "Ver linaje",
   "weak": "Débil",
   "weightKg": "Peso (kg)",
-  "x": "x"
+  "x": "x",
+  "tagNumber": "Etiqueta",
+  "birthWeight": "Peso"
 }

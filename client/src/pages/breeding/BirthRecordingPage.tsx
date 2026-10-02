@@ -14,7 +14,7 @@ import { useTranslation } from 'react-i18next';
 const OUTCOME_LABELS: Record<number, string> = { 0: 'Alive', 1: 'Stillborn', 2: 'Weak' };
 const OUTCOME_COLORS: Record<number, string> = { 0: 'green', 1: 'red', 2: 'orange' };
 
-export default function BirthRecordingPage() {const { t } = useTranslation('breeding'); 
+export default function BirthRecordingPage() {const { t } = useTranslation(['breeding', 'validation']); 
   const [data, setData] = useState<BirthRecord[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -235,7 +235,7 @@ export default function BirthRecordingPage() {const { t } = useTranslation('bree
         okText={t('save')}
       >
         <Form form={form} layout="vertical">
-          <Form.Item name="damId" label={t('dam')} rules={[{ required: true, message: 'Select the dam' }]}>
+          <Form.Item name="damId" label={t('dam')} rules={[{ required: true, message: t('validation:common.selectDam') }]}>
             <Select
               showSearch
               placeholder={t('selectDam')}
@@ -283,7 +283,7 @@ export default function BirthRecordingPage() {const { t } = useTranslation('bree
             </Col>
           </Row>
 
-          <Form.Item name="birthDate" label={t('birthDate')} rules={[{ required: true, message: 'Select birth date' }]}>
+          <Form.Item name="birthDate" label={t('birthDate')} rules={[{ required: true, message: t('validation:common.selectBirthDate') }]}>
             <DatePicker style={{ width: '100%' }} />
           </Form.Item>
 
@@ -332,7 +332,7 @@ export default function BirthRecordingPage() {const { t } = useTranslation('bree
                     <Form.Item
                       name={[index, 'sexOptionId']}
                       label={t('sex')}
-                      rules={[{ required: true, message: 'Required' }]}
+                      rules={[{ required: true, message: t('validation:common.required') }]}
                     >
                       <LookupQuickAddSelect
                         kind="sexOption"
@@ -408,17 +408,17 @@ export default function BirthRecordingPage() {const { t } = useTranslation('bree
                   pagination={false}
                   dataSource={selectedRecord.offspring}
                   columns={[
-                    { title: 'Tag', dataIndex: 'tagNumber', key: 'tagNumber', render: (text: string) => <strong>{text}</strong> },
-                    { title: 'Name', dataIndex: 'name', key: 'name', render: (text: string) => text || '-' },
-                    { title: 'Sex', dataIndex: 'sexValue', key: 'sexValue', render: (text: string) => <Tag>{text}</Tag> },
+                    { title: t('tagNumber'), dataIndex: 'tagNumber', key: 'tagNumber', render: (text: string) => <strong>{text}</strong> },
+                    { title: t('name'), dataIndex: 'name', key: 'name', render: (text: string) => text || '-' },
+                    { title: t('sex'), dataIndex: 'sexValue', key: 'sexValue', render: (text: string) => <Tag>{text}</Tag> },
                     {
-                      title: 'Outcome',
+                      title: t('outcome'),
                       dataIndex: 'outcome',
                       key: 'outcome',
                       render: (val: number) => <Tag color={OUTCOME_COLORS[val]}>{OUTCOME_LABELS[val]}</Tag>,
                     },
                     {
-                      title: 'Weight',
+                      title: t('birthWeight'),
                       dataIndex: 'birthWeightKg',
                       key: 'birthWeightKg',
                       render: (val?: number) => val ? `${val} kg` : '-',

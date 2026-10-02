@@ -59,7 +59,7 @@ const VaccinationReportsPage: React.FC = () => {const { t } = useTranslation('re
 
   return (
     <div>
-      <Card style={{ marginBottom: 16 }} extra={<Space><DateRangeFilter onChange={(from, to) => void loadData(from, to)} /><ExportButton filename="vaccination-report" title={t('vaccinationReport')} headers={['Vaccine', 'Count', 'Cost']} rows={(report?.byVaccine ?? []).map(v => [v.vaccineName, v.count, v.totalCost])} /></Space>}>
+      <Card style={{ marginBottom: 16 }} extra={<Space><DateRangeFilter onChange={(from, to) => void loadData(from, to)} /><ExportButton filename="vaccination-report" title={t('vaccinationReport')} headers={[t('vaccine'), t('count'), t('cost')]} rows={(report?.byVaccine ?? []).map(v => [v.vaccineName, v.count, v.totalCost])} /></Space>}>
         <Text type="secondary">{t('vaccinationHistoryUpcomingSchedulesOverdueAlerts')}</Text>
       </Card>
 
@@ -107,8 +107,8 @@ const VaccinationReportsPage: React.FC = () => {const { t } = useTranslation('re
             <Table
               rowKey={(r) => `${r.animalId}-${r.vaccineTypeId}`}
               columns={[
-                { title: 'Animal', key: 'animal', render: (_, r) => <><strong>{r.animalTagNumber}</strong>{r.animalName && <Text type="secondary"> ({r.animalName})</Text>}</> },
-                { title: 'Vaccine', dataIndex: 'vaccineTypeName' },
+                { title: t('animalColumn'), key: 'animal', render: (_, r) => <><strong>{r.animalTagNumber}</strong>{r.animalName && <Text type="secondary"> ({r.animalName})</Text>}</> },
+                { title: t('vaccine'), dataIndex: 'vaccineTypeName' },
                 { title: t('nextDue'), dataIndex: 'nextDueDate', render: (v: string) => formatDate(v) },
                 { title: t('daysOverdue'), dataIndex: 'daysUntilDue', render: (v: number) => <Tag color="red">{Math.abs(v)} {t('days')}</Tag> },
               ]}

@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next';
 
 const { Title } = Typography;
 
-const RegisterPage: React.FC = () => {const { t } = useTranslation('auth'); 
+const RegisterPage: React.FC = () => {const { t } = useTranslation(['auth', 'validation']); 
   const [form] = Form.useForm();
   const navigate = useNavigate();
   const { register, isLoading, error, clearError } = useAuthStore();
@@ -36,25 +36,25 @@ const RegisterPage: React.FC = () => {const { t } = useTranslation('auth');
         )}
 
         <Form form={form} onFinish={onFinish} layout="vertical">
-          <Form.Item name="accountName" rules={[{ required: true, message: 'Please enter account name' }]}>
+          <Form.Item name="accountName" rules={[{ required: true, message: t('validation:common.accountNameRequired') }]}>
             <Input prefix={<BankOutlined />} placeholder={t('accountOrganizationName')} size="large" />
           </Form.Item>
 
           <div style={{ display: 'flex', gap: 16 }}>
-            <Form.Item name="firstName" rules={[{ required: true, message: 'Please enter first name' }]} style={{ flex: 1 }}>
+            <Form.Item name="firstName" rules={[{ required: true, message: t('validation:common.firstNameRequired') }]} style={{ flex: 1 }}>
               <Input prefix={<UserOutlined />} placeholder={t('firstName')} size="large" />
             </Form.Item>
 
-            <Form.Item name="lastName" rules={[{ required: true, message: 'Please enter last name' }]} style={{ flex: 1 }}>
+            <Form.Item name="lastName" rules={[{ required: true, message: t('validation:common.lastNameRequired') }]} style={{ flex: 1 }}>
               <Input placeholder={t('lastName')} size="large" />
             </Form.Item>
           </div>
 
-          <Form.Item name="email" rules={[{ required: true, type: 'email', message: 'Please enter a valid email' }]}>
+          <Form.Item name="email" rules={[{ required: true, type: 'email', message: t('validation:common.emailInvalid') }]}>
             <Input prefix={<MailOutlined />} placeholder={t('email')} size="large" />
           </Form.Item>
 
-          <Form.Item name="password" rules={[{ required: true, min: 8, message: 'Password must be at least 8 characters' }]}>
+          <Form.Item name="password" rules={[{ required: true, min: 8, message: t('validation:common.passwordMinLength') }]}>
             <Input.Password prefix={<LockOutlined />} placeholder={t('password')} size="large" />
           </Form.Item>
 
@@ -62,7 +62,7 @@ const RegisterPage: React.FC = () => {const { t } = useTranslation('auth');
             name="confirmPassword"
             dependencies={['password']}
             rules={[
-              { required: true, message: 'Please confirm password' },
+              { required: true, message: t('validation:common.confirmPasswordRequired') },
               ({ getFieldValue }) => ({
                 validator(_, value) {
                   if (!value || getFieldValue('password') === value) {

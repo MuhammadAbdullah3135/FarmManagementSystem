@@ -30,7 +30,7 @@ const roleColor = (role: string): string => {
   }
 };
 
-const MembersPage: React.FC = () => {const { t } = useTranslation('common'); 
+const MembersPage: React.FC = () => {const { t } = useTranslation(['common', 'validation']); 
   const [members, setMembers] = useState<FarmMember[]>([]);
   const [invitations, setInvitations] = useState<FarmInvitation[]>([]);
   const [loading, setLoading] = useState(false);
@@ -211,7 +211,7 @@ const MembersPage: React.FC = () => {const { t } = useTranslation('common');
           dataSource={invitations}
           loading={loading}
           pagination={false}
-          locale={{ emptyText: 'No pending invitations.' }}
+          locale={{ emptyText: t('noPendingInvitations') }}
         />
       </Card>
 
@@ -229,8 +229,8 @@ const MembersPage: React.FC = () => {const { t } = useTranslation('common');
             name="email"
             label={t('emailAddress')}
             rules={[
-              { required: true, message: 'Please enter an email address' },
-              { type: 'email', message: 'Please enter a valid email address' },
+              { required: true, message: t('validation:common.emailRequired') },
+              { type: 'email', message: t('validation:common.emailInvalidFull') },
             ]}
           >
             <Input placeholder={t('personExampleCom')} />
@@ -238,7 +238,7 @@ const MembersPage: React.FC = () => {const { t } = useTranslation('common');
           <Form.Item
             name="role"
             label={t('farmRole')}
-            rules={[{ required: true, message: 'Please choose a role' }]}
+            rules={[{ required: true, message: t('validation:common.roleRequired') }]}
           >
             <Select options={roleOptions(t)} />
           </Form.Item>

@@ -85,5 +85,8 @@
   "type": "Type",
   "unit": "Unit",
   "unitCost": "Unit cost",
-  "useANegativeQuantityForADownwardAdjustment": "Use a negative quantity for a downward adjustment or transfer."
+  "useANegativeQuantityForADownwardAdjustment": "Use a negative quantity for a downward adjustment or transfer.",
+  "noInventoryItemsYet": "No inventory items yet. Add equipment, supplies, or consumables to get started.",
+  "noStockMovementsFound": "No stock movements found.",
+  "allItemsAboveReorderLevels": "All inventory items are above their reorder levels."
 }

@@ -68,5 +68,7 @@
   "total": "الإجمالي",
   "totalExpenses": "إجمالي المصروفات",
   "totalIncome": "إجمالي الإيرادات",
-  "yearTotal": "إجمالي السنة"
+  "yearTotal": "إجمالي السنة",
+  "noExpensesInThisPeriod": "لا توجد مصروفات في هذه الفترة",
+  "noIncomeInThisPeriod": "لا يوجد دخل في هذه الفترة"
 }

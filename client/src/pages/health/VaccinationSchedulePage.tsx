@@ -16,7 +16,7 @@ interface AnimalTypeOption {
   name: string;
 }
 
-const VaccinationSchedulePage: React.FC = () => {const { t } = useTranslation('health'); 
+const VaccinationSchedulePage: React.FC = () => {const { t } = useTranslation(['health', 'validation']); 
   const [schedules, setSchedules] = useState<VaccinationSchedule[]>([]);
   const [vaccineTypes, setVaccineTypes] = useState<VaccineTypeListItem[]>([]);
   const [animalTypes, setAnimalTypes] = useState<AnimalTypeOption[]>([]);
@@ -184,7 +184,7 @@ const VaccinationSchedulePage: React.FC = () => {const { t } = useTranslation('h
         destroyOnClose
       >
         <Form form={form} layout="vertical">
-          <Form.Item name="vaccineTypeId" label={t('vaccineType2')} rules={[{ required: true, message: 'Select vaccine type' }]}>
+          <Form.Item name="vaccineTypeId" label={t('vaccineType2')} rules={[{ required: true, message: t('validation:common.vaccineTypeRequired') }]}>
             <LookupQuickAddSelect
               kind="vaccineType"
               placeholder={t('selectVaccine')}

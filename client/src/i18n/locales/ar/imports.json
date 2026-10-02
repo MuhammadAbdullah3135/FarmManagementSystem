@@ -34,5 +34,9 @@
   "theImportIsAllOrNothingSoNothing": "الاستيراد كل شيء أو لا شيء، لذا لن يُكتب أي سجل قبل أن تصبح كل الصفوف صحيحة. صحّح هذه الصفوف في ملفك ثم ارفعه مرة أخرى.",
   "theSameColumnNamesAsThisAppThe": "أسماء الأعمدة نفسها المستخدمة في هذا التطبيق — الخطوة التالية تربطها.",
   "valueForEveryRow": "قيمة لكل صف",
-  "yyyyMmDd": "yyyy-MM-dd"
+  "yyyyMmDd": "yyyy-MM-dd",
+  "stepUpload": "رفع",
+  "stepMapColumns": "تعيين الأعمدة",
+  "stepReview": "مراجعة",
+  "stepDone": "تم"
 }

@@ -163,9 +163,9 @@ const FeedingTasksPage: React.FC = () => {const { t } = useTranslation('feed');
               size="small"
               pagination={false}
               columns={[
-                { title: 'Feed Type', dataIndex: 'feedTypeName' },
+                { title: t('feedType'), dataIndex: 'feedTypeName' },
                 {
-                  title: 'Quantity per Feeding',
+                  title: t('quantityPerFeeding'),
                   dataIndex: 'quantityPerFeeding',
                   render: (v: number, r: DietPlanItem) => `${v} ${r.unitName}`,
                 },

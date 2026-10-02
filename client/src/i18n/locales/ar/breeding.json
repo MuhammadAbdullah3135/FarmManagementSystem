@@ -112,5 +112,7 @@
   "viewLineage": "عرض النسب",
   "weak": "ضعيف",
   "weightKg": "الوزن (كجم)",
-  "x": "×"
+  "x": "×",
+  "tagNumber": "رقم السمة",
+  "birthWeight": "الوزن"
 }

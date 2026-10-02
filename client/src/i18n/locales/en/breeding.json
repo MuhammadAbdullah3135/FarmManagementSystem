@@ -112,5 +112,7 @@
   "viewLineage": "View Lineage",
   "weak": "Weak",
   "weightKg": "Weight (kg)",
-  "x": "x"
+  "x": "x",
+  "tagNumber": "Tag",
+  "birthWeight": "Weight"
 }

@@ -19,7 +19,7 @@ interface AnimalOption {
   name?: string;
 }
 
-const VaccinationRecordsPage: React.FC = () => {const { t } = useTranslation('health'); 
+const VaccinationRecordsPage: React.FC = () => {const { t } = useTranslation(['health', 'validation']); 
   const [records, setRecords] = useState<VaccinationRecordListItem[]>([]);
   const [animals, setAnimals] = useState<AnimalOption[]>([]);
   const [vaccineTypes, setVaccineTypes] = useState<VaccineTypeListItem[]>([]);
@@ -210,7 +210,7 @@ const VaccinationRecordsPage: React.FC = () => {const { t } = useTranslation('he
         width={520}
       >
         <Form form={form} layout="vertical">
-          <Form.Item name="animalId" label={t('animal')} rules={[{ required: true, message: 'Select an animal' }]}>
+          <Form.Item name="animalId" label={t('animal')} rules={[{ required: true, message: t('validation:common.selectAnimal') }]}>
             <Select
               showSearch
               optionFilterProp="label"
@@ -221,7 +221,7 @@ const VaccinationRecordsPage: React.FC = () => {const { t } = useTranslation('he
               }))}
             />
           </Form.Item>
-          <Form.Item name="vaccineTypeId" label={t('vaccineType2')} rules={[{ required: true, message: 'Select vaccine type' }]}>
+          <Form.Item name="vaccineTypeId" label={t('vaccineType2')} rules={[{ required: true, message: t('validation:common.vaccineTypeRequired') }]}>
             <LookupQuickAddSelect
               kind="vaccineType"
               placeholder={t('selectVaccine')}

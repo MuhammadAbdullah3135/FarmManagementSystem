@@ -86,5 +86,9 @@
   "weightCheckStatus": "Weight Check Status:",
   "weightRecords": "Weight Records",
   "weights": "Weights",
-  "worksOfflineTheWeightIsStoredOnThis": "Works offline: the weight is stored on this device and sent when there is a\r\n            connection."
+  "worksOfflineTheWeightIsStoredOnThis": "Works offline: the weight is stored on this device and sent when there is a\r\n            connection.",
+  "noWeightsLoadedWithCount": "No weights loaded (server count: {{count}})",
+  "taken": "Taken",
+  "weightColumn": "Weight",
+  "weightRecordsWithCount": "Weight records: {{count}}"
 }

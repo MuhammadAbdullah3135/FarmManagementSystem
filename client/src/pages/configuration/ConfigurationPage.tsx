@@ -39,7 +39,7 @@ const flattenLocationTree = (nodes: Location[], depth = 0): FlatLocation[] =>
     ...flattenLocationTree(n.childLocations ?? [], depth + 1),
   ]);
 
-const ConfigurationPage: React.FC = () => {const { t: translate } = useTranslation('configuration'); 
+const ConfigurationPage: React.FC = () => {const { t: translate } = useTranslation(['configuration', 'validation']); 
   const [animalTypes, setAnimalTypes] = useState<AnimalType[]>([]);
   const [breeds, setBreeds] = useState<Breed[]>([]);
   const [sexOptions, setSexOptions] = useState<SexOption[]>([]);
@@ -389,17 +389,17 @@ const ConfigurationPage: React.FC = () => {const { t: translate } = useTranslati
       >
         <Form form={form} layout="vertical">
           {modalType === 'animalType' && (
-            <Form.Item name="name" label={translate('name')} rules={[{ required: true, message: 'Name is required' }]}>
+            <Form.Item name="name" label={translate('name')} rules={[{ required: true, message: translate('validation:common.nameRequired') }]}>
               <Input maxLength={100} placeholder={translate('eGCattle')} />
             </Form.Item>
           )}
 
           {modalType === 'breed' && (
             <>
-              <Form.Item name="name" label={translate('name')} rules={[{ required: true, message: 'Name is required' }]}>
+              <Form.Item name="name" label={translate('name')} rules={[{ required: true, message: translate('validation:common.nameRequired') }]}>
                 <Input maxLength={100} placeholder={translate('eGSahiwal')} />
               </Form.Item>
-              <Form.Item name="animalTypeId" label={translate('animalType')} rules={[{ required: true, message: 'Animal type is required' }]}>
+              <Form.Item name="animalTypeId" label={translate('animalType')} rules={[{ required: true, message: translate('validation:common.animalTypeRequired') }]}>
                 <LookupQuickAddSelect
                   kind="animalType"
                   options={animalTypes.map((t) => ({ value: t.id, label: t.name }))}
@@ -414,14 +414,14 @@ const ConfigurationPage: React.FC = () => {const { t: translate } = useTranslati
           )}
 
           {modalType === 'sexOption' && (
-            <Form.Item name="value" label={translate('value')} rules={[{ required: true, message: 'Value is required' }]}>
+            <Form.Item name="value" label={translate('value')} rules={[{ required: true, message: translate('validation:common.valueRequired') }]}>
               <Input maxLength={50} placeholder={translate('eGMale')} />
             </Form.Item>
           )}
 
           {modalType === 'ageCategory' && (
             <>
-              <Form.Item name="name" label={translate('name')} rules={[{ required: true, message: 'Name is required' }]}>
+              <Form.Item name="name" label={translate('name')} rules={[{ required: true, message: translate('validation:common.nameRequired') }]}>
                 <Input maxLength={100} placeholder={translate('eGCalf')} />
               </Form.Item>
               <Row gutter={[16, 16]}>
@@ -441,7 +441,7 @@ const ConfigurationPage: React.FC = () => {const { t: translate } = useTranslati
 
           {modalType === 'status' && (
             <>
-              <Form.Item name="name" label={translate('name')} rules={[{ required: true, message: 'Name is required' }]}>
+              <Form.Item name="name" label={translate('name')} rules={[{ required: true, message: translate('validation:common.nameRequired') }]}>
                 <Input maxLength={100} placeholder={translate('eGQuarantine')} />
               </Form.Item>
               <Form.Item name="category" label={translate('category')} rules={[{ required: true }]}>
@@ -460,17 +460,17 @@ const ConfigurationPage: React.FC = () => {const { t: translate } = useTranslati
           )}
 
           {modalType === 'locationType' && (
-            <Form.Item name="name" label={translate('name')} rules={[{ required: true, message: 'Name is required' }]}>
+            <Form.Item name="name" label={translate('name')} rules={[{ required: true, message: translate('validation:common.nameRequired') }]}>
               <Input maxLength={100} placeholder={translate('eGShed')} />
             </Form.Item>
           )}
 
           {modalType === 'location' && (
             <>
-              <Form.Item name="name" label={translate('name')} rules={[{ required: true, message: 'Name is required' }]}>
+              <Form.Item name="name" label={translate('name')} rules={[{ required: true, message: translate('validation:common.nameRequired') }]}>
                 <Input maxLength={200} placeholder={translate('eGShedA')} />
               </Form.Item>
-              <Form.Item name="locationTypeId" label={translate('locationType')} rules={[{ required: true, message: 'Location type is required' }]}>
+              <Form.Item name="locationTypeId" label={translate('locationType')} rules={[{ required: true, message: translate('validation:common.locationTypeRequired') }]}>
                 <LookupQuickAddSelect
                   kind="locationType"
                   options={locationTypes.map((lt) => ({ value: lt.id, label: lt.name }))}

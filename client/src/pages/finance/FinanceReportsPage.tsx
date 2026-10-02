@@ -177,7 +177,7 @@ const FinanceReportsPage: React.FC = () => {const { t } = useTranslation('financ
               dataSource={expenseBreakdown}
               pagination={false}
               size="small"
-              locale={{ emptyText: 'No expenses in this period' }}
+              locale={{ emptyText: t('noExpensesInThisPeriod') }}
               summary={() => expenseBreakdown.length > 0 ? (
                 <Table.Summary.Row>
                   <Table.Summary.Cell index={0}><strong>{t('total')}</strong></Table.Summary.Cell>
@@ -205,7 +205,7 @@ const FinanceReportsPage: React.FC = () => {const { t } = useTranslation('financ
               dataSource={incomeBreakdown}
               pagination={false}
               size="small"
-              locale={{ emptyText: 'No income in this period' }}
+              locale={{ emptyText: t('noIncomeInThisPeriod') }}
               summary={() => incomeBreakdown.length > 0 ? (
                 <Table.Summary.Row>
                   <Table.Summary.Cell index={0}><strong>{t('total')}</strong></Table.Summary.Cell>

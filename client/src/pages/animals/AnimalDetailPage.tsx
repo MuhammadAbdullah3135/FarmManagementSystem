@@ -182,7 +182,7 @@ const AnimalWeightsTab: React.FC<{ animalId: string; weightRecordsCount: number 
       </div>
 
       {statuses.length === 0 && rows.length === 0 ? (
-        <Empty description={`Weight records: ${weightRecordsCount}`} />
+        <Empty description={t('weightRecordsWithCount', { count: weightRecordsCount })} />
       ) : (
         <>
           <Table
@@ -190,26 +190,26 @@ const AnimalWeightsTab: React.FC<{ animalId: string; weightRecordsCount: number 
             size="small"
             pagination={false}
             dataSource={rows}
-            locale={{ emptyText: `No weights loaded (server count: ${weightRecordsCount})` }}
+            locale={{ emptyText: t('noWeightsLoadedWithCount', { count: weightRecordsCount }) }}
             columns={[
               {
-                title: 'Taken',
+                title: t('taken'),
                 key: 'takenAt',
                 render: (_: unknown, row: WeightRow) => dayjs(row.takenAt).format('YYYY-MM-DD HH:mm'),
               },
               {
-                title: 'Weight',
+                title: t('weightColumn'),
                 key: 'weightKg',
                 render: (_: unknown, row: WeightRow) => `${row.weightKg} kg`,
               },
               {
-                title: 'Notes',
+                title: t('notes'),
                 dataIndex: 'notes',
                 key: 'notes',
                 render: (notes?: string | null) => notes || '-',
               },
               {
-                title: 'Status',
+                title: t('status'),
                 key: 'status',
                 render: (_: unknown, row: WeightRow) => {
                   if (row.status === 'server') return <Tag>{t('saved')}</Tag>;
@@ -228,7 +228,7 @@ const AnimalWeightsTab: React.FC<{ animalId: string; weightRecordsCount: number 
           <Text type="secondary" style={{ display: 'block', marginTop: 8 }}>
             {rows.filter((row) => row.status === 'pending' || row.status === 'quarantined').length > 0
               ? t('recordsMarkedWaitingToSyncExistOnlyOn')
-              : `Weight records: ${weightRecordsCount}`}
+              : t('weightRecordsWithCount', { count: weightRecordsCount })}
           </Text>
         </>
       )}

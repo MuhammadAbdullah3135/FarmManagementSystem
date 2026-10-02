@@ -86,5 +86,9 @@
   "weightCheckStatus": "حالة فحص الوزن:",
   "weightRecords": "سجلات الوزن",
   "weights": "الأوزان",
-  "worksOfflineTheWeightIsStoredOnThis": "يعمل دون اتصال: يُحفظ الوزن على هذا الجهاز ويُرسل عند وجود\n            اتصال."
+  "worksOfflineTheWeightIsStoredOnThis": "يعمل دون اتصال: يُحفظ الوزن على هذا الجهاز ويُرسل عند وجود\n            اتصال.",
+  "noWeightsLoadedWithCount": "لا توجد أوزان محمّلة (عدد الخادم: {{count}})",
+  "taken": "وقت القياس",
+  "weightColumn": "الوزن",
+  "weightRecordsWithCount": "سجلات الوزن: {{count}}"
 }

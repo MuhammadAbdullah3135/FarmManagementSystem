@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next';
 
 const { Title } = Typography;
 
-const ConfirmResetPasswordPage: React.FC = () => {const { t } = useTranslation('auth'); 
+const ConfirmResetPasswordPage: React.FC = () => {const { t } = useTranslation(['auth', 'validation']); 
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token');
   const [form] = Form.useForm();
@@ -62,8 +62,8 @@ const ConfirmResetPasswordPage: React.FC = () => {const { t } = useTranslation('
 
         <Form form={form} onFinish={onFinish} layout="vertical">
           <Form.Item name="newPassword" rules={[
-            { required: true, message: 'Please enter a new password' },
-            { min: 8, message: 'Password must be at least 8 characters' }
+            { required: true, message: t('validation:common.newPasswordRequired') },
+            { min: 8, message: t('validation:common.passwordMinLength') }
           ]}>
             <Input.Password prefix={<LockOutlined />} placeholder={t('newPassword')} size="large" />
           </Form.Item>
@@ -72,7 +72,7 @@ const ConfirmResetPasswordPage: React.FC = () => {const { t } = useTranslation('
             name="confirmPassword"
             dependencies={['newPassword']}
             rules={[
-              { required: true, message: 'Please confirm your new password' },
+              { required: true, message: t('validation:common.confirmNewPasswordRequired') },
               ({ getFieldValue }) => ({
                 validator(_, value) {
                   if (!value || getFieldValue('newPassword') === value) {

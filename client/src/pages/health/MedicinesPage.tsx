@@ -11,7 +11,7 @@ import { getApiError } from '../../api/farmApi';
 import type { MedicineListItem, MedicineStock } from '../../types';
 import { useTranslation } from 'react-i18next';
 
-const MedicinesPage: React.FC = () => {const { t } = useTranslation('health'); 
+const MedicinesPage: React.FC = () => {const { t } = useTranslation(['health', 'validation']); 
   const [medicines, setMedicines] = useState<MedicineListItem[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -245,13 +245,13 @@ const MedicinesPage: React.FC = () => {const { t } = useTranslation('health');
         destroyOnClose
       >
         <Form form={form} layout="vertical">
-          <Form.Item name="name" label={t('name')} rules={[{ required: true, message: 'Medicine name is required' }]}>
+          <Form.Item name="name" label={t('name')} rules={[{ required: true, message: t('validation:common.medicineNameRequired') }]}>
             <Input maxLength={200} placeholder={t('eGIvermectin')} />
           </Form.Item>
           <Form.Item name="description" label={t('description')}>
             <Input.TextArea rows={2} maxLength={1000} />
           </Form.Item>
-          <Form.Item name="unit" label={t('unit')} rules={[{ required: true, message: 'Unit is required' }]}>
+          <Form.Item name="unit" label={t('unit')} rules={[{ required: true, message: t('validation:common.unitRequired') }]}>
             <Input maxLength={50} placeholder={t('eGDosesMlTablets')} />
           </Form.Item>
           <Row gutter={[16, 16]}>

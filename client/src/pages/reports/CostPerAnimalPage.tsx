@@ -199,7 +199,7 @@ const CostPerAnimalPage: React.FC = () => {const { t } = useTranslation('reports
                       pagination={false}
                       columns={componentColumns}
                       dataSource={row.costs}
-                      locale={{ emptyText: 'No cost recorded for this animal' }}
+                      locale={{ emptyText: t('noCostRecorded') }}
                     />
                   </Col>
                   <Col xs={24} lg={12}>
@@ -210,7 +210,7 @@ const CostPerAnimalPage: React.FC = () => {const { t } = useTranslation('reports
                       pagination={false}
                       columns={componentColumns}
                       dataSource={row.revenue}
-                      locale={{ emptyText: 'No revenue recorded for this animal' }}
+                      locale={{ emptyText: t('noRevenueRecorded') }}
                     />
                   </Col>
                 </Row>

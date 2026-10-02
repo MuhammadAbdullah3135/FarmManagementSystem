@@ -241,10 +241,10 @@ const ImportWizard: React.FC<ImportWizardProps> = ({
       <Steps
         current={step}
         items={[
-          { title: 'Upload' },
-          { title: 'Map columns' },
-          { title: 'Review' },
-          { title: 'Done' },
+          { title: t('stepUpload') },
+          { title: t('stepMapColumns') },
+          { title: t('stepReview') },
+          { title: t('stepDone') },
         ]}
         style={{ marginBottom: 24 }}
       />

@@ -94,5 +94,8 @@
   "veterinarian": "Veterinarian",
   "veterinarians": "Veterinarians",
   "weightGrowthTrend": "Weight Growth Trend",
-  "whatEachAnimalCostAndEarnedInThe": "What each animal cost and earned in the range. Shared costs are split by animal-days,\n          and every allocated figure shows the days and the pool it came from."
+  "whatEachAnimalCostAndEarnedInThe": "What each animal cost and earned in the range. Shared costs are split by animal-days,\n          and every allocated figure shows the days and the pool it came from.",
+  "noCostRecorded": "No cost recorded for this animal",
+  "noRevenueRecorded": "No revenue recorded for this animal",
+  "animalColumn": "Animal"
 }

@@ -107,5 +107,6 @@
   "todaySAttendance": "حضور اليوم",
   "totalPaid": "إجمالي المدفوع",
   "type": "النوع",
-  "youAreOffline": "أنت غير متصل بالإنترنت"
+  "youAreOffline": "أنت غير متصل بالإنترنت",
+  "noPendingInvitations": "لا توجد دعوات معلقة."
 }

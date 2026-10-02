@@ -85,5 +85,8 @@
   "type": "النوع",
   "unit": "الوحدة",
   "unitCost": "تكلفة الوحدة",
-  "useANegativeQuantityForADownwardAdjustment": "استخدم كمية سالبة للتسوية أو التحويل بالإنقاص."
+  "useANegativeQuantityForADownwardAdjustment": "استخدم كمية سالبة للتسوية أو التحويل بالإنقاص.",
+  "noInventoryItemsYet": "لا توجد عناصر مخزون بعد. أضف معدات أو مستلزمات أو مواد استهلاكية للبدء.",
+  "noStockMovementsFound": "لم يتم العثور على حركات مخزون.",
+  "allItemsAboveReorderLevels": "جميع عناصر المخزون فوق مستويات إعادة الطلب."
 }

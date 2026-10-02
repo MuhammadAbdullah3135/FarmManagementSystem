@@ -16,7 +16,7 @@ interface LookupOption {
   name: string;
 }
 
-const DietPlansPage: React.FC = () => {const { t: translate } = useTranslation('feed'); 
+const DietPlansPage: React.FC = () => {const { t: translate } = useTranslation(['feed', 'validation']); 
   const [plans, setPlans] = useState<DietPlan[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
@@ -208,7 +208,7 @@ const DietPlansPage: React.FC = () => {const { t: translate } = useTranslation('
         destroyOnClose
       >
         <Form form={form} layout="vertical">
-          <Form.Item name="name" label={translate('name')} rules={[{ required: true, message: 'Name is required' }]}>
+          <Form.Item name="name" label={translate('name')} rules={[{ required: true, message: translate('validation:common.nameRequired') }]}>
             <Input maxLength={100} />
           </Form.Item>
           <Form.Item name="animalTypeId" label={translate('animalType')}>
@@ -260,7 +260,7 @@ const DietPlansPage: React.FC = () => {const { t: translate } = useTranslation('
       >
         <Table rowKey="id" columns={itemColumns} dataSource={itemsTarget?.items ?? []} pagination={false} size="small" />
         <Form form={itemForm} layout="inline" style={{ marginTop: 16 }}>
-          <Form.Item name="feedTypeId" rules={[{ required: true, message: 'Required' }]}>
+          <Form.Item name="feedTypeId" rules={[{ required: true, message: translate('validation:common.required') }]}>
             <LookupQuickAddSelect
               kind="feedType"
               placeholder={translate('feedType2')}
@@ -269,7 +269,7 @@ const DietPlansPage: React.FC = () => {const { t: translate } = useTranslation('
               onCreated={() => loadOptions()}
             />
           </Form.Item>
-          <Form.Item name="quantityPerFeeding" rules={[{ required: true, message: 'Required' }]}>
+          <Form.Item name="quantityPerFeeding" rules={[{ required: true, message: translate('validation:common.required') }]}>
             <InputNumber min={0.01} placeholder={translate('qty')} />
           </Form.Item>
           <Button type="primary" icon={<PlusOutlined />} onClick={handleAddItem}>

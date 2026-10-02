@@ -23,7 +23,7 @@ const categoryColor: Record<string, string> = {
   Other: 'default',
 };
 
-const FeedTypesPage: React.FC = () => {const { t: translate } = useTranslation('feed'); 
+const FeedTypesPage: React.FC = () => {const { t: translate } = useTranslation(['feed', 'validation']); 
   const [types, setTypes] = useState<FeedType[]>([]);
   const [stock, setStock] = useState<FeedStock[]>([]);
   const [movements, setMovements] = useState<FeedStockMovement[]>([]);
@@ -246,7 +246,7 @@ const FeedTypesPage: React.FC = () => {const { t: translate } = useTranslation('
         destroyOnClose
       >
         <Form form={form} layout="vertical">
-          <Form.Item name="name" label={translate('name')} rules={[{ required: true, message: 'Name is required' }]}>
+          <Form.Item name="name" label={translate('name')} rules={[{ required: true, message: translate('validation:common.nameRequired') }]}>
             <Input maxLength={100} />
           </Form.Item>
           <Form.Item name="category" label={translate('category')} rules={[{ required: true }]}>

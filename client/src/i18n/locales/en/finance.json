@@ -68,5 +68,7 @@
   "total": "Total",
   "totalExpenses": "Total Expenses",
   "totalIncome": "Total Income",
-  "yearTotal": "Year Total"
+  "yearTotal": "Year Total",
+  "noExpensesInThisPeriod": "No expenses in this period",
+  "noIncomeInThisPeriod": "No income in this period"
 }

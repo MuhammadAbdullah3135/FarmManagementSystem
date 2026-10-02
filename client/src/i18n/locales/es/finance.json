@@ -68,5 +68,7 @@
   "total": "Total",
   "totalExpenses": "Gastos totales",
   "totalIncome": "Ingresos totales",
-  "yearTotal": "Total del año"
+  "yearTotal": "Total del año",
+  "noExpensesInThisPeriod": "No hay gastos en este período",
+  "noIncomeInThisPeriod": "No hay ingresos en este período"
 }

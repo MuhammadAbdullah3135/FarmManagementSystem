@@ -10,7 +10,7 @@ import LookupQuickAddSelect from '../../components/LookupQuickAddSelect';
 import type { VaccineTypeListItem, MedicineListItem } from '../../types';
 import { useTranslation } from 'react-i18next';
 
-const VaccineTypesPage: React.FC = () => {const { t } = useTranslation('health'); 
+const VaccineTypesPage: React.FC = () => {const { t } = useTranslation(['health', 'validation']); 
   const [types, setTypes] = useState<VaccineTypeListItem[]>([]);
   const [medicines, setMedicines] = useState<MedicineListItem[]>([]);
   const [total, setTotal] = useState(0);
@@ -167,7 +167,7 @@ const VaccineTypesPage: React.FC = () => {const { t } = useTranslation('health')
         destroyOnClose
       >
         <Form form={form} layout="vertical">
-          <Form.Item name="name" label={t('name')} rules={[{ required: true, message: 'Vaccine name is required' }]}>
+          <Form.Item name="name" label={t('name')} rules={[{ required: true, message: t('validation:common.vaccineNameRequired') }]}>
             <Input maxLength={200} placeholder={t('eGFmdVaccine')} />
           </Form.Item>
           <Form.Item name="defaultDosage" label={t('defaultDosage')}>

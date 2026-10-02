@@ -18,7 +18,7 @@ import { useEnumOptions } from '../../i18n/enumOptions';
 const money = (value: number): string =>
   formatNumber(value, undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-const InventoryItemsPage: React.FC = () => {const { t } = useTranslation('inventory'); 
+const InventoryItemsPage: React.FC = () => {const { t } = useTranslation(['inventory', 'validation']); 
   const movementTypeOptions = useEnumOptions('movementType');
   const navigate = useNavigate();
   const [items, setItems] = useState<InventoryItem[]>([]);
@@ -145,18 +145,18 @@ const InventoryItemsPage: React.FC = () => {const { t } = useTranslation('invent
   return <>
     <Card title={t('inventoryItems')} extra={<Space><Input.Search placeholder={t('searchItems')} allowClear onSearch={setSearch} style={{ width: 220 }} /><Button icon={<UploadOutlined />} onClick={() => navigate('/dashboard/inventory/items/import')}>{t('import')}</Button><Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>{t('addItem')}</Button></Space>}>
       {error && <Alert type="error" showIcon message={error} closable onClose={() => setError(null)} style={{ marginBottom: 16 }} />}
-      <Table rowKey="id" columns={columns} dataSource={items} loading={loading} rowClassName={(item) => item.isLowStock ? 'inventory-low-stock' : ''} pagination={{ current: page, total, pageSize: 10, onChange: (nextPage) => void load(nextPage), showSizeChanger: false }} locale={{ emptyText: 'No inventory items yet. Add equipment, supplies, or consumables to get started.' }} />
+      <Table rowKey="id" columns={columns} dataSource={items} loading={loading} rowClassName={(item) => item.isLowStock ? 'inventory-low-stock' : ''} pagination={{ current: page, total, pageSize: 10, onChange: (nextPage) => void load(nextPage), showSizeChanger: false }} locale={{ emptyText: t('noInventoryItemsYet') }} />
     </Card>
 
     <Modal title={editing ? t('editInventoryItem') : t('addInventoryItem')} open={modalOpen} onOk={() => void save()} onCancel={() => setModalOpen(false)} destroyOnClose>
       <Form form={form} layout="vertical">
-        <Form.Item name="name" label={t('name')} rules={[{ required: true, message: 'Item name is required' }]}><Input maxLength={200} placeholder={t('eGFencingWire')} /></Form.Item>
+        <Form.Item name="name" label={t('name')} rules={[{ required: true, message: t('validation:common.itemNameRequired') }]}><Input maxLength={200} placeholder={t('eGFencingWire')} /></Form.Item>
         <Row gutter={[16, 16]}>
           <Col xs={24} sm={12}>
             <Form.Item name="category" label={t('category')}><Input maxLength={100} placeholder={t('supplies')} /></Form.Item>
           </Col>
           <Col xs={24} sm={12}>
-            <Form.Item name="unit" label={t('unit')} rules={[{ required: true, message: 'Unit is required' }]}><Input maxLength={50} placeholder={t('rollsPieces')} /></Form.Item>
+            <Form.Item name="unit" label={t('unit')} rules={[{ required: true, message: t('validation:common.unitRequired') }]}><Input maxLength={50} placeholder={t('rollsPieces')} /></Form.Item>
           </Col>
         </Row>
         {!editing && <Form.Item name="quantity" label={t('openingQuantity')} rules={[{ required: true }]}><InputNumber min={0} precision={3} style={{ width: '100%' }} /></Form.Item>}
@@ -177,7 +177,7 @@ const InventoryItemsPage: React.FC = () => {const { t } = useTranslation('invent
         <Form.Item name="movementType" label={t('movementType')} rules={[{ required: true }]}>
           <Select options={movementTypeOptions} style={{ width: '100%' }} />
         </Form.Item>
-        <Form.Item name="quantity" label={t('quantity')} extra={t('useANegativeQuantityForADownwardAdjustment')} rules={[{ required: true, message: 'Quantity is required' }]}>
+        <Form.Item name="quantity" label={t('quantity')} extra={t('useANegativeQuantityForADownwardAdjustment')} rules={[{ required: true, message: t('validation:common.quantityRequired') }]}>
           <InputNumber precision={3} style={{ width: '100%' }} />
         </Form.Item>
         <Form.Item name="movementDate" label={t('date')}><DatePicker style={{ width: '100%' }} /></Form.Item>
