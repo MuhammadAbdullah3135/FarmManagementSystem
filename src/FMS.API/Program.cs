@@ -349,14 +349,17 @@ builder.Services.AddCors(options =>
     {
         var origins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
             ?? new[] { "http://localhost:3000" };
-        // The message-key header must be exposed explicitly: a browser on another origin
+        // The message-key headers must be exposed explicitly: a browser on another origin
         // (GitHub Pages frontend → Heroku API) cannot read a custom response header unless
-        // the server says so, and the client renders localised validation text from it.
+        // the server says so, and the client renders localised validation text from them.
+        // Both names are taken from the class that writes them, and a test asserts this list
+        // covers every header it can emit — a third header added there and not here would
+        // reach the client as a missing header rather than as an error anyone could see.
         policy.WithOrigins(origins)
             .AllowAnyHeader()
             .AllowAnyMethod()
             .AllowCredentials()
-            .WithExposedHeaders(ApiMessageKeys.HeaderName);
+            .WithExposedHeaders(ApiMessageKeys.HeaderName, ApiMessageKeys.ArgsHeaderName);
     });
 });
 

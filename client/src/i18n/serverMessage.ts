@@ -10,6 +10,10 @@ import { formatDateLong } from './format';
  * prefers the key and falls back to the English text whenever the key is unknown — an older
  * server, a key this build has not extracted yet, or a genuine typo.
  *
+ * A key that takes arguments gets them from a second header, `X-Message-Args`, carrying
+ * percent-encoded JSON; a body-carried key gets them from the body. Both feed the same
+ * renderer, so a sentence reads identically whichever path it arrived on.
+ *
  * This is why the server never needs to know the user's locale: it states *what* went
  * wrong, and the renderer decides *how* to say it.
  */
@@ -66,7 +70,40 @@ export const renderKeyedMessage = (
 ): string => {
   if (!canRenderMessageKey(key)) return fallback;
   const split = splitServerKey(key)!;
-  return i18n.t(split.path, { ns: split.ns, ...coerceArgs(args) });
+  const rendered = i18n.t(split.path, { ns: split.ns, ...coerceArgs(args) });
+
+  // Never hand a reader a raw placeholder. A sentence that needs an argument we did not get
+  // renders as "First name cannot exceed {{max}} characters", which is worse than the
+  // English we were about to fall back to: it is broken *and* it is in the reader's
+  // language, so it looks deliberate. i18next leaves an unsupplied placeholder in place by
+  // default, so this has to be checked rather than assumed. Nothing in any bundle contains
+  // `{{` except a real placeholder, so the test cannot misfire on ordinary copy.
+  //
+  // Checking the rendered text rather than the key means it covers the case nobody
+  // anticipated: a key that grows a placeholder later, or arguments dropped by some future
+  // path, degrades to the server's English instead of to a brace.
+  return rendered.includes('{{') ? fallback : rendered;
+};
+
+/**
+ * Decodes the `X-Message-Args` header: percent-encoded JSON, which the server writes with
+ * `Uri.EscapeDataString` so no interpolated value can put a character in a header that a
+ * parser would object to.
+ *
+ * Returns null for anything it cannot read — absent, blank, not valid percent-encoding, not
+ * valid JSON, or not a plain object. A header the client cannot parse is a missing argument,
+ * not a thrown error: the caller's fallback is a whole correct sentence, and refusing to
+ * render because the arguments were malformed would trade a full stop for a blank screen.
+ */
+const parseArgsHeader = (raw: unknown): Record<string, unknown> | null => {
+  if (typeof raw !== 'string' || !raw.trim()) return null;
+  try {
+    const parsed: unknown = JSON.parse(decodeURIComponent(raw));
+    if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) return null;
+    return parsed as Record<string, unknown>;
+  } catch {
+    return null;
+  }
 };
 
 /** The key a response carries, from its header or its body, or null when it carries none. */
@@ -76,7 +113,7 @@ export const messageKeyFromResponse = (
 ): { key: string; args: Record<string, unknown> | null } | null => {
   const headerKey = headers?.['x-message-key'];
   if (typeof headerKey === 'string' && headerKey.trim()) {
-    return { key: headerKey, args: null };
+    return { key: headerKey, args: parseArgsHeader(headers?.['x-message-args']) };
   }
 
   if (data && typeof data === 'object') {

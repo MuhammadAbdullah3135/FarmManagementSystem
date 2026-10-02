@@ -29,42 +29,6 @@ namespace FMS.Domain.Tests.I18n;
 /// </summary>
 public class LookupMessageKeyGuardTests
 {
-    /// <summary>The repository root, found the same way the bundle tests find the client.</summary>
-    private static string RepositoryRoot()
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null)
-        {
-            if (Directory.Exists(Path.Combine(directory.FullName, "src", "FMS.API")))
-            {
-                return directory.FullName;
-            }
-
-            directory = directory.Parent;
-        }
-
-        throw new DirectoryNotFoundException(
-            "The repository root was not found above the test binary; this test reads the sources.");
-    }
-
-    /// <summary>
-    /// The four projects that build domain messages. Named rather than walked from
-    /// <c>src/</c>: a recursive walk also descends into FMS.Mobile's <c>obj/</c>, which holds
-    /// thousands of generated C# files and would make this test slow for no coverage.
-    /// </summary>
-    private static IEnumerable<string> SourceFiles()
-    {
-        var root = Path.Combine(RepositoryRoot(), "src");
-        return new[] { "FMS.API", "FMS.Application", "FMS.Domain", "FMS.Infrastructure" }
-            .SelectMany(project => Directory.EnumerateFiles(
-                Path.Combine(root, project), "*.cs", SearchOption.AllDirectories))
-            .Where(path => !path.Contains(
-                $"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
-            .Where(path => !path.Contains(
-                $"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
-            .OrderBy(path => path, StringComparer.Ordinal);
-    }
-
     [Fact]
     public void No_not_found_refusal_is_returned_without_a_key()
     {
@@ -75,20 +39,19 @@ public class LookupMessageKeyGuardTests
             RegexOptions.Compiled);
 
         var offenders = new List<string>();
-        foreach (var file in SourceFiles())
+        foreach (var file in ServerSources.SourceFiles())
         {
             // Comments describe these refusals in prose, and a sentence in a doc comment is
             // not a call site. Stripped rather than skipped, so a commented-out example
             // cannot be mistaken for a live one either.
-            var code = Regex.Replace(File.ReadAllText(file), @"/\*[\s\S]*?\*/|(^|\s)//[^\n]*", "$1");
+            var code = ServerSources.WithoutComments(File.ReadAllText(file));
 
             var lines = code.Split('\n');
             for (var index = 0; index < lines.Length; index++)
             {
                 if (keyless.IsMatch(lines[index]))
                 {
-                    offenders.Add(
-                        $"{Path.GetRelativePath(RepositoryRoot(), file).Replace(Path.DirectorySeparatorChar, '/')}:{index + 1}  {lines[index].Trim()}");
+                    offenders.Add($"{ServerSources.Relative(file)}:{index + 1}  {lines[index].Trim()}");
                 }
             }
         }
