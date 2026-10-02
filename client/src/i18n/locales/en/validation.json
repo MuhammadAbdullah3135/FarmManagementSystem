@@ -21,7 +21,6 @@
     "accountNameRequired": "Please enter account name",
     "roleRequired": "Please choose a role",
     "emailInvalidFull": "Please enter a valid email address",
-    "descriptionMaxLength": "Description cannot exceed 1000 characters",
     "enterWeight": "Enter a weight",
     "weightPositive": "Weight must be greater than zero",
     "chooseAnimal": "Choose an animal",

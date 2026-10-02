@@ -348,7 +348,7 @@ const IncomesPage: React.FC = () => {const { t } = useTranslation(['finance', 'v
           <Form.Item
             name="description"
             label={t('description')}
-            rules={[{ max: 1000, message: t('validation:expense.descriptionMaxLength', { max: 1000 }) }]}
+            rules={[{ max: 1000, message: t('validation:income.descriptionMaxLength', { max: 1000 }) }]}
           >
             <Input.TextArea rows={3} maxLength={1000} placeholder={t('eGSold50BushelsOfWheat')} />
           </Form.Item>
