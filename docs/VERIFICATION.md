@@ -169,8 +169,53 @@ This error originated in "src/pages/configuration/ConfigurationPage.test.tsx"
 
 Vitest fails the run on an unhandled error even when every test passes. Local runs
 (Windows, Node 24) never reproduce it; the runner (Ubuntu, Node 22) does, sometimes.
-It is latent on `main` — every `main` run before this date happened to pass. Worth
-tracking down separately: an async task outliving its jsdom environment.
+It is latent on `main` — every `main` run before this date happened to pass.
+
+#### Root cause, 2026-10-02 — the guard was covering one third of the problem
+
+`src/test/teardownGuard.ts` existed for exactly this failure, and it was incomplete. It wrapped
+**`setImmediate` only**, on the reasoning that React's scheduler binds `setImmediate`
+(`scheduler.development.js` checks it first, ahead of `MessageChannel` and `setTimeout`), so
+React's own commits were covered. True, and not sufficient: two other primitives outlive a jsdom
+environment just as well, and both are load-bearing in a suite built on antd.
+
+- **`requestAnimationFrame`** — every antd overlay animates through rc-motion, which drives its
+  frames with rAF.
+- **`setTimeout`** — the same motion-end timers, plus antd's debounce and delay helpers.
+
+`setup.ts` destroys `message` / `notification` / `Modal` in `afterEach`, but destruction *starts*
+an exit animation. Its frames and its motion-end timer are still pending when the `setTimeout(0)`
+that follows has already resolved, and they fire tens or hundreds of milliseconds later — after
+teardown, against a `window` that no longer exists. Which is why the failure was intermittent and
+load-dependent rather than constant: it came down to whether a file happened to finish before its
+last frame was delivered. It was also always attributed to whichever file was running when the
+callback landed, never to the file that caused it.
+
+The guard now wraps all three, deciding at **delivery** time rather than at scheduling time, so
+work queued by a live test and released into a dead environment is caught regardless of order.
+The wrappers are transparent while a test is running: `setTimeout` returns the real handle, so
+`clearTimeout` still cancels, and delays and extra arguments pass through.
+
+**Proven, not asserted.** Narrowing the guard back to `setImmediate` and running the real
+sequence — schedule a frame and a timer, then destroy the globals — reproduces the production
+failure exactly:
+
+```
+AssertionError: expected { frameRan: true, timerRan: true } to deeply equal { frameRan: false, timerRan: false }
+ReferenceError: document is not defined
+```
+
+With the widened guard both are dropped. `teardownGuard.test.ts` covers each primitive in both
+directions, and the drop cases schedule their work *before* deleting the globals, which is the
+order it really arrives in.
+
+Worth recording about the tests themselves: they must wait on `node:timers`, not the global
+`setTimeout`. Once the globals are deleted the guarded `setTimeout` drops its own callbacks — the
+guard working as designed — so a test awaiting through it waits forever, times out, never runs its
+`finally`, and leaves the environment without a DOM for every test after it. That is not
+hypothetical: it is what the first draft of these tests did, turning one hang into six failures.
+Restoring the globals also needs `Object.defineProperty`, because `document` on the jsdom window
+is a getter-only accessor and plain assignment throws.
 
 **Second observation, Phase 7.3 (`2026-09-25`, local Windows, Node 24).** One full-suite run of
 68 files and 552 tests failed a single test, then passed twice with no change:
@@ -188,6 +233,21 @@ about content: the same file passes alone and passes in the full suite on either
 1 time in 3 full runs; the file alone, and the file alongside the new RTL tests, passed 4/4. Left
 as an open observation rather than papered over with a longer timeout — raising the timeout would
 hide a race rather than fix one.
+
+**Status 2026-10-02: mitigated, not root-caused — and the two are now known to be different
+bugs.** The guard work above fixes the `window is not defined` failure, whose mechanism is
+understood and reproduced on demand. This one is not that: an empty `<body>` with a message root
+in it is a *rendering* race inside the test's own environment, not work escaping into a dead one,
+and the guard cannot touch it because nothing outlived anything. What exists today is the blanket
+`configure({ asyncUtilTimeout: 5_000 })` in `src/test/setup.ts`, on the reasoning that the page's
+boot (IndexedDB open plus an employee fetch) legitimately exceeds one second on a loaded runner.
+
+That mitigation is honest about what it does — a passing query still resolves the moment it
+matches, so nothing real is hidden — but it does not remove the race, and the original note's
+objection to it still stands. Root-causing it needs a reproduction on the runner, since it has
+never reproduced on Windows/Node 24 in any form, and a load rig rather than a lucky third run.
+That is the next thing to try if this flake ever blocks a release again; until then the widened
+guard has removed the failure that actually cost four deploys.
 
 ### Reproducing the gate evidence
 
