@@ -10,7 +10,7 @@ import { feedingTasksApi } from '../../api/feed';
 import { getApiError } from '../../api/farmApi';
 import type { DietPlanItem, FeedingTask, FeedingTaskStatus } from '../../types';
 import { useTranslation } from 'react-i18next';
-import { useEnumOptions } from '../../i18n/enumOptions';
+import { useEnumOptions, enumLabelOf } from '../../i18n/enumOptions';
 
 const STATUS_COLORS: Record<FeedingTaskStatus, string> = {
   Pending: 'gold',
@@ -94,7 +94,7 @@ const FeedingTasksPage: React.FC = () => {const { t } = useTranslation('feed');
     {
       title: t('status'),
       dataIndex: 'status',
-      render: (s: FeedingTaskStatus) => <Tag color={STATUS_COLORS[s]}>{s}</Tag>,
+      render: (s: FeedingTaskStatus) => <Tag color={STATUS_COLORS[s]}>{enumLabelOf('feedingTaskStatus', s)}</Tag>,
     },
     {
       title: t('items'),

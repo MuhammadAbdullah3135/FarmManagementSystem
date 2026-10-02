@@ -23,7 +23,7 @@ import { useAuthStore } from '../stores/authStore';
 import { useFarmStore } from '../stores/farmStore';
 import type { Employee, FarmTask, FarmTaskPriority, FarmTaskStatus } from '../types';
 import { useTranslation } from 'react-i18next';
-import { useEnumOptions } from '../i18n/enumOptions';
+import { useEnumOptions, enumLabelOf } from '../i18n/enumOptions';
 
 const { Text } = Typography;
 
@@ -249,7 +249,7 @@ const TasksPage: React.FC = () => {const { t } = useTranslation('tasks');
       title: t('priority'),
       dataIndex: 'priority',
       width: 100,
-      render: (p: FarmTaskPriority) => <Tag color={PRIORITY_COLORS[p]}>{p}</Tag>,
+      render: (p: FarmTaskPriority) => <Tag color={PRIORITY_COLORS[p]}>{enumLabelOf('taskPriority', p)}</Tag>,
     },
     {
       title: t('status'),
@@ -257,7 +257,7 @@ const TasksPage: React.FC = () => {const { t } = useTranslation('tasks');
       width: 130,
       render: (s: FarmTaskStatus, r) => (
         <Space direction="vertical" size={2}>
-          <Tag color={STATUS_COLORS[s]}>{s}</Tag>
+          <Tag color={STATUS_COLORS[s]}>{enumLabelOf('taskStatus', s)}</Tag>
           {pendingCompletions.has(r.id) && <Tag color="blue">{t('waitingToSync')}</Tag>}
         </Space>
       ),

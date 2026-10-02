@@ -11,7 +11,7 @@ import dayjs from 'dayjs';
 import { useNavigate } from 'react-router-dom';
 import type { BreedingRecord } from '../../types';
 import { useTranslation } from 'react-i18next';
-import { useEnumOptions } from '../../i18n/enumOptions';
+import { useEnumOptions, enumLabelOf } from '../../i18n/enumOptions';
 
 interface AnimalOption {
   id: string;
@@ -19,8 +19,6 @@ interface AnimalOption {
   name?: string;
 }
 
-const METHOD_LABELS: Record<number, string> = { 0: 'Natural', 1: 'AI' };
-const RESULT_LABELS: Record<number, string> = { 0: 'Pending', 1: 'Confirmed', 2: 'Failed' };
 const RESULT_COLORS: Record<number, string> = { 0: 'orange', 1: 'green', 2: 'red' };
 
 export default function BreedingRecordsPage() {const { t } = useTranslation('breeding'); 
@@ -193,13 +191,13 @@ export default function BreedingRecordsPage() {const { t } = useTranslation('bre
       title: t('method'),
       dataIndex: 'method',
       key: 'method',
-      render: (val: number) => METHOD_LABELS[val] || 'Unknown',
+      render: (val: number) => enumLabelOf('breedingMethod', val),
     },
     {
       title: t('result'),
       dataIndex: 'result',
       key: 'result',
-      render: (val: number) => <Tag color={RESULT_COLORS[val]}>{RESULT_LABELS[val]}</Tag>,
+      render: (val: number) => <Tag color={RESULT_COLORS[val]}>{enumLabelOf('breedingResult', val)}</Tag>,
     },
     {
       title: t('vet'),
