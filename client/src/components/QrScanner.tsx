@@ -191,6 +191,7 @@ const QrScanner: React.FC<QrScannerProps> = ({ onDecode, active, resumeToken = 0
       return;
     }
 
+  // oxlint-disable-next-line react/set-state-in-effect -- Camera lifecycle is an external system; startCamera reports its stream via state.
     void startCamera();
     return stopCamera;
   }, [active, startCamera, stopCamera]);

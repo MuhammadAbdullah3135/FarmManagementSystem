@@ -86,6 +86,7 @@ const DashboardPage: React.FC = () => {const { t } = useTranslation('dashboard')
   }, []);
 
   useEffect(() => {
+  // oxlint-disable-next-line react/set-state-in-effect -- Initial summary/chart fetch: server state needed on first paint.
     loadSummary();
     loadCharts();
   }, [loadSummary, loadCharts]);

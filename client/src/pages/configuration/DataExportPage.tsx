@@ -88,6 +88,7 @@ const DataExportPage: React.FC = () => {const { t } = useTranslation('configurat
   }, []);
 
   useEffect(() => {
+  // oxlint-disable-next-line react/set-state-in-effect -- Initial export-status fetch: server state the in-flight poller below continues.
     void load();
   }, [load]);
 

@@ -58,6 +58,7 @@ const AuditLogPage: React.FC = () => {const { t: translate } = useTranslation('a
   }, [activeFarm, page, pageSize, entityType, action, search, dateRange]);
 
   useEffect(() => {
+  // oxlint-disable-next-line react/set-state-in-effect -- Fetch on mount and filter change: the audit trail is server state.
     fetchData();
   }, [fetchData]);
 

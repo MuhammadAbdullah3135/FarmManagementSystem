@@ -62,6 +62,7 @@ const NotificationsPage: React.FC = () => {const { t } = useTranslation('notific
   }, [activeFarm, unreadOnly, includeDismissed, page]);
 
   useEffect(() => {
+  // oxlint-disable-next-line react/set-state-in-effect -- Fetch on mount/filter change: the notification list is server state, not derivable at render.
     void load();
   }, [load]);
 

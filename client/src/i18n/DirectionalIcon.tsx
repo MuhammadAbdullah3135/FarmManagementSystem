@@ -57,6 +57,7 @@ export const DirectionalGlyph = ({ mark }: { mark: DirectionalGlyphMark }) => {
 };
 
 /** The direction i18next is using right now, as a React subscription. */
+// oxlint-disable-next-line react/only-export-components -- The direction hook is why this file exists; glyphs and their source move together.
 export const useDirection = (): Direction => {
   const { i18n } = useTranslation();
   return directionOf(normalizeLocale(i18n.language) ?? DEFAULT_LOCALE);
@@ -70,6 +71,7 @@ export const useDirection = (): Direction => {
  * this rather than hardcoding a side. Exported separately from the icon rendering so the
  * decision can be asserted without opening a drawer.
  */
+// oxlint-disable-next-line react/only-export-components -- Exported for the RTL render test; kept beside the direction type it interprets.
 export const startSide = (direction: Direction): 'left' | 'right' =>
   direction === 'rtl' ? 'right' : 'left';
 

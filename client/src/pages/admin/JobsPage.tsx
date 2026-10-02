@@ -60,6 +60,7 @@ const JobsPage: React.FC = () => {const { t } = useTranslation('admin');
   }, [t]);
 
   useEffect(() => {
+  // oxlint-disable-next-line react/set-state-in-effect -- Initial job-status fetch: server state the interval poll below keeps fresh.
     void load();
   }, [load]);
 

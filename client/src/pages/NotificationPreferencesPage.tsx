@@ -109,6 +109,7 @@ const NotificationPreferencesPage: React.FC = () => {const { t } = useTranslatio
   }, [activeFarm]);
 
   useEffect(() => {
+  // oxlint-disable-next-line react/set-state-in-effect -- Initial fetch of preferences and push settings: server state an effect must synchronize.
     void load();
     void loadPushSettings();
     void readBrowserPush();

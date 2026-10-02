@@ -83,6 +83,7 @@ const stripBase = (pathname: string) =>
  * Labels are keys (`nav:*`) rather than text: the tree is language-free, and
  * {@link localizeMenuItems} resolves each one for the active language.
  */
+// oxlint-disable-next-line react/only-export-components -- Menu tree is the layout's own data; splitting one nav concept across files buys only dev-mode HMR.
 export const appMenuItems: AppMenuItem[] = [
   {
     key: '/dashboard',
@@ -224,6 +225,7 @@ export const appMenuItems: AppMenuItem[] = [
 ];
 
 /** Resolves the `labelKey` of every entry (and its children) for the active language. */
+// oxlint-disable-next-line react/only-export-components -- Resolver belongs to the tree it resolves; same file by design.
 export const localizeMenuItems = (items: AppMenuItem[], t: TFunction): AppMenuItem[] =>
   items.map((item) => ({
     ...item,
@@ -375,11 +377,13 @@ const isFarmIndependent = (pathname: string) =>
 
   useEffect(() => {
     if (!isMobile) {
+// oxlint-disable-next-line react/set-state-in-effect -- Reset on breakpoint change only: the open flag is user input, not derivable from isMobile.
       setMobileMenuOpen(false);
     }
   }, [isMobile]);
 
   useEffect(() => {
+  // oxlint-disable-next-line react/set-state-in-effect -- Close the drawer on navigation: a route change is an external event, not derivable in render.
     setMobileMenuOpen(false);
   }, [location.pathname]);
 
