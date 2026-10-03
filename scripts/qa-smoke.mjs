@@ -17,6 +17,8 @@
 // Exit code 1 on any failure, with ::error:: annotations naming the endpoint and the API's
 // traceId so the failure is findable in the Heroku logs.
 import { appendFile } from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 const BASE = process.env.FMS_API ?? 'https://fms-api-3ba95327d590.herokuapp.com/api';
 const ORIGIN = new URL(BASE).origin;
@@ -24,12 +26,31 @@ const EMAIL = process.env.FMS_EMAIL ?? 'Test@apk.com';
 const PASSWORD = process.env.FMS_PASSWORD ?? 'testApk123';
 const EXPECTED_SHA = process.env.FMS_SMOKE_SHA?.trim() || null;
 const EXPECTED_FARM = process.env.FMS_SMOKE_FARM?.trim() || null;
-const PAGES_ORIGIN = process.env.FMS_PAGES_ORIGIN ?? 'https://muhammadabdullah3135.github.io';
+// The deployed web app, as a full URL. Pages serves this repo as a *project* site, so the path
+// matters: the bare host is GitHub's 404.
+//
+// The CORS origin used to be a second constant with its own default, and the two were allowed
+// to disagree — which is exactly the shape of bug this script exists to catch, sitting inside
+// the script. Deriving one from the other makes a wrong URL and a wrong origin the same
+// mistake, so they cannot drift apart again.
+const PAGES_URL = process.env.FMS_PAGES_URL ?? 'https://muhammadabdullah3135.github.io/FarmManagementSystem/';
+// An Origin is scheme + host + port. The project path is deliberately NOT part of it, so this
+// is the same string the browser sends and the API has to allow — and the preflight below
+// compares against exactly this value for exactly that reason.
+const PAGES_ORIGIN = new URL(PAGES_URL).origin;
+// The Pages workflow and the Heroku workflow are separate runs, so the API can be serving a
+// new build while Pages is still publishing the previous one. A freshness check that does not
+// allow for that is a flake waiting to page somebody at 3am, so it polls briefly before failing.
+const PAGES_SETTLE_MS = Number(process.env.FMS_PAGES_SETTLE_MS ?? 120_000);
 const READ_ONLY = process.argv.includes('--read-only') || process.env.FMS_SMOKE_READONLY === '1';
 const REQUEST_TIMEOUT_MS = 20_000;
 
 const results = [];
 const failures = [];
+// The repository root, for reading the bundles the freshness probes are sampled from. The
+// script is run from the repository root by the deploy workflow; a `script/`-relative guess
+// would be wrong in one of the two layouts it has been run in.
+const ROOT = process.cwd();
 
 function check(name, ok, detail = '') {
   results.push({ name, ok, detail });
@@ -186,6 +207,109 @@ if (farmPath) {
   const ok = preflight.status >= 200 && preflight.status < 300 && (allowed === PAGES_ORIGIN || allowed === '*');
   check(`preflight from ${PAGES_ORIGIN}`, ok, ok ? `allow-origin: ${allowed}` : `status ${preflight.status}, allow-origin: ${allowed}`);
 }
+
+// ── 3b. the web app is actually published there ─────────────
+//
+// The preflight above proves the API would talk to that origin. It says nothing about whether
+// anything is served there: GitHub's "Site not found" page answers 200-ish with valid CORS
+// implications, and so does an empty deployment. For nine deploys this section asserted a
+// configuration and reported success, and nobody noticed that it never asked whether the app
+// existed — the same failure as every other one in this project, except that this one was
+// sitting inside the script whose job is to catch them.
+header('Web app is published');
+const page = await request(PAGES_URL);
+const isNotFoundPage = /Site not found/i.test(page.text);
+const assets = [...page.text.matchAll(/(?:src|href)="([^"]+\.js)"/g)].map((m) => m[1]);
+check(
+  `${PAGES_URL} serves the app`,
+  page.status === 200 && !isNotFoundPage && assets.length > 0,
+  page.status !== 200
+    ? `status ${page.status}`
+    : isNotFoundPage
+      ? 'GitHub answered with its "Site not found" page — the site is not published'
+      : assets.length === 0
+        ? 'the page references no JavaScript; it is not the built app'
+        : `${assets.length} script asset(s)`,
+);
+
+// ── 3c. the published bundle carries this build's translations ──
+//
+// The API and the frontend deploy separately, so "the key is on the wire" and "the client can
+// render it" are two different claims. Only the second one is observable here, and until now
+// nothing observed it: a Pages deploy that silently served a stale asset would leave every
+// check in this script green while every Spanish and Arabic reader saw the English fallback.
+//
+// The probes are sampled out of the repository's own bundles rather than written out by hand.
+// A hand-written list would be one more list to keep in step — the exact thing every slice in
+// this project has been removing — and it would go stale the day a translation was reworded,
+// at which point it would report a healthy deploy as broken.
+header('Published bundle is current');
+const SAMPLE = 10;
+const bundles = {
+  es: JSON.parse(readFileSync(join(ROOT, 'client/src/i18n/locales/es/validation.json'), 'utf8')).validation,
+  ar: JSON.parse(readFileSync(join(ROOT, 'client/src/i18n/locales/ar/validation.json'), 'utf8')).validation,
+};
+
+/**
+ * An evenly spaced sample of a namespace's values.
+ *
+ * Evenly spaced rather than the first N or the last N, because the interesting case is a stale
+ * bundle and both of those miss it: the first N are the oldest keys, which a stale bundle has in
+ * abundance, and the last N depend on insertion order surviving the build. Sorted keys sampled
+ * across the whole range put the newest material in the sample wherever it lands, and the
+ * sample changes as the bundle grows rather than needing to be updated.
+ */
+function sampleSentences(entries, count) {
+  const keys = Object.keys(entries).sort();
+  const values = [];
+  for (let i = 0; i < count; i++) {
+    const key = keys[Math.floor((i * keys.length) / count)];
+    const value = entries[key];
+    // A value too short to be distinctive proves nothing: a two-letter string can appear
+    // anywhere in a 4 MiB bundle.
+    if (typeof value === 'string' && value.length >= 12) values.push({ key, value });
+  }
+  return values;
+}
+
+const served = assets.length ? (await Promise.all(
+  assets.map(async (href) => (await request(new URL(href, PAGES_URL))).text))).join('\n') : '';
+
+/**
+ * One poll across the window, rather than a fixed sleep.
+ *
+ * The two deploys are independent runs, so right after a release Pages may still be publishing
+ * the previous build. Retrying is the difference between a check that is right and one that is
+ * right most of the time.
+ */
+const deadline = Date.now() + PAGES_SETTLE_MS;
+let freshness;
+for (;;) {
+  const missing = [];
+  for (const [locale, entries] of Object.entries(bundles)) {
+    for (const { key, value } of sampleSentences(entries, SAMPLE)) {
+      if (!served.includes(value)) missing.push(`${locale}.${key}`);
+    }
+  }
+  freshness = missing;
+  if (!missing.length || Date.now() >= deadline) break;
+  console.log(`  note  the published bundle is behind the API (${missing.length} probe(s)); retrying`);
+  await sleep(15_000);
+}
+
+const probeTotal = SAMPLE * Object.keys(bundles).length;
+check(
+  'the published bundle carries the current translations',
+  assets.length > 0 && freshness.length === 0,
+  // The reason matters as much as the failure. If nothing was fetched, every probe is trivially
+  // missing, and reporting that as "the bundle is stale" sends whoever reads it to look at the
+  // wrong deploy. The previous section already says whether the site is published at all.
+  assets.length === 0
+    ? 'nothing was published to check; see the section above'
+    : freshness.length
+      ? `${freshness.length} of ${probeTotal} sampled sentences are missing: ${freshness.slice(0, 4).join(', ')}${freshness.length > 4 ? '…' : ''}`
+      : `${probeTotal} sampled sentences found across ${Object.keys(bundles).length} locales`,
+);
 
 // ── 4. the read contracts ───────────────────────────────────
 //

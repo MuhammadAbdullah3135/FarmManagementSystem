@@ -1346,6 +1346,21 @@ Heroku API and the `Test@apk.com` QA account.
    in (`ARG GIT_SHA` → `FMS_BUILD_SHA`), the same way the SPA already stamps `VITE_BUILD_SHA`into its bundle. A missing stamp (`unknown`) or a different commit is a failure, never a skip.
 2. **CORS preflight** for the Pages origin — the one contract no in-process test can see, and
    the one whose misconfiguration would break the whole web app while every API test stayed green.
+3. **That the web app is actually published there.** The preflight above proves the API *would*
+   talk to that origin; it says nothing about whether anything is served from it, so an
+   unpublished site, a wiped deploy, or GitHub’s “Site not found” page all satisfied it. The
+   script now fetches the Pages URL and fails unless it returns the built app — a real asset,
+   not the not-found page. This defect sat in the script that exists to catch exactly this kind
+   of defect, and survived every release.
+4. **That the published bundle carries the current translations.** The API and the frontend
+   deploy as two independent workflows, so “the key is on the wire” and “the client can render
+   it” are separate claims, and only the second was unobserved: a Pages deploy serving a stale
+   asset left every other check green while every Spanish and Arabic reader saw the English
+   fallback. Twenty sentences are sampled evenly across the repository’s Spanish and Arabic
+   bundles and required to be present in the served JavaScript. The samples are read from the
+   bundles rather than written out, so they cannot go stale themselves, and the check polls for
+   two minutes first because Pages may still be publishing the previous build when the API
+   release has already happened.
 3. **The endpoints that have broken in production before** — the two 500s that grouped by a
    computed month label inside the query (`dashboard/charts`, `reports/animals`), the six
    date-only requests that answered 400 because a naive `DateTime` reached a `timestamptz`
@@ -1372,7 +1387,15 @@ node scripts/qa-smoke.mjs                           # includes create → update
 FMS_SMOKE_SHA=<commit> node scripts/qa-smoke.mjs    # also asserts /health reports that commit
 FMS_SMOKE_FARM=OtherFarm node scripts/qa-smoke.mjs  # writes only if the account owns that farm
 FMS_API=https://<app>.herokuapp.com/api node scripts/qa-smoke.mjs
+FMS_PAGES_URL=https://<user>.github.io/<repo>/ node scripts/qa-smoke.mjs   # the deployed web app
+FMS_PAGES_SETTLE_MS=0 node scripts/qa-smoke.mjs  # do not wait for Pages to catch up
 ```
+
+`FMS_PAGES_URL` is the deployed web app, including its project path — this repository is served
+from `https://<user>.github.io/<repo>/`, and the bare host is a 404. The CORS origin is *derived*
+from it rather than configured separately, because an `Origin` is scheme + host + port: the path
+is not part of it, so the browser sends the bare host and the two values must not be allowed to
+drift apart as two independent constants.
 
 `FMS_API` is the app's own `.../api` URL — the same value `client/.env.production` is built with.
 CI passes it directly rather than assembling it from `HEROKU_APP_NAME`, because the Heroku CLI
