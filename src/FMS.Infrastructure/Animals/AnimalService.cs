@@ -248,7 +248,7 @@ public class AnimalService : IAnimalService
     public async Task<Result<AnimalDetailDto>> CreateAnimalAsync(Guid farmId, CreateAnimalRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.TagNumber))
-            return Result<AnimalDetailDto>.Validation("Tag number is required");
+            return Result<AnimalDetailDto>.Validation("Tag number is required", DomainMessageKeys.TagNumberRequired);
 
         var item = new BulkAnimalCreateItem { Id = Guid.NewGuid(), Request = request };
 
@@ -317,7 +317,7 @@ public class AnimalService : IAnimalService
     private async Task<Result<BulkAnimalCreateResultDto>> ValidateBatchAsync(Guid farmId, IReadOnlyList<BulkAnimalCreateItem> items)
     {
         if (items.Count == 0)
-            return Result<BulkAnimalCreateResultDto>.Validation("No animals were supplied");
+            return Result<BulkAnimalCreateResultDto>.Validation("No animals were supplied", DomainMessageKeys.NoAnimalsSupplied);
 
         var lookups = await LoadCreationLookupsAsync(farmId, items);
         var result = new BulkAnimalCreateResultDto { RequestedCount = items.Count };
@@ -368,7 +368,7 @@ public class AnimalService : IAnimalService
             return Result<AnimalDetailDto>.NotFound("Animal not found", DomainMessageKeys.AnimalNotFound);
 
         if (string.IsNullOrWhiteSpace(request.TagNumber))
-            return Result<AnimalDetailDto>.Validation("Tag number is required");
+            return Result<AnimalDetailDto>.Validation("Tag number is required", DomainMessageKeys.TagNumberRequired);
 
         var tag = request.TagNumber.Trim();
         var tagExists = await _context.Animals
@@ -478,7 +478,7 @@ public class AnimalService : IAnimalService
             return Result<AnimalDetailDto>.NotFound("Animal status not found", DomainMessageKeys.AnimalStatusNotFound);
 
         if (animal.AnimalStatusId == newStatus.Id)
-            return Result<AnimalDetailDto>.Validation("Animal already has this status");
+            return Result<AnimalDetailDto>.Validation("Animal already has this status", DomainMessageKeys.AnimalAlreadyHasStatus);
 
         var oldStatusName = await _context.AnimalStatuses
             .Where(s => s.Id == animal.AnimalStatusId)
@@ -525,7 +525,7 @@ public class AnimalService : IAnimalService
             return Result<AnimalIdentificationDto>.NotFound("Animal not found", DomainMessageKeys.AnimalNotFound);
 
         if (string.IsNullOrWhiteSpace(request.Value))
-            return Result<AnimalIdentificationDto>.Validation("Identification value is required");
+            return Result<AnimalIdentificationDto>.Validation("Identification value is required", DomainMessageKeys.IdentificationValueRequired);
 
         var identificationType = await _context.IdentificationTypes
             .FirstOrDefaultAsync(it => it.Id == request.IdentificationTypeId && it.FarmId == farmId);
@@ -648,7 +648,7 @@ public class AnimalService : IAnimalService
             return Result<WeightRecordDto>.NotFound("Animal not found", DomainMessageKeys.AnimalNotFound);
 
         if (request.WeightKg <= 0)
-            return Result<WeightRecordDto>.Validation("Weight must be greater than zero");
+            return Result<WeightRecordDto>.Validation("Weight must be greater than zero", DomainMessageKeys.WeightMustBePositive);
 
         if (request.RecordedAt != default
             && MutationTimestampRules.IsTooFarInTheFuture(request.RecordedAt, DateTime.UtcNow))
@@ -719,7 +719,7 @@ public class AnimalService : IAnimalService
             return Result<WeightRecordDto>.NotFound("Weight record not found", DomainMessageKeys.WeightRecordNotFound);
 
         if (request.WeightKg <= 0)
-            return Result<WeightRecordDto>.Validation("Weight must be greater than zero");
+            return Result<WeightRecordDto>.Validation("Weight must be greater than zero", DomainMessageKeys.WeightMustBePositive);
 
         if (request.RecordedAt != default
             && MutationTimestampRules.IsTooFarInTheFuture(request.RecordedAt, DateTime.UtcNow))
@@ -957,7 +957,7 @@ public class AnimalService : IAnimalService
             return Result<AnimalDocumentDto>.NotFound("Animal not found", DomainMessageKeys.AnimalNotFound);
 
         if (string.IsNullOrWhiteSpace(category))
-            return Result<AnimalDocumentDto>.Validation("Category is required");
+            return Result<AnimalDocumentDto>.Validation("Category is required", DomainMessageKeys.AnimalDocumentCategoryRequired);
 
         var saved = await _fileStorage.SaveAsync(
             $"farms/{farmId}/animals/{animalId}/documents",
@@ -1046,7 +1046,7 @@ public class AnimalService : IAnimalService
             return Result<AnimalFileDownload>.NotFound("Document not found", DomainMessageKeys.DocumentNotFound);
 
         if (!await _fileStorage.ExistsAsync(document.StoragePath))
-            return Result<AnimalFileDownload>.NotFound("Document file is missing from storage");
+            return Result<AnimalFileDownload>.NotFound("Document file is missing from storage", DomainMessageKeys.DocumentFileMissing);
 
         return Result<AnimalFileDownload>.Success(new AnimalFileDownload
         {
@@ -1065,7 +1065,7 @@ public class AnimalService : IAnimalService
             return Result<AnimalFileDownload>.NotFound("Image not found", DomainMessageKeys.ImageNotFound);
 
         if (!await _fileStorage.ExistsAsync(image.StoragePath))
-            return Result<AnimalFileDownload>.NotFound("Image file is missing from storage");
+            return Result<AnimalFileDownload>.NotFound("Image file is missing from storage", DomainMessageKeys.ImageFileMissing);
 
         return Result<AnimalFileDownload>.Success(new AnimalFileDownload
         {
@@ -1088,10 +1088,10 @@ public class AnimalService : IAnimalService
             return Result<AnimalTransferDto>.NotFound("Destination location not found", DomainMessageKeys.DestinationLocationNotFound);
 
         if (animal.LocationId == request.ToLocationId)
-            return Result<AnimalTransferDto>.Validation("Animal is already in this location");
+            return Result<AnimalTransferDto>.Validation("Animal is already in this location", DomainMessageKeys.AnimalAlreadyInLocation);
 
         if (request.TransferredAt.HasValue && request.TransferredAt.Value > DateTime.UtcNow.AddMinutes(5))
-            return Result<AnimalTransferDto>.Validation("Transfer date cannot be in the future");
+            return Result<AnimalTransferDto>.Validation("Transfer date cannot be in the future", DomainMessageKeys.TransferDateFuture);
 
         var transferredAt = request.TransferredAt ?? DateTime.UtcNow;
         var userId = _currentUser.GetUserId();
@@ -1157,7 +1157,7 @@ public class AnimalService : IAnimalService
     public async Task<Result<BulkOperationResultDto>> BulkChangeStatusAsync(Guid farmId, BulkStatusChangeRequest request)
     {
         if (request.AnimalIds.Count == 0)
-            return Result<BulkOperationResultDto>.Validation("No animals selected");
+            return Result<BulkOperationResultDto>.Validation("No animals selected", DomainMessageKeys.NoAnimalsSelected);
 
         var status = await _context.AnimalStatuses
             .FirstOrDefaultAsync(s => s.Id == request.NewStatusId && s.FarmId == farmId);
@@ -1219,7 +1219,7 @@ public class AnimalService : IAnimalService
     public async Task<Result<BulkOperationResultDto>> BulkTransferAsync(Guid farmId, BulkTransferRequest request)
     {
         if (request.AnimalIds.Count == 0)
-            return Result<BulkOperationResultDto>.Validation("No animals selected");
+            return Result<BulkOperationResultDto>.Validation("No animals selected", DomainMessageKeys.NoAnimalsSelected);
 
         var toLocation = await _context.Locations
             .FirstOrDefaultAsync(l => l.Id == request.ToLocationId && l.FarmId == farmId);
@@ -1551,7 +1551,7 @@ public class AnimalService : IAnimalService
     private static Error? CheckTag(CreateAnimalRequest request, CreationLookups lookups)
     {
         if (string.IsNullOrWhiteSpace(request.TagNumber))
-            return Error.Validation("Tag number is required");
+            return Error.Validation("Tag number is required", DomainMessageKeys.TagNumberRequired);
 
         var tag = request.TagNumber.Trim();
         return lookups.ExistingTags.Contains(tag)
@@ -1774,7 +1774,7 @@ public class AnimalService : IAnimalService
         foreach (var identification in identifications)
         {
             if (string.IsNullOrWhiteSpace(identification.Value))
-                return Result.Validation("Identification value is required");
+                return Result.Validation("Identification value is required", DomainMessageKeys.IdentificationValueRequired);
         }
 
         var duplicatesInRequest = identifications

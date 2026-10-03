@@ -45,10 +45,10 @@ public class DomainMessageKeyParityTests
         // an equality: the total can only grow as families are keyed, and the lookup family
         // itself is pinned at its own count so a reflection change that dropped *one* group
         // while keeping another would still be caught.
-        // 64 lookup + 47 conflict + 3 supersede + 16 validation = 130.
+        // 64 lookup + 47 conflict + 3 supersede + 42 validation = 156.
         Assert.True(
-            keys.Count >= 130,
-            $"Only {keys.Count} domain message keys were found; at least 130 are expected. A "
+            keys.Count >= 156,
+            $"Only {keys.Count} domain message keys were found; at least 156 are expected. A "
             + "reflection change that enumerates fewer keys than the class declares would make "
             + "this test pass for the wrong reason.");
         Assert.Equal(64, keys.Count(key => key.StartsWith("validation.lookup.", StringComparison.Ordinal)));
@@ -57,9 +57,11 @@ public class DomainMessageKeyParityTests
         // plus 20 argument-taking; the supersede family is 2 argument-free plus 1.
         Assert.Equal(47, keys.Count(key => key.StartsWith("validation.conflict.", StringComparison.Ordinal)));
         Assert.Equal(3, keys.Count(key => key.StartsWith("validation.supersede.", StringComparison.Ordinal)));
-        // The validation family is pinned for the same reason. It is the newest group, so it
-        // is the one a reflection change would most likely miss.
-        Assert.Equal(16, keys.Count(key => key.StartsWith("validation.validation.", StringComparison.Ordinal)));
+        // The validation family is pinned for the same reason, and is the one still growing:
+        // 16 argument-taking sentences, then 23 argument-free across FeedService and
+        // AnimalService. Each service's sweep raises this number, which is the point of pinning
+        // it — a reflection change that missed the newest group would otherwise go unnoticed.
+        Assert.Equal(42, keys.Count(key => key.StartsWith("validation.validation.", StringComparison.Ordinal)));
 
         // One bundle read per namespace, not per key: the lookup family is one namespace.
         var bundles = ClientBundles.TranslatedLocales()

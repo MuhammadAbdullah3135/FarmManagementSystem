@@ -202,11 +202,39 @@ const rows = [];
 for (const file of files) {
   const code = blankComments(readFileSync(file, "utf8"));
   const rel = relative(ROOT, file).split(sep).join("/");
-  const pattern = /\b(?:Error|Result)\s*(?:<[^<>]*>)?\s*\.\s*([A-Za-z][A-Za-z0-9_]*)\s*\(/g;
+  // `Result<List<FeedingTaskDto>>.Validation(...)` has two levels of angle brackets, and
+  // `(?:<[^<>]*>)?` stops at the first `>`. That silently skipped every site whose return
+  // type was itself generic — 7 of FeedService's alone, which the guard test found and the
+  // audit did not. The sixth time in this project that a pattern could not see a whole
+  // category of the thing it checks, and the fifth that the guard caught and the audit missed.
+  //
+  // So the generic is consumed by counting depth rather than by a character class: `>` is a
+  // closer only while a type-argument list is open, and a comparison is not one.
+  const pattern = /\b(?:Error|Result)(?:\s*<(?![<>=!]))?/g;
   let match;
   while ((match = pattern.exec(code)) !== null) {
-    if (!CODES.includes(match[1])) continue;
-    const { args } = readArgs(code, match.index + match[0].length - 1);
+    // Consume the type-argument list by depth, then the factory name and its open paren.
+    //
+    // The depth loop runs only when a `<` was actually consumed. Starting it regardless made a
+    // non-generic `Result.Conflict(` swallow text until it found a stray `>` somewhere later
+    // in the file, which dropped the ConfigurationService composite from the audit entirely —
+    // the failure mode of a counter initialised as if a bracket had been seen.
+    let i = match.index + match[0].length;
+    if (match[0].endsWith("<")) {
+      let angle = 1;
+      while (i < code.length && angle > 0) {
+        if (code[i] === "<") angle++;
+        else if (code[i] === ">") angle--;
+        i++;
+      }
+    }
+    const rest = /^(\s*\.\s*)([A-Za-z][A-Za-z0-9_]*)\s*\(/.exec(code.slice(i));
+    if (!rest) continue;
+    const factory = rest[2];
+    const openParen = i + rest[0].length - 1;
+
+    if (!CODES.includes(factory)) continue;
+    const { args } = readArgs(code, openParen);
     // `$"..."` counts as a literal too. An earlier version required a bare `"` and so
     // skipped all 31 interpolated sites — which are exactly the argument-taking
     // sentences, the ones a reader is most likely to see with the wrong language.
@@ -221,7 +249,7 @@ for (const file of files) {
     rows.push({
       file: rel,
       line,
-      code: match[1],
+      code: factory,
       message: args[0].replace(/^\$?"/, "").replace(/"$/, ""),
       method,
       reachable: reachableMethods.has(method),

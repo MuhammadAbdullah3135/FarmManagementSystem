@@ -293,6 +293,26 @@ const SLICE_2B = [
   'PushDeviceLimitReached', 'FileStoreFailed', 'FileSignFailed',
 ];
 
+/**
+ * The constants the argument-free sweep added, for the same coverage-reporting reason.
+ *
+ * These sites pass a message and a key and nothing else, so the branch below used to skip
+ * them with `args.length < 3` and report a clean run over a set it had never looked at —
+ * the fourth time a check reported a category as absent rather than unknown.
+ */
+const ARGUMENT_FREE = [
+  'AdjustmentQuantityZero', 'QuantityMustBePositive', 'UnitCostNegative', 'MovementDateFuture',
+  'FeedTargetBothSpecified', 'FeedTargetNeitherSpecified', 'FedDateFuture', 'TimeOfDayFormat',
+  'FeedingScheduleLabelTooLong', 'FromDateAfterToDate', 'BreedWrongAnimalTypeInDiet',
+  'QuantityPerFeedingPositive', 'FeedingTaskDateInPast', 'FeedingTaskStatusInvalid',
+  'ConsumptionPeriodInvalid', 'TagNumberRequired', 'NoAnimalsSupplied', 'AnimalAlreadyHasStatus',
+  'IdentificationValueRequired', 'WeightMustBePositive', 'AnimalDocumentCategoryRequired',
+  'DocumentFileMissing', 'ImageFileMissing', 'AnimalAlreadyInLocation', 'TransferDateFuture',
+  'NoAnimalsSelected',
+];
+
+const EXPECTED = [...SLICE_2B, ...ARGUMENT_FREE];
+
 for (const file of SOURCES) {
   const source = readFileSync(file, 'utf8').replace(/\r\n/g, '\n');
 
@@ -306,7 +326,11 @@ for (const file of SOURCES) {
   // as opaque and a comment as prose — which is the same walk the audit performs. Blanking
   // comments up front would have been simpler and is wrong: it walks strings too, and the
   // nested literal inside an interpolated message lost its quotes in the process.
-  const pattern = /\b(?:Error|Result)\s*(?:<[^<>]*>)?\s*\.\s*(?:Validation|Unexpected|Conflict|Superseded)\s*\(/g;
+  // The type argument list is matched to a depth of two because one is not enough:
+  // `Result<List<FeedingTaskDto>>.Validation(` and `Result<PagedResult<FeedingTaskDto>>`
+  // both defeated `<[^<>]*>`, and a pattern that cannot see a shape reports the sites in
+  // that shape as absent rather than unknown.
+  const pattern = /\b(?:Error|Result)\s*(?:<[^<>]*(?:<[^<>]*>[^<>]*)*>)?\s*\.\s*(?:NotFound|Validation|Unexpected|Conflict|Superseded)\s*\(/g;
   let match;
   while ((match = pattern.exec(source)) !== null) {
     calls++;
@@ -314,7 +338,7 @@ for (const file of SOURCES) {
     if (process.argv[2]) {
       console.log(`  ${match[0].trim()} -> ${args.length}: ${args.map((a) => JSON.stringify(a.slice(0, 44))).join(' | ')}`);
     }
-    if (args.length < 3) continue;
+    if (args.length < 2) continue;
 
     // Each argument arrives with its surrounding syntax still attached: the message keeps
     // its quotes, the key its `DomainMessageKeys.` prefix. Strip both before comparing.
@@ -329,6 +353,21 @@ for (const file of SOURCES) {
     coveredConstants.add(constant);
     const template = at(key);
     if (template === undefined) { console.log(`  ?? ${key} is not in the en bundle`); missing++; continue; }
+
+    // An argument-free message is the easy case and the easy case is where the checking
+    // stops: there is no argument dictionary to line up, so both sides are the whole
+    // sentence and equality is the whole test. The hole convention is still asserted —
+    // a bundle that grew a `{{}}` here would render something the server never said.
+    if (args.length < 3) {
+      checked++;
+      if (template !== literal || /\{\{\w+\}\}/.test(template)) {
+        mismatched++;
+        console.log(`  MISMATCH ${key}`);
+        console.log(`    server: ${literal}`);
+        console.log(`    bundle: ${template}`);
+      }
+      continue;
+    }
 
     // The argument dictionary the server passes, as name -> the expression it evaluates.
     const expressionsByName = {};
@@ -348,7 +387,7 @@ for (const file of SOURCES) {
   }
 }
 
-const uncovered = SLICE_2B.filter((name) => !coveredConstants.has(name));
+const uncovered = EXPECTED.filter((name) => !coveredConstants.has(name));
 
 // Why is a named constant not being reached? Prints the source around each use of it,
 // after comment blanking, so the shape that defeats the pattern is visible.
@@ -366,7 +405,7 @@ if (process.argv[2]) {
 }
 
 console.log(`call sites checked: ${checked}   mismatched: ${mismatched}   missing from bundle: ${missing}`);
-console.log(`slice 2b constants covered: ${SLICE_2B.length - uncovered.length}/${SLICE_2B.length}`);
+console.log(`expected constants covered: ${EXPECTED.length - uncovered.length}/${EXPECTED.length}`);
 if (uncovered.length) {
   console.log(`  NOT COVERED: ${uncovered.join(', ')}`);
   process.exitCode = 1;

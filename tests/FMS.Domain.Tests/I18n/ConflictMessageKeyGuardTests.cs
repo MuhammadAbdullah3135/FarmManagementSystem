@@ -68,6 +68,14 @@ public class ConflictMessageKeyGuardTests
     /// <c>Singleline</c> option is what lets <c>\s*</c> span the newline; the line number in
     /// the failure message comes from the match offset.
     /// </para>
+    /// <para>
+    /// <see cref="ValidationMessageKeyGuardTests"/> copies this pattern for the validation
+    /// family rather than sharing it, and the duplication is deliberate: the two guard
+    /// different factories, and a shared abstraction over two regexes would be a place for
+    /// both to be wrong at once. It also repeats the comments that matter — whole-file
+    /// matching, the reported line, the named exemption — so a change to one is not read as a
+    /// change to the other.
+    /// </para>
     /// </summary>
     private static readonly Regex Keyless = new(
         @"\.(?:Conflict|Superseded)\s*\(\s*\$?""[^""]*""\s*\)",

@@ -473,4 +473,91 @@ public static class DomainMessageKeys
     /// <summary>The exact English this API has always answered: “Failed to sign download URL: {detail}”</summary>
     public const string FileSignFailed = "validation.validation.fileSignFailed";
 
+    // ── validation, argument-free ─────────────────────────────────────────────────────────
+    // The shape the "not found" and conflict families already had: no arguments, so the key is
+    // the whole message. These 22 cover 33 sites across FeedService and AnimalService, because a
+    // sentence said three times is one sentence — “Quantity must be greater than zero” appears
+    // at three feed sites and “Tag number is required” at three animal ones, and giving each its
+    // own key would mean three translations to keep in step rather than one.
+
+    // Feed
+    /// <summary>The exact English this API has always answered: “Adjustment quantity cannot be zero”</summary>
+    public const string AdjustmentQuantityZero = "validation.validation.adjustmentQuantityZero";
+
+    /// <summary>The exact English this API has always answered: “Quantity must be greater than zero”</summary>
+    public const string QuantityMustBePositive = "validation.validation.quantityMustBePositive";
+
+    /// <summary>The exact English this API has always answered: “Unit cost cannot be negative”</summary>
+    public const string UnitCostNegative = "validation.validation.unitCostNegative";
+
+    /// <summary>The exact English this API has always answered: “Movement date cannot be in the future”</summary>
+    public const string MovementDateFuture = "validation.validation.movementDateFuture";
+
+    /// <summary>The exact English this API has always answered: “Specify either an animal or a location, not both”</summary>
+    public const string FeedTargetBothSpecified = "validation.validation.feedTargetBothSpecified";
+
+    /// <summary>The exact English this API has always answered: “Either AnimalId or LocationId must be specified”</summary>
+    public const string FeedTargetNeitherSpecified = "validation.validation.feedTargetNeitherSpecified";
+
+    /// <summary>The exact English this API has always answered: “Fed date cannot be in the future”</summary>
+    public const string FedDateFuture = "validation.validation.fedDateFuture";
+
+    /// <summary>The exact English this API has always answered: “TimeOfDay must be in HH:mm format (e.g. 07:30)”</summary>
+    public const string TimeOfDayFormat = "validation.validation.timeOfDayFormat";
+
+    /// <summary>The exact English this API has always answered: “Label cannot exceed 50 characters”</summary>
+    public const string FeedingScheduleLabelTooLong = "validation.validation.feedingScheduleLabelTooLong";
+
+    /// <summary>The exact English this API has always answered: “From date must be before or equal to To date”</summary>
+    public const string FromDateAfterToDate = "validation.validation.fromDateAfterToDate";
+
+    /// <summary>The exact English this API has always answered: “Breed does not belong to the specified animal type”</summary>
+    public const string BreedWrongAnimalTypeInDiet = "validation.validation.breedWrongAnimalTypeInDiet";
+
+    /// <summary>The exact English this API has always answered: “Quantity per feeding must be greater than zero”</summary>
+    public const string QuantityPerFeedingPositive = "validation.validation.quantityPerFeedingPositive";
+
+    /// <summary>The exact English this API has always answered: “Cannot generate feeding tasks for a past date”</summary>
+    public const string FeedingTaskDateInPast = "validation.validation.feedingTaskDateInPast";
+
+    /// <summary>The exact English this API has always answered: “Status must be one of: Pending, Completed, Skipped”</summary>
+    public const string FeedingTaskStatusInvalid = "validation.validation.feedingTaskStatusInvalid";
+
+    /// <summary>The exact English this API has always answered: “Period must be one of: day, week, month”</summary>
+    public const string ConsumptionPeriodInvalid = "validation.validation.consumptionPeriodInvalid";
+
+    // Animals
+    /// <summary>The exact English this API has always answered: “Tag number is required”</summary>
+    public const string TagNumberRequired = "validation.validation.tagNumberRequired";
+
+    /// <summary>The exact English this API has always answered: “No animals were supplied”</summary>
+    public const string NoAnimalsSupplied = "validation.validation.noAnimalsSupplied";
+
+    /// <summary>The exact English this API has always answered: “Animal already has this status”</summary>
+    public const string AnimalAlreadyHasStatus = "validation.validation.animalAlreadyHasStatus";
+
+    /// <summary>The exact English this API has always answered: “Identification value is required”</summary>
+    public const string IdentificationValueRequired = "validation.validation.identificationValueRequired";
+
+    /// <summary>The exact English this API has always answered: “Weight must be greater than zero”</summary>
+    public const string WeightMustBePositive = "validation.validation.weightMustBePositive";
+
+    /// <summary>The exact English this API has always answered: “Category is required”</summary>
+    public const string AnimalDocumentCategoryRequired = "validation.validation.animalDocumentCategoryRequired";
+
+    /// <summary>The exact English this API has always answered: “Document file is missing from storage”</summary>
+    public const string DocumentFileMissing = "validation.validation.documentFileMissing";
+
+    /// <summary>The exact English this API has always answered: “Image file is missing from storage”</summary>
+    public const string ImageFileMissing = "validation.validation.imageFileMissing";
+
+    /// <summary>The exact English this API has always answered: “Animal is already in this location”</summary>
+    public const string AnimalAlreadyInLocation = "validation.validation.animalAlreadyInLocation";
+
+    /// <summary>The exact English this API has always answered: “Transfer date cannot be in the future”</summary>
+    public const string TransferDateFuture = "validation.validation.transferDateFuture";
+
+    /// <summary>The exact English this API has always answered: “No animals selected”</summary>
+    public const string NoAnimalsSelected = "validation.validation.noAnimalsSelected";
+
 }

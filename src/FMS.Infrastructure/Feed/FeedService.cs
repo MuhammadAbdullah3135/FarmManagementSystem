@@ -146,19 +146,19 @@ public class FeedService : IFeedService
         if (request.MovementType == StockMovementType.Adjustment)
         {
             if (request.Quantity == 0)
-                return Result<StockMovementDto>.Validation("Adjustment quantity cannot be zero");
+                return Result<StockMovementDto>.Validation("Adjustment quantity cannot be zero", DomainMessageKeys.AdjustmentQuantityZero);
         }
         else if (request.Quantity <= 0)
         {
-            return Result<StockMovementDto>.Validation("Quantity must be greater than zero");
+            return Result<StockMovementDto>.Validation("Quantity must be greater than zero", DomainMessageKeys.QuantityMustBePositive);
         }
 
         if (request.UnitCost.HasValue && request.UnitCost.Value < 0)
-            return Result<StockMovementDto>.Validation("Unit cost cannot be negative");
+            return Result<StockMovementDto>.Validation("Unit cost cannot be negative", DomainMessageKeys.UnitCostNegative);
 
         var movementDate = request.MovementDate ?? DateTime.UtcNow;
         if (movementDate > DateTime.UtcNow.AddMinutes(5))
-            return Result<StockMovementDto>.Validation("Movement date cannot be in the future");
+            return Result<StockMovementDto>.Validation("Movement date cannot be in the future", DomainMessageKeys.MovementDateFuture);
 
         var currentStock = await ComputeStockAsync(farmId, feedType.Id);
         var outgoingAmount = request.MovementType switch
@@ -299,12 +299,12 @@ public class FeedService : IFeedService
             return Result<FeedRecordDto>.NotFound("Feed type not found", DomainMessageKeys.FeedTypeNotFound);
 
         if (request.Quantity <= 0)
-            return Result<FeedRecordDto>.Validation("Quantity must be greater than zero");
+            return Result<FeedRecordDto>.Validation("Quantity must be greater than zero", DomainMessageKeys.QuantityMustBePositive);
 
         if (request.AnimalId.HasValue && request.LocationId.HasValue)
-            return Result<FeedRecordDto>.Validation("Specify either an animal or a location, not both");
+            return Result<FeedRecordDto>.Validation("Specify either an animal or a location, not both", DomainMessageKeys.FeedTargetBothSpecified);
         if (!request.AnimalId.HasValue && !request.LocationId.HasValue)
-            return Result<FeedRecordDto>.Validation("Either AnimalId or LocationId must be specified");
+            return Result<FeedRecordDto>.Validation("Either AnimalId or LocationId must be specified", DomainMessageKeys.FeedTargetNeitherSpecified);
 
         Animal? animal = null;
         if (request.AnimalId.HasValue)
@@ -326,7 +326,7 @@ public class FeedService : IFeedService
 
         var fedAt = request.FedAt ?? DateTime.UtcNow;
         if (fedAt > DateTime.UtcNow.AddMinutes(5))
-            return Result<FeedRecordDto>.Validation("Fed date cannot be in the future");
+            return Result<FeedRecordDto>.Validation("Fed date cannot be in the future", DomainMessageKeys.FedDateFuture);
 
         var currentStock = await ComputeStockAsync(farmId, feedType.Id);
         if (currentStock < request.Quantity)
@@ -462,11 +462,11 @@ public class FeedService : IFeedService
             return Result<FeedRecordDto>.NotFound("Feed record not found", DomainMessageKeys.FeedRecordNotFound);
 
         if (request.Quantity <= 0)
-            return Result<FeedRecordDto>.Validation("Quantity must be greater than zero");
+            return Result<FeedRecordDto>.Validation("Quantity must be greater than zero", DomainMessageKeys.QuantityMustBePositive);
 
         var fedAt = request.FedAt ?? record.FedAt;
         if (fedAt > DateTime.UtcNow.AddMinutes(5))
-            return Result<FeedRecordDto>.Validation("Fed date cannot be in the future");
+            return Result<FeedRecordDto>.Validation("Fed date cannot be in the future", DomainMessageKeys.FedDateFuture);
 
         var oldQuantity = record.Quantity;
         var newQuantity = Math.Round(request.Quantity, 2);
@@ -757,7 +757,7 @@ public class FeedService : IFeedService
             return Result<FeedingScheduleDto>.NotFound("Diet plan not found", DomainMessageKeys.DietPlanNotFound);
 
         if (!TryParseTimeOfDay(request.TimeOfDay, out var timeOfDay))
-            return Result<FeedingScheduleDto>.Validation("TimeOfDay must be in HH:mm format (e.g. 07:30)");
+            return Result<FeedingScheduleDto>.Validation("TimeOfDay must be in HH:mm format (e.g. 07:30)", DomainMessageKeys.TimeOfDayFormat);
 
         var duplicate = await _context.FeedingSchedules
             .AnyAsync(s => s.DietPlanId == request.DietPlanId && s.TimeOfDay == timeOfDay);
@@ -771,7 +771,7 @@ public class FeedService : IFeedService
                 new Dictionary<string, object?> { ["time"] = FormatTime(timeOfDay) });
 
         if (request.Label?.Length > 50)
-            return Result<FeedingScheduleDto>.Validation("Label cannot exceed 50 characters");
+            return Result<FeedingScheduleDto>.Validation("Label cannot exceed 50 characters", DomainMessageKeys.FeedingScheduleLabelTooLong);
 
         var schedule = new FeedingSchedule
         {
@@ -803,7 +803,7 @@ public class FeedService : IFeedService
         if (request.TimeOfDay != null)
         {
             if (!TryParseTimeOfDay(request.TimeOfDay, out var parsed))
-                return Result<FeedingScheduleDto>.Validation("TimeOfDay must be in HH:mm format (e.g. 07:30)");
+                return Result<FeedingScheduleDto>.Validation("TimeOfDay must be in HH:mm format (e.g. 07:30)", DomainMessageKeys.TimeOfDayFormat);
             timeOfDay = parsed;
         }
 
@@ -822,7 +822,7 @@ public class FeedService : IFeedService
         if (request.Label != null)
         {
             if (request.Label.Length > 50)
-                return Result<FeedingScheduleDto>.Validation("Label cannot exceed 50 characters");
+                return Result<FeedingScheduleDto>.Validation("Label cannot exceed 50 characters", DomainMessageKeys.FeedingScheduleLabelTooLong);
             schedule.Label = request.Label;
         }
 
@@ -860,7 +860,7 @@ public class FeedService : IFeedService
     {
         var date = request.Date.Date;
         if (date < DateTime.UtcNow.Date)
-            return Result<List<FeedingTaskDto>>.Validation("Cannot generate feeding tasks for a past date");
+            return Result<List<FeedingTaskDto>>.Validation("Cannot generate feeding tasks for a past date", DomainMessageKeys.FeedingTaskDateInPast);
 
         var schedules = await _context.FeedingSchedules
             .Include(s => s.DietPlan)
@@ -925,7 +925,7 @@ public class FeedService : IFeedService
         {
             if (!Enum.TryParse<FeedingTaskStatus>(filter.Status, ignoreCase: true, out var parsed))
                 return Result<PagedResult<FeedingTaskDto>>.Validation(
-                    "Status must be one of: Pending, Completed, Skipped");
+                    "Status must be one of: Pending, Completed, Skipped", DomainMessageKeys.FeedingTaskStatusInvalid);
             status = parsed;
         }
 
@@ -1002,11 +1002,11 @@ public class FeedService : IFeedService
     {
         var normalizedPeriod = string.IsNullOrWhiteSpace(period) ? "day" : period.ToLowerInvariant();
         if (normalizedPeriod != "day" && normalizedPeriod != "week" && normalizedPeriod != "month")
-            return Result<List<ConsumptionTrendPointDto>>.Validation("Period must be one of: day, week, month");
+            return Result<List<ConsumptionTrendPointDto>>.Validation("Period must be one of: day, week, month", DomainMessageKeys.ConsumptionPeriodInvalid);
 
         var range = ResolveRange(from, to);
         if (range == null)
-            return Result<List<ConsumptionTrendPointDto>>.Validation("From date must be before or equal to To date");
+            return Result<List<ConsumptionTrendPointDto>>.Validation("From date must be before or equal to To date", DomainMessageKeys.FromDateAfterToDate);
 
         var records = await LoadRecordsInRangeAsync(farmId, range.Value.From, range.Value.To);
 
@@ -1029,7 +1029,7 @@ public class FeedService : IFeedService
     {
         var range = ResolveRange(from, to);
         if (range == null)
-            return Result<List<FeedTypeBreakdownDto>>.Validation("From date must be before or equal to To date");
+            return Result<List<FeedTypeBreakdownDto>>.Validation("From date must be before or equal to To date", DomainMessageKeys.FromDateAfterToDate);
 
         var records = await LoadRecordsInRangeAsync(farmId, range.Value.From, range.Value.To);
 
@@ -1067,7 +1067,7 @@ public class FeedService : IFeedService
     {
         var range = ResolveRange(from, to);
         if (range == null)
-            return Result<List<AnimalConsumptionDto>>.Validation("From date must be before or equal to To date");
+            return Result<List<AnimalConsumptionDto>>.Validation("From date must be before or equal to To date", DomainMessageKeys.FromDateAfterToDate);
 
         var records = await LoadRecordsInRangeAsync(farmId, range.Value.From, range.Value.To);
 
@@ -1092,7 +1092,7 @@ public class FeedService : IFeedService
     {
         var range = ResolveRange(from, to);
         if (range == null)
-            return Result<List<LocationConsumptionDto>>.Validation("From date must be before or equal to To date");
+            return Result<List<LocationConsumptionDto>>.Validation("From date must be before or equal to To date", DomainMessageKeys.FromDateAfterToDate);
 
         var records = await LoadRecordsInRangeAsync(farmId, range.Value.From, range.Value.To);
 
@@ -1116,7 +1116,7 @@ public class FeedService : IFeedService
     {
         var range = ResolveRange(from, to);
         if (range == null)
-            return Result<FeedCostSummaryDto>.Validation("From date must be before or equal to To date");
+            return Result<FeedCostSummaryDto>.Validation("From date must be before or equal to To date", DomainMessageKeys.FromDateAfterToDate);
 
         var types = await _context.FeedTypes
             .Where(ft => ft.FarmId == farmId)
@@ -1210,8 +1210,7 @@ public class FeedService : IFeedService
                 .FirstOrDefaultAsync(b => b.Id == breedId.Value && b.AnimalType.FarmId == farmId);
             if (breed == null)
                 return Error.NotFound("Breed not found", DomainMessageKeys.BreedNotFound);
-            if (animalTypeId.HasValue && breed.AnimalTypeId != animalTypeId.Value)
-                return Error.Validation("Breed does not belong to the specified animal type");
+            if (animalTypeId.HasValue && breed.AnimalTypeId != animalTypeId.Value)                    return Error.Validation("Breed does not belong to the specified animal type", DomainMessageKeys.BreedWrongAnimalTypeInDiet);
         }
 
         if (ageCategoryId.HasValue &&
@@ -1227,8 +1226,7 @@ public class FeedService : IFeedService
     {
         foreach (var request in requests)
         {
-            if (request.QuantityPerFeeding <= 0)
-                return Error.Validation("Quantity per feeding must be greater than zero");
+            if (request.QuantityPerFeeding <= 0)                    return Error.Validation("Quantity per feeding must be greater than zero", DomainMessageKeys.QuantityPerFeedingPositive);
 
             var feedType = await _context.FeedTypes
                 .FirstOrDefaultAsync(ft => ft.Id == request.FeedTypeId && ft.FarmId == farmId);
