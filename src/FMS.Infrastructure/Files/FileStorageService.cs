@@ -93,7 +93,8 @@ public class FileStorageService : IFileStorageService
     {
         // Local disk has no signing authority. Callers should fall back to streaming.
         return Task.FromResult(Result<PresignedDownloadUrl>.Unexpected(
-            "Presigned URLs are not supported by local file storage"));
+            "Presigned URLs are not supported by local file storage",
+            DomainMessageKeys.PresignedUrlsUnsupported));
     }
 
     /// <summary>

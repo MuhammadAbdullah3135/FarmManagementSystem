@@ -199,7 +199,11 @@
     "vaccineType": "لم يتم العثور على نوع اللقاح",
     "vaccineTypeInFarm": "لم يتم العثور على نوع اللقاح في هذه المزرعة",
     "weightCheckSchedule": "لم يتم العثور على جدول فحص الوزن",
-    "weightRecord": "لم يتم العثور على سجل الوزن"
+    "weightRecord": "لم يتم العثور على سجل الوزن",
+    "noAttendanceToday": "لم يتم العثور على سجل حضور لهذا اليوم",
+    "notFarmMember": "هذا الشخص ليس عضوًا في هذه المزرعة",
+    "noExportArchiveYet": "لا يوجد ملف تصدير لهذه المزرعة بعد. أنشئ واحدًا ونزّله عندما يجهز.",
+    "exportArchiveGone": "لم يعد ملف التصدير مخزّنًا. أنشئ تصديرًا جديدًا لاستبداله."
   },
   "supersede": {
     "completionAlreadyApplied": "تم تطبيق هذا الإكمال بالفعل",
@@ -291,5 +295,11 @@
     "farmOwnerOnly": "يمكن فقط لمالكي المزرعة {{action}}",
     "invalidEmailOrPassword": "البريد الإلكتروني أو كلمة المرور غير صحيحة",
     "invalidOrExpiredRefreshToken": "رمز التحديث غير صالح أو منتهي الصلاحية"
+  },
+  "unexpected": {
+    "presignedUrlsUnsupported": "التخزين المحلي للملفات لا يدعم الروابط الموقّعة مسبقًا"
+  },
+  "unavailable": {
+    "exportJobsDisabled": "تصدير المزرعة بالكامل غير متاح لأن المهام الخلفية معطّلة في هذا النشر (Jobs:Enabled = false)، لذا لن يُنشأ الملف. اطلب من المسؤول تفعيل نظام المهام."
   }
 }

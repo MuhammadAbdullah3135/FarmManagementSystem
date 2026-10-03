@@ -81,7 +81,7 @@ public class FarmMembershipService : IFarmMembershipService
             .FirstOrDefaultAsync(uf => uf.FarmId == farmId && uf.UserId == memberUserId);
 
         if (member is null)
-            return Result<FarmMemberDto>.NotFound("That user is not a member of this farm");
+            return Result<FarmMemberDto>.NotFound("That user is not a member of this farm", DomainMessageKeys.NotFarmMember);
 
         // Demoting the last owner would leave the farm unadministrable.
         if (member.Role == FarmRoles.SystemOwner && request.Role != FarmRoles.SystemOwner &&
@@ -112,7 +112,7 @@ public class FarmMembershipService : IFarmMembershipService
             .FirstOrDefaultAsync(uf => uf.FarmId == farmId && uf.UserId == memberUserId);
 
         if (member is null)
-            return Result.NotFound("That user is not a member of this farm");
+            return Result.NotFound("That user is not a member of this farm", DomainMessageKeys.NotFarmMember);
 
         if (member.Role == FarmRoles.SystemOwner && await IsLastOwnerAsync(farmId, memberUserId))
             return Result.Conflict("A farm must keep at least one owner", DomainMessageKeys.FarmMustKeepAnOwner);

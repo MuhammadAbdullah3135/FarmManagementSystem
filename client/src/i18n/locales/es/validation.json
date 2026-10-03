@@ -199,7 +199,11 @@
     "vaccineType": "No se encontró el tipo de vacuna",
     "vaccineTypeInFarm": "No se encontró el tipo de vacuna en esta granja",
     "weightCheckSchedule": "No se encontró el horario de control de peso",
-    "weightRecord": "No se encontró el registro de peso"
+    "weightRecord": "No se encontró el registro de peso",
+    "noAttendanceToday": "No se encontró ningún registro de asistencia para hoy",
+    "notFarmMember": "Esa persona no es miembro de esta granja",
+    "noExportArchiveYet": "Esta granja aún no tiene un archivo de exportación. Crea uno y descárgalo cuando esté listo.",
+    "exportArchiveGone": "El archivo de exportación ya no está almacenado. Crea una exportación nueva para reemplazarlo."
   },
   "supersede": {
     "completionAlreadyApplied": "Esta finalización ya se aplicó",
@@ -291,5 +295,11 @@
     "farmOwnerOnly": "Solo los propietarios de la granja pueden {{action}}",
     "invalidEmailOrPassword": "Correo electrónico o contraseña incorrectos",
     "invalidOrExpiredRefreshToken": "El token de actualización no es válido o ha caducado"
+  },
+  "unexpected": {
+    "presignedUrlsUnsupported": "El almacenamiento local de archivos no admite URL prefirmadas"
+  },
+  "unavailable": {
+    "exportJobsDisabled": "La exportación de toda la granja no está disponible porque los trabajos en segundo plano están desactivados en esta implementación (Jobs:Enabled = false), por lo que no se generaría el archivo. Pide a un administrador que active el subsistema de trabajos."
   }
 }

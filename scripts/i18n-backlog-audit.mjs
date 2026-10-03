@@ -370,11 +370,18 @@ function crossCheck() {
     holes,
     stale,
     dangling,
-    // Unkeyed sites no guard watches yet, by factory. Reported, never failed: this is the
-    // honest size of the next slices, and a number that goes quiet is how 122 sites stayed
-    // unguarded for as long as they did.
-    unguardedElsewhere: outOfScope.length,
-    unguardedByCode: outOfScope.reduce((acc, r) => {
+    // Unkeyed sites this guard does not claim, by factory, each attributed to the guard that
+    // does own it. Reported, never failed: this is the honest size of the next slices, and a
+    // number that goes quiet is how 122 sites stayed unguarded for as long as they did.
+    //
+    // Attributing matters. The line used to read "no guard watches these N unkeyed sites yet",
+    // which was false for every one of them once the second guard landed: a `Conflict` is the
+    // conflict guard's, and `NotFound`/`Unauthorized`/`Unexpected`/`Unavailable` are the
+    // unclaimed-factory guard's. Printing the count under a claim of no coverage invited the
+    // reader to file the work twice — or to read a covered site as a hole. Same class of bug as
+    // the one this script exists to catch: a number reported as something it is not.
+    outOfScopeCount: outOfScope.length,
+    outOfScopeByCode: outOfScope.reduce((acc, r) => {
       acc[r.code] = (acc[r.code] || 0) + 1;
       return acc;
     }, {}),
@@ -413,8 +420,23 @@ function report() {
       + " guard matches a single literal argument, the audit any argument list:");
     for (const s of check.sites) console.log(`    ${String(s.audit).padStart(3)} / ${String(s.guard).padStart(3)}  ${s.file}`);
   }
-  console.log(`  no guard watches these ${check.unguardedElsewhere} unkeyed sites yet:`
-    + ` ${JSON.stringify(check.unguardedByCode)}`);
+  // The guards that exist, by the factories they claim. Kept beside the numbers so the report
+  // can say who owns what instead of only that something is unowned.
+  const OWNER = {
+    Conflict: "ConflictMessageKeyGuard",
+    Supersede: "ConflictMessageKeyGuard",
+    NotFound: "LookupMessageKeyGuard",
+    Lookup: "LookupMessageKeyGuard",
+    Unauthorized: "UnclaimedFactoryKeyGuard",
+    Unexpected: "UnclaimedFactoryKeyGuard",
+    Unavailable: "UnclaimedFactoryKeyGuard",
+  };
+  const elsewhere = Object.entries(check.outOfScopeByCode).map(([code, n]) => {
+    const owner = OWNER[code];
+    return owner ? `${code}:${n} (owned by the ${owner})` : `${code}:${n} (NO guard claims this factory)`;
+  });
+  console.log(`  outside the factories this guard claims: ${check.outOfScopeCount}`
+    + ` — ${elsewhere.length ? elsewhere.join(", ") : "none"}`);
   console.log("");
 }
 

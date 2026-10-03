@@ -176,12 +176,8 @@ function enumLabelsFor(key, expressionsByName) {
   return labels;
 }
 
-function renderServer(literal, expressionsByName) {
-  // A C# message may be written as adjacent literals joined with `+`, which is one sentence
-  // but several literals. Join them before the holes are read, or the split leaves a stray
-  // quote and a dangling `+` in the middle of the sentence being compared.
-  const joined = literal.replace(/"\s*\+\s*"/g, '');
-  return joined.replace(/\{([^{}]+)\}/g, (whole, expression) => {
+function renderServer(sentence, expressionsByName) {
+  return sentence.replace(/\{([^{}]+)\}/g, (whole, expression) => {
     const trimmed = expression.trim();
     for (const [name, value] of Object.entries(expressionsByName)) {
       if (normalise(value) === normalise(trimmed)) return sample(trimmed);
@@ -450,9 +446,20 @@ const AUTHENTICATION = [
   'ResetTokenAlreadyUsed', 'ResetTokenExpired',
 ];
 
+/**
+ * The six sentences behind the seven sites the factory-based guard found. They live in three
+ * families — lookup, unexpected, unavailable — and the last two are new; the verifier reads its
+ * factory list from the source, so these were visible to it the moment they were keyed.
+ */
+const UNCLAIMED_FACTORIES = [
+  'NoAttendanceToday', 'NotFarmMember', 'NoExportArchiveYet', 'ExportArchiveGone',
+  'PresignedUrlsUnsupported', 'ExportJobsDisabled',
+];
+
 const EXPECTED = [
   ...SLICE_2B, ...ARGUMENT_FREE, ...MEDICINES_AND_VACCINES, ...EMPLOYEES,
   ...BREEDING_AND_INVENTORY, ...IMPORTS, ...UNAUTHORIZED, ...AUTHENTICATION,
+  ...UNCLAIMED_FACTORIES,
 ];
 
 for (const file of SOURCES) {
@@ -490,6 +497,13 @@ for (const file of SOURCES) {
     // Each argument arrives with its surrounding syntax still attached: the message keeps
     // its quotes, the key its `DomainMessageKeys.` prefix. Strip both before comparing.
     const literal = args[0].replace(/^\$?"/, '').replace(/"$/, '');
+    // A C# message may be written as adjacent literals joined with `+`: one sentence, several
+    // literals. Join them before either branch below, because the split leaves a stray quote and
+    // a dangling `+` in the middle of the sentence being compared. This has to happen here and
+    // not inside renderServer: a message with no holes and no argument dictionary takes the
+    // argument-free branch, which never calls renderServer, so the join lived in the one path
+    // the only `+`-joined message in the tree never reached.
+    const sentence = literal.replace(/"\s*\+\s*"/g, '');
     const constant = args[1].replace(/["']/g, '').replace('DomainMessageKeys.', '').trim();
     if (!literal || !constant || !keysSource.includes(`string ${constant} `)) continue;
     const argBlock = args.slice(2).join(',');
@@ -507,10 +521,10 @@ for (const file of SOURCES) {
     // a bundle that grew a `{{}}` here would render something the server never said.
     if (args.length < 3) {
       checked++;
-      if (template !== literal || /\{\{\w+\}\}/.test(template)) {
+      if (template !== sentence || /\{\{\w+\}\}/.test(template)) {
         mismatched++;
         console.log(`  MISMATCH ${key}`);
-        console.log(`    server: ${literal}`);
+        console.log(`    server: ${sentence}`);
         console.log(`    bundle: ${template}`);
       }
       continue;
@@ -522,7 +536,7 @@ for (const file of SOURCES) {
       expressionsByName[name] = expression.trim();
     }
 
-    const renderedServer = renderServer(literal, expressionsByName);
+    const renderedServer = renderServer(sentence, expressionsByName);
     // The sample rendering is what every other key uses; the enum rendering additionally
     // substitutes each declared enum argument with its English vocabulary label, for the keys
     // whose server-side English has the phrase resolved into it rather than slotted.

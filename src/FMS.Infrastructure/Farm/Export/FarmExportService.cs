@@ -59,7 +59,8 @@ public class FarmExportService : IFarmExportService
             return Result<FarmExportDto>.Failure(Error.Unavailable(
                 "Full-farm export is unavailable because background jobs are disabled in this deployment "
                 + "(Jobs:Enabled = false), so nothing would build the archive. "
-                + "Ask an operator to enable the job subsystem."));
+                + "Ask an operator to enable the job subsystem.",
+                DomainMessageKeys.ExportJobsDisabled));
         }
 
         var export = await _db.FarmExports
@@ -132,7 +133,8 @@ public class FarmExportService : IFarmExportService
         if (export?.StoragePath is null)
         {
             return Result<FarmExportArchive>.NotFound(
-                "This farm has no export archive yet. Create one and download it when it is ready.");
+                "This farm has no export archive yet. Create one and download it when it is ready.",
+                DomainMessageKeys.NoExportArchiveYet);
         }
 
         // The path is read from the farm's own row, never from the caller, so this cannot
@@ -140,7 +142,8 @@ public class FarmExportService : IFarmExportService
         if (!await _files.ExistsAsync(export.StoragePath, cancellationToken))
         {
             return Result<FarmExportArchive>.NotFound(
-                "The export archive is no longer stored. Create a new export to replace it.");
+                "The export archive is no longer stored. Create a new export to replace it.",
+                DomainMessageKeys.ExportArchiveGone);
         }
 
         return Result<FarmExportArchive>.Success(new FarmExportArchive

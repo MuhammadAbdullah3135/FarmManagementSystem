@@ -124,7 +124,7 @@ public class AttendanceService : IAttendanceService
             .FirstOrDefaultAsync(r => r.EmployeeId == employeeId && r.FarmId == farmId &&
                                       r.Date == occurredAt.Date);
         if (record == null)
-            return Result<AttendanceRecordDto>.NotFound("No attendance record found for today");
+            return Result<AttendanceRecordDto>.NotFound("No attendance record found for today", DomainMessageKeys.NoAttendanceToday);
 
         if (record.CheckOutAt.HasValue)
         {

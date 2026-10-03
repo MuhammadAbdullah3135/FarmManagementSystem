@@ -45,13 +45,14 @@ public class DomainMessageKeyParityTests
         // an equality: the total can only grow as families are keyed, and the lookup family
         // itself is pinned at its own count so a reflection change that dropped *one* group
         // while keeping another would still be caught.
-        // 64 lookup + 47 conflict + 3 supersede + 72 validation + 4 unauthorized = 190.
+        // 68 lookup + 47 conflict + 3 supersede + 72 validation + 4 unauthorized
+        // + 1 unexpected + 1 unavailable = 196.
         Assert.True(
-            keys.Count >= 190,
-            $"Only {keys.Count} domain message keys were found; at least 190 are expected. A "
+            keys.Count >= 196,
+            $"Only {keys.Count} domain message keys were found; at least 196 are expected. A "
             + "reflection change that enumerates fewer keys than the class declares would make "
             + "this test pass for the wrong reason.");
-        Assert.Equal(64, keys.Count(key => key.StartsWith("validation.lookup.", StringComparison.Ordinal)));
+        Assert.Equal(68, keys.Count(key => key.StartsWith("validation.lookup.", StringComparison.Ordinal)));
         // The conflict and supersede families separately, so neither can be emptied by a
         // reflection change that still leaves the other one populated. 47 is 27 argument-free
         // plus 20 argument-taking; the supersede family is 2 argument-free plus 1.
@@ -66,6 +67,11 @@ public class DomainMessageKeyParityTests
         // login refusals — and is pinned for the same reason as the rest: it is the newest
         // family, so it is the one a reflection change would drop silently.
         Assert.Equal(4, keys.Count(key => key.StartsWith("validation.unauthorized.", StringComparison.Ordinal)));
+        // Two families of one key each, for the same reason as the rest: a family that is only
+        // ever emptied is invisible, and `unexpected` and `unavailable` are where the next
+        // storage or deployment refusal goes. Neither had existed before item 30.
+        Assert.Equal(1, keys.Count(key => key.StartsWith("validation.unexpected.", StringComparison.Ordinal)));
+        Assert.Equal(1, keys.Count(key => key.StartsWith("validation.unavailable.", StringComparison.Ordinal)));
 
         // One bundle read per namespace, not per key: the lookup family is one namespace.
         var bundles = ClientBundles.TranslatedLocales()
@@ -115,7 +121,10 @@ public class DomainMessageKeyParityTests
         // "refused" in general, which is the one thing the four existing groups are careful to
         // keep apart.
         string[] groups =
-            { "lookup.", "conflict.", "supersede.", "validation.", "unauthorized." };
+        {
+            "lookup.", "conflict.", "supersede.", "validation.", "unauthorized.",
+            "unexpected.", "unavailable.",
+        };
 
         var bundle = ClientBundles.Bundle("en", "validation");
         foreach (var key in DeclaredKeys())

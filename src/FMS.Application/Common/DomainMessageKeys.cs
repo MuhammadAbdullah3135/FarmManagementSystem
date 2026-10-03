@@ -719,4 +719,30 @@ public static class DomainMessageKeys
     /// <summary>The exact English this API has always answered: “Reset token has expired”</summary>
     public const string ResetTokenExpired = "validation.validation.resetTokenExpired";
 
+    // ── the four factories the key guards did not claim ────────────────────────────────────
+    // Argument-free, and in the lookup family where "not found" is the claim — except the
+    // first two, which are not: a farm can have no export archive while existing perfectly
+    // well, and a user can exist and simply not be a member. The family is about the answer to
+    // "is it here?", not about the words the sentence uses.
+    //
+    // `NotFarmMember` is said twice by FarmMembershipService and is one sentence, not two.
+    /// <summary>The exact English this API has always answered: “No attendance record found for today”</summary>
+    public const string NoAttendanceToday = "validation.lookup.noAttendanceToday";
+
+    /// <summary>The exact English this API has always answered: “That user is not a member of this farm”</summary>
+    public const string NotFarmMember = "validation.lookup.notFarmMember";
+
+    /// <summary>The exact English this API has always answered: “This farm has no export archive yet. Create one and download it when it is ready.”</summary>
+    public const string NoExportArchiveYet = "validation.lookup.noExportArchiveYet";
+
+    /// <summary>The exact English this API has always answered: “The export archive is no longer stored. Create a new export to replace it.”</summary>
+    public const string ExportArchiveGone = "validation.lookup.exportArchiveGone";
+
+    // ── storage ───────────────────────────────────────────────────────────────────────────
+    /// <summary>The exact English this API has always answered: “Presigned URLs are not supported by local file storage”</summary>
+    public const string PresignedUrlsUnsupported = "validation.unexpected.presignedUrlsUnsupported";
+
+    /// <summary>The exact English this API has always answered: “Full-farm export is unavailable because background jobs are disabled in this deployment (Jobs:Enabled = false), so nothing would build the archive. Ask an operator to enable the job subsystem.”</summary>
+    public const string ExportJobsDisabled = "validation.unavailable.exportJobsDisabled";
+
 }
