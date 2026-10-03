@@ -311,7 +311,19 @@ const ARGUMENT_FREE = [
   'NoAnimalsSelected',
 ];
 
-const EXPECTED = [...SLICE_2B, ...ARGUMENT_FREE];
+/**
+ * The ten the medicine and vaccine sweep added, listed for the same coverage-reporting reason.
+ *
+ * `QuantityMustBePositive` is deliberately absent: it was added with the first sweep and is
+ * reused here, so naming it twice would assert nothing.
+ */
+const MEDICINES_AND_VACCINES = [
+  'MedicineNameRequired', 'MedicineUnitRequired', 'MedicineInUse', 'BatchNumberRequired',
+  'StockBatchInUse', 'VaccineNameRequired', 'VaccineTypeInUseByVaccinations',
+  'VaccineTypeInUseBySchedules', 'QuantityUsedPositive', 'RecurrenceIntervalPositive',
+];
+
+const EXPECTED = [...SLICE_2B, ...ARGUMENT_FREE, ...MEDICINES_AND_VACCINES];
 
 for (const file of SOURCES) {
   const source = readFileSync(file, 'utf8').replace(/\r\n/g, '\n');

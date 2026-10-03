@@ -254,6 +254,16 @@
     "noAnimalsSelected": "No animals selected",
     "feedingTaskDateInPast": "Cannot generate feeding tasks for a past date",
     "feedingTaskStatusInvalid": "Status must be one of: Pending, Completed, Skipped",
-    "consumptionPeriodInvalid": "Period must be one of: day, week, month"
+    "consumptionPeriodInvalid": "Period must be one of: day, week, month",
+    "medicineNameRequired": "Medicine name is required",
+    "medicineUnitRequired": "Unit is required",
+    "medicineInUse": "Cannot delete medicine with existing usage records",
+    "batchNumberRequired": "Batch number is required",
+    "stockBatchInUse": "Cannot delete stock batch with existing usage records",
+    "vaccineNameRequired": "Vaccine name is required",
+    "vaccineTypeInUseByVaccinations": "Cannot delete vaccine type with existing vaccination records",
+    "vaccineTypeInUseBySchedules": "Cannot delete vaccine type with existing schedules",
+    "quantityUsedPositive": "Quantity used must be greater than zero",
+    "recurrenceIntervalPositive": "Recurrence interval must be greater than zero"
   }
 }

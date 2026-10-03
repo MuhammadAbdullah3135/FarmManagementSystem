@@ -89,9 +89,9 @@ public class MedicineService : IMedicineService
     public async Task<Result<MedicineDto>> CreateMedicineAsync(Guid farmId, CreateMedicineRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.Name))
-            return Result<MedicineDto>.Validation("Medicine name is required");
+            return Result<MedicineDto>.Validation("Medicine name is required", DomainMessageKeys.MedicineNameRequired);
         if (string.IsNullOrWhiteSpace(request.Unit))
-            return Result<MedicineDto>.Validation("Unit is required");
+            return Result<MedicineDto>.Validation("Unit is required", DomainMessageKeys.MedicineUnitRequired);
 
         var exists = await _context.Medicines
             .AnyAsync(m => m.FarmId == farmId && m.Name == request.Name);
@@ -137,9 +137,9 @@ public class MedicineService : IMedicineService
             return Result<MedicineDto>.NotFound("Medicine not found", DomainMessageKeys.MedicineNotFound);
 
         if (string.IsNullOrWhiteSpace(request.Name))
-            return Result<MedicineDto>.Validation("Medicine name is required");
+            return Result<MedicineDto>.Validation("Medicine name is required", DomainMessageKeys.MedicineNameRequired);
         if (string.IsNullOrWhiteSpace(request.Unit))
-            return Result<MedicineDto>.Validation("Unit is required");
+            return Result<MedicineDto>.Validation("Unit is required", DomainMessageKeys.MedicineUnitRequired);
 
         var nameExists = await _context.Medicines
             .AnyAsync(m => m.FarmId == farmId && m.Name == request.Name && m.Id != id);
@@ -189,7 +189,7 @@ public class MedicineService : IMedicineService
 
         var hasUsages = await _context.MedicineUsages.AnyAsync(u => u.MedicineId == id);
         if (hasUsages)
-            return Result.Validation("Cannot delete medicine with existing usage records");
+            return Result.Validation("Cannot delete medicine with existing usage records", DomainMessageKeys.MedicineInUse);
 
         _context.Medicines.Remove(medicine);
         await _context.SaveChangesAsync();
@@ -234,9 +234,9 @@ public class MedicineService : IMedicineService
             return Result<MedicineStockDto>.NotFound("Medicine not found", DomainMessageKeys.MedicineNotFound);
 
         if (string.IsNullOrWhiteSpace(request.BatchNumber))
-            return Result<MedicineStockDto>.Validation("Batch number is required");
+            return Result<MedicineStockDto>.Validation("Batch number is required", DomainMessageKeys.BatchNumberRequired);
         if (request.Quantity <= 0)
-            return Result<MedicineStockDto>.Validation("Quantity must be greater than zero");
+            return Result<MedicineStockDto>.Validation("Quantity must be greater than zero", DomainMessageKeys.QuantityMustBePositive);
 
         var userId = _currentUser.GetUserId();
 
@@ -278,7 +278,7 @@ public class MedicineService : IMedicineService
 
         var hasUsages = await _context.MedicineUsages.AnyAsync(u => u.MedicineStockId == stockId);
         if (hasUsages)
-            return Result.Validation("Cannot delete stock batch with existing usage records");
+            return Result.Validation("Cannot delete stock batch with existing usage records", DomainMessageKeys.StockBatchInUse);
 
         _context.MedicineStocks.Remove(stock);
         await _context.SaveChangesAsync();
@@ -296,7 +296,7 @@ public class MedicineService : IMedicineService
             return Result<MedicineUsageDto>.NotFound("Medicine not found", DomainMessageKeys.MedicineNotFound);
 
         if (request.QuantityUsed <= 0)
-            return Result<MedicineUsageDto>.Validation("Quantity must be greater than zero");
+            return Result<MedicineUsageDto>.Validation("Quantity must be greater than zero", DomainMessageKeys.QuantityMustBePositive);
 
         // Get available batches ordered by expiry (FIFO — nearest expiry first)
         var batches = await _context.MedicineStocks

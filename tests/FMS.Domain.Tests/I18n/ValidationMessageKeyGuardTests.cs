@@ -103,13 +103,17 @@ public class ValidationMessageKeyGuardTests
     /// decoration. That is the drift this list is exposed to, and
     /// <c>node scripts/i18n-backlog-audit.mjs --guard</c> now fails on it in CI.
     /// </para>
+    /// <para>
+    /// <c>MedicineService</c> and <c>VaccineService</c> were swept next: sixteen sites for ten
+    /// new keys, because two of their sentences are ones the health services already shared
+    /// with the feed ones — “Quantity must be greater than zero” is the third service to say
+    /// it, and it reuses the key rather than becoming a third translation to keep in step.
+    /// </para>
     /// </summary>
     private static readonly string[] StillToKey =
     {
-        "src/FMS.Infrastructure/Health/MedicineService.cs",
         "src/FMS.Infrastructure/Employees/EmployeeService.cs",
         "src/FMS.Infrastructure/Farm/FarmMembershipService.cs",
-        "src/FMS.Infrastructure/Health/VaccineService.cs",
         "src/FMS.Infrastructure/Auth/AuthService.cs",
         "src/FMS.Infrastructure/Breeding/BreedingService.cs",
         "src/FMS.Infrastructure/Attendance/AttendanceService.cs",

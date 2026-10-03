@@ -90,7 +90,7 @@ public class VaccineService : IVaccineService
     public async Task<Result<VaccineTypeDto>> CreateVaccineTypeAsync(Guid farmId, CreateVaccineTypeRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.Name))
-            return Result<VaccineTypeDto>.Validation("Vaccine name is required");
+            return Result<VaccineTypeDto>.Validation("Vaccine name is required", DomainMessageKeys.VaccineNameRequired);
 
         var exists = await _context.VaccineTypes
             .AnyAsync(v => v.FarmId == farmId && v.Name == request.Name);
@@ -142,7 +142,7 @@ public class VaccineService : IVaccineService
             return Result<VaccineTypeDto>.NotFound("Vaccine type not found", DomainMessageKeys.VaccineTypeNotFound);
 
         if (string.IsNullOrWhiteSpace(request.Name))
-            return Result<VaccineTypeDto>.Validation("Vaccine name is required");
+            return Result<VaccineTypeDto>.Validation("Vaccine name is required", DomainMessageKeys.VaccineNameRequired);
 
         var nameExists = await _context.VaccineTypes
             .AnyAsync(v => v.FarmId == farmId && v.Name == request.Name && v.Id != id);
@@ -194,11 +194,11 @@ public class VaccineService : IVaccineService
 
         var hasRecords = await _context.VaccinationRecords.AnyAsync(vr => vr.VaccineTypeId == id);
         if (hasRecords)
-            return Result.Validation("Cannot delete vaccine type with existing vaccination records");
+            return Result.Validation("Cannot delete vaccine type with existing vaccination records", DomainMessageKeys.VaccineTypeInUseByVaccinations);
 
         var hasSchedules = await _context.VaccinationSchedules.AnyAsync(vs => vs.VaccineTypeId == id);
         if (hasSchedules)
-            return Result.Validation("Cannot delete vaccine type with existing schedules");
+            return Result.Validation("Cannot delete vaccine type with existing schedules", DomainMessageKeys.VaccineTypeInUseBySchedules);
 
         _context.VaccineTypes.Remove(vax);
         await _context.SaveChangesAsync();
@@ -355,7 +355,7 @@ public class VaccineService : IVaccineService
         // clients that omit the field keep their previous behavior.
         var quantityUsed = request.QuantityUsed ?? 1;
         if (quantityUsed <= 0)
-            return Result<VaccinationRecordDto>.Validation("Quantity used must be greater than zero");
+            return Result<VaccinationRecordDto>.Validation("Quantity used must be greater than zero", DomainMessageKeys.QuantityUsedPositive);
 
         // ── Validate-and-allocate BEFORE persisting anything ──
         // FIFO by expiry date (nearest expiry first), matching MedicineService.RecordUsageAsync.
@@ -623,7 +623,7 @@ public class VaccineService : IVaccineService
             return Result<VaccinationScheduleDto>.Validation("Vaccine type not found in this farm", DomainMessageKeys.VaccineTypeNotFoundInFarm);
 
         if (request.RecurrenceDays <= 0)
-            return Result<VaccinationScheduleDto>.Validation("Recurrence interval must be greater than zero");
+            return Result<VaccinationScheduleDto>.Validation("Recurrence interval must be greater than zero", DomainMessageKeys.RecurrenceIntervalPositive);
 
         if (request.AnimalTypeId.HasValue)
         {
@@ -688,7 +688,7 @@ public class VaccineService : IVaccineService
             return Result<VaccinationScheduleDto>.Validation("Vaccine type not found in this farm", DomainMessageKeys.VaccineTypeNotFoundInFarm);
 
         if (request.RecurrenceDays <= 0)
-            return Result<VaccinationScheduleDto>.Validation("Recurrence interval must be greater than zero");
+            return Result<VaccinationScheduleDto>.Validation("Recurrence interval must be greater than zero", DomainMessageKeys.RecurrenceIntervalPositive);
 
         var userId = _currentUser.GetUserId();
 

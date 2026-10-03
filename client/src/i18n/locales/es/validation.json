@@ -254,6 +254,16 @@
     "noAnimalsSelected": "No hay animales seleccionados",
     "feedingTaskDateInPast": "No se pueden generar tareas de alimentación para una fecha pasada",
     "feedingTaskStatusInvalid": "El estado debe ser uno de: Pendiente, Completada, Omitida",
-    "consumptionPeriodInvalid": "El período debe ser uno de: día, semana, mes"
+    "consumptionPeriodInvalid": "El período debe ser uno de: día, semana, mes",
+    "medicineNameRequired": "El nombre del medicamento es obligatorio",
+    "medicineUnitRequired": "La unidad es obligatoria",
+    "medicineInUse": "No se puede eliminar un medicamento que tiene registros de uso",
+    "batchNumberRequired": "El número de lote es obligatorio",
+    "stockBatchInUse": "No se puede eliminar un lote de existencias que tiene registros de uso",
+    "vaccineNameRequired": "El nombre de la vacuna es obligatorio",
+    "vaccineTypeInUseByVaccinations": "No se puede eliminar un tipo de vacuna que tiene registros de vacunación",
+    "vaccineTypeInUseBySchedules": "No se puede eliminar un tipo de vacuna que tiene horarios",
+    "quantityUsedPositive": "La cantidad usada debe ser mayor que cero",
+    "recurrenceIntervalPositive": "El intervalo de recurrencia debe ser mayor que cero"
   }
 }

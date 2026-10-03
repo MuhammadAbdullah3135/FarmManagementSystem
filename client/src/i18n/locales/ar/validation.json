@@ -254,6 +254,16 @@
     "noAnimalsSelected": "لم يتم اختيار أي حيوانات",
     "feedingTaskDateInPast": "لا يمكن إنشاء مهام تغذية لتاريخ سابق",
     "feedingTaskStatusInvalid": "يجب أن تكون الحالة إحدى: قيد الانتظار، مكتملة، تم تخطيها",
-    "consumptionPeriodInvalid": "يجب أن تكون الفترة إحدى: يوم، أسبوع، شهر"
+    "consumptionPeriodInvalid": "يجب أن تكون الفترة إحدى: يوم، أسبوع، شهر",
+    "medicineNameRequired": "اسم الدواء مطلوب",
+    "medicineUnitRequired": "الوحدة مطلوبة",
+    "medicineInUse": "لا يمكن حذف دواء لديه سجلات استخدام",
+    "batchNumberRequired": "رقم الدفعة مطلوب",
+    "stockBatchInUse": "لا يمكن حذف دفعة المخزون لديها سجلات استخدام",
+    "vaccineNameRequired": "اسم اللقاح مطلوب",
+    "vaccineTypeInUseByVaccinations": "لا يمكن حذف نوع اللقاح لديه سجلات تحصين",
+    "vaccineTypeInUseBySchedules": "لا يمكن حذف نوع اللقاح لديه جداول",
+    "quantityUsedPositive": "يجب أن تكون الكمية المستخدمة أكبر من صفر",
+    "recurrenceIntervalPositive": "يجب أن تكون فترة التكرار أكبر من صفر"
   }
 }

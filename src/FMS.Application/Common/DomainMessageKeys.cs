@@ -475,10 +475,11 @@ public static class DomainMessageKeys
 
     // ── validation, argument-free ─────────────────────────────────────────────────────────
     // The shape the "not found" and conflict families already had: no arguments, so the key is
-    // the whole message. These 22 cover 33 sites across FeedService and AnimalService, because a
-    // sentence said three times is one sentence — “Quantity must be greater than zero” appears
-    // at three feed sites and “Tag number is required” at three animal ones, and giving each its
-    // own key would mean three translations to keep in step rather than one.
+    // the whole message. These 32 cover 49 sites across FeedService, AnimalService,
+    // MedicineService and VaccineService, because a sentence said three times is one sentence —
+    // “Quantity must be greater than zero” appears at three feed sites, at two medicine ones and
+    // in InventoryService, and “Tag number is required” at three animal ones, so it is one
+    // translation rather than five that have to be kept in step.
 
     // Feed
     /// <summary>The exact English this API has always answered: “Adjustment quantity cannot be zero”</summary>
@@ -559,5 +560,42 @@ public static class DomainMessageKeys
 
     /// <summary>The exact English this API has always answered: “No animals selected”</summary>
     public const string NoAnimalsSelected = "validation.validation.noAnimalsSelected";
+
+    // Medicines and vaccines
+    // Nine of the sixteen sites in these two services are repeats of a sentence already
+    // elsewhere: “Quantity must be greater than zero” is the same one FeedService and
+    // InventoryService answer, so it reuses QuantityMustBePositive rather than becoming a
+    // fourth copy of a translation. The other ten are new, and each of the two delete
+    // refusals that sound alike — medicine/stock batch, vaccine type — is kept apart,
+    // because the thing standing in the way is named and a reader needs to be told which.
+    /// <summary>The exact English this API has always answered: “Medicine name is required”</summary>
+    public const string MedicineNameRequired = "validation.validation.medicineNameRequired";
+
+    /// <summary>The exact English this API has always answered: “Unit is required”</summary>
+    public const string MedicineUnitRequired = "validation.validation.medicineUnitRequired";
+
+    /// <summary>The exact English this API has always answered: “Cannot delete medicine with existing usage records”</summary>
+    public const string MedicineInUse = "validation.validation.medicineInUse";
+
+    /// <summary>The exact English this API has always answered: “Batch number is required”</summary>
+    public const string BatchNumberRequired = "validation.validation.batchNumberRequired";
+
+    /// <summary>The exact English this API has always answered: “Cannot delete stock batch with existing usage records”</summary>
+    public const string StockBatchInUse = "validation.validation.stockBatchInUse";
+
+    /// <summary>The exact English this API has always answered: “Vaccine name is required”</summary>
+    public const string VaccineNameRequired = "validation.validation.vaccineNameRequired";
+
+    /// <summary>The exact English this API has always answered: “Cannot delete vaccine type with existing vaccination records”</summary>
+    public const string VaccineTypeInUseByVaccinations = "validation.validation.vaccineTypeInUseByVaccinations";
+
+    /// <summary>The exact English this API has always answered: “Cannot delete vaccine type with existing schedules”</summary>
+    public const string VaccineTypeInUseBySchedules = "validation.validation.vaccineTypeInUseBySchedules";
+
+    /// <summary>The exact English this API has always answered: “Quantity used must be greater than zero”</summary>
+    public const string QuantityUsedPositive = "validation.validation.quantityUsedPositive";
+
+    /// <summary>The exact English this API has always answered: “Recurrence interval must be greater than zero”</summary>
+    public const string RecurrenceIntervalPositive = "validation.validation.recurrenceIntervalPositive";
 
 }
