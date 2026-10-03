@@ -76,5 +76,14 @@
   "feedTargetMode": {
     "animal": "حيوان فردي",
     "location": "الموقع (مجموعة)"
+  },
+  "farmOwnerAction": {
+    "ChangeMemberRoles": "تغيير أدوار الأعضاء",
+    "RemoveMembers": "إزالة الأعضاء",
+    "InviteMembers": "دعوة الأعضاء",
+    "ViewInvitations": "عرض الدعوات",
+    "RevokeInvitations": "إلغاء الدعوات",
+    "UpdateFarmDetails": "تحديث بيانات المزرعة",
+    "DeleteFarms": "حذف المزارع"
   }
 }

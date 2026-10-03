@@ -282,5 +282,9 @@
     "transferAdjustmentQuantityZero": "La cantidad de transferencia o ajuste no puede ser cero",
     "movementTypeFilterInvalid": "El tipo de movimiento debe ser Compra, Consumo, Transferencia o Ajuste",
     "noDataRowsBelowHeader": "El archivo no tiene filas de datos debajo de la fila de encabezado."
+  },
+  "unauthorized": {
+    "farmOwnerOrManagerOnly": "Solo los propietarios y gestores de la granja pueden {{action}}",
+    "farmOwnerOnly": "Solo los propietarios de la granja pueden {{action}}"
   }
 }

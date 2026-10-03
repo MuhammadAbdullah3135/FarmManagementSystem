@@ -15,7 +15,10 @@ import validationEn from './locales/en/validation.json';
  * argument fails here before the call site can send the wrong shape for it.
  */
 describe('argument kinds', () => {
-  const SERVER_PREFIX = /^validation\.(lookup|conflict|supersede|validation)\./;
+  // `unauthorized` joined the families in item 27, and the alternation is the test's coverage
+  // gate: a family missing from it is skipped without a word, so adding a key to a family the
+  // regex does not name is how a whole new family ends up unchecked while the suite is green.
+  const SERVER_PREFIX = /^validation\.(lookup|conflict|supersede|validation|unauthorized)\./;
 
   it('declares a kind for every placeholder in every keyed sentence', () => {
     const undeclared: string[] = [];
@@ -165,6 +168,75 @@ describe('renderKeyedMessage', () => {
     expect(arabic).toContain('كجم');
     expect(arabic).not.toContain('Kilogram');
     expect(arabic).not.toContain('{{');
+  });
+
+  it('renders an unauthorized refusal with the action from its vocabulary', async () => {
+    // The eight refusals that say "Only farm owners and managers can …" share one frame and
+    // differ only in the action, so the action travels as a wire value and is resolved here.
+    // English has to come out byte-identical to the sentence the API has always returned,
+    // because that sentence is what every response-body assertion is written against.
+    await i18n.changeLanguage('en');
+    expect(renderKeyedMessage(
+      'validation.unauthorized.farmOwnerOrManagerOnly',
+      { action: 'ChangeMemberRoles' },
+      'ignored',
+    )).toBe('Only farm owners and managers can change member roles');
+
+    // A Spanish reader gets the frame in Spanish and an action phrase Spanish has already
+    // written. A verb stem would have asked Spanish to conjugate it at this point; a phrase
+    // does not, which is the whole reason the argument is a vocabulary and not a verb.
+    await i18n.changeLanguage('es');
+    expect(renderKeyedMessage(
+      'validation.unauthorized.farmOwnerOrManagerOnly',
+      { action: 'ChangeMemberRoles' },
+      'ignored',
+    )).toBe('Solo los propietarios y gestores de la granja pueden cambiar los roles de los miembros');
+
+    await i18n.changeLanguage('ar');
+    const arabic = renderKeyedMessage(
+      'validation.unauthorized.farmOwnerOrManagerOnly',
+      { action: 'ChangeMemberRoles' },
+      'ignored',
+    );
+    expect(arabic).toContain('تغيير أدوار الأعضاء');
+    // The raw wire value must not survive: it is an English identifier, and seeing one inside
+    // an Arabic sentence is the exact failure the vocabulary exists to prevent.
+    expect(arabic).not.toContain('ChangeMemberRoles');
+    expect(arabic).not.toContain('{{');
+  });
+
+  it('keeps the owners-only frame distinct from the owners-and-managers one', async () => {
+    // Deleting a farm is not a manager's to do, and that difference is the point of the
+    // sentence. Two keys rather than one key with the subject as an argument, because no
+    // language can fill "and managers" from a slot without being asked to.
+    await i18n.changeLanguage('en');
+    expect(renderKeyedMessage(
+      'validation.unauthorized.farmOwnerOnly',
+      { action: 'DeleteFarms' },
+      'ignored',
+    )).toBe('Only farm owners can delete farms');
+
+    await i18n.changeLanguage('es');
+    expect(renderKeyedMessage(
+      'validation.unauthorized.farmOwnerOnly',
+      { action: 'DeleteFarms' },
+      'ignored',
+    )).toBe('Solo los propietarios de la granja pueden eliminar granjas');
+  });
+
+  it('falls back to the raw action when the vocabulary does not know it', async () => {
+    // A newer server may name an action this client has never heard of. The refusal must still
+    // render rather than throw, which is why `enumLabelOf` returns the value it was given. It
+    // degrades to English, which is the honest outcome: there is no correct translation to fall
+    // back to, and inventing one would be worse than showing the identifier.
+    await i18n.changeLanguage('es');
+    const rendered = renderKeyedMessage(
+      'validation.unauthorized.farmOwnerOrManagerOnly',
+      { action: 'ArchiveMembers' },
+      'ignored',
+    );
+    expect(rendered).toContain('ArchiveMembers');
+    expect(rendered).not.toContain('{{');
   });
 
   it('renders a feed unit from the feed vocabulary, not as the stored enum name', async () => {

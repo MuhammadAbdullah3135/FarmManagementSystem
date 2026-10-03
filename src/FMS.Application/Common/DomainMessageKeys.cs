@@ -675,4 +675,25 @@ public static class DomainMessageKeys
     /// <summary>The exact English this API has always answered: “The file has no data rows below the header row.”</summary>
     public const string NoDataRowsBelowHeader = "validation.validation.noDataRowsBelowHeader";
 
+    // ── unauthorized, argument-taking ──────────────────────────────────────────────────────
+    // A fifth family, and the first whose argument is a phrase rather than a value. The eight
+    // refusals that say "Only farm owners and managers can …" differ only in what follows, so
+    // they share a frame and carry a FarmOwnerAction; the frame is then written once per
+    // language instead of six times.
+    //
+    // Two keys rather than one because deleting the farm is not a manager's to do, and that
+    // difference is the whole point of the sentence — a single key with the subject as an
+    // argument would put "and managers" in a slot no language can fill flexibly.
+    //
+    // The argument is a vocabulary entry rather than a verb stem on purpose. Interpolating a
+    // bare verb ("can {{verb}}") would need every language to conjugate it correctly at the
+    // point of insertion, which Arabic cannot do for an English stem. Carrying the whole
+    // translated phrase instead means each language writes the action once, as a phrase it has
+    // already agreed on, and the frame only has to place it.
+    /// <summary>The exact English this API has always answered: “Only farm owners and managers can {action}”</summary>
+    public const string FarmOwnerOrManagerOnly = "validation.unauthorized.farmOwnerOrManagerOnly";
+
+    /// <summary>The exact English this API has always answered: “Only farm owners can {action}”</summary>
+    public const string FarmOwnerOnly = "validation.unauthorized.farmOwnerOnly";
+
 }

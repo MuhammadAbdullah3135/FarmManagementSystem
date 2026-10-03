@@ -45,10 +45,10 @@ public class DomainMessageKeyParityTests
         // an equality: the total can only grow as families are keyed, and the lookup family
         // itself is pinned at its own count so a reflection change that dropped *one* group
         // while keeping another would still be caught.
-        // 64 lookup + 47 conflict + 3 supersede + 69 validation = 183.
+        // 64 lookup + 47 conflict + 3 supersede + 69 validation + 2 unauthorized = 185.
         Assert.True(
-            keys.Count >= 183,
-            $"Only {keys.Count} domain message keys were found; at least 183 are expected. A "
+            keys.Count >= 185,
+            $"Only {keys.Count} domain message keys were found; at least 185 are expected. A "
             + "reflection change that enumerates fewer keys than the class declares would make "
             + "this test pass for the wrong reason.");
         Assert.Equal(64, keys.Count(key => key.StartsWith("validation.lookup.", StringComparison.Ordinal)));
@@ -62,6 +62,9 @@ public class DomainMessageKeyParityTests
         // AnimalService. Each service's sweep raises this number, which is the point of pinning
         // it — a reflection change that missed the newest group would otherwise go unnoticed.
         Assert.Equal(69, keys.Count(key => key.StartsWith("validation.validation.", StringComparison.Ordinal)));
+        // The unauthorized family is two keys, and is pinned for the same reason as the rest:
+        // it is the newest family, so it is the one a reflection change would drop silently.
+        Assert.Equal(2, keys.Count(key => key.StartsWith("validation.unauthorized.", StringComparison.Ordinal)));
 
         // One bundle read per namespace, not per key: the lookup family is one namespace.
         var bundles = ClientBundles.TranslatedLocales()
@@ -103,7 +106,15 @@ public class DomainMessageKeyParityTests
         // translator that the group tells them nothing. The list extends as families are added,
         // which is the point — a key that names a group nobody bundles cannot render, and it
         // cannot fail at runtime either.
-        string[] groups = { "lookup.", "conflict.", "supersede.", "validation." };
+        //
+        // `unauthorized` is the fifth, for the eight refusals that answer "you may not". It is
+        // a different claim again: the request was well formed and the server understood it
+        // perfectly, and the refusal is about who is asking rather than about what they sent.
+        // Filing it under `validation` would have taught a translator that the group means
+        // "refused" in general, which is the one thing the four existing groups are careful to
+        // keep apart.
+        string[] groups =
+            { "lookup.", "conflict.", "supersede.", "validation.", "unauthorized." };
 
         var bundle = ClientBundles.Bundle("en", "validation");
         foreach (var key in DeclaredKeys())

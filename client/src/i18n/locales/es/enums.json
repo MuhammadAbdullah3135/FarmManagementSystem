@@ -76,5 +76,14 @@
   "feedTargetMode": {
     "animal": "Animal individual",
     "location": "Ubicación (grupo)"
+  },
+  "farmOwnerAction": {
+    "ChangeMemberRoles": "cambiar los roles de los miembros",
+    "RemoveMembers": "eliminar miembros",
+    "InviteMembers": "invitar miembros",
+    "ViewInvitations": "ver las invitaciones",
+    "RevokeInvitations": "revocar las invitaciones",
+    "UpdateFarmDetails": "actualizar los datos de la granja",
+    "DeleteFarms": "eliminar granjas"
   }
 }

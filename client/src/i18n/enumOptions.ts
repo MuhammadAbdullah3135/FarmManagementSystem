@@ -31,6 +31,18 @@ export const ENUM_DEFS = {
   breedingMethod: { values: [0, 1], keyOf: (v: number) => (v === 0 ? 'natural' : 'artificialInsemination') },
   breedingResult: { values: [0, 1, 2], keyOf: (v: number) => (v === 0 ? 'pending' : v === 1 ? 'confirmed' : 'failed') },
   feedTargetMode: { values: ['animal', 'location'], keyOf: (v: string) => v },
+  // Not chrome: a vocabulary the server sends to be dropped into a sentence. The values are
+  // FarmOwnerAction member names on the wire, and the labels are whole phrases rather than
+  // short labels, because the frame they land in is "Only farm owners and managers can …".
+  // It is listed here rather than special-cased in serverMessage so that
+  // `FarmOwnerActionVocabularyTests` has one table to compare the C# enum against.
+  farmOwnerAction: {
+    values: [
+      'ChangeMemberRoles', 'RemoveMembers', 'InviteMembers', 'ViewInvitations',
+      'RevokeInvitations', 'UpdateFarmDetails', 'DeleteFarms',
+    ],
+    keyOf: (v: string) => v,
+  },
   // The audit log's entity types are the server's own class names. The filter offers the
   // farm-data subset (ENTITY_TYPE_FILTERS in AuditLogPage); rows can also carry values the
   // filter never offered (RefreshToken, AnimalTimelineEvent), which enumLabelOf still

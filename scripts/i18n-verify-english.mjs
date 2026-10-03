@@ -105,9 +105,75 @@ const sample = (expression) => `<${normalise(expression)}>`;
  * matched to the argument whose value expression it corresponds to, and both sides are
  * then rendered with the same sample text.
  */
-function renderBundle(template, expressionsByName) {
-  return template.replace(/\{\{(\w+)\}\}/g, (whole, name) =>
-    expressionsByName[name] === undefined ? whole : sample(expressionsByName[name]));
+function renderBundle(template, expressionsByName, literalByName = {}) {
+  return template.replace(/\{\{(\w+)\}\}/g, (whole, name) => {
+    if (name in literalByName) return literalByName[name];
+    return expressionsByName[name] === undefined ? whole : sample(expressionsByName[name]);
+  });
+}
+
+/**
+ * The client's declared argument kinds, read out of `serverMessage.ts`.
+ *
+ * Read rather than restated, for the same reason the audit reads the guard's regex: a second
+ * copy of this table is a second thing that can drift, and this script's whole claim is that it
+ * compares the bundle against the server rather than against a description of the server.
+ */
+function readArgKinds() {
+  const source = readFileSync(join(ROOT, 'client/src/i18n/serverMessage.ts'), 'utf8');
+  const kinds = new Map();
+  for (const entry of source.matchAll(/'([\w.]+)'\s*:\s*\{([^}]*)\}/g)) {
+    const [, key, body] = entry;
+    const declared = {};
+    for (const arg of body.matchAll(/(\w+)\s*:\s*'([\w:]+)'/g)) declared[arg[1]] = arg[2];
+    kinds.set(key, declared);
+  }
+  if (!kinds.size) {
+    throw new Error(
+      'no argument kinds could be read from client/src/i18n/serverMessage.ts. Without them an '
+      + "enum argument is compared as a raw identifier, which reports every enum sentence as a "
+      + 'mismatch rather than as unresolvable.');
+  }
+  return kinds;
+}
+
+/** The client's English vocabularies, by the name an `enum:<name>` kind refers to. */
+function readEnumBundles() {
+  return JSON.parse(
+    readFileSync(join(ROOT, 'client/src/i18n/locales/en/enums.json'), 'utf8'));
+}
+
+const ARG_KINDS = readArgKinds();
+const ENUM_BUNDLES = readEnumBundles();
+
+/**
+ * The English label for an `enum:` argument, when the wire value names one.
+ *
+ * An enum argument comes in two shapes, and both are legitimate. Most keys put a hole in the
+ * server's English and a slot in the bundle — `{task.Status}` against `{{status}}` — so both
+ * sides render the same sample and the comparison is arithmetic. The unauthorized refusals do
+ * the opposite: the server's English has the phrase written into it ("…can change member
+ * roles") while the bundle carries `{{action}}`, because the English has to stay byte-identical
+ * and the phrase is therefore *resolved on the server* rather than slotted.
+ *
+ * So the label is offered as a second candidate rendering rather than as a replacement. That is
+ * deliberately a little looser than the rest of the script, and only for arguments the client
+ * itself declares as enums: a sentence still has to match one of the two renderings exactly, so
+ * nothing can pass that neither form produces.
+ */
+function enumLabelsFor(key, expressionsByName) {
+  const declared = ARG_KINDS.get(key);
+  if (!declared) return {};
+  const labels = {};
+  for (const [name, kind] of Object.entries(declared)) {
+    if (!kind.startsWith('enum:')) continue;
+    const expression = expressionsByName[name];
+    if (!expression) continue;
+    const value = normalise(expression).split('.').pop();
+    const label = (ENUM_BUNDLES[kind.slice('enum:'.length)] || {})[value];
+    if (typeof label === 'string') labels[name] = label;
+  }
+  return labels;
 }
 
 function renderServer(literal, expressionsByName) {
@@ -366,9 +432,16 @@ const BREEDING_AND_INVENTORY = [
  */
 const IMPORTS = ['NoDataRowsBelowHeader'];
 
+/**
+ * The two unauthorized frames. These are the first keys whose argument is a phrase resolved
+ * from a vocabulary rather than a value, so they are also the first this script compares in
+ * two shapes — see `enumLabelsFor`.
+ */
+const UNAUTHORIZED = ['FarmOwnerOrManagerOnly', 'FarmOwnerOnly'];
+
 const EXPECTED = [
   ...SLICE_2B, ...ARGUMENT_FREE, ...MEDICINES_AND_VACCINES, ...EMPLOYEES,
-  ...BREEDING_AND_INVENTORY, ...IMPORTS,
+  ...BREEDING_AND_INVENTORY, ...IMPORTS, ...UNAUTHORIZED,
 ];
 
 for (const file of SOURCES) {
@@ -388,7 +461,12 @@ for (const file of SOURCES) {
   // `Result<List<FeedingTaskDto>>.Validation(` and `Result<PagedResult<FeedingTaskDto>>`
   // both defeated `<[^<>]*>`, and a pattern that cannot see a shape reports the sites in
   // that shape as absent rather than unknown.
-  const pattern = /\b(?:Error|Result)\s*(?:<[^<>]*(?:<[^<>]*>[^<>]*)*>)?\s*\.\s*(?:NotFound|Validation|Unexpected|Conflict|Superseded)\s*\(/g;
+  // `Unauthorized` and `Unavailable` were missing from this alternation for as long as the
+  // script existed, so every refusal in those two families was invisible to it — the ninth time
+  // in this project that a check could not see a whole category of the thing it checks. It
+  // reported 0 mismatches over a set those families were not in, which is indistinguishable
+  // from having verified them. The alternation is now every factory the domain declares.
+  const pattern = /\b(?:Error|Result)\s*(?:<[^<>]*(?:<[^<>]*>[^<>]*)*>)?\s*\.\s*(?:NotFound|Validation|Unexpected|Conflict|Superseded|Unauthorized|Unavailable)\s*\(/g;
   let match;
   while ((match = pattern.exec(source)) !== null) {
     calls++;
@@ -433,14 +511,19 @@ for (const file of SOURCES) {
       expressionsByName[name] = expression.trim();
     }
 
-    const renderedBundle = renderBundle(template, expressionsByName);
     const renderedServer = renderServer(literal, expressionsByName);
+    // The sample rendering is what every other key uses; the enum rendering additionally
+    // substitutes each declared enum argument with its English vocabulary label, for the keys
+    // whose server-side English has the phrase resolved into it rather than slotted.
+    const renderedBundle = renderBundle(template, expressionsByName);
+    const renderedEnum = renderBundle(template, expressionsByName, enumLabelsFor(key, expressionsByName));
     checked++;
-    if (renderedBundle !== renderedServer) {
+    if (renderedBundle !== renderedServer && renderedEnum !== renderedServer) {
       mismatched++;
       console.log(`  MISMATCH ${key}`);
       console.log(`    server: ${renderedServer}`);
       console.log(`    bundle: ${renderedBundle}`);
+      if (renderedEnum !== renderedBundle) console.log(`      as enum: ${renderedEnum}`);
     }
   }
 }

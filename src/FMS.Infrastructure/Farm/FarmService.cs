@@ -1,6 +1,7 @@
 using FMS.Application.Common;
 using FMS.Application.Farm;
 using FMS.Domain.Entities;
+using FMS.Domain.Enums;
 using FMS.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -89,7 +90,10 @@ public class FarmService : IFarmService
             return Result<FarmDto>.NotFound("Farm not found or access denied", DomainMessageKeys.FarmOrAccessDeniedNotFound);
 
         if (!FarmRoles.IsFarmAdmin(userFarm.Role))
-            return Result<FarmDto>.Unauthorized("Only farm owners and managers can update farm details");
+            return Result<FarmDto>.Unauthorized(
+                "Only farm owners and managers can update farm details",
+                DomainMessageKeys.FarmOwnerOrManagerOnly,
+                new Dictionary<string, object?> { ["action"] = FarmOwnerAction.UpdateFarmDetails.ToString() });
 
         var farm = userFarm.Farm;
         farm.Name = request.Name;
@@ -113,7 +117,10 @@ public class FarmService : IFarmService
             return Result.NotFound("Farm not found or access denied", DomainMessageKeys.FarmOrAccessDeniedNotFound);
 
         if (userFarm.Role != FarmRoles.SystemOwner)
-            return Result.Unauthorized("Only farm owners can delete farms");
+            return Result.Unauthorized(
+                "Only farm owners can delete farms",
+                DomainMessageKeys.FarmOwnerOnly,
+                new Dictionary<string, object?> { ["action"] = FarmOwnerAction.DeleteFarms.ToString() });
 
         // Soft delete
         userFarm.Farm.IsDeleted = true;

@@ -144,6 +144,13 @@ const ARG_KINDS: Record<string, Record<string, ArgKind>> = {
   // ── storage: an S3 fault, reported with the service's own diagnostic ──
   'validation.validation.fileStoreFailed': { detail: 'diagnostic' },
   'validation.validation.fileSignFailed': { detail: 'diagnostic' },
+
+  // ── unauthorized: the action is a phrase, resolved from a vocabulary ──
+  // `enum:farmOwnerAction` rather than a verb on its own. A bare stem would ask each language
+  // to conjugate English at the point of insertion, which Arabic cannot do; the vocabulary
+  // entry is a phrase the language has already written, so the frame only has to place it.
+  'validation.unauthorized.farmOwnerOrManagerOnly': { action: 'enum:farmOwnerAction' },
+  'validation.unauthorized.farmOwnerOnly': { action: 'enum:farmOwnerAction' },
 };
 
 /** The enum named by an `enum:<name>` kind. */

@@ -282,5 +282,9 @@
     "transferAdjustmentQuantityZero": "Transfer or adjustment quantity cannot be zero",
     "movementTypeFilterInvalid": "Movement type must be Purchase, Consumption, Transfer, or Adjustment",
     "noDataRowsBelowHeader": "The file has no data rows below the header row."
+  },
+  "unauthorized": {
+    "farmOwnerOrManagerOnly": "Only farm owners and managers can {{action}}",
+    "farmOwnerOnly": "Only farm owners can {{action}}"
   }
 }

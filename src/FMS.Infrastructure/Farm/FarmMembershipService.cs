@@ -66,7 +66,10 @@ public class FarmMembershipService : IFarmMembershipService
         if (requester is null)
             return Result<FarmMemberDto>.NotFound("Farm not found or access denied", DomainMessageKeys.FarmOrAccessDeniedNotFound);
         if (!FarmRoles.IsFarmAdmin(requester.Role))
-            return Result<FarmMemberDto>.Unauthorized("Only farm owners and managers can change member roles");
+            return Result<FarmMemberDto>.Unauthorized(
+                "Only farm owners and managers can change member roles",
+                DomainMessageKeys.FarmOwnerOrManagerOnly,
+                new Dictionary<string, object?> { ["action"] = FarmOwnerAction.ChangeMemberRoles.ToString() });
         if (!FarmRoles.IsValid(request.Role))
             return Result<FarmMemberDto>.Validation(
                 $"'{request.Role}' is not a valid farm role",
@@ -100,7 +103,10 @@ public class FarmMembershipService : IFarmMembershipService
         if (requester is null)
             return Result.NotFound("Farm not found or access denied", DomainMessageKeys.FarmOrAccessDeniedNotFound);
         if (!FarmRoles.IsFarmAdmin(requester.Role))
-            return Result.Unauthorized("Only farm owners and managers can remove members");
+            return Result.Unauthorized(
+                "Only farm owners and managers can remove members",
+                DomainMessageKeys.FarmOwnerOrManagerOnly,
+                new Dictionary<string, object?> { ["action"] = FarmOwnerAction.RemoveMembers.ToString() });
 
         var member = await _context.UserFarms
             .FirstOrDefaultAsync(uf => uf.FarmId == farmId && uf.UserId == memberUserId);
@@ -137,7 +143,10 @@ public class FarmMembershipService : IFarmMembershipService
         if (requester is null)
             return Result<FarmInvitationDto>.NotFound("Farm not found or access denied", DomainMessageKeys.FarmOrAccessDeniedNotFound);
         if (!FarmRoles.IsFarmAdmin(requester.Role))
-            return Result<FarmInvitationDto>.Unauthorized("Only farm owners and managers can invite members");
+            return Result<FarmInvitationDto>.Unauthorized(
+                "Only farm owners and managers can invite members",
+                DomainMessageKeys.FarmOwnerOrManagerOnly,
+                new Dictionary<string, object?> { ["action"] = FarmOwnerAction.InviteMembers.ToString() });
         if (!FarmRoles.IsValid(request.Role))
             return Result<FarmInvitationDto>.Validation(
                 $"'{request.Role}' is not a valid farm role",
@@ -218,7 +227,10 @@ public class FarmMembershipService : IFarmMembershipService
         if (requester is null)
             return Result<List<FarmInvitationDto>>.NotFound("Farm not found or access denied", DomainMessageKeys.FarmOrAccessDeniedNotFound);
         if (!FarmRoles.IsFarmAdmin(requester.Role))
-            return Result<List<FarmInvitationDto>>.Unauthorized("Only farm owners and managers can view invitations");
+            return Result<List<FarmInvitationDto>>.Unauthorized(
+                "Only farm owners and managers can view invitations",
+                DomainMessageKeys.FarmOwnerOrManagerOnly,
+                new Dictionary<string, object?> { ["action"] = FarmOwnerAction.ViewInvitations.ToString() });
 
         var invitations = await _context.FarmInvitations
             .Where(i => i.FarmId == farmId && i.Status == FarmInvitationStatus.Pending)
@@ -243,7 +255,10 @@ public class FarmMembershipService : IFarmMembershipService
         if (requester is null)
             return Result.NotFound("Farm not found or access denied", DomainMessageKeys.FarmOrAccessDeniedNotFound);
         if (!FarmRoles.IsFarmAdmin(requester.Role))
-            return Result.Unauthorized("Only farm owners and managers can revoke invitations");
+            return Result.Unauthorized(
+                "Only farm owners and managers can revoke invitations",
+                DomainMessageKeys.FarmOwnerOrManagerOnly,
+                new Dictionary<string, object?> { ["action"] = FarmOwnerAction.RevokeInvitations.ToString() });
 
         var invitation = await _context.FarmInvitations
             .FirstOrDefaultAsync(i => i.Id == invitationId && i.FarmId == farmId);
