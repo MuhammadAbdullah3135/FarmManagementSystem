@@ -349,7 +349,20 @@ const EMPLOYEES = [
   'PaymentReferenceTooLong', 'SalaryDeleteReasonRequired',
 ];
 
-const EXPECTED = [...SLICE_2B, ...ARGUMENT_FREE, ...MEDICINES_AND_VACCINES, ...EMPLOYEES];
+/**
+ * The ten the breeding and inventory sweep added. `MovementDateFuture` is deliberately absent:
+ * FeedService keyed that sentence first and InventoryService reuses the constant.
+ */
+const BREEDING_AND_INVENTORY = [
+  'SireDamMustDiffer', 'PregnancyNotConfirmable', 'OffspringRequired', 'LineageRecordRequired',
+  'SexOptionsInvalid', 'MovementTypeInvalid', 'ConsumptionQuantityPositive',
+  'PurchaseQuantityPositive', 'TransferAdjustmentQuantityZero', 'MovementTypeFilterInvalid',
+];
+
+const EXPECTED = [
+  ...SLICE_2B, ...ARGUMENT_FREE, ...MEDICINES_AND_VACCINES, ...EMPLOYEES,
+  ...BREEDING_AND_INVENTORY,
+];
 
 for (const file of SOURCES) {
   const source = readFileSync(file, 'utf8').replace(/\r\n/g, '\n');

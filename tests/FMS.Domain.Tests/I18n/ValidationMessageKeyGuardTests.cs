@@ -109,16 +109,17 @@ public class ValidationMessageKeyGuardTests
     /// with the feed ones — “Quantity must be greater than zero” is the third service to say
     /// it, and it reuses the key rather than becoming a third translation to keep in step.
     /// <c>EmployeeService</c> followed: seven sites, six new keys, and one reuse of
-    /// <c>FromDateAfterToDate</c> from the feed sweep.
+    /// <c>FromDateAfterToDate</c> from the feed sweep. Then <c>BreedingService</c> and
+    /// <c>InventoryService</c>: twelve sites, ten new keys, and a third reuse, of
+    /// <c>MovementDateFuture</c>. Three of the ten so far have been a sentence another service
+    /// already said, which is the argument for sweeping by service rather than by key.
     /// </para>
     /// </summary>
     private static readonly string[] StillToKey =
     {
         "src/FMS.Infrastructure/Farm/FarmMembershipService.cs",
         "src/FMS.Infrastructure/Auth/AuthService.cs",
-        "src/FMS.Infrastructure/Breeding/BreedingService.cs",
         "src/FMS.Infrastructure/Attendance/AttendanceService.cs",
-        "src/FMS.Infrastructure/Inventory/InventoryService.cs",
         "src/FMS.Infrastructure/Import/SpreadsheetReader.cs",
         "src/FMS.Infrastructure/Inventory/SupplierService.cs",
         "src/FMS.Infrastructure/Inventory/CustomerService.cs",

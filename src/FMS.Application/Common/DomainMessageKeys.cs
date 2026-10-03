@@ -475,11 +475,12 @@ public static class DomainMessageKeys
 
     // ── validation, argument-free ─────────────────────────────────────────────────────────
     // The shape the "not found" and conflict families already had: no arguments, so the key is
-    // the whole message. These 38 cover 55 sites across FeedService, AnimalService,
-    // MedicineService, VaccineService and EmployeeService, because a sentence said three times
-    // is one sentence — “Quantity must be greater than zero” appears at three feed sites, at two
-    // medicine ones and in InventoryService, and “Tag number is required” at three animal ones,
-    // so it is one translation rather than five that have to be kept in step.
+    // the whole message. These 48 cover 66 sites across FeedService, AnimalService,
+    // MedicineService, VaccineService, EmployeeService, BreedingService and InventoryService,
+    // because a sentence said three times is one sentence — “Quantity must be greater than zero”
+    // appears at three feed sites, at two medicine ones and in InventoryService, and
+    // “Tag number is required” at three animal ones, so it is one translation rather than five
+    // that have to be kept in step.
 
     // Feed
     /// <summary>The exact English this API has always answered: “Adjustment quantity cannot be zero”</summary>
@@ -629,5 +630,42 @@ public static class DomainMessageKeys
 
     /// <summary>The exact English this API has always answered: “A reason is required to delete a salary payment”</summary>
     public const string SalaryDeleteReasonRequired = "validation.validation.salaryDeleteReasonRequired";
+
+    // Breeding and stock movements
+    // “Invalid movement type” and “Movement type must be Purchase, Consumption, Transfer, or
+    // Adjustment” are two sentences about the same fact, said by two different methods — one
+    // parsing a value, one validating a filter — and they stay two keys because the English is
+    // frozen: the second names the alternatives and the first does not, and a key may not
+    // acquire words the API never sent. Baking the list into the bundle, as FeedingTaskStatusInvalid
+    // and ConsumptionPeriodInvalid already do, is the established shape for that.
+    /// <summary>The exact English this API has always answered: “Sire and dam must be different animals”</summary>
+    public const string SireDamMustDiffer = "validation.validation.sireDamMustDiffer";
+
+    /// <summary>The exact English this API has always answered: “Cannot confirm pregnancy for a failed breeding record”</summary>
+    public const string PregnancyNotConfirmable = "validation.validation.pregnancyNotConfirmable";
+
+    /// <summary>The exact English this API has always answered: “At least one offspring is required”</summary>
+    public const string OffspringRequired = "validation.validation.offspringRequired";
+
+    /// <summary>The exact English this API has always answered: “A breeding record or gestation record is required to establish lineage”</summary>
+    public const string LineageRecordRequired = "validation.validation.lineageRecordRequired";
+
+    /// <summary>The exact English this API has always answered: “One or more sex options are invalid”</summary>
+    public const string SexOptionsInvalid = "validation.validation.sexOptionsInvalid";
+
+    /// <summary>The exact English this API has always answered: “Invalid movement type”</summary>
+    public const string MovementTypeInvalid = "validation.validation.movementTypeInvalid";
+
+    /// <summary>The exact English this API has always answered: “Consumption quantity must be greater than zero”</summary>
+    public const string ConsumptionQuantityPositive = "validation.validation.consumptionQuantityPositive";
+
+    /// <summary>The exact English this API has always answered: “Purchase quantity must be greater than zero”</summary>
+    public const string PurchaseQuantityPositive = "validation.validation.purchaseQuantityPositive";
+
+    /// <summary>The exact English this API has always answered: “Transfer or adjustment quantity cannot be zero”</summary>
+    public const string TransferAdjustmentQuantityZero = "validation.validation.transferAdjustmentQuantityZero";
+
+    /// <summary>The exact English this API has always answered: “Movement type must be Purchase, Consumption, Transfer, or Adjustment”</summary>
+    public const string MovementTypeFilterInvalid = "validation.validation.movementTypeFilterInvalid";
 
 }

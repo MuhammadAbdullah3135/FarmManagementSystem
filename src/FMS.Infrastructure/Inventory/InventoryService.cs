@@ -218,7 +218,7 @@ public class InventoryService : IInventoryService
     {
         var item = await _context.InventoryItems.FirstOrDefaultAsync(i => i.FarmId == farmId && i.Id == request.InventoryItemId);
         if (item == null) return Result<StockMovementDto>.NotFound("Inventory item not found", DomainMessageKeys.InventoryItemNotFound);
-        if (!Enum.IsDefined(request.MovementType)) return Result<StockMovementDto>.Validation("Invalid movement type");
+        if (!Enum.IsDefined(request.MovementType)) return Result<StockMovementDto>.Validation("Invalid movement type", DomainMessageKeys.MovementTypeInvalid);
 
         var signedQuantity = request.MovementType switch
         {
@@ -228,11 +228,11 @@ public class InventoryService : IInventoryService
             _ => 0
         };
         if (request.MovementType == InventoryMovementType.Consumption && request.Quantity <= 0)
-            return Result<StockMovementDto>.Validation("Consumption quantity must be greater than zero");
+            return Result<StockMovementDto>.Validation("Consumption quantity must be greater than zero", DomainMessageKeys.ConsumptionQuantityPositive);
         if (request.MovementType == InventoryMovementType.Purchase && request.Quantity <= 0)
-            return Result<StockMovementDto>.Validation("Purchase quantity must be greater than zero");
+            return Result<StockMovementDto>.Validation("Purchase quantity must be greater than zero", DomainMessageKeys.PurchaseQuantityPositive);
         if (request.MovementType is InventoryMovementType.Transfer or InventoryMovementType.Adjustment && request.Quantity == 0)
-            return Result<StockMovementDto>.Validation("Transfer or adjustment quantity cannot be zero");
+            return Result<StockMovementDto>.Validation("Transfer or adjustment quantity cannot be zero", DomainMessageKeys.TransferAdjustmentQuantityZero);
         if (item.Quantity + signedQuantity < 0)
             return Result<StockMovementDto>.Conflict(
                 $"Insufficient stock: available quantity is {item.Quantity} {item.Unit}",
@@ -241,7 +241,7 @@ public class InventoryService : IInventoryService
 
         var date = request.MovementDate ?? DateTime.UtcNow;
         if (date > DateTime.UtcNow.AddMinutes(5))
-            return Result<StockMovementDto>.Validation("Movement date cannot be in the future");
+            return Result<StockMovementDto>.Validation("Movement date cannot be in the future", DomainMessageKeys.MovementDateFuture);
         var userId = _currentUser.GetUserId();
         var movement = new StockMovement
         {
@@ -264,7 +264,7 @@ public class InventoryService : IInventoryService
         if (!string.IsNullOrWhiteSpace(movementType))
         {
             if (!Enum.TryParse<InventoryMovementType>(movementType, true, out var parsed))
-                return Result<PagedResult<StockMovementDto>>.Validation("Movement type must be Purchase, Consumption, Transfer, or Adjustment");
+                return Result<PagedResult<StockMovementDto>>.Validation("Movement type must be Purchase, Consumption, Transfer, or Adjustment", DomainMessageKeys.MovementTypeFilterInvalid);
             query = query.Where(m => m.MovementType == parsed);
         }
         if (from.HasValue) query = query.Where(m => m.MovementDate >= from.Value);

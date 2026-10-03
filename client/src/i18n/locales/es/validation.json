@@ -270,6 +270,16 @@
     "paymentDateFuture": "La fecha de pago no puede ser futura",
     "periodCoveredFuture": "El período cubierto no puede ser futuro",
     "paymentReferenceTooLong": "La referencia no puede superar los 100 caracteres",
-    "salaryDeleteReasonRequired": "Se requiere un motivo para eliminar un pago de salario"
+    "salaryDeleteReasonRequired": "Se requiere un motivo para eliminar un pago de salario",
+    "sireDamMustDiffer": "El padre y la madre deben ser animales distintos",
+    "pregnancyNotConfirmable": "No se puede confirmar el embarazo para un registro de cría fallido",
+    "offspringRequired": "Se requiere al menos una cría",
+    "lineageRecordRequired": "Se requiere un registro de cría o de gestación para establecer el linaje",
+    "sexOptionsInvalid": "Una o más opciones de sexo no son válidas",
+    "movementTypeInvalid": "Tipo de movimiento no válido",
+    "consumptionQuantityPositive": "La cantidad de consumo debe ser mayor que cero",
+    "purchaseQuantityPositive": "La cantidad de compra debe ser mayor que cero",
+    "transferAdjustmentQuantityZero": "La cantidad de transferencia o ajuste no puede ser cero",
+    "movementTypeFilterInvalid": "El tipo de movimiento debe ser Compra, Consumo, Transferencia o Ajuste"
   }
 }

@@ -270,6 +270,16 @@
     "paymentDateFuture": "لا يمكن أن يكون تاريخ الدفع في المستقبل",
     "periodCoveredFuture": "لا يمكن أن تكون الفترة المشمولة في المستقبل",
     "paymentReferenceTooLong": "لا يمكن أن يتجاوز المرجع 100 حرفًا",
-    "salaryDeleteReasonRequired": "يلزم ذكر سبب لحذف دفعة الراتب"
+    "salaryDeleteReasonRequired": "يلزم ذكر سبب لحذف دفعة الراتب",
+    "sireDamMustDiffer": "يجب أن يكون الأب والأم حيوانات مختلفة",
+    "pregnancyNotConfirmable": "لا يمكن تأكيد الحمل لسجل التربية الفاشل",
+    "offspringRequired": "يلزم وجود نسل واحد على الأقل",
+    "lineageRecordRequired": "يلزم سجل تكاثر أو سجل حمل لإنشاء النسب",
+    "sexOptionsInvalid": "خيار واحد أو أكثر من خيارات الجنس غير صالح",
+    "movementTypeInvalid": "نوع الحركة غير صالح",
+    "consumptionQuantityPositive": "يجب أن تكون كمية الاستهلاك أكبر من صفر",
+    "purchaseQuantityPositive": "يجب أن تكون كمية الشراء أكبر من صفر",
+    "transferAdjustmentQuantityZero": "لا يمكن أن تكون كمية التحويل أو التسوية صفرًا",
+    "movementTypeFilterInvalid": "يجب أن يكون نوع الحركة إحدى: شراء، استهلاك، تحويل، تسوية"
   }
 }

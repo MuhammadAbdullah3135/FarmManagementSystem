@@ -104,7 +104,7 @@ public class BreedingService : IBreedingService
             return Result<BreedingRecordDto>.NotFound("Dam animal not found", DomainMessageKeys.DamNotFound);
 
         if (request.SireId == request.DamId)
-            return Result<BreedingRecordDto>.Validation("Sire and dam must be different animals");
+            return Result<BreedingRecordDto>.Validation("Sire and dam must be different animals", DomainMessageKeys.SireDamMustDiffer);
 
         var userId = _currentUser.GetUserId();
         var now = DateTime.UtcNow;
@@ -183,7 +183,7 @@ public class BreedingService : IBreedingService
             return Result<BreedingRecordDto>.NotFound("Dam animal not found", DomainMessageKeys.DamNotFound);
 
         if (request.SireId == request.DamId)
-            return Result<BreedingRecordDto>.Validation("Sire and dam must be different animals");
+            return Result<BreedingRecordDto>.Validation("Sire and dam must be different animals", DomainMessageKeys.SireDamMustDiffer);
 
         record.SireId = request.SireId;
         record.DamId = request.DamId;
@@ -384,7 +384,7 @@ public class BreedingService : IBreedingService
             return Result<GestationRecordDto>.NotFound("Breeding record not found", DomainMessageKeys.BreedingRecordNotFound);
 
         if (breedingRecord.Result == BreedingResult.Failed)
-            return Result<GestationRecordDto>.Validation("Cannot confirm pregnancy for a failed breeding record");
+            return Result<GestationRecordDto>.Validation("Cannot confirm pregnancy for a failed breeding record", DomainMessageKeys.PregnancyNotConfirmable);
 
         var existingGestation = await _context.GestationRecords
             .FirstOrDefaultAsync(gr => gr.BreedingRecordId == request.BreedingRecordId && gr.ConfirmedDate != null);
@@ -702,9 +702,9 @@ public class BreedingService : IBreedingService
     public async Task<Result<BirthRecordDto>> CreateBirthRecordAsync(Guid farmId, CreateBirthRecordRequest request)
     {
         if (request.Offspring == null || request.Offspring.Count == 0)
-            return Result<BirthRecordDto>.Validation("At least one offspring is required");
+            return Result<BirthRecordDto>.Validation("At least one offspring is required", DomainMessageKeys.OffspringRequired);
         if (!request.BreedingRecordId.HasValue && !request.GestationRecordId.HasValue)
-            return Result<BirthRecordDto>.Validation("A breeding record or gestation record is required to establish lineage");
+            return Result<BirthRecordDto>.Validation("A breeding record or gestation record is required to establish lineage", DomainMessageKeys.LineageRecordRequired);
 
         // Validate dam
         var dam = await _context.Animals
@@ -737,7 +737,7 @@ public class BreedingService : IBreedingService
             .Where(so => sexIds.Contains(so.Id) && so.FarmId == farmId)
             .ToListAsync();
         if (sexOptions.Count != sexIds.Count)
-            return Result<BirthRecordDto>.Validation("One or more sex options are invalid");
+            return Result<BirthRecordDto>.Validation("One or more sex options are invalid", DomainMessageKeys.SexOptionsInvalid);
 
         // Get Active status for offspring
         var activeStatus = await _context.AnimalStatuses

@@ -270,6 +270,16 @@
     "paymentDateFuture": "Payment date cannot be in the future",
     "periodCoveredFuture": "Period covered cannot be in the future",
     "paymentReferenceTooLong": "Reference cannot exceed 100 characters",
-    "salaryDeleteReasonRequired": "A reason is required to delete a salary payment"
+    "salaryDeleteReasonRequired": "A reason is required to delete a salary payment",
+    "sireDamMustDiffer": "Sire and dam must be different animals",
+    "pregnancyNotConfirmable": "Cannot confirm pregnancy for a failed breeding record",
+    "offspringRequired": "At least one offspring is required",
+    "lineageRecordRequired": "A breeding record or gestation record is required to establish lineage",
+    "sexOptionsInvalid": "One or more sex options are invalid",
+    "movementTypeInvalid": "Invalid movement type",
+    "consumptionQuantityPositive": "Consumption quantity must be greater than zero",
+    "purchaseQuantityPositive": "Purchase quantity must be greater than zero",
+    "transferAdjustmentQuantityZero": "Transfer or adjustment quantity cannot be zero",
+    "movementTypeFilterInvalid": "Movement type must be Purchase, Consumption, Transfer, or Adjustment"
   }
 }
