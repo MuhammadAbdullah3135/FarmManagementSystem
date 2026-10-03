@@ -115,6 +115,16 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Cross-check the unkeyed backlog against its guard
+        # The validation guard exempts a hand-maintained list of files it is not yet
+        # watching, while this audit measures the same backlog from the source. Nothing
+        # compared them, so a file added to one and not the other left the guard reading
+        # as coverage over sentences the audit could see — which is how 122 sites stayed
+        # unguarded. This step is the comparison: it fails on a file with unkeyed
+        # refusals that the guard does not open, and on an exemption that has gone stale.
+        working-directory: .
+        run: node scripts/i18n-backlog-audit.mjs --guard
+
       - name: Build
         run: npm run build
 

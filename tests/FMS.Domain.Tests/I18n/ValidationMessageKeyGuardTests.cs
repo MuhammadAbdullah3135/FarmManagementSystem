@@ -39,9 +39,19 @@ public class ValidationMessageKeyGuardTests
     /// <b>This must be matched against the whole file, not line by line.</b> Every keyed call
     /// in this project puts its message on the line after <c>.Validation(</c>, so a per-line
     /// match cannot see the two together and silently passes — which is exactly the bug the
-    /// conflict guard had, found there by removing a key and watching it stay green. The
-    /// <c>Singleline</c> option is what lets <c>\s*</c> span the newline; the reported line is
-    /// where the match starts.
+    /// conflict guard had, found there by removing a key and watching it stay green.
+    /// </para>
+    /// <para>
+    /// The reported line is where the match starts.
+    /// </para>
+    /// <para>
+    /// A note on <c>RegexOptions.Singleline</c>, because the obvious explanation for it is
+    /// the wrong one: it makes <c>.</c> match a newline, and this pattern has no <c>.</c> in
+    /// it. What lets <c>\s*</c> cross the line break is that <c>\s</c> already matches a
+    /// newline. The option is harmless and stays for symmetry with the other guards, but the
+    /// thing that actually makes this guard work is scanning the file as one string — which is
+    /// why the cross-check in <c>scripts/i18n-backlog-audit.mjs</c>, which ports this pattern
+    /// to JavaScript, needs no equivalent flag to agree with it.
     /// </para>
     /// </summary>
     private static readonly Regex Keyless = new(
@@ -85,6 +95,14 @@ public class ValidationMessageKeyGuardTests
     /// re-opened a hole in the guard over 33 sentences that are now keyed, and nothing else
     /// would have said so — the guard passes whether a file is listed or not.
     /// </para>
+    /// <para>
+    /// Two more were removed by the cross-check rather than by a sweep:
+    /// <c>FarmService</c> and <c>FarmExportService</c> were listed because they emit unkeyed
+    /// sentences, but those sentences are <c>Unauthorized</c> and <c>Unavailable</c>, which
+    /// this guard does not claim — so it had never opened either file, and the exemption was
+    /// decoration. That is the drift this list is exposed to, and
+    /// <c>node scripts/i18n-backlog-audit.mjs --guard</c> now fails on it in CI.
+    /// </para>
     /// </summary>
     private static readonly string[] StillToKey =
     {
@@ -98,9 +116,7 @@ public class ValidationMessageKeyGuardTests
         "src/FMS.Infrastructure/Inventory/InventoryService.cs",
         "src/FMS.Infrastructure/Import/SpreadsheetReader.cs",
         "src/FMS.Infrastructure/Inventory/SupplierService.cs",
-        "src/FMS.Infrastructure/Farm/Export/FarmExportService.cs",
         "src/FMS.Infrastructure/Inventory/CustomerService.cs",
-        "src/FMS.Infrastructure/Farm/FarmService.cs",
         "src/FMS.Infrastructure/Files/FileStorageService.cs",
         "src/FMS.Infrastructure/Files/S3FileStorageService.cs",
         "src/FMS.Infrastructure/Health/MedicalRecordService.cs",
@@ -149,20 +165,28 @@ public class ValidationMessageKeyGuardTests
         // A file left on `StillToKey` after its sentences are keyed re-opens a hole in the guard
         // for no reason, and nothing else would say so — the guard above would pass either way.
         // This is the ceiling on the exemption: a file may leave the list, never join it.
-        var offenders = new List<string>();
+        //
+        // Staleness is judged per file, not in aggregate. The first version asked only whether
+        // *any* listed file still had an offender, so a list of twenty-six was healthy on the
+        // strength of one entry and its failure message named all twenty-six as needing
+        // removal — which is advice that cannot be acted on.
+        var stale = new List<string>();
+        var remaining = 0;
         foreach (var file in ServerSources.SourceFiles())
         {
             var relative = ServerSources.Relative(file);
             if (!StillToKey.Contains(relative)) continue;
-            offenders.AddRange(Offenders(relative, ServerSources.WithoutComments(File.ReadAllText(file))));
+            var count = Offenders(relative, ServerSources.WithoutComments(File.ReadAllText(file))).Count;
+            if (count == 0) stale.Add(relative);
+            else remaining += count;
         }
 
         Assert.True(
-            offenders.Count > 0,
-            "Every file on StillToKey is fully keyed, so this guard can be reduced to a plain "
-            + "assertion with no exemption list. Remove the finished entries from StillToKey "
-            + "and delete The_known_backlog_is_only_shrinking: " + string.Join(", ", StillToKey)
-            + " are all clean.");
+            stale.Count == 0,
+            "These files are on StillToKey but every validation refusal in them is keyed, so "
+            + "the exemption buys nothing and the guard is not watching them at all. Remove them "
+            + "from StillToKey:\n  " + string.Join("\n  ", stale)
+            + $"\n({remaining} offenders remain across the files that legitimately still need keying.)");
     }
 
     [Fact]

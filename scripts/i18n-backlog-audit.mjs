@@ -2,8 +2,15 @@
 //
 // Run: node scripts/i18n-backlog-audit.mjs          human-readable
 //      node scripts/i18n-backlog-audit.mjs --json   machine-readable
+//      node scripts/i18n-backlog-audit.mjs --guard  cross-check the audit against the guard test
 //
-// Two questions, kept separate on purpose because they answer different things:
+// A third question, added once the guard test existed:
+//   3. Do the audit and the guard describe the same backlog? The guard's exemption list is
+//      hand-maintained and this audit is not, so they can drift — and when they do, the
+//      guard is reading as coverage over files it does not open. That is the failure this
+//      project has now paid for seven times, so it is checked rather than trusted.
+//
+// The first two questions, kept separate on purpose because they answer different things:
 //   1. What is unkeyed?    a literal passed to Error.X(...) with no message key alongside it.
 //   2. What is reachable?  whether the method containing it is in the closure over the
 //                          controllers' action methods.
@@ -263,13 +270,165 @@ const reachable = rows.filter((r) => r.reachable);
 const distinct = new Set(rows.map((r) => r.message)).size;
 const distinctReachable = new Set(reachable.map((r) => r.message)).size;
 
-if (process.argv.includes("--json")) {
+// --- cross-check: the audit and the guard test's exemption list ------------
+//
+// `ValidationMessageKeyGuardTests` carries a hand-written list of files it is not yet
+// watching, so that a *new* keyless refusal fails the build while the known backlog does not.
+// That list and this audit are two descriptions of the same backlog, written by different
+// people at different times, and nothing compared them: a file added to one and not the other
+// would leave the guard reporting clean over sentences this audit can see. Seven times now a
+// check in this project could not see a category of the thing it checks and reported it as
+// absent, so the comparison is made explicit rather than assumed.
+//
+// The guard's regex and its exemption list are both *read out of the C# source* rather than
+// restated here. Restating them would create a second copy that can drift from the first,
+// which is the exact problem being fixed; if the C# cannot be parsed the run fails loudly
+// instead of quietly cross-checking nothing.
+const GUARD = join(ROOT, "tests/FMS.Domain.Tests/I18n/ValidationMessageKeyGuardTests.cs");
+
+function readGuard() {
+  let source;
+  try {
+    source = readFileSync(GUARD, "utf8");
+  } catch {
+    throw new Error(`cannot read the guard test at ${relative(ROOT, GUARD)}; nothing was cross-checked`);
+  }
+
+  // A C# verbatim string: `@"..."` with `""` standing for one quote.
+  const pattern = /readonly\s+Regex\s+\w+\s*=\s*new\(\s*\n\s*@"([\s\S]*?)"\s*,\s*\n\s*RegexOptions([^)]*)\)/.exec(source);
+  if (!pattern) {
+    throw new Error(
+      "could not find the guard's Regex initializer in ValidationMessageKeyGuardTests.cs. "
+      + "The cross-check compares the audit against the guard's own pattern, so it cannot run "
+      + "against a restated copy — and a cross-check that silently checks nothing is the "
+      + "failure this script exists to prevent.");
+  }
+  const body = pattern[1].split('""').join('"');
+  const regex = new RegExp(body, "g");
+
+  // Prove the ported pattern behaves like the guard before comparing anything against it.
+  // `\s` already spans a newline in both engines — the guard's whole-file scanning is what
+  // makes `.Validation(` and its message visible together, not the `Singleline` option — so
+  // the port needs no extra flag, and these probes are what actually establish that the two
+  // sides are looking at the same shape. A cross-check whose own pattern has drifted would
+  // otherwise report agreement that means nothing.
+  const probes = [
+    ["return Error.Validation(\"First name is required\");", true],
+    ["return Result<Foo>.Validation(\n    \"Quantity must be greater than zero\");", true],
+    ["return Error.Validation(\"First name is required\", DomainMessageKeys.FirstNameRequired);", false],
+    ["return Error.NotFound(\"Animal not found\");", false],
+  ];
+  for (const [sample, shouldMatch] of probes) {
+    const matched = new RegExp(regex.source).test(sample);
+    if (matched !== shouldMatch) {
+      throw new Error(
+        `the guard's pattern, read out of the C# and run here, ${shouldMatch ? "failed to match" : "matched"} `
+        + `a case the guard handles the other way: ${JSON.stringify(sample)}. The cross-check is `
+        + "comparing the audit against a pattern that is no longer the guard's.");
+    }
+  }
+
+  const listed = /StillToKey\s*=\s*\n?\s*\{([\s\S]*?)\n\s*\};/.exec(source);
+  if (!listed) throw new Error("could not find the StillToKey list in ValidationMessageKeyGuardTests.cs");
+
+  return {
+    regex,
+    listed: [...listed[1].matchAll(/"([^"]+)"/g)].map((m) => m[1]),
+  };
+}
+
+function crossCheck() {
+  const guard = readGuard();
+  const onDisk = new Set(files.map((f) => relative(ROOT, f).split(sep).join("/")));
+
+  // Count the guard's own matches per file, so the two definitions can be compared even
+  // though they are not identical: the guard matches only `Validation`/`Failure` with a
+  // single literal argument, while this audit matches all seven factories.
+  const guardHits = new Map();
+  for (const file of files) {
+    const rel = relative(ROOT, file).split(sep).join("/");
+    const found = blankComments(readFileSync(file, "utf8")).match(guard.regex) || [];
+    if (found.length) guardHits.set(rel, found.length);
+  }
+
+  // The guard claims `Validation` and `Failure`, so only those rows are its business. A file
+  // whose sole unkeyed site is a `Conflict` is not a hole in *this* guard — ConfigurationService
+  // is the standing case, exempted by name in the conflict guard — and counting it as one
+  // would be the cross-check's own version of the bug it exists to catch: reporting a category
+  // it does not cover as a failure. Those are counted and shown separately instead.
+  const GUARD_CODES = new Set(["Validation", "Failure"]);
+  const inScope = new Set(rows.filter((r) => GUARD_CODES.has(r.code)).map((r) => r.file));
+  const outOfScope = rows.filter((r) => !GUARD_CODES.has(r.code));
+
+  const listedSet = new Set(guard.listed);
+  const holes = [...inScope].filter((f) => !listedSet.has(f)).sort();
+  const stale = guard.listed.filter((f) => !inScope.has(f)).sort();
+  const dangling = guard.listed.filter((f) => !onDisk.has(f)).sort();
+
+  return {
+    listed: guard.listed.length,
+    holes,
+    stale,
+    dangling,
+    // Unkeyed sites no guard watches yet, by factory. Reported, never failed: this is the
+    // honest size of the next slices, and a number that goes quiet is how 122 sites stayed
+    // unguarded for as long as they did.
+    unguardedElsewhere: outOfScope.length,
+    unguardedByCode: outOfScope.reduce((acc, r) => {
+      acc[r.code] = (acc[r.code] || 0) + 1;
+      return acc;
+    }, {}),
+    // Per file: what each side counts. Printed rather than asserted, because the two
+    // definitions differ on purpose — a disagreement here is information, not a failure.
+    sites: [...inScope].sort().map((f) => ({
+      file: f,
+      audit: rows.filter((r) => r.file === f && GUARD_CODES.has(r.code)).length,
+      guard: guardHits.get(f) || 0,
+    })),
+    ok: holes.length === 0 && stale.length === 0 && dangling.length === 0,
+  };
+}
+
+const CHECK_ONLY = process.argv.includes("--guard");
+// The cross-check runs whenever anything is asked for except the plain listing, so `--json`
+// carries the comparison rather than a null that a consumer cannot tell from "agreed".
+const check = CHECK_ONLY || process.argv.includes("--json") ? crossCheck() : null;
+
+function report() {
+  console.log(`guard cross-check: ${check.ok ? "the guard and the audit agree" : "THEY DISAGREE"}`);
+  console.log(`  files exempted on StillToKey: ${check.listed}`);
+  for (const f of check.holes) {
+    console.log(`  HOLE    ${f} has ${rows.filter((r) => r.file === f).length} unkeyed site(s) and is not on StillToKey,`
+      + " so the guard does not open it. Add it to StillToKey or key the sentences.");
+  }
+  for (const f of check.stale) {
+    console.log(`  STALE   ${f} is on StillToKey but the audit finds nothing unkeyed in it,`
+      + " so the exemption buys nothing. Remove it and delete The_known_backlog_is_only_shrinking if it was the last.");
+  }
+  for (const f of check.dangling) {
+    console.log(`  GONE    ${f} is on StillToKey but does not exist. Remove it.`);
+  }
+  if (check.ok) {
+    console.log("  per file, audit sites vs the guard's own matches. They differ by design — the"
+      + " guard matches a single literal argument, the audit any argument list:");
+    for (const s of check.sites) console.log(`    ${String(s.audit).padStart(3)} / ${String(s.guard).padStart(3)}  ${s.file}`);
+  }
+  console.log(`  no guard watches these ${check.unguardedElsewhere} unkeyed sites yet:`
+    + ` ${JSON.stringify(check.unguardedByCode)}`);
+  console.log("");
+}
+
+if (CHECK_ONLY) {
+  report();
+  if (!check.ok) process.exitCode = 1;
+} else if (process.argv.includes("--json")) {
   console.log(JSON.stringify({
     sites: rows.length,
     distinctSentences: distinct,
     reachableSites: reachable.length,
     distinctReachableSentences: distinctReachable,
     byCode,
+    guardCrossCheck: check,
     rows: rows.sort((a, b) => a.file.localeCompare(b.file) || a.line - b.line),
   }, null, 2));
 } else {
@@ -277,6 +436,7 @@ if (process.argv.includes("--json")) {
   console.log(`reachable from a controller: ${reachable.length} sites (${distinctReachable} distinct)`);
   console.log("by code:", JSON.stringify(byCode));
   console.log("");
+  if (check && !CHECK_ONLY) report();
 
   const byFile = {};
   for (const r of rows) (byFile[r.file] = byFile[r.file] || []).push(r);
