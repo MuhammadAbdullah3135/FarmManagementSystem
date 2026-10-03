@@ -475,11 +475,11 @@ public static class DomainMessageKeys
 
     // ── validation, argument-free ─────────────────────────────────────────────────────────
     // The shape the "not found" and conflict families already had: no arguments, so the key is
-    // the whole message. These 32 cover 49 sites across FeedService, AnimalService,
-    // MedicineService and VaccineService, because a sentence said three times is one sentence —
-    // “Quantity must be greater than zero” appears at three feed sites, at two medicine ones and
-    // in InventoryService, and “Tag number is required” at three animal ones, so it is one
-    // translation rather than five that have to be kept in step.
+    // the whole message. These 38 cover 55 sites across FeedService, AnimalService,
+    // MedicineService, VaccineService and EmployeeService, because a sentence said three times
+    // is one sentence — “Quantity must be greater than zero” appears at three feed sites, at two
+    // medicine ones and in InventoryService, and “Tag number is required” at three animal ones,
+    // so it is one translation rather than five that have to be kept in step.
 
     // Feed
     /// <summary>The exact English this API has always answered: “Adjustment quantity cannot be zero”</summary>
@@ -597,5 +597,37 @@ public static class DomainMessageKeys
 
     /// <summary>The exact English this API has always answered: “Recurrence interval must be greater than zero”</summary>
     public const string RecurrenceIntervalPositive = "validation.validation.recurrenceIntervalPositive";
+
+    // Employees and payroll
+    // “Payment date cannot be in the future” and “Period covered cannot be in the future” are
+    // kept apart from MovementDateFuture and from each other rather than sharing one key with
+    // the noun as an argument. A single key would need the reader's language to place an
+    // interpolated noun correctly, and Arabic does not put a noun where English does, so the
+    // saving would be two keys at the cost of a sentence that is wrong in one language and
+    // merely unusual in another. The specific obstacle is the useful part of the message.
+    /// <summary>The exact English this API has always answered: “Description cannot exceed 500 characters”</summary>
+    public const string RoleDescriptionTooLong = "validation.validation.roleDescriptionTooLong";
+
+    // The bundle carries this sentence twice already, as expense.amountPositive and
+// income.amountPositive. Those are client-side form validations with no server constant behind
+// them, so this is the third copy rather than a duplicate to be merged away: a namespace carries
+// its own keys, and until this constant existed there was no key the server could send for this
+// sentence at all. The check that the doc comment below agrees with the bundle reads the LAST
+// quoted string of the LAST doc comment above the constant, which is why this note is a plain
+// comment and not a second /// block.
+    /// <summary>The exact English this API has always answered: “Amount must be greater than zero”</summary>
+    public const string SalaryAmountPositive = "validation.validation.salaryAmountPositive";
+
+    /// <summary>The exact English this API has always answered: “Payment date cannot be in the future”</summary>
+    public const string PaymentDateFuture = "validation.validation.paymentDateFuture";
+
+    /// <summary>The exact English this API has always answered: “Period covered cannot be in the future”</summary>
+    public const string PeriodCoveredFuture = "validation.validation.periodCoveredFuture";
+
+    /// <summary>The exact English this API has always answered: “Reference cannot exceed 100 characters”</summary>
+    public const string PaymentReferenceTooLong = "validation.validation.paymentReferenceTooLong";
+
+    /// <summary>The exact English this API has always answered: “A reason is required to delete a salary payment”</summary>
+    public const string SalaryDeleteReasonRequired = "validation.validation.salaryDeleteReasonRequired";
 
 }

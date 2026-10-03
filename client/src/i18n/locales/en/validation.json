@@ -264,6 +264,12 @@
     "vaccineTypeInUseByVaccinations": "Cannot delete vaccine type with existing vaccination records",
     "vaccineTypeInUseBySchedules": "Cannot delete vaccine type with existing schedules",
     "quantityUsedPositive": "Quantity used must be greater than zero",
-    "recurrenceIntervalPositive": "Recurrence interval must be greater than zero"
+    "recurrenceIntervalPositive": "Recurrence interval must be greater than zero",
+    "roleDescriptionTooLong": "Description cannot exceed 500 characters",
+    "salaryAmountPositive": "Amount must be greater than zero",
+    "paymentDateFuture": "Payment date cannot be in the future",
+    "periodCoveredFuture": "Period covered cannot be in the future",
+    "paymentReferenceTooLong": "Reference cannot exceed 100 characters",
+    "salaryDeleteReasonRequired": "A reason is required to delete a salary payment"
   }
 }

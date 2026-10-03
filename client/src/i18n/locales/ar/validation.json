@@ -264,6 +264,12 @@
     "vaccineTypeInUseByVaccinations": "لا يمكن حذف نوع اللقاح لديه سجلات تحصين",
     "vaccineTypeInUseBySchedules": "لا يمكن حذف نوع اللقاح لديه جداول",
     "quantityUsedPositive": "يجب أن تكون الكمية المستخدمة أكبر من صفر",
-    "recurrenceIntervalPositive": "يجب أن تكون فترة التكرار أكبر من صفر"
+    "recurrenceIntervalPositive": "يجب أن تكون فترة التكرار أكبر من صفر",
+    "roleDescriptionTooLong": "لا يمكن أن يتجاوز الوصف 500 حرفًا",
+    "salaryAmountPositive": "يجب أن يكون المبلغ أكبر من صفر",
+    "paymentDateFuture": "لا يمكن أن يكون تاريخ الدفع في المستقبل",
+    "periodCoveredFuture": "لا يمكن أن تكون الفترة المشمولة في المستقبل",
+    "paymentReferenceTooLong": "لا يمكن أن يتجاوز المرجع 100 حرفًا",
+    "salaryDeleteReasonRequired": "يلزم ذكر سبب لحذف دفعة الراتب"
   }
 }

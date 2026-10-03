@@ -264,6 +264,12 @@
     "vaccineTypeInUseByVaccinations": "No se puede eliminar un tipo de vacuna que tiene registros de vacunación",
     "vaccineTypeInUseBySchedules": "No se puede eliminar un tipo de vacuna que tiene horarios",
     "quantityUsedPositive": "La cantidad usada debe ser mayor que cero",
-    "recurrenceIntervalPositive": "El intervalo de recurrencia debe ser mayor que cero"
+    "recurrenceIntervalPositive": "El intervalo de recurrencia debe ser mayor que cero",
+    "roleDescriptionTooLong": "La descripción no puede superar los 500 caracteres",
+    "salaryAmountPositive": "El importe debe ser mayor que cero",
+    "paymentDateFuture": "La fecha de pago no puede ser futura",
+    "periodCoveredFuture": "El período cubierto no puede ser futuro",
+    "paymentReferenceTooLong": "La referencia no puede superar los 100 caracteres",
+    "salaryDeleteReasonRequired": "Se requiere un motivo para eliminar un pago de salario"
   }
 }

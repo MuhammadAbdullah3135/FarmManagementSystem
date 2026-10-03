@@ -13,8 +13,12 @@ import { join, relative } from 'node:path';
 const ROOT = process.cwd();
 const PROJECTS = ['FMS.API', 'FMS.Application', 'FMS.Domain', 'FMS.Infrastructure'];
 
-// Read the server's own constants and their doc comments, which carry the exact English
-// each key stands for. The comment is written as `“...”`, the way the file spells it.
+// Read the server's own constants and their doc comments, which carry the exact English each
+// key stands for. The comment is written as `“...”`, the way the file spells it. This used to be
+// collected and never read, which meant the claim every constant makes — "the exact English this
+// API has always answered" — was checked by nothing at all. It is checked below, against the
+// bundle, so a doc comment that has drifted is a failure rather than a comment that lies quietly
+// next to the key it describes.
 const keysSource = readFileSync(
   join(ROOT, 'src/FMS.Application/Common/DomainMessageKeys.cs'), 'utf8');
 
@@ -26,9 +30,19 @@ const ENGLISH_BY_KEY = new Map();
     const [, constant, key] = match;
     // The doc comment immediately above the constant carries the sentence.
     const before = keysSource.slice(0, match.index);
-    const docStart = before.lastIndexOf('/**');
+    // `/// <summary>`, not `/**` and not a bare `///`. The block comment marker was never present
+    // in this file, so the first version found nothing at all and every constant was recorded
+    // as having no documented English. The second version searched for the last `///`, which
+    // works for a one-line summary and silently misses a wrapped one — because the last `///`
+    // of a five-line comment is its `/// </summary>`, and the sentence is above that.
+    // Anchoring on `<summary>` reads the whole comment either way.
+    const docStart = before.lastIndexOf('/// <summary>');
     const doc = docStart === -1 ? '' : before.slice(docStart);
-    const quoted = [...doc.matchAll(/[“"]([^”"]+)[”"]/g)].map((m) => m[1]);
+    // A wrapped comment repeats the `///` marker on every line, so the quoted sentence comes
+    // back as `... is\n    /// {current} {unit}`. Flattening the markers here — rather than comparing
+    // them away later — keeps the sentence itself intact for the reader of a failure.
+    const flatDoc = doc.replace(/\s*\/\/\/\s*/g, ' ');
+    const quoted = [...flatDoc.matchAll(/[“"]([^”"]+)[”"]/g)].map((m) => m[1]);
     if (quoted.length) ENGLISH_BY_KEY.set(key, quoted[quoted.length - 1]);
     else ENGLISH_BY_KEY.set(key, null), void constant;
   }
@@ -268,6 +282,8 @@ let checked = 0;
 let mismatched = 0;
 let missing = 0;
 let calls = 0;
+let undocumented = 0;
+const missingEnglish = [];
 const coveredConstants = new Set();
 
 /**
@@ -323,7 +339,17 @@ const MEDICINES_AND_VACCINES = [
   'VaccineTypeInUseBySchedules', 'QuantityUsedPositive', 'RecurrenceIntervalPositive',
 ];
 
-const EXPECTED = [...SLICE_2B, ...ARGUMENT_FREE, ...MEDICINES_AND_VACCINES];
+/**
+ * The six the employee sweep added. `FromDateAfterToDate` is deliberately absent: FeedService
+ * keyed that sentence first and EmployeeService reuses the constant, so naming it twice
+ * would assert nothing.
+ */
+const EMPLOYEES = [
+  'RoleDescriptionTooLong', 'SalaryAmountPositive', 'PaymentDateFuture', 'PeriodCoveredFuture',
+  'PaymentReferenceTooLong', 'SalaryDeleteReasonRequired',
+];
+
+const EXPECTED = [...SLICE_2B, ...ARGUMENT_FREE, ...MEDICINES_AND_VACCINES, ...EMPLOYEES];
 
 for (const file of SOURCES) {
   const source = readFileSync(file, 'utf8').replace(/\r\n/g, '\n');
@@ -399,6 +425,34 @@ for (const file of SOURCES) {
   }
 }
 
+// The doc comment's claim, against the bundle's value. This is the same rule the call-site
+// comparison enforces, applied to the sentence written beside the key rather than the sentence
+// sent at runtime, so a key cannot be documented one way and rendered another.
+//
+// Three differences have to be reconciled first, or the check reports the same sentence many
+// times over: a comment writes the C# hole `{detail}` and the bundle writes the i18next hole
+// `{{detail}}`; a comment quotes with curly marks where the bundle uses straight ones; and a
+// long sentence is wrapped across lines in the comment and kept on one in the bundle. None of
+// the three is a disagreement about the sentence. Everything else is.
+const asBundle = (english) => english
+  .replace(/\s+/g, ' ')
+  .trim()
+  .replace(/[‘’]/g, "'")
+  .replace(/\{(\w+)\}/g, '{{$1}}');
+
+for (const [key, english] of ENGLISH_BY_KEY) {
+  const template = at(key);
+  if (template === undefined) continue;
+  if (english === null) { undocumented++; missingEnglish.push(key); continue; }
+  if (template !== asBundle(english)) {
+    mismatched++;
+    console.log(`  MISMATCH ${key} (doc comment vs bundle)`);
+    console.log(`    comment: ${english}`);
+    console.log(`    bundle:  ${template}`);
+  }
+  checked++;
+}
+
 const uncovered = EXPECTED.filter((name) => !coveredConstants.has(name));
 
 // Why is a named constant not being reached? Prints the source around each use of it,
@@ -417,6 +471,8 @@ if (process.argv[2]) {
 }
 
 console.log(`call sites checked: ${checked}   mismatched: ${mismatched}   missing from bundle: ${missing}`);
+console.log(`constants whose doc comment states their English: ${undocumented ? `${undocumented} do not` : 'all of them'}`);
+if (missingEnglish.length) console.log(`  NO DOCUMENTED ENGLISH: ${missingEnglish.join(', ')}`);
 console.log(`expected constants covered: ${EXPECTED.length - uncovered.length}/${EXPECTED.length}`);
 if (uncovered.length) {
   console.log(`  NOT COVERED: ${uncovered.join(', ')}`);

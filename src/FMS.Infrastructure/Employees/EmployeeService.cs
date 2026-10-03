@@ -98,7 +98,7 @@ public class EmployeeService : IEmployeeService
             return Result<EmployeeRoleDto>.Validation(validationError);
 
         if (request.Description?.Length > 500)
-            return Result<EmployeeRoleDto>.Validation("Description cannot exceed 500 characters");
+            return Result<EmployeeRoleDto>.Validation("Description cannot exceed 500 characters", DomainMessageKeys.RoleDescriptionTooLong);
 
         var duplicate = await _context.EmployeeRoles
             .AnyAsync(r => r.FarmId == farmId && r.Name.ToLower() == request.Name.ToLower());
@@ -523,17 +523,17 @@ public class EmployeeService : IEmployeeService
             return Result<SalaryPaymentDto>.NotFound("Employee not found", DomainMessageKeys.EmployeeNotFound);
 
         if (request.Amount <= 0)
-            return Result<SalaryPaymentDto>.Validation("Amount must be greater than zero");
+            return Result<SalaryPaymentDto>.Validation("Amount must be greater than zero", DomainMessageKeys.SalaryAmountPositive);
 
         var paymentDate = request.PaymentDate ?? DateTime.UtcNow;
         if (paymentDate > DateTime.UtcNow.AddMinutes(5))
-            return Result<SalaryPaymentDto>.Validation("Payment date cannot be in the future");
+            return Result<SalaryPaymentDto>.Validation("Payment date cannot be in the future", DomainMessageKeys.PaymentDateFuture);
 
         if (request.PeriodCovered.HasValue && request.PeriodCovered.Value > DateTime.UtcNow.AddMinutes(5))
-            return Result<SalaryPaymentDto>.Validation("Period covered cannot be in the future");
+            return Result<SalaryPaymentDto>.Validation("Period covered cannot be in the future", DomainMessageKeys.PeriodCoveredFuture);
 
         if (request.Reference is { Length: > 100 })
-            return Result<SalaryPaymentDto>.Validation("Reference cannot exceed 100 characters");
+            return Result<SalaryPaymentDto>.Validation("Reference cannot exceed 100 characters", DomainMessageKeys.PaymentReferenceTooLong);
 
         var now = DateTime.UtcNow;
         var payment = new SalaryPayment
@@ -632,7 +632,7 @@ public class EmployeeService : IEmployeeService
     public async Task<Result> DeleteSalaryPaymentAsync(Guid farmId, Guid employeeId, Guid paymentId, string? reason)
     {
         if (string.IsNullOrWhiteSpace(reason))
-            return Result.Validation("A reason is required to delete a salary payment");
+            return Result.Validation("A reason is required to delete a salary payment", DomainMessageKeys.SalaryDeleteReasonRequired);
 
         var payment = await _context.SalaryPayments
             .FirstOrDefaultAsync(p => p.Id == paymentId && p.EmployeeId == employeeId && p.FarmId == farmId);
@@ -654,7 +654,7 @@ public class EmployeeService : IEmployeeService
         var effectiveTo = (to ?? DateTime.UtcNow).Date;
         var effectiveFrom = (from ?? effectiveTo.AddDays(-30)).Date;
         if (effectiveFrom > effectiveTo)
-            return Result<PayrollReportDto>.Validation("From date must be before or equal to To date");
+            return Result<PayrollReportDto>.Validation("From date must be before or equal to To date", DomainMessageKeys.FromDateAfterToDate);
 
         var payments = await _context.SalaryPayments
             .Include(p => p.Employee)
