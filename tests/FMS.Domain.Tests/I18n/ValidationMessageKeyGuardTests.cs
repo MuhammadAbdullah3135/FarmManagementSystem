@@ -121,11 +121,17 @@ public class ValidationMessageKeyGuardTests
     /// all seven before they shared one key. Seven entries became zero in one step, and the
     /// cross-check confirms none of them has a hole behind it.
     /// </para>
+    /// <para>
+    /// <c>AuthService</c> left next, and took the last two sentences no guard watched. Its six
+    /// sites were four <c>Validation</c> refusals on the password-reset path and two
+    /// <c>Unauthorized</c> ones on the login and refresh paths, which is why this file went from
+    /// the list while those two did not appear in it: this guard only ever claimed
+    /// <c>Validation</c>, and its exemption list was never where the login sentences were hiding.
+    /// </para>
     /// </summary>
     private static readonly string[] StillToKey =
     {
         "src/FMS.Infrastructure/Farm/FarmMembershipService.cs",
-        "src/FMS.Infrastructure/Auth/AuthService.cs",
         "src/FMS.Infrastructure/Attendance/AttendanceService.cs",
         "src/FMS.Infrastructure/Import/SpreadsheetReader.cs",
         "src/FMS.Infrastructure/Inventory/SupplierService.cs",

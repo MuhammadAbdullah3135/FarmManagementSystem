@@ -281,10 +281,15 @@
     "purchaseQuantityPositive": "Purchase quantity must be greater than zero",
     "transferAdjustmentQuantityZero": "Transfer or adjustment quantity cannot be zero",
     "movementTypeFilterInvalid": "Movement type must be Purchase, Consumption, Transfer, or Adjustment",
-    "noDataRowsBelowHeader": "The file has no data rows below the header row."
+    "noDataRowsBelowHeader": "The file has no data rows below the header row.",
+    "invalidOrExpiredResetToken": "Invalid or expired reset token",
+    "resetTokenAlreadyUsed": "Reset token has already been used",
+    "resetTokenExpired": "Reset token has expired"
   },
   "unauthorized": {
     "farmOwnerOrManagerOnly": "Only farm owners and managers can {{action}}",
-    "farmOwnerOnly": "Only farm owners can {{action}}"
+    "farmOwnerOnly": "Only farm owners can {{action}}",
+    "invalidEmailOrPassword": "Invalid email or password",
+    "invalidOrExpiredRefreshToken": "Invalid or expired refresh token"
   }
 }

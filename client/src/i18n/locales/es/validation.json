@@ -281,10 +281,15 @@
     "purchaseQuantityPositive": "La cantidad de compra debe ser mayor que cero",
     "transferAdjustmentQuantityZero": "La cantidad de transferencia o ajuste no puede ser cero",
     "movementTypeFilterInvalid": "El tipo de movimiento debe ser Compra, Consumo, Transferencia o Ajuste",
-    "noDataRowsBelowHeader": "El archivo no tiene filas de datos debajo de la fila de encabezado."
+    "noDataRowsBelowHeader": "El archivo no tiene filas de datos debajo de la fila de encabezado.",
+    "invalidOrExpiredResetToken": "El token de restablecimiento no es válido o ha caducado",
+    "resetTokenAlreadyUsed": "El token de restablecimiento ya se ha utilizado",
+    "resetTokenExpired": "El token de restablecimiento ha caducado"
   },
   "unauthorized": {
     "farmOwnerOrManagerOnly": "Solo los propietarios y gestores de la granja pueden {{action}}",
-    "farmOwnerOnly": "Solo los propietarios de la granja pueden {{action}}"
+    "farmOwnerOnly": "Solo los propietarios de la granja pueden {{action}}",
+    "invalidEmailOrPassword": "Correo electrónico o contraseña incorrectos",
+    "invalidOrExpiredRefreshToken": "El token de actualización no es válido o ha caducado"
   }
 }

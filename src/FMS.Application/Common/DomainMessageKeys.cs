@@ -696,4 +696,27 @@ public static class DomainMessageKeys
     /// <summary>The exact English this API has always answered: “Only farm owners can {action}”</summary>
     public const string FarmOwnerOnly = "validation.unauthorized.farmOwnerOnly";
 
+    // ── authentication ────────────────────────────────────────────────────────────────────
+    // Argument-free, unlike the two frames above, so the unauthorized family now carries both
+    // shapes — as the conflict family already does.
+    ///
+    // `Invalid email or password` is the most widely read string in this file: it is what every
+    // wrong password puts on screen, in the language the reader chose. The same sentence also
+    // serves a non-existent account, deliberately, and the three locales keep that: it never says
+    // which half was wrong.
+    /// <summary>The exact English this API has always answered: “Invalid email or password”</summary>
+    public const string InvalidEmailOrPassword = "validation.unauthorized.invalidEmailOrPassword";
+
+    /// <summary>The exact English this API has always answered: “Invalid or expired refresh token”</summary>
+    public const string InvalidOrExpiredRefreshToken = "validation.unauthorized.invalidOrExpiredRefreshToken";
+
+    /// <summary>The exact English this API has always answered: “Invalid or expired reset token”</summary>
+    public const string InvalidOrExpiredResetToken = "validation.validation.invalidOrExpiredResetToken";
+
+    /// <summary>The exact English this API has always answered: “Reset token has already been used”</summary>
+    public const string ResetTokenAlreadyUsed = "validation.validation.resetTokenAlreadyUsed";
+
+    /// <summary>The exact English this API has always answered: “Reset token has expired”</summary>
+    public const string ResetTokenExpired = "validation.validation.resetTokenExpired";
+
 }

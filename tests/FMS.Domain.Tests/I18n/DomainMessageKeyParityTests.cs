@@ -45,10 +45,10 @@ public class DomainMessageKeyParityTests
         // an equality: the total can only grow as families are keyed, and the lookup family
         // itself is pinned at its own count so a reflection change that dropped *one* group
         // while keeping another would still be caught.
-        // 64 lookup + 47 conflict + 3 supersede + 69 validation + 2 unauthorized = 185.
+        // 64 lookup + 47 conflict + 3 supersede + 72 validation + 4 unauthorized = 190.
         Assert.True(
-            keys.Count >= 185,
-            $"Only {keys.Count} domain message keys were found; at least 185 are expected. A "
+            keys.Count >= 190,
+            $"Only {keys.Count} domain message keys were found; at least 190 are expected. A "
             + "reflection change that enumerates fewer keys than the class declares would make "
             + "this test pass for the wrong reason.");
         Assert.Equal(64, keys.Count(key => key.StartsWith("validation.lookup.", StringComparison.Ordinal)));
@@ -61,10 +61,11 @@ public class DomainMessageKeyParityTests
         // 16 argument-taking sentences, then 23 argument-free across FeedService and
         // AnimalService. Each service's sweep raises this number, which is the point of pinning
         // it — a reflection change that missed the newest group would otherwise go unnoticed.
-        Assert.Equal(69, keys.Count(key => key.StartsWith("validation.validation.", StringComparison.Ordinal)));
-        // The unauthorized family is two keys, and is pinned for the same reason as the rest:
-        // it is the newest family, so it is the one a reflection change would drop silently.
-        Assert.Equal(2, keys.Count(key => key.StartsWith("validation.unauthorized.", StringComparison.Ordinal)));
+        Assert.Equal(72, keys.Count(key => key.StartsWith("validation.validation.", StringComparison.Ordinal)));
+        // The unauthorized family is four keys — two argument-taking frames and two argument-free
+        // login refusals — and is pinned for the same reason as the rest: it is the newest
+        // family, so it is the one a reflection change would drop silently.
+        Assert.Equal(4, keys.Count(key => key.StartsWith("validation.unauthorized.", StringComparison.Ordinal)));
 
         // One bundle read per namespace, not per key: the lookup family is one namespace.
         var bundles = ClientBundles.TranslatedLocales()

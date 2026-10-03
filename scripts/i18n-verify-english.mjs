@@ -439,9 +439,20 @@ const IMPORTS = ['NoDataRowsBelowHeader'];
  */
 const UNAUTHORIZED = ['FarmOwnerOrManagerOnly', 'FarmOwnerOnly'];
 
+/**
+ * The login and password-reset sentences, in both families: two unauthorized, three validation.
+ * `Invalid email or password` is here because it is the most widely read string the API emits —
+ * it is what every wrong password puts on screen — and the verifier is the only thing in the
+ * build that can prove it still renders byte-identically after a change anywhere near it.
+ */
+const AUTHENTICATION = [
+  'InvalidEmailOrPassword', 'InvalidOrExpiredRefreshToken', 'InvalidOrExpiredResetToken',
+  'ResetTokenAlreadyUsed', 'ResetTokenExpired',
+];
+
 const EXPECTED = [
   ...SLICE_2B, ...ARGUMENT_FREE, ...MEDICINES_AND_VACCINES, ...EMPLOYEES,
-  ...BREEDING_AND_INVENTORY, ...IMPORTS, ...UNAUTHORIZED,
+  ...BREEDING_AND_INVENTORY, ...IMPORTS, ...UNAUTHORIZED, ...AUTHENTICATION,
 ];
 
 for (const file of SOURCES) {

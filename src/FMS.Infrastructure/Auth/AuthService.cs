@@ -183,7 +183,7 @@ public class AuthService : IAuthService
             .FirstOrDefaultAsync(u => u.Email == request.Email && u.IsActive);
 
         if (user == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
-            return Result<AuthResponse>.Unauthorized("Invalid email or password");
+            return Result<AuthResponse>.Unauthorized("Invalid email or password", DomainMessageKeys.InvalidEmailOrPassword);
 
         // Preserve the registration invariant for accounts created before the initial-farm fix.
         await EnsureUserHasFarmAsync(user);
@@ -287,7 +287,7 @@ public class AuthService : IAuthService
             .FirstOrDefaultAsync(rt => rt.Token == request.RefreshToken && !rt.IsRevoked);
 
         if (storedToken == null || storedToken.ExpiresAt < DateTime.UtcNow)
-            return Result<AuthResponse>.Unauthorized("Invalid or expired refresh token");
+            return Result<AuthResponse>.Unauthorized("Invalid or expired refresh token", DomainMessageKeys.InvalidOrExpiredRefreshToken);
 
         var user = storedToken.User;
         var roles = user.UserRoles.Select(ur => ur.Role.Name).ToList();
@@ -379,17 +379,17 @@ public class AuthService : IAuthService
             .FirstOrDefaultAsync(prt => prt.TokenHash == tokenHash);
 
         if (resetToken == null)
-            return Result.Validation("Invalid or expired reset token");
+            return Result.Validation("Invalid or expired reset token", DomainMessageKeys.InvalidOrExpiredResetToken);
 
         if (resetToken.IsUsed)
-            return Result.Validation("Reset token has already been used");
+            return Result.Validation("Reset token has already been used", DomainMessageKeys.ResetTokenAlreadyUsed);
 
         if (resetToken.ExpiresAt < DateTime.UtcNow)
-            return Result.Validation("Reset token has expired");
+            return Result.Validation("Reset token has expired", DomainMessageKeys.ResetTokenExpired);
 
         var user = await _context.Users.FindAsync(resetToken.UserId);
         if (user == null)
-            return Result.Validation("Invalid or expired reset token");
+            return Result.Validation("Invalid or expired reset token", DomainMessageKeys.InvalidOrExpiredResetToken);
 
         user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
         resetToken.IsUsed = true;
