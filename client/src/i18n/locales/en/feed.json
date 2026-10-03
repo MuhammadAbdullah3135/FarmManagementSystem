@@ -111,5 +111,12 @@
   "type": "Type",
   "unit": "Unit",
   "unitCostPurchases": "Unit Cost (purchases)",
-  "weekly": "Weekly"
+  "weekly": "Weekly",
+  "unitKilogram": "kg",
+  "unitGram": "g",
+  "unitTon": "t",
+  "unitLiter": "L",
+  "unitBale": "bale",
+  "unitBag": "bag",
+  "unitOther": "other"
 }

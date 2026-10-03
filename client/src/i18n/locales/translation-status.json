@@ -55,6 +55,15 @@
         "files": [
           "es/validation.json (conflict + supersede)"
         ]
+      },
+      {
+        "files": [
+          "es/validation.json (argument-taking conflict + supersede) + feed.json (unit names)"
+        ],
+        "source": "en",
+        "tool": "Codebuff agent (GLM)",
+        "date": "2026-10-03",
+        "reviewed": false
       }
     ]
   },
@@ -115,6 +124,15 @@
         "files": [
           "ar/validation.json (conflict + supersede)"
         ]
+      },
+      {
+        "files": [
+          "ar/validation.json (argument-taking conflict + supersede) + feed.json (unit names)"
+        ],
+        "source": "en",
+        "tool": "Codebuff agent (GLM)",
+        "date": "2026-10-03",
+        "reviewed": false
       }
     ]
   }

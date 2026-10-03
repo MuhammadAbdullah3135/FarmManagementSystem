@@ -42,7 +42,9 @@ public class SpreadsheetReader : ISpreadsheetReader
             LegacyExcelExtension => Result<SpreadsheetSheet>.Validation(
                 "The legacy .xls format is not supported. Save the file as .xlsx or CSV and upload it again."),
             _ => Result<SpreadsheetSheet>.Validation(
-                $"'{extension}' files are not supported. Upload a CSV or .xlsx file.")
+                $"'{extension}' files are not supported. Upload a CSV or .xlsx file.",
+                DomainMessageKeys.ImportExtensionNotSupported,
+                new Dictionary<string, object?> { ["extension"] = extension })
         });
     }
 
@@ -80,7 +82,9 @@ public class SpreadsheetReader : ISpreadsheetReader
             {
                 if (rows.Count >= maxRows)
                     return Result<SpreadsheetSheet>.Validation(
-                        $"The file has more than {maxRows} rows. Split it into smaller files and import them separately.");
+                        $"The file has more than {maxRows} rows. Split it into smaller files and import them separately.",
+                        DomainMessageKeys.ImportTooManyCsvRows,
+                        new Dictionary<string, object?> { ["rows"] = maxRows });
 
                 var cells = new string[headers.Length];
                 for (var i = 0; i < headers.Length; i++)
@@ -94,7 +98,12 @@ public class SpreadsheetReader : ISpreadsheetReader
         }
         catch (CsvHelperException exception)
         {
-            return Result<SpreadsheetSheet>.Validation($"The CSV file could not be read: {exception.Message}");
+            return Result<SpreadsheetSheet>.Validation(
+                $"The CSV file could not be read: {exception.Message}",
+                DomainMessageKeys.ImportCsvUnreadable,
+                // As with the S3 faults: the frame is translated, the parser's own message is
+                // not, because it is not copy. A CsvHelper message names a CsvHelper problem.
+                new Dictionary<string, object?> { ["detail"] = exception.Message });
         }
     }
 
@@ -119,7 +128,9 @@ public class SpreadsheetReader : ISpreadsheetReader
             {
                 if (rows.Count >= maxRows)
                     return Result<SpreadsheetSheet>.Validation(
-                        $"The workbook has more than {maxRows} rows. Split it into smaller files and import them separately.");
+                        $"The workbook has more than {maxRows} rows. Split it into smaller files and import them separately.",
+                        DomainMessageKeys.ImportTooManyWorkbookRows,
+                        new Dictionary<string, object?> { ["rows"] = maxRows });
 
                 var row = usedRows[index];
                 var cells = new string[headers.Length];
@@ -136,7 +147,9 @@ public class SpreadsheetReader : ISpreadsheetReader
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
             return Result<SpreadsheetSheet>.Validation(
-                $"The workbook could not be read: {exception.Message}");
+                $"The workbook could not be read: {exception.Message}",
+                DomainMessageKeys.ImportWorkbookUnreadable,
+                new Dictionary<string, object?> { ["detail"] = exception.Message });
         }
     }
 

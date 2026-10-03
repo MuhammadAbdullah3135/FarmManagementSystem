@@ -71,7 +71,27 @@
     "supplierHasPurchases": "No se puede eliminar un proveedor con historial de compras",
     "taskClosed": "Las tareas cerradas no se pueden editar. Reabre primero la tarea.",
     "taskCompletionNotesDiffer": "Esta tarea ya se completó con notas de finalización diferentes",
-    "vaccineTypeNameExists": "Ya existe un tipo de vacuna con este nombre"
+    "vaccineTypeNameExists": "Ya existe un tipo de vacuna con este nombre",
+    "animalTagExists": "Ya existe en esta granja un animal con la etiqueta '{{tag}}'",
+    "identificationValueExists": "Ya existe en esta granja una identificación activa con el valor '{{value}}'",
+    "departmentNameExists": "Ya existe un departamento con el nombre '{{name}}'",
+    "roleNameExists": "Ya existe un rol con el nombre '{{name}}'",
+    "feedTypeNameExists": "Ya existe un tipo de alimento con el nombre '{{name}}'",
+    "expenseCategoryNameExists": "Ya existe una categoría de gasto con el nombre '{{name}}'",
+    "paymentMethodNameExists": "Ya existe un método de pago con el nombre '{{name}}'",
+    "incomeCategoryNameExists": "Ya existe una categoría de ingreso con el nombre '{{name}}'",
+    "feedTypeAlreadyInDietPlan": "El tipo de alimento '{{name}}' ya está en el plan de dieta",
+    "scheduleTimeExists": "Ya existe un horario a las {{time}} para este plan de dieta",
+    "systemStatusCannotBeDeleted": "No se puede eliminar '{{name}}': es un estado del sistema. Desactívalo en su lugar.",
+    "insufficientStockToRemove": "Existencias insuficientes: el stock actual es {{current}} {{unit}}, se intentó retirar {{attempted}}",
+    "insufficientStockToFeed": "Existencias insuficientes: el stock actual es {{current}} {{unit}}, se intentó alimentar con {{attempted}}",
+    "insufficientStockToExtend": "Existencias insuficientes: el stock actual es {{current}} {{unit}}, se requieren {{attempted}} adicionales",
+    "insufficientStockAvailable": "Existencias insuficientes: la cantidad disponible es {{available}} {{unit}}",
+    "feedingTaskAlreadyStatus": "La tarea ya está {{status}}",
+    "taskNotPendingToStart": "Solo las tareas pendientes se pueden iniciar. Estado actual: {{status}}",
+    "taskNotOpenToComplete": "Solo las tareas abiertas se pueden completar. Estado actual: {{status}}",
+    "taskNotOpenToCancel": "Solo las tareas abiertas se pueden cancelar. Estado actual: {{status}}",
+    "taskNotReopenable": "Solo las tareas completadas o canceladas se pueden reabrir. Estado actual: {{status}}"
   },
   "customer": {
     "contactInfoMaxLength": "La información de contacto no puede superar los {{max}} caracteres",
@@ -183,12 +203,31 @@
   },
   "supersede": {
     "completionAlreadyApplied": "Esta finalización ya se aplicó",
-    "taskAlreadyCompleted": "La tarea ya está completada"
+    "taskAlreadyCompleted": "La tarea ya está completada",
+    "attendanceAlreadyMarked": "Ese día ya tiene un registro de asistencia marcado como {{status}}; no se modificó"
   },
   "supplier": {
     "contactInfoMaxLength": "La información de contacto no puede superar los {{max}} caracteres",
     "nameMaxLength": "El nombre del proveedor no puede superar los {{max}} caracteres",
     "nameRequired": "El nombre del proveedor es obligatorio",
     "productsSuppliedMaxLength": "Los productos suministrados no pueden superar los {{max}} caracteres"
+  },
+  "validation": {
+    "invalidFarmRole": "'{{role}}' no es un rol de granja válido",
+    "fileTooLarge": "El archivo supera el tamaño máximo permitido de {{max}} MB",
+    "fileTypeNotAllowed": "El tipo de archivo '{{extension}}' no está permitido. Tipos permitidos: {{allowed}}",
+    "medicineStockInsufficient": "Existencias insuficientes. Disponible: {{available}} {{unit}}, solicitado: {{requested}}",
+    "vaccineStockInsufficient": "Existencias insuficientes del medicamento vinculado. Disponible: {{available}}, necesario: {{required}}",
+    "importFieldBadColumn": "'{{field}}' está asignado a la columna {{column}}, pero el archivo tiene {{count}} columna(s).",
+    "importFieldsUnmapped": "{{fields}} deben asignarse a una columna o a un valor fijo.",
+    "importExtensionNotSupported": "No se admiten los archivos '{{extension}}'. Sube un archivo CSV o .xlsx.",
+    "importTooManyCsvRows": "El archivo tiene más de {{rows}} filas. Divídelo en archivos más pequeños e impórtalos por separado.",
+    "importTooManyWorkbookRows": "El libro tiene más de {{rows}} filas. Divídelo en archivos más pequeños e impórtalos por separado.",
+    "importCsvUnreadable": "No se pudo leer el archivo CSV: {{detail}}",
+    "importWorkbookUnreadable": "No se pudo leer el libro: {{detail}}",
+    "unknownAlertTypes": "Tipo(s) de alerta desconocido(s): {{types}}",
+    "pushDeviceLimitReached": "Esta cuenta ya tiene {{count}} dispositivos recibiendo notificaciones push. Desactiva uno primero.",
+    "fileStoreFailed": "No se pudo guardar el archivo: {{detail}}",
+    "fileSignFailed": "No se pudo firmar la URL de descarga: {{detail}}"
   }
 }

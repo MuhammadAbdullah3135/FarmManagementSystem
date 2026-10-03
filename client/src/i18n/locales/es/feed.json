@@ -111,5 +111,12 @@
   "type": "Tipo",
   "unit": "Unidad",
   "unitCostPurchases": "Costo unitario (compras)",
-  "weekly": "Semanal"
+  "weekly": "Semanal",
+  "unitKilogram": "kg",
+  "unitGram": "g",
+  "unitTon": "t",
+  "unitLiter": "L",
+  "unitBale": "paca",
+  "unitBag": "saco",
+  "unitOther": "otro"
 }

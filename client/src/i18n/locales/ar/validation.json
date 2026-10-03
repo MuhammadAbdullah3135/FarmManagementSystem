@@ -71,7 +71,27 @@
     "supplierHasPurchases": "لا يمكن حذف مورد لديه سجل مشتريات",
     "taskClosed": "لا يمكن تعديل المهام المغلقة. أعد فتح المهمة أولاً.",
     "taskCompletionNotesDiffer": "تمت إكمال هذه المهمة بالفعل بملاحظات إكمال مختلفة",
-    "vaccineTypeNameExists": "يوجد نوع لقاح بهذا الاسم بالفعل"
+    "vaccineTypeNameExists": "يوجد نوع لقاح بهذا الاسم بالفعل",
+    "animalTagExists": "يوجد بالفعل في هذه المزرعة حيوان بالوسم '{{tag}}'",
+    "identificationValueExists": "يوجد بالفعل في هذه المزرعة تعريف نشط بالقيمة '{{value}}'",
+    "departmentNameExists": "يوجد بالفعل قسم باسم '{{name}}'",
+    "roleNameExists": "يوجد بالفعل دور باسم '{{name}}'",
+    "feedTypeNameExists": "يوجد بالفعل نوع علف باسم '{{name}}'",
+    "expenseCategoryNameExists": "يوجد بالفعل بند مصروف باسم '{{name}}'",
+    "paymentMethodNameExists": "يوجد بالفعل طريقة دفع باسم '{{name}}'",
+    "incomeCategoryNameExists": "يوجد بالفعل بند دخل باسم '{{name}}'",
+    "feedTypeAlreadyInDietPlan": "نوع العلف '{{name}}' موجود بالفعل في النظام الغذائي",
+    "scheduleTimeExists": "يوجد بالفعل جدول في الساعة {{time}} لهذا النظام الغذائي",
+    "systemStatusCannotBeDeleted": "لا يمكن حذف '{{name}}': إنها حالة النظام. عطّلها بدلاً من ذلك.",
+    "insufficientStockToRemove": "المخزون غير كافٍ: المخزون الحالي {{current}} {{unit}}، والمطلوب سحبه {{attempted}}",
+    "insufficientStockToFeed": "المخزون غير كافٍ: المخزون الحالي {{current}} {{unit}}، والمطلوب التغذية به {{attempted}}",
+    "insufficientStockToExtend": "المخزون غير كافٍ: المخزون الحالي {{current}} {{unit}}، والمطلوب إضافته {{attempted}}",
+    "insufficientStockAvailable": "المخزون غير كافٍ: الكمية المتاحة {{available}} {{unit}}",
+    "feedingTaskAlreadyStatus": "المهمة بالفعل {{status}}",
+    "taskNotPendingToStart": "لا يمكن بدء سوى المهام المعلّقة. الحالة الحالية: {{status}}",
+    "taskNotOpenToComplete": "لا يمكن إكمال سوى المهام المفتوحة. الحالة الحالية: {{status}}",
+    "taskNotOpenToCancel": "لا يمكن إلغاء سوى المهام المفتوحة. الحالة الحالية: {{status}}",
+    "taskNotReopenable": "لا يمكن إعادة فتح سوى المهام المكتملة أو الملغاة. الحالة الحالية: {{status}}"
   },
   "customer": {
     "contactInfoMaxLength": "لا يمكن أن تتجاوز معلومات التواصل {{max}} حرفًا",
@@ -183,12 +203,31 @@
   },
   "supersede": {
     "completionAlreadyApplied": "تم تطبيق هذا الإكمال بالفعل",
-    "taskAlreadyCompleted": "المهمة مكتملة بالفعل"
+    "taskAlreadyCompleted": "المهمة مكتملة بالفعل",
+    "attendanceAlreadyMarked": "يوجد بالفعل في ذلك اليوم سجل حضور بحالة {{status}}؛ ولم يتم تغييره"
   },
   "supplier": {
     "contactInfoMaxLength": "لا يمكن أن تتجاوز معلومات التواصل {{max}} حرفًا",
     "nameMaxLength": "لا يمكن أن يتجاوز اسم المورد {{max}} حرفًا",
     "nameRequired": "اسم المورد مطلوب",
     "productsSuppliedMaxLength": "لا يمكن أن تتجاوز المنتجات المورّدة {{max}} حرفًا"
+  },
+  "validation": {
+    "invalidFarmRole": "'{{role}}' ليس دورًا صالحًا في المزرعة",
+    "fileTooLarge": "حجم الملف يتجاوز الحد الأقصى المسموح به {{max}} ميغابايت",
+    "fileTypeNotAllowed": "نوع الملف '{{extension}}' غير مسموح به. الأنواع المسموحة: {{allowed}}",
+    "medicineStockInsufficient": "المخزون غير كافٍ. المتاح: {{available}} {{unit}}، والمطلوب: {{requested}}",
+    "vaccineStockInsufficient": "مخزون الدواء المرتبط غير كافٍ. المتاح: {{available}}، والمطلوب: {{required}}",
+    "importFieldBadColumn": "تم تعيين '{{field}}' إلى العمود {{column}}، لكن الملف يحتوي على {{count}} عمود.",
+    "importFieldsUnmapped": "يجب تعيين {{fields}} إلى عمود أو إلى قيمة ثابتة.",
+    "importExtensionNotSupported": "الملفات من نوع '{{extension}}' غير مدعومة. ارفع ملف CSV أو ‎.xlsx.",
+    "importTooManyCsvRows": "يحتوي الملف على أكثر من {{rows}} صف. قسّمه إلى ملفات أصغر واستوردها على حدة.",
+    "importTooManyWorkbookRows": "يحتوي المصنف على أكثر من {{rows}} صف. قسّمه إلى ملفات أصغر واستوردها على حدة.",
+    "importCsvUnreadable": "تعذّرت قراءة ملف CSV: {{detail}}",
+    "importWorkbookUnreadable": "تعذّرت قراءة المصنف: {{detail}}",
+    "unknownAlertTypes": "نوع (أنواع) تنبيه غير معروف: {{types}}",
+    "pushDeviceLimitReached": "يوجد بالفعل في هذا الحساب {{count}} جهاز يتلقى إشعارات الدفع. أوقف أحدها أولاً.",
+    "fileStoreFailed": "فشل تخزين الملف: {{detail}}",
+    "fileSignFailed": "فشل توقيع عنوان رابط التنزيل: {{detail}}"
   }
 }

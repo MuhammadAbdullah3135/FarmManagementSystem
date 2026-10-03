@@ -127,7 +127,10 @@ public class PushSubscriptionService : IPushSubscriptionService
         {
             return Result<PushSubscriptionDto>.Validation(
                 $"This account already has {limit} devices receiving push notifications. "
-                + "Turn one of them off first.");
+                + "Turn one of them off first.",
+                DomainMessageKeys.PushDeviceLimitReached,
+                // A count the reader's language should group, so it goes as a number.
+                new Dictionary<string, object?> { ["count"] = limit });
         }
 
         var subscription = new PushSubscription

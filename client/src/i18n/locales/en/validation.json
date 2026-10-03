@@ -71,7 +71,27 @@
     "supplierHasPurchases": "Cannot delete a supplier with purchase history",
     "taskClosed": "Closed tasks cannot be edited. Reopen the task first.",
     "taskCompletionNotesDiffer": "This task was already completed with different completion notes",
-    "vaccineTypeNameExists": "A vaccine type with this name already exists"
+    "vaccineTypeNameExists": "A vaccine type with this name already exists",
+    "animalTagExists": "An animal with tag '{{tag}}' already exists in this farm",
+    "identificationValueExists": "An active identification with value '{{value}}' already exists in this farm",
+    "departmentNameExists": "A department named '{{name}}' already exists",
+    "roleNameExists": "A role named '{{name}}' already exists",
+    "feedTypeNameExists": "A feed type named '{{name}}' already exists",
+    "expenseCategoryNameExists": "An expense category named '{{name}}' already exists",
+    "paymentMethodNameExists": "A payment method named '{{name}}' already exists",
+    "incomeCategoryNameExists": "An income category named '{{name}}' already exists",
+    "feedTypeAlreadyInDietPlan": "Feed type '{{name}}' is already in the diet plan",
+    "scheduleTimeExists": "A schedule at {{time}} already exists for this diet plan",
+    "systemStatusCannotBeDeleted": "Cannot delete '{{name}}': it is a system status. Deactivate it instead.",
+    "insufficientStockToRemove": "Insufficient stock: current stock is {{current}} {{unit}}, attempted to remove {{attempted}}",
+    "insufficientStockToFeed": "Insufficient stock: current stock is {{current}} {{unit}}, attempted to feed {{attempted}}",
+    "insufficientStockToExtend": "Insufficient stock: current stock is {{current}} {{unit}}, additional {{attempted}} required",
+    "insufficientStockAvailable": "Insufficient stock: available quantity is {{available}} {{unit}}",
+    "feedingTaskAlreadyStatus": "Task is already {{status}}",
+    "taskNotPendingToStart": "Only pending tasks can be started. Current status: {{status}}",
+    "taskNotOpenToComplete": "Open tasks only can be completed. Current status: {{status}}",
+    "taskNotOpenToCancel": "Open tasks only can be cancelled. Current status: {{status}}",
+    "taskNotReopenable": "Only completed or cancelled tasks can be reopened. Current status: {{status}}"
   },
   "customer": {
     "contactInfoMaxLength": "Contact information cannot exceed {{max}} characters",
@@ -183,12 +203,31 @@
   },
   "supersede": {
     "completionAlreadyApplied": "This completion was already applied",
-    "taskAlreadyCompleted": "Task is already completed"
+    "taskAlreadyCompleted": "Task is already completed",
+    "attendanceAlreadyMarked": "That day already has an attendance record marked {{status}}; it was not changed"
   },
   "supplier": {
     "contactInfoMaxLength": "Contact information cannot exceed {{max}} characters",
     "nameMaxLength": "Supplier name cannot exceed {{max}} characters",
     "nameRequired": "Supplier name is required",
     "productsSuppliedMaxLength": "Products supplied cannot exceed {{max}} characters"
+  },
+  "validation": {
+    "invalidFarmRole": "'{{role}}' is not a valid farm role",
+    "fileTooLarge": "File exceeds the maximum allowed size of {{max}} MB",
+    "fileTypeNotAllowed": "File type '{{extension}}' is not allowed. Allowed types: {{allowed}}",
+    "medicineStockInsufficient": "Insufficient stock. Available: {{available}} {{unit}}, requested: {{requested}}",
+    "vaccineStockInsufficient": "Insufficient linked medicine stock. Available: {{available}}, required: {{required}}",
+    "importFieldBadColumn": "'{{field}}' is mapped to column {{column}}, but the file has {{count}} column(s).",
+    "importFieldsUnmapped": "{{fields}} must be mapped to a column or a fixed value.",
+    "importExtensionNotSupported": "'{{extension}}' files are not supported. Upload a CSV or .xlsx file.",
+    "importTooManyCsvRows": "The file has more than {{rows}} rows. Split it into smaller files and import them separately.",
+    "importTooManyWorkbookRows": "The workbook has more than {{rows}} rows. Split it into smaller files and import them separately.",
+    "importCsvUnreadable": "The CSV file could not be read: {{detail}}",
+    "importWorkbookUnreadable": "The workbook could not be read: {{detail}}",
+    "unknownAlertTypes": "Unknown alert type(s): {{types}}",
+    "pushDeviceLimitReached": "This account already has {{count}} devices receiving push notifications. Turn one of them off first.",
+    "fileStoreFailed": "Failed to store file: {{detail}}",
+    "fileSignFailed": "Failed to sign download URL: {{detail}}"
   }
 }

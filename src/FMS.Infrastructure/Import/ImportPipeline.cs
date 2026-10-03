@@ -81,7 +81,18 @@ public static class ImportPipeline
             var map = mapping.For(field.Key);
             if (map?.Column is int column && (column < 0 || column >= headerCount))
                 return Error.Validation(
-                    $"'{field.Label}' is mapped to column {column + 1}, but the file has {headerCount} column(s).");
+                    $"'{field.Label}' is mapped to column {column + 1}, but the file has {headerCount} column(s).",
+                    DomainMessageKeys.ImportFieldBadColumn,
+                    // `field.Label` is the server's own English for the import field. There is
+                    // no client vocabulary for it yet, so it travels as the value it is and
+                    // is shown as it arrived; inventing a label for it would put a word in the
+                    // spreadsheet mapping screen that the wizard does not also show.
+                    new Dictionary<string, object?>
+                    {
+                        ["field"] = field.Label,
+                        ["column"] = column + 1,
+                        ["count"] = headerCount,
+                    });
         }
 
         var unmapped = fields
@@ -90,7 +101,12 @@ public static class ImportPipeline
             .ToList();
 
         return unmapped.Count > 0
-            ? Error.Validation($"{string.Join(", ", unmapped)} must be mapped to a column or a fixed value.")
+            ? Error.Validation(
+                $"{string.Join(", ", unmapped)} must be mapped to a column or a fixed value.",
+                DomainMessageKeys.ImportFieldsUnmapped,
+                // The unmapped labels travel as a list so the client joins them the way its
+                // language joins a list, rather than repeating the server's ", ".
+                new Dictionary<string, object?> { ["fields"] = unmapped.ToArray() })
             : null;
     }
 

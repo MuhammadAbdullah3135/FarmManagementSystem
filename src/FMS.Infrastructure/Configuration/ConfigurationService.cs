@@ -345,7 +345,10 @@ public class ConfigurationService : IConfigurationService
 
         // The UI hides Delete for seeded statuses, but the API is the only layer that can enforce it.
         if (status.IsSystemDefined)
-            return Result.Conflict($"Cannot delete '{status.Name}': it is a system status. Deactivate it instead.");
+            return Result.Conflict(
+                $"Cannot delete '{status.Name}': it is a system status. Deactivate it instead.",
+                DomainMessageKeys.SystemStatusCannotBeDeleted,
+                new Dictionary<string, object?> { ["name"] = status.Name });
 
         var animals = await _context.Animals.CountAsync(a => a.AnimalStatusId == id);
 

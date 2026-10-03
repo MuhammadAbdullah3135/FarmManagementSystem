@@ -150,7 +150,12 @@ public class NotificationService : INotificationService
             // leave the caller believing a channel was turned off when it was
             // never understood in the first place.
             return Result<NotificationPreferenceSettingsDto>.Validation(
-                $"Unknown alert type(s): {string.Join(", ", unknown)}");
+                $"Unknown alert type(s): {string.Join(", ", unknown)}",
+                DomainMessageKeys.UnknownAlertTypes,
+                // The unknown types travel as a list so the client joins them the way its
+                // language joins one. These are wire values with no label to translate — the
+                // sentence is the part a reader can act on.
+                new Dictionary<string, object?> { ["types"] = unknown.ToArray() });
         }
 
         var stored = await _db.NotificationPreferences

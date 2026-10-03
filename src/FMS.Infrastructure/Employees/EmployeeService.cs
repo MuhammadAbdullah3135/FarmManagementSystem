@@ -41,7 +41,10 @@ public class EmployeeService : IEmployeeService
         var duplicate = await _context.Departments
             .AnyAsync(d => d.FarmId == farmId && d.Name.ToLower() == request.Name.ToLower());
         if (duplicate)
-            return Result<DepartmentDto>.Conflict($"A department named '{request.Name}' already exists");
+            return Result<DepartmentDto>.Conflict(
+                $"A department named '{request.Name}' already exists",
+                DomainMessageKeys.DepartmentNameExists,
+                new Dictionary<string, object?> { ["name"] = request.Name });
 
         var department = new Department
         {
@@ -100,7 +103,10 @@ public class EmployeeService : IEmployeeService
         var duplicate = await _context.EmployeeRoles
             .AnyAsync(r => r.FarmId == farmId && r.Name.ToLower() == request.Name.ToLower());
         if (duplicate)
-            return Result<EmployeeRoleDto>.Conflict($"A role named '{request.Name}' already exists");
+            return Result<EmployeeRoleDto>.Conflict(
+                $"A role named '{request.Name}' already exists",
+                DomainMessageKeys.RoleNameExists,
+                new Dictionary<string, object?> { ["name"] = request.Name });
 
         var role = new EmployeeRole
         {

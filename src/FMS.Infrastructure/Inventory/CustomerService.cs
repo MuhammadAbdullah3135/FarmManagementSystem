@@ -173,7 +173,10 @@ public class CustomerService : ICustomerService
         if (request.TotalAmount < 0) return Result<CustomerSaleDto>.Validation("Total amount cannot be negative");
         var customer = await _context.Customers.FirstOrDefaultAsync(c => c.FarmId == farmId && c.Id == request.CustomerId); if (customer == null) return Result<CustomerSaleDto>.NotFound("Customer not found", DomainMessageKeys.CustomerNotFound);
         var item = await _context.InventoryItems.FirstOrDefaultAsync(i => i.FarmId == farmId && i.Id == request.InventoryItemId); if (item == null) return Result<CustomerSaleDto>.NotFound("Inventory item not found", DomainMessageKeys.InventoryItemNotFound);
-        if (item.Quantity < request.Quantity) return Result<CustomerSaleDto>.Conflict($"Insufficient stock: available quantity is {item.Quantity} {item.Unit}");
+        if (item.Quantity < request.Quantity) return Result<CustomerSaleDto>.Conflict(
+            $"Insufficient stock: available quantity is {item.Quantity} {item.Unit}",
+            DomainMessageKeys.InsufficientStockAvailable,
+            new Dictionary<string, object?> { ["available"] = item.Quantity, ["unit"] = item.Unit });
         var date = request.SaleDate ?? DateTime.UtcNow; if (date > DateTime.UtcNow.AddMinutes(5)) return Result<CustomerSaleDto>.Validation("Sale date cannot be in the future");
         var incomeCategoryId = request.IncomeCategoryId ?? await GetOrCreateIncomeCategoryAsync(farmId);
         var paymentMethodId = request.PaymentMethodId ?? await GetOrCreatePaymentMethodAsync(farmId);

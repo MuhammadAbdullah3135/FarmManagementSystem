@@ -234,7 +234,10 @@ public class InventoryService : IInventoryService
         if (request.MovementType is InventoryMovementType.Transfer or InventoryMovementType.Adjustment && request.Quantity == 0)
             return Result<StockMovementDto>.Validation("Transfer or adjustment quantity cannot be zero");
         if (item.Quantity + signedQuantity < 0)
-            return Result<StockMovementDto>.Conflict($"Insufficient stock: available quantity is {item.Quantity} {item.Unit}");
+            return Result<StockMovementDto>.Conflict(
+                $"Insufficient stock: available quantity is {item.Quantity} {item.Unit}",
+                DomainMessageKeys.InsufficientStockAvailable,
+                new Dictionary<string, object?> { ["available"] = item.Quantity, ["unit"] = item.Unit });
 
         var date = request.MovementDate ?? DateTime.UtcNow;
         if (date > DateTime.UtcNow.AddMinutes(5))

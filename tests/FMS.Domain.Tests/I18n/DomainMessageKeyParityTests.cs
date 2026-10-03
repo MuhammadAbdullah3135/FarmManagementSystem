@@ -45,12 +45,21 @@ public class DomainMessageKeyParityTests
         // an equality: the total can only grow as families are keyed, and the lookup family
         // itself is pinned at its own count so a reflection change that dropped *one* group
         // while keeping another would still be caught.
+        // 64 lookup + 47 conflict + 3 supersede + 16 validation = 130.
         Assert.True(
-            keys.Count >= 93,
-            $"Only {keys.Count} domain message keys were found; at least 93 are expected. A "
+            keys.Count >= 130,
+            $"Only {keys.Count} domain message keys were found; at least 130 are expected. A "
             + "reflection change that enumerates fewer keys than the class declares would make "
             + "this test pass for the wrong reason.");
         Assert.Equal(64, keys.Count(key => key.StartsWith("validation.lookup.", StringComparison.Ordinal)));
+        // The conflict and supersede families separately, so neither can be emptied by a
+        // reflection change that still leaves the other one populated. 47 is 27 argument-free
+        // plus 20 argument-taking; the supersede family is 2 argument-free plus 1.
+        Assert.Equal(47, keys.Count(key => key.StartsWith("validation.conflict.", StringComparison.Ordinal)));
+        Assert.Equal(3, keys.Count(key => key.StartsWith("validation.supersede.", StringComparison.Ordinal)));
+        // The validation family is pinned for the same reason. It is the newest group, so it
+        // is the one a reflection change would most likely miss.
+        Assert.Equal(16, keys.Count(key => key.StartsWith("validation.validation.", StringComparison.Ordinal)));
 
         // One bundle read per namespace, not per key: the lookup family is one namespace.
         var bundles = ClientBundles.TranslatedLocales()
@@ -80,12 +89,19 @@ public class DomainMessageKeyParityTests
         // describe the same place — which is the kind of drift nobody notices until a
         // translator goes looking for the string.
         //
-        // The groups are the three the domain families occupy: `lookup` for a record that is not
+        // The groups are the four the domain families occupy: `lookup` for a record that is not
         // there, `conflict` for one that already is, `supersede` for one this request was
-        // answering with a newer version of. A fourth family added later extends this list,
+        // answering with a newer version of, and `validation` for a request the server
+        // understood and refused on its own terms — a missing column mapping, a file that is
+        // too large, an import field that points past the end of the sheet.
+        //
+        // The fourth family was added when the argument-taking validation sentences ran out of
+        // homes. `lookup` means "no such record", which is a specific and different claim from
+        // "this value is not allowed", and filing them together would have taught a
+        // translator that the group tells them nothing. The list extends as families are added,
         // which is the point — a key that names a group nobody bundles cannot render, and it
         // cannot fail at runtime either.
-        string[] groups = { "lookup.", "conflict.", "supersede." };
+        string[] groups = { "lookup.", "conflict.", "supersede.", "validation." };
 
         var bundle = ClientBundles.Bundle("en", "validation");
         foreach (var key in DeclaredKeys())

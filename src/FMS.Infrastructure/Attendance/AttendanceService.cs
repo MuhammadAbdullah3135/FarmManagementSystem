@@ -82,7 +82,12 @@ public class AttendanceService : IAttendanceService
         // endpoint can still change the day.
         if (existing.CheckInAt is null)
             return Result<AttendanceRecordDto>.Superseded(
-                $"That day already has an attendance record marked {existing.Status}; it was not changed");
+                $"That day already has an attendance record marked {existing.Status}; it was not changed",
+                DomainMessageKeys.AttendanceAlreadyMarked,
+                // The status travels as its wire value, not as a name the reader can read:
+                // the client renders it through the same enum chrome a dropdown uses, so an
+                // Arabic reader sees the translated status rather than "Present".
+                new Dictionary<string, object?> { ["status"] = existing.Status.ToString() });
 
         // Earliest check-in wins: a shift's start is the first time an employee was at the
         // gate, so an earlier queued time moves it back and a later one leaves it alone. The

@@ -111,5 +111,12 @@
   "type": "النوع",
   "unit": "الوحدة",
   "unitCostPurchases": "تكلفة الوحدة (المشتريات)",
-  "weekly": "أسبوعي"
+  "weekly": "أسبوعي",
+  "unitKilogram": "كجم",
+  "unitGram": "غ",
+  "unitTon": "طن",
+  "unitLiter": "لتر",
+  "unitBale": "حزمة",
+  "unitBag": "كيس",
+  "unitOther": "أخرى"
 }

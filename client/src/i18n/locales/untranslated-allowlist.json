@@ -146,6 +146,38 @@
         "es"
       ],
       "reason": "True cognate: Spanish names the animal with the same word, spelled identically. (Arabic renders حيوان.)"
+    },
+    {
+      "key": "feed:unitKilogram",
+      "value": "kg",
+      "locales": [
+        "es"
+      ],
+      "reason": "SI unit symbol, identical in Spanish, used as the unit beside a number in a stock refusal. Spelling is fixed by the unit rather than by the language. (Arabic writes a word: كجم.)"
+    },
+    {
+      "key": "feed:unitGram",
+      "value": "g",
+      "locales": [
+        "es"
+      ],
+      "reason": "SI unit symbol, identical in Spanish, used as the unit beside a number in a stock refusal. Spelling is fixed by the unit rather than by the language. (Arabic writes a word: غ.)"
+    },
+    {
+      "key": "feed:unitTon",
+      "value": "t",
+      "locales": [
+        "es"
+      ],
+      "reason": "SI unit symbol, identical in Spanish, used as the unit beside a number in a stock refusal. Spelling is fixed by the unit rather than by the language. (Arabic writes a word: طن.)"
+    },
+    {
+      "key": "feed:unitLiter",
+      "value": "L",
+      "locales": [
+        "es"
+      ],
+      "reason": "SI unit symbol, identical in Spanish, used as the unit beside a number in a stock refusal. Spelling is fixed by the unit rather than by the language. (Arabic writes a word: لتر.)"
     }
   ]
 }

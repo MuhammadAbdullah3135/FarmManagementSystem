@@ -68,7 +68,10 @@ public class FarmMembershipService : IFarmMembershipService
         if (!FarmRoles.IsFarmAdmin(requester.Role))
             return Result<FarmMemberDto>.Unauthorized("Only farm owners and managers can change member roles");
         if (!FarmRoles.IsValid(request.Role))
-            return Result<FarmMemberDto>.Validation($"'{request.Role}' is not a valid farm role");
+            return Result<FarmMemberDto>.Validation(
+                $"'{request.Role}' is not a valid farm role",
+                DomainMessageKeys.InvalidFarmRole,
+                new Dictionary<string, object?> { ["role"] = request.Role });
 
         var member = await _context.UserFarms
             .Include(uf => uf.User)
@@ -136,7 +139,10 @@ public class FarmMembershipService : IFarmMembershipService
         if (!FarmRoles.IsFarmAdmin(requester.Role))
             return Result<FarmInvitationDto>.Unauthorized("Only farm owners and managers can invite members");
         if (!FarmRoles.IsValid(request.Role))
-            return Result<FarmInvitationDto>.Validation($"'{request.Role}' is not a valid farm role");
+            return Result<FarmInvitationDto>.Validation(
+                $"'{request.Role}' is not a valid farm role",
+                DomainMessageKeys.InvalidFarmRole,
+                new Dictionary<string, object?> { ["role"] = request.Role });
 
         var normalizedEmail = Normalize(request.Email);
         if (normalizedEmail.Length == 0 || !normalizedEmail.Contains('@'))

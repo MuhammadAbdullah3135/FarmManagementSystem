@@ -314,6 +314,81 @@ public static class DomainMessageKeys
     /// <summary>The exact English this API has always answered: “A vaccine type with this name already exists”</summary>
     public const string VaccineTypeNameExists = "validation.conflict.vaccineTypeNameExists";
 
+    // ── conflict, argument-taking ────────────────────────────────────────────────────────
+    // Appended after the argument-free family above, and deliberately not merged into it.
+    // Every sentence here takes at least one value, so it needs a caller to pass an
+    // argument dictionary — the shape the 21 argument-free constants do not have, and the
+    // shape the guard below had to be widened to cover.
+
+    /// <summary>The exact English this API has always answered: “An animal with tag '{tag}' already exists in this farm”</summary>
+    public const string AnimalTagExists = "validation.conflict.animalTagExists";
+
+    /// <summary>The exact English this API has always answered: “An active identification with value '{value}' already exists in this farm”</summary>
+    public const string IdentificationValueExists = "validation.conflict.identificationValueExists";
+
+    /// <summary>The exact English this API has always answered: “A department named '{name}' already exists”</summary>
+    public const string DepartmentNameExists = "validation.conflict.departmentNameExists";
+
+    /// <summary>The exact English this API has always answered: “A role named '{name}' already exists”</summary>
+    public const string RoleNameExists = "validation.conflict.roleNameExists";
+
+    /// <summary>The exact English this API has always answered: “A feed type named '{name}' already exists”</summary>
+    public const string FeedTypeNameExists = "validation.conflict.feedTypeNameExists";
+
+    /// <summary>The exact English this API has always answered: “An expense category named '{name}' already exists”</summary>
+    public const string ExpenseCategoryNameExists = "validation.conflict.expenseCategoryNameExists";
+
+    /// <summary>The exact English this API has always answered: “A payment method named '{name}' already exists”</summary>
+    public const string PaymentMethodNameExists = "validation.conflict.paymentMethodNameExists";
+
+    /// <summary>The exact English this API has always answered: “An income category named '{name}' already exists”</summary>
+    public const string IncomeCategoryNameExists = "validation.conflict.incomeCategoryNameExists";
+
+    /// <summary>The exact English this API has always answered: “Feed type '{name}' is already in the diet plan”</summary>
+    public const string FeedTypeAlreadyInDietPlan = "validation.conflict.feedTypeAlreadyInDietPlan";
+
+    /// <summary>The exact English this API has always answered: “A schedule at {time} already exists for this diet plan”</summary>
+    public const string ScheduleTimeExists = "validation.conflict.scheduleTimeExists";
+
+    /// <summary>The exact English this API has always answered: “Cannot delete '{name}': it is a system status. Deactivate it instead.”</summary>
+    public const string SystemStatusCannotBeDeleted = "validation.conflict.systemStatusCannotBeDeleted";
+
+    /// <summary>
+    /// The exact English this API has always answered: “Insufficient stock: current stock is
+    /// {current} {unit}, attempted to remove {attempted}”
+    /// </summary>
+    public const string InsufficientStockToRemove = "validation.conflict.insufficientStockToRemove";
+
+    /// <summary>
+    /// The exact English this API has always answered: “Insufficient stock: current stock is
+    /// {current} {unit}, attempted to feed {attempted}”
+    /// </summary>
+    public const string InsufficientStockToFeed = "validation.conflict.insufficientStockToFeed";
+
+    /// <summary>
+    /// The exact English this API has always answered: “Insufficient stock: current stock is
+    /// {current} {unit}, additional {attempted} required”
+    /// </summary>
+    public const string InsufficientStockToExtend = "validation.conflict.insufficientStockToExtend";
+
+    /// <summary>The exact English this API has always answered: “Insufficient stock: available quantity is {available} {unit}”</summary>
+    public const string InsufficientStockAvailable = "validation.conflict.insufficientStockAvailable";
+
+    /// <summary>The exact English this API has always answered: “Task is already {status}”</summary>
+    public const string FeedingTaskAlreadyStatus = "validation.conflict.feedingTaskAlreadyStatus";
+
+    /// <summary>The exact English this API has always answered: “Only pending tasks can be started. Current status: {status}”</summary>
+    public const string TaskNotPendingToStart = "validation.conflict.taskNotPendingToStart";
+
+    /// <summary>The exact English this API has always answered: “Open tasks only can be completed. Current status: {status}”</summary>
+    public const string TaskNotOpenToComplete = "validation.conflict.taskNotOpenToComplete";
+
+    /// <summary>The exact English this API has always answered: “Open tasks only can be cancelled. Current status: {status}”</summary>
+    public const string TaskNotOpenToCancel = "validation.conflict.taskNotOpenToCancel";
+
+    /// <summary>The exact English this API has always answered: “Only completed or cancelled tasks can be reopened. Current status: {status}”</summary>
+    public const string TaskNotReopenable = "validation.conflict.taskNotReopenable";
+
 
     // ── supersede ─────────────────────────────────────────────────────────────────────────
     // One constant per sentence, shared across the services that answer with it:
@@ -325,5 +400,77 @@ public static class DomainMessageKeys
 
     /// <summary>The exact English this API has always answered: “Task is already completed”</summary>
     public const string TaskAlreadyCompleted = "validation.supersede.taskAlreadyCompleted";
+
+    /// <summary>
+    /// The exact English this API has always answered: “That day already has an attendance
+    /// record marked {status}; it was not changed”
+    /// </summary>
+    public const string AttendanceAlreadyMarked = "validation.supersede.attendanceAlreadyMarked";
+
+    // ── validation ───────────────────────────────────────────────────────────────────────
+    // A fourth family, added when the argument-taking validation sentences ran out of homes.
+    // The other three each name a specific relationship to existing state — a record is not
+    // there, a record already is, a record was already superseded — and none of them is what
+    // “the file is too large” or “this column does not exist” is. Filing these under `lookup`
+    // would have claimed a record was missing, which is a different and wrong thing to tell a
+    // reader; it would also have taught a translator that the group carries no information.
+    //
+    // Every sentence below takes an argument, so each constant is paired with a dictionary at
+    // its call site. The arguments travel raw and the client renders them, which is why the
+    // braces below name values ({rows}, {count}) rather than formatted text.
+
+    /// <summary>The exact English this API has always answered: “‘{role}' is not a valid farm role”</summary>
+    public const string InvalidFarmRole = "validation.validation.invalidFarmRole";
+
+    /// <summary>The exact English this API has always answered: “File exceeds the maximum allowed size of {max} MB”</summary>
+    public const string FileTooLarge = "validation.validation.fileTooLarge";
+
+    /// <summary>The exact English this API has always answered: “File type '{extension}' is not allowed. Allowed types: {allowed}”</summary>
+    public const string FileTypeNotAllowed = "validation.validation.fileTypeNotAllowed";
+
+    /// <summary>The exact English this API has always answered: “Insufficient stock. Available: {available} {unit}, requested: {requested}”</summary>
+    public const string MedicineStockInsufficient = "validation.validation.medicineStockInsufficient";
+
+    /// <summary>The exact English this API has always answered: “Insufficient linked medicine stock. Available: {available}, required: {required}”</summary>
+    public const string VaccineStockInsufficient = "validation.validation.vaccineStockInsufficient";
+
+    /// <summary>
+    /// The exact English this API has always answered: “‘{field}' is mapped to column {column},
+    /// but the file has {count} column(s).”
+    /// </summary>
+    public const string ImportFieldBadColumn = "validation.validation.importFieldBadColumn";
+
+    /// <summary>The exact English this API has always answered: “{fields} must be mapped to a column or a fixed value.”</summary>
+    public const string ImportFieldsUnmapped = "validation.validation.importFieldsUnmapped";
+
+    /// <summary>The exact English this API has always answered: “‘{extension}' files are not supported. Upload a CSV or .xlsx file.”</summary>
+    public const string ImportExtensionNotSupported = "validation.validation.importExtensionNotSupported";
+
+    /// <summary>The exact English this API has always answered: “The file has more than {rows} rows. Split it into smaller files and import them separately.”</summary>
+    public const string ImportTooManyCsvRows = "validation.validation.importTooManyCsvRows";
+
+    /// <summary>The exact English this API has always answered: “The workbook has more than {rows} rows. Split it into smaller files and import them separately.”</summary>
+    public const string ImportTooManyWorkbookRows = "validation.validation.importTooManyWorkbookRows";
+
+    /// <summary>The exact English this API has always answered: “The CSV file could not be read: {detail}”</summary>
+    public const string ImportCsvUnreadable = "validation.validation.importCsvUnreadable";
+
+    /// <summary>The exact English this API has always answered: “The workbook could not be read: {detail}”</summary>
+    public const string ImportWorkbookUnreadable = "validation.validation.importWorkbookUnreadable";
+
+    /// <summary>The exact English this API has always answered: “Unknown alert type(s): {types}”</summary>
+    public const string UnknownAlertTypes = "validation.validation.unknownAlertTypes";
+
+    /// <summary>
+    /// The exact English this API has always answered: “This account already has {count} devices
+    /// receiving push notifications. Turn one of them off first.”
+    /// </summary>
+    public const string PushDeviceLimitReached = "validation.validation.pushDeviceLimitReached";
+
+    /// <summary>The exact English this API has always answered: “Failed to store file: {detail}”</summary>
+    public const string FileStoreFailed = "validation.validation.fileStoreFailed";
+
+    /// <summary>The exact English this API has always answered: “Failed to sign download URL: {detail}”</summary>
+    public const string FileSignFailed = "validation.validation.fileSignFailed";
 
 }

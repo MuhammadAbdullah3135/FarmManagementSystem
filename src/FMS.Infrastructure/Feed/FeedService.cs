@@ -52,7 +52,10 @@ public class FeedService : IFeedService
         var duplicateExists = await _context.FeedTypes
             .AnyAsync(ft => ft.FarmId == farmId && ft.Name.ToLower() == request.Name.ToLower());
         if (duplicateExists)
-            return Result<FeedTypeDto>.Conflict($"A feed type named '{request.Name}' already exists");
+            return Result<FeedTypeDto>.Conflict(
+                $"A feed type named '{request.Name}' already exists",
+                DomainMessageKeys.FeedTypeNameExists,
+                new Dictionary<string, object?> { ["name"] = request.Name });
 
         var feedType = new FeedType
         {
@@ -86,7 +89,10 @@ public class FeedService : IFeedService
         var duplicateExists = await _context.FeedTypes
             .AnyAsync(ft => ft.FarmId == farmId && ft.Id != id && ft.Name.ToLower() == request.Name.ToLower());
         if (duplicateExists)
-            return Result<FeedTypeDto>.Conflict($"A feed type named '{request.Name}' already exists");
+            return Result<FeedTypeDto>.Conflict(
+                $"A feed type named '{request.Name}' already exists",
+                DomainMessageKeys.FeedTypeNameExists,
+                new Dictionary<string, object?> { ["name"] = request.Name });
 
         feedType.Name = request.Name.Trim();
         feedType.Category = request.Category;
@@ -164,7 +170,18 @@ public class FeedService : IFeedService
 
         if (currentStock < outgoingAmount)
             return Result<StockMovementDto>.Conflict(
-                $"Insufficient stock: current stock is {currentStock} {feedType.Unit}, attempted to remove {outgoingAmount}");
+                $"Insufficient stock: current stock is {currentStock} {feedType.Unit}, attempted to remove {outgoingAmount}",
+                DomainMessageKeys.InsufficientStockToRemove,
+                // The quantities go as numbers and the unit as its wire value, so the client
+                // formats both: a Spanish reader gets "1.234,5 kg" and an Arabic reader gets
+                // Arabic-Indic digits. Formatting here would have frozen one language's
+                // separators into every reader's sentence.
+                new Dictionary<string, object?>
+                {
+                    ["current"] = currentStock,
+                    ["unit"] = feedType.Unit.ToString(),
+                    ["attempted"] = outgoingAmount,
+                });
 
         var movement = new FeedStockMovement
         {
@@ -314,7 +331,17 @@ public class FeedService : IFeedService
         var currentStock = await ComputeStockAsync(farmId, feedType.Id);
         if (currentStock < request.Quantity)
             return Result<FeedRecordDto>.Conflict(
-                $"Insufficient stock: current stock is {currentStock} {UnitAbbreviation(feedType.Unit)}, attempted to feed {request.Quantity}");
+                $"Insufficient stock: current stock is {currentStock} {UnitAbbreviation(feedType.Unit)}, attempted to feed {request.Quantity}",
+                DomainMessageKeys.InsufficientStockToFeed,
+                new Dictionary<string, object?>
+                {
+                    ["current"] = currentStock,
+                    // The abbreviation is a formatting choice, and formatting is the
+                    // client's job. Sending the wire value lets it abbreviate in the
+                    // reader's language instead of reusing English's "kg" everywhere.
+                    ["unit"] = feedType.Unit.ToString(),
+                    ["attempted"] = request.Quantity,
+                });
 
         var userId = _currentUser.GetUserId();
         var now = DateTime.UtcNow;
@@ -450,7 +477,14 @@ public class FeedService : IFeedService
             var extraNeeded = newQuantity - oldQuantity;
             if (currentStock < extraNeeded)
                 return Result<FeedRecordDto>.Conflict(
-                    $"Insufficient stock: current stock is {currentStock} {UnitAbbreviation(record.FeedType.Unit)}, additional {extraNeeded} required");
+                    $"Insufficient stock: current stock is {currentStock} {UnitAbbreviation(record.FeedType.Unit)}, additional {extraNeeded} required",
+                    DomainMessageKeys.InsufficientStockToExtend,
+                    new Dictionary<string, object?>
+                    {
+                        ["current"] = currentStock,
+                        ["unit"] = record.FeedType.Unit.ToString(),
+                        ["attempted"] = extraNeeded,
+                    });
         }
 
         var userId = _currentUser.GetUserId();
@@ -728,7 +762,13 @@ public class FeedService : IFeedService
         var duplicate = await _context.FeedingSchedules
             .AnyAsync(s => s.DietPlanId == request.DietPlanId && s.TimeOfDay == timeOfDay);
         if (duplicate)
-            return Result<FeedingScheduleDto>.Conflict($"A schedule at {FormatTime(timeOfDay)} already exists for this diet plan");
+            return Result<FeedingScheduleDto>.Conflict(
+                $"A schedule at {FormatTime(timeOfDay)} already exists for this diet plan",
+                DomainMessageKeys.ScheduleTimeExists,
+                // "07:30" is a clock time, which reads the same in every language the app
+                // ships, so it travels as the formatted string rather than as a TimeSpan the
+                // client would have to re-parse. A 12-hour locale would want this changed.
+                new Dictionary<string, object?> { ["time"] = FormatTime(timeOfDay) });
 
         if (request.Label?.Length > 50)
             return Result<FeedingScheduleDto>.Validation("Label cannot exceed 50 characters");
@@ -772,7 +812,10 @@ public class FeedService : IFeedService
             var duplicate = await _context.FeedingSchedules
                 .AnyAsync(s => s.DietPlanId == schedule.DietPlanId && s.Id != id && s.TimeOfDay == timeOfDay);
             if (duplicate)
-                return Result<FeedingScheduleDto>.Conflict($"A schedule at {FormatTime(timeOfDay)} already exists for this diet plan");
+                return Result<FeedingScheduleDto>.Conflict(
+                    $"A schedule at {FormatTime(timeOfDay)} already exists for this diet plan",
+                    DomainMessageKeys.ScheduleTimeExists,
+                    new Dictionary<string, object?> { ["time"] = FormatTime(timeOfDay) });
             schedule.TimeOfDay = timeOfDay;
         }
 
@@ -932,7 +975,12 @@ public class FeedService : IFeedService
             return Result<FeedingTaskDto>.NotFound("Feeding task not found", DomainMessageKeys.FeedingTaskNotFound);
 
         if (task.Status != FeedingTaskStatus.Pending)
-            return Result<FeedingTaskDto>.Conflict($"Task is already {task.Status}");
+            return Result<FeedingTaskDto>.Conflict(
+                $"Task is already {task.Status}",
+                DomainMessageKeys.FeedingTaskAlreadyStatus,
+                // The wire value, so the client renders it through the enum chrome: this is
+                // the same "Pending"/"Completed" vocabulary the status dropdown uses.
+                new Dictionary<string, object?> { ["status"] = task.Status.ToString() });
 
         var now = DateTime.UtcNow;
         task.Status = targetStatus;
@@ -1190,7 +1238,10 @@ public class FeedService : IFeedService
             var alreadyInRequest = plan.Items.Any(i => i.FeedTypeId == request.FeedTypeId) ||
                                    requests.Count(r => r.FeedTypeId == request.FeedTypeId) > 1;
             if (alreadyInRequest)
-                return Error.Conflict($"Feed type '{feedType.Name}' is already in the diet plan");
+                return Error.Conflict(
+                    $"Feed type '{feedType.Name}' is already in the diet plan",
+                    DomainMessageKeys.FeedTypeAlreadyInDietPlan,
+                    new Dictionary<string, object?> { ["name"] = feedType.Name });
 
             plan.Items.Add(new DietPlanItem
             {

@@ -374,7 +374,13 @@ public class VaccineService : IVaccineService
             var totalAvailable = batches.Sum(b => b.Quantity);
             if (totalAvailable < quantityUsed)
                 return Result<VaccinationRecordDto>.Validation(
-                    $"Insufficient linked medicine stock. Available: {totalAvailable}, required: {quantityUsed}");
+                    $"Insufficient linked medicine stock. Available: {totalAvailable}, required: {quantityUsed}",
+                    DomainMessageKeys.VaccineStockInsufficient,
+                    new Dictionary<string, object?>
+                    {
+                        ["available"] = totalAvailable,
+                        ["required"] = quantityUsed,
+                    });
         }
 
         // Everything below commits atomically. EF Core already wraps each SaveChangesAsync in an

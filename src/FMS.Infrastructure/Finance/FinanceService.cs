@@ -45,7 +45,10 @@ public class FinanceService : IFinanceService
         var duplicate = await _context.ExpenseCategories
             .AnyAsync(c => c.FarmId == farmId && c.Name.ToLower() == request.Name.Trim().ToLower());
         if (duplicate)
-            return Result<ExpenseCategoryDto>.Conflict($"An expense category named '{request.Name}' already exists");
+            return Result<ExpenseCategoryDto>.Conflict(
+                $"An expense category named '{request.Name}' already exists",
+                DomainMessageKeys.ExpenseCategoryNameExists,
+                new Dictionary<string, object?> { ["name"] = request.Name });
 
         var now = DateTime.UtcNow;
         var category = new ExpenseCategory
@@ -83,7 +86,10 @@ public class FinanceService : IFinanceService
         var duplicate = await _context.ExpenseCategories
             .AnyAsync(c => c.FarmId == farmId && c.Id != id && c.Name.ToLower() == request.Name.Trim().ToLower());
         if (duplicate)
-            return Result<ExpenseCategoryDto>.Conflict($"An expense category named '{request.Name}' already exists");
+            return Result<ExpenseCategoryDto>.Conflict(
+                $"An expense category named '{request.Name}' already exists",
+                DomainMessageKeys.ExpenseCategoryNameExists,
+                new Dictionary<string, object?> { ["name"] = request.Name });
 
         category.Name = request.Name.Trim();
         category.Description = request.Description?.Trim();
@@ -146,7 +152,10 @@ public class FinanceService : IFinanceService
         var duplicate = await _context.PaymentMethods
             .AnyAsync(m => m.FarmId == farmId && m.Name.ToLower() == request.Name.Trim().ToLower());
         if (duplicate)
-            return Result<PaymentMethodDto>.Conflict($"A payment method named '{request.Name}' already exists");
+            return Result<PaymentMethodDto>.Conflict(
+                $"A payment method named '{request.Name}' already exists",
+                DomainMessageKeys.PaymentMethodNameExists,
+                new Dictionary<string, object?> { ["name"] = request.Name });
 
         var now = DateTime.UtcNow;
         var method = new PaymentMethod
@@ -184,7 +193,10 @@ public class FinanceService : IFinanceService
         var duplicate = await _context.PaymentMethods
             .AnyAsync(m => m.FarmId == farmId && m.Id != id && m.Name.ToLower() == request.Name.Trim().ToLower());
         if (duplicate)
-            return Result<PaymentMethodDto>.Conflict($"A payment method named '{request.Name}' already exists");
+            return Result<PaymentMethodDto>.Conflict(
+                $"A payment method named '{request.Name}' already exists",
+                DomainMessageKeys.PaymentMethodNameExists,
+                new Dictionary<string, object?> { ["name"] = request.Name });
 
         method.Name = request.Name.Trim();
         method.Description = request.Description?.Trim();
@@ -373,7 +385,10 @@ public class FinanceService : IFinanceService
         var duplicate = await _context.IncomeCategories
             .AnyAsync(c => c.FarmId == farmId && c.Name.ToLower() == request.Name.Trim().ToLower());
         if (duplicate)
-            return Result<IncomeCategoryDto>.Conflict($"An income category named '{request.Name}' already exists");
+            return Result<IncomeCategoryDto>.Conflict(
+                $"An income category named '{request.Name}' already exists",
+                DomainMessageKeys.IncomeCategoryNameExists,
+                new Dictionary<string, object?> { ["name"] = request.Name });
 
         var now = DateTime.UtcNow;
         var category = new IncomeCategory
@@ -411,7 +426,10 @@ public class FinanceService : IFinanceService
         var duplicate = await _context.IncomeCategories
             .AnyAsync(c => c.FarmId == farmId && c.Id != id && c.Name.ToLower() == request.Name.Trim().ToLower());
         if (duplicate)
-            return Result<IncomeCategoryDto>.Conflict($"An income category named '{request.Name}' already exists");
+            return Result<IncomeCategoryDto>.Conflict(
+                $"An income category named '{request.Name}' already exists",
+                DomainMessageKeys.IncomeCategoryNameExists,
+                new Dictionary<string, object?> { ["name"] = request.Name });
 
         category.Name = request.Name.Trim();
         category.Description = request.Description?.Trim();

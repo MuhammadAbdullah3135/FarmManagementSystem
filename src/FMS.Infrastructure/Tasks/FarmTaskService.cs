@@ -222,7 +222,10 @@ public class FarmTaskService : IFarmTaskService
             return Result<FarmTaskDto>.NotFound("Task not found", DomainMessageKeys.TaskNotFound);
 
         if (task.Status != FarmTaskStatus.Pending)
-            return Result<FarmTaskDto>.Conflict($"Only pending tasks can be started. Current status: {task.Status}");
+            return Result<FarmTaskDto>.Conflict(
+                $"Only pending tasks can be started. Current status: {task.Status}",
+                DomainMessageKeys.TaskNotPendingToStart,
+                new Dictionary<string, object?> { ["status"] = task.Status.ToString() });
 
         task.Status = FarmTaskStatus.InProgress;
         task.StartedAt = DateTime.UtcNow;
@@ -245,7 +248,10 @@ public class FarmTaskService : IFarmTaskService
             return AlreadyCompleted(task, mutationId, request.CompletionNotes);
 
         if (task.Status == FarmTaskStatus.Cancelled)
-            return Result<FarmTaskDto>.Conflict($"Open tasks only can be completed. Current status: {task.Status}");
+            return Result<FarmTaskDto>.Conflict(
+                $"Open tasks only can be completed. Current status: {task.Status}",
+                DomainMessageKeys.TaskNotOpenToComplete,
+                new Dictionary<string, object?> { ["status"] = task.Status.ToString() });
 
         if (!string.IsNullOrWhiteSpace(request.CompletionNotes) && request.CompletionNotes.Length > 1000)
             return Result<FarmTaskDto>.Validation("Completion notes cannot exceed 1000 characters");
@@ -297,7 +303,10 @@ public class FarmTaskService : IFarmTaskService
             return Result<FarmTaskDto>.NotFound("Task not found", DomainMessageKeys.TaskNotFound);
 
         if (task.Status != FarmTaskStatus.Pending && task.Status != FarmTaskStatus.InProgress)
-            return Result<FarmTaskDto>.Conflict($"Open tasks only can be cancelled. Current status: {task.Status}");
+            return Result<FarmTaskDto>.Conflict(
+                $"Open tasks only can be cancelled. Current status: {task.Status}",
+                DomainMessageKeys.TaskNotOpenToCancel,
+                new Dictionary<string, object?> { ["status"] = task.Status.ToString() });
 
         if (!string.IsNullOrWhiteSpace(request.Reason) && request.Reason.Length > 1000)
             return Result<FarmTaskDto>.Validation("Cancel reason cannot exceed 1000 characters");
@@ -321,7 +330,10 @@ public class FarmTaskService : IFarmTaskService
             return Result<FarmTaskDto>.NotFound("Task not found", DomainMessageKeys.TaskNotFound);
 
         if (task.Status != FarmTaskStatus.Completed && task.Status != FarmTaskStatus.Cancelled)
-            return Result<FarmTaskDto>.Conflict($"Only completed or cancelled tasks can be reopened. Current status: {task.Status}");
+            return Result<FarmTaskDto>.Conflict(
+                $"Only completed or cancelled tasks can be reopened. Current status: {task.Status}",
+                DomainMessageKeys.TaskNotReopenable,
+                new Dictionary<string, object?> { ["status"] = task.Status.ToString() });
 
         task.Status = FarmTaskStatus.Pending;
         task.StartedAt = null;

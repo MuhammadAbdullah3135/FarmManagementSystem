@@ -374,7 +374,10 @@ public class AnimalService : IAnimalService
         var tagExists = await _context.Animals
             .AnyAsync(a => a.FarmId == farmId && a.TagNumber == tag && a.Id != id && !a.IsDeleted);
         if (tagExists)
-            return Result<AnimalDetailDto>.Conflict($"An animal with tag '{tag}' already exists in this farm");
+            return Result<AnimalDetailDto>.Conflict(
+                $"An animal with tag '{tag}' already exists in this farm",
+                DomainMessageKeys.AnimalTagExists,
+                new Dictionary<string, object?> { ["tag"] = tag });
 
         if (request.BreedId.HasValue)
         {
@@ -537,7 +540,9 @@ public class AnimalService : IAnimalService
                            i.DateRemoved == null);
         if (duplicate)
             return Result<AnimalIdentificationDto>.Conflict(
-                $"An active identification with value '{value}' already exists in this farm");
+                $"An active identification with value '{value}' already exists in this farm",
+                DomainMessageKeys.IdentificationValueExists,
+                new Dictionary<string, object?> { ["value"] = value });
 
         var now = DateTime.UtcNow;
         var identification = new AnimalIdentification
@@ -1550,7 +1555,10 @@ public class AnimalService : IAnimalService
 
         var tag = request.TagNumber.Trim();
         return lookups.ExistingTags.Contains(tag)
-            ? Error.Conflict($"An animal with tag '{tag}' already exists in this farm")
+            ? Error.Conflict(
+                $"An animal with tag '{tag}' already exists in this farm",
+                DomainMessageKeys.AnimalTagExists,
+                new Dictionary<string, object?> { ["tag"] = tag })
             : null;
     }
 
@@ -1790,7 +1798,9 @@ public class AnimalService : IAnimalService
                                i.DateRemoved == null);
             if (exists)
                 return Result.Conflict(
-                    $"An active identification with value '{identification.Value.Trim()}' already exists in this farm");
+                    $"An active identification with value '{identification.Value.Trim()}' already exists in this farm",
+                    DomainMessageKeys.IdentificationValueExists,
+                    new Dictionary<string, object?> { ["value"] = identification.Value.Trim() });
         }
 
         return Result.Success();

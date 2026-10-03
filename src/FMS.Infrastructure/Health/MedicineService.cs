@@ -307,7 +307,17 @@ public class MedicineService : IMedicineService
         var totalAvailable = batches.Sum(b => b.Quantity);
         if (totalAvailable < request.QuantityUsed)
             return Result<MedicineUsageDto>.Validation(
-                $"Insufficient stock. Available: {totalAvailable} {medicine.Unit}, requested: {request.QuantityUsed}");
+                $"Insufficient stock. Available: {totalAvailable} {medicine.Unit}, requested: {request.QuantityUsed}",
+                DomainMessageKeys.MedicineStockInsufficient,
+                // The unit is a free-text string the farm typed on the medicine, not the
+                // FeedUnit enum — `kg` on a Medicine means whatever that farm meant by it. It
+                // travels as the reader's own text and is not run through the feed vocabulary.
+                new Dictionary<string, object?>
+                {
+                    ["available"] = totalAvailable,
+                    ["unit"] = medicine.Unit,
+                    ["requested"] = request.QuantityUsed,
+                });
 
         var userId = _currentUser.GetUserId();
         var remaining = request.QuantityUsed;

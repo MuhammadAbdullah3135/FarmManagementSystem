@@ -101,7 +101,15 @@ public class S3FileStorageService : IFileStorageService
         }
         catch (AmazonS3Exception ex)
         {
-            return Result<FileStorageInfo>.Unexpected($"Failed to store file: {ex.Message}");
+            return Result<FileStorageInfo>.Unexpected(
+                $"Failed to store file: {ex.Message}",
+                DomainMessageKeys.FileStoreFailed,
+                // The sentence around it is translated; the S3 fault inside it is not, and
+                // cannot be. An AWS error string is not copy — translating it would invent a
+                // message the storage service never sent. So the frame becomes the reader's
+                // language and the diagnostic stays as it arrived, which is the most a system
+                // fault can honestly offer someone who does not read English.
+                new Dictionary<string, object?> { ["detail"] = ex.Message });
         }
 
         return Result<FileStorageInfo>.Success(new FileStorageInfo
@@ -201,7 +209,10 @@ public class S3FileStorageService : IFileStorageService
         }
         catch (AmazonS3Exception ex)
         {
-            return Result<PresignedDownloadUrl>.Unexpected($"Failed to sign download URL: {ex.Message}");
+            return Result<PresignedDownloadUrl>.Unexpected(
+                $"Failed to sign download URL: {ex.Message}",
+                DomainMessageKeys.FileSignFailed,
+                new Dictionary<string, object?> { ["detail"] = ex.Message });
         }
     }
 
