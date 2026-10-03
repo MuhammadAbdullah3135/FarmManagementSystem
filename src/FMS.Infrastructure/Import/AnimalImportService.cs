@@ -147,7 +147,7 @@ public class AnimalImportService : IAnimalImportService
 
         var sheet = sheetResult.Value!;
         if (sheet.Rows.Count == 0)
-            return Result<Analysis>.Validation("The file has no data rows below the header row.");
+            return Result<Analysis>.Validation("The file has no data rows below the header row.", DomainMessageKeys.NoDataRowsBelowHeader);
 
         var suggested = ImportPipeline.SuggestMapping(sheet.Headers, AnimalImportFields.FieldCatalog);
         var effective = ImportPipeline.Merge(mapping, suggested, AnimalImportFields.All);

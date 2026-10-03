@@ -45,10 +45,10 @@ public class DomainMessageKeyParityTests
         // an equality: the total can only grow as families are keyed, and the lookup family
         // itself is pinned at its own count so a reflection change that dropped *one* group
         // while keeping another would still be caught.
-        // 64 lookup + 47 conflict + 3 supersede + 68 validation = 182.
+        // 64 lookup + 47 conflict + 3 supersede + 69 validation = 183.
         Assert.True(
-            keys.Count >= 182,
-            $"Only {keys.Count} domain message keys were found; at least 182 are expected. A "
+            keys.Count >= 183,
+            $"Only {keys.Count} domain message keys were found; at least 183 are expected. A "
             + "reflection change that enumerates fewer keys than the class declares would make "
             + "this test pass for the wrong reason.");
         Assert.Equal(64, keys.Count(key => key.StartsWith("validation.lookup.", StringComparison.Ordinal)));
@@ -61,7 +61,7 @@ public class DomainMessageKeyParityTests
         // 16 argument-taking sentences, then 23 argument-free across FeedService and
         // AnimalService. Each service's sweep raises this number, which is the point of pinning
         // it — a reflection change that missed the newest group would otherwise go unnoticed.
-        Assert.Equal(68, keys.Count(key => key.StartsWith("validation.validation.", StringComparison.Ordinal)));
+        Assert.Equal(69, keys.Count(key => key.StartsWith("validation.validation.", StringComparison.Ordinal)));
 
         // One bundle read per namespace, not per key: the lookup family is one namespace.
         var bundles = ClientBundles.TranslatedLocales()

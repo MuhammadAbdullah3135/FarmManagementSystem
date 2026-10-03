@@ -280,6 +280,7 @@
     "consumptionQuantityPositive": "La cantidad de consumo debe ser mayor que cero",
     "purchaseQuantityPositive": "La cantidad de compra debe ser mayor que cero",
     "transferAdjustmentQuantityZero": "La cantidad de transferencia o ajuste no puede ser cero",
-    "movementTypeFilterInvalid": "El tipo de movimiento debe ser Compra, Consumo, Transferencia o Ajuste"
+    "movementTypeFilterInvalid": "El tipo de movimiento debe ser Compra, Consumo, Transferencia o Ajuste",
+    "noDataRowsBelowHeader": "El archivo no tiene filas de datos debajo de la fila de encabezado."
   }
 }

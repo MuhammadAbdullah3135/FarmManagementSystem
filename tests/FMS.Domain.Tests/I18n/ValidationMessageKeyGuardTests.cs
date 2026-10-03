@@ -114,6 +114,13 @@ public class ValidationMessageKeyGuardTests
     /// <c>MovementDateFuture</c>. Three of the ten so far have been a sentence another service
     /// already said, which is the argument for sweeping by service rather than by key.
     /// </para>
+    /// <para>
+    /// The seven import services left together rather than one at a time. They were put on this
+    /// list by this guard on its first run, having been missed by the audit's backlog entirely,
+    /// and each said the identical sentence about an empty sheet — verified byte-identical at
+    /// all seven before they shared one key. Seven entries became zero in one step, and the
+    /// cross-check confirms none of them has a hole behind it.
+    /// </para>
     /// </summary>
     private static readonly string[] StillToKey =
     {
@@ -130,16 +137,6 @@ public class ValidationMessageKeyGuardTests
         "src/FMS.Infrastructure/Tasks/FarmTaskService.cs",
         "src/FMS.Infrastructure/Files/FileUploadValidator.cs",
         "src/FMS.Infrastructure/Reports/CostAttributionService.cs",
-        // The seven import services each say the same sentence about an empty sheet. Found by
-        // this guard on its first run, which is the point of writing it before the sweep: the
-        // backlog list was incomplete and only the check could say so.
-        "src/FMS.Infrastructure/Import/AnimalImportService.cs",
-        "src/FMS.Infrastructure/Import/CustomerImportService.cs",
-        "src/FMS.Infrastructure/Import/EmployeeImportService.cs",
-        "src/FMS.Infrastructure/Import/ExpenseImportService.cs",
-        "src/FMS.Infrastructure/Import/IncomeImportService.cs",
-        "src/FMS.Infrastructure/Import/InventoryImportService.cs",
-        "src/FMS.Infrastructure/Import/SupplierImportService.cs",
         "src/FMS.Infrastructure/Notifications/PushSubscriptionService.cs",
     };
 

@@ -475,12 +475,11 @@ public static class DomainMessageKeys
 
     // ── validation, argument-free ─────────────────────────────────────────────────────────
     // The shape the "not found" and conflict families already had: no arguments, so the key is
-    // the whole message. These 48 cover 66 sites across FeedService, AnimalService,
-    // MedicineService, VaccineService, EmployeeService, BreedingService and InventoryService,
-    // because a sentence said three times is one sentence — “Quantity must be greater than zero”
-    // appears at three feed sites, at two medicine ones and in InventoryService, and
-    // “Tag number is required” at three animal ones, so it is one translation rather than five
-    // that have to be kept in step.
+    // the whole message. These 49 cover 73 sites across nine services, because a sentence said
+    // three times is one sentence — “Quantity must be greater than zero” appears at three feed
+    // sites, at two medicine ones and in InventoryService, “Tag number is required” at three
+    // animal ones, and “The file has no data rows below the header row.” at all seven import
+    // services, so those are one translation each rather than five that have to be kept in step.
 
     // Feed
     /// <summary>The exact English this API has always answered: “Adjustment quantity cannot be zero”</summary>
@@ -667,5 +666,13 @@ public static class DomainMessageKeys
 
     /// <summary>The exact English this API has always answered: “Movement type must be Purchase, Consumption, Transfer, or Adjustment”</summary>
     public const string MovementTypeFilterInvalid = "validation.validation.movementTypeFilterInvalid";
+
+    // Imports
+    // One sentence, seven services. The seven AnalyseAsync methods are the same analysis over
+    // seven different entity types, so the refusal they share is one sentence and not seven:
+    // seven keys would be seven translations to keep in step, and the day one of them drifts
+    // the importer would report an empty sheet in one language and something else in another.
+    /// <summary>The exact English this API has always answered: “The file has no data rows below the header row.”</summary>
+    public const string NoDataRowsBelowHeader = "validation.validation.noDataRowsBelowHeader";
 
 }

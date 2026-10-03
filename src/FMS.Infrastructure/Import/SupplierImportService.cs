@@ -132,7 +132,7 @@ public class SupplierImportService : ISupplierImportService
 
         var sheet = sheetResult.Value!;
         if (sheet.Rows.Count == 0)
-            return Result<Analysis>.Validation("The file has no data rows below the header row.");
+            return Result<Analysis>.Validation("The file has no data rows below the header row.", DomainMessageKeys.NoDataRowsBelowHeader);
 
         var suggested = ImportPipeline.SuggestMapping(sheet.Headers, SupplierImportFields.FieldCatalog);
         var effective = ImportPipeline.Merge(mapping, suggested, SupplierImportFields.All);

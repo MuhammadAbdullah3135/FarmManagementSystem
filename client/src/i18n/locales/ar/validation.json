@@ -280,6 +280,7 @@
     "consumptionQuantityPositive": "يجب أن تكون كمية الاستهلاك أكبر من صفر",
     "purchaseQuantityPositive": "يجب أن تكون كمية الشراء أكبر من صفر",
     "transferAdjustmentQuantityZero": "لا يمكن أن تكون كمية التحويل أو التسوية صفرًا",
-    "movementTypeFilterInvalid": "يجب أن يكون نوع الحركة إحدى: شراء، استهلاك، تحويل، تسوية"
+    "movementTypeFilterInvalid": "يجب أن يكون نوع الحركة إحدى: شراء، استهلاك، تحويل، تسوية",
+    "noDataRowsBelowHeader": "لا يحتوي الملف على صفوف بيانات أسفل صف العناوين."
   }
 }

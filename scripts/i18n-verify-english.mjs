@@ -359,9 +359,16 @@ const BREEDING_AND_INVENTORY = [
   'PurchaseQuantityPositive', 'TransferAdjustmentQuantityZero', 'MovementTypeFilterInvalid',
 ];
 
+/**
+ * One constant for the seven import services. It is named once and expected once, which is
+ * the point: seven keys would each be checked separately and could drift apart, and a
+ * coverage report listing one entry is the shape of the argument for sharing it.
+ */
+const IMPORTS = ['NoDataRowsBelowHeader'];
+
 const EXPECTED = [
   ...SLICE_2B, ...ARGUMENT_FREE, ...MEDICINES_AND_VACCINES, ...EMPLOYEES,
-  ...BREEDING_AND_INVENTORY,
+  ...BREEDING_AND_INVENTORY, ...IMPORTS,
 ];
 
 for (const file of SOURCES) {
