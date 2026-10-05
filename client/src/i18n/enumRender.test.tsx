@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor, renderHook } from '@testing-library/react';
+import { render, screen, waitFor, renderHook, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import i18n, { NAMESPACES, resources } from './index';
@@ -8,15 +8,21 @@ import { flatten } from '../../tools/i18n/check-locale-coverage.mjs';
 import { useEnumOptions } from './enumOptions';
 import AuditLogPage from '../pages/admin/AuditLogPage';
 import InventoryMovementsPage from '../pages/inventory/InventoryMovementsPage';
+import FeedTypesPage from '../pages/feed/FeedTypesPage';
 import { auditLogsApi } from '../api/auditLogs';
 import { inventoryApi } from '../api/inventory';
+import { feedTypesApi, feedInventoryApi } from '../api/feed';
 import type { AuditLogEntry } from '../api/auditLogs';
-import type { StockMovement } from '../types';
+import type { FeedStockMovement, StockMovement } from '../types';
 import { useFarmStore } from '../stores/farmStore';
 import type { Farm } from '../types';
 
 vi.mock('../api/auditLogs', () => ({ auditLogsApi: { getLogs: vi.fn() } }));
 vi.mock('../api/inventory', () => ({ inventoryApi: { list: vi.fn(), movements: vi.fn() } }));
+vi.mock('../api/feed', () => ({
+  feedTypesApi: { list: vi.fn(), create: vi.fn(), update: vi.fn(), remove: vi.fn() },
+  feedInventoryApi: { stock: vi.fn(), movements: vi.fn(), recordMovement: vi.fn() },
+}));
 vi.mock('../api/farmApi', () => ({ getApiError: vi.fn((error: unknown) => String(error)) }));
 
 /**
@@ -98,6 +104,44 @@ const movement = (overrides: Partial<StockMovement> = {}): StockMovement =>
     reason: 'Moved to the barn',
     ...overrides,
   }) as StockMovement;
+
+const feedMovement = (overrides: Partial<FeedStockMovement> = {}): FeedStockMovement =>
+  ({
+    id: 'fmov-1',
+    feedTypeId: 'ft-1',
+    feedTypeName: 'Alfalfa',
+    movementType: 'Transfer',
+    movementTypeName: 'Transfer',
+    quantity: 5,
+    signedQuantity: 5,
+    movementDate: '2026-10-01T12:00:00Z',
+    ...overrides,
+  }) as FeedStockMovement;
+
+/**
+ * Both of FeedTypesPage's loaders run on mount, so opening the stock-movements tab
+ * only has to reveal the table the row is already in.
+ */
+const mockFeed = (items: FeedStockMovement[]) => {
+  vi.mocked(feedTypesApi.list).mockResolvedValue([] as never);
+  vi.mocked(feedInventoryApi.stock).mockResolvedValue({ data: [] } as never);
+  vi.mocked(feedInventoryApi.movements).mockResolvedValue({ data: { items, totalCount: items.length } } as never);
+};
+
+/**
+ * Opens a tab by its visible label.
+ *
+ * Addressed by class, not by role: computing an accessible name calls
+ * `getComputedStyle`, which this jsdom does not implement for pseudo-elements and
+ * which does not return at all on a DOM this size — the by-role query hangs until
+ * the test times out rather than failing. Same reason the audit-log filter below
+ * addresses antd's option list by class.
+ */
+const openTab = (label: string) => {
+  const tab = [...document.querySelectorAll('.ant-tabs-tab')].find((t) => t.textContent === label);
+  expect(tab, `no tab labelled ${label}`).toBeDefined();
+  fireEvent.click(tab as HTMLElement);
+};
 
 const renderAt = (element: React.ReactElement, path: string) =>
   render(
@@ -220,6 +264,56 @@ describe('the inventory movements page in Spanish', () => {
     // The row's tag reads Transferencia; the exact English word is gone.
     // (An exact-text query deliberately does not match the longer Spanish word.)
     expect(await screen.findByText(wording('es', 'enums', 'movementType.Transfer'))).toBeInTheDocument();
+    expect(screen.queryByText('Transfer')).toBeNull();
+    expectNoRawKeys(container);
+  });
+});
+
+describe('the feed types movement column in Spanish', () => {
+  it('translates the movement type instead of printing the server wire name', async () => {
+    await i18n.changeLanguage('es');
+    mockFeed([feedMovement()]);
+
+    const { container } = renderAt(<FeedTypesPage />, '/feed/types');
+    openTab(wording('es', 'feed', 'stockMovements'));
+
+    // Anchored on the row's feed type, then asserted synchronously. Waiting on the
+    // translated label directly would fail by *timeout* when the bug is present, which
+    // says nothing about what is wrong; this way the failure names the offending word.
+    await screen.findByText('Alfalfa');
+    expect(screen.queryByText('Transfer')).toBeNull();
+    expect(screen.getByText(wording('es', 'enums', 'movementType.Transfer'))).toBeInTheDocument();
+    expectNoRawKeys(container);
+  });
+});
+
+describe('the feed types movement column in Arabic', () => {
+  it('translates the movement type and lays the document out right-to-left', async () => {
+    await i18n.changeLanguage('ar');
+    applyDocumentLocale('ar');
+    mockFeed([feedMovement({ movementType: 'Purchase', movementTypeName: 'Purchase' })]);
+
+    const { container } = renderAt(<FeedTypesPage />, '/feed/types');
+    openTab(wording('ar', 'feed', 'stockMovements'));
+
+    await screen.findByText('Alfalfa');
+    expect(screen.queryByText('Purchase')).toBeNull();
+    expect(screen.getByText(wording('ar', 'enums', 'movementType.Purchase'))).toBeInTheDocument();
+    expect(document.documentElement.dir).toBe('rtl');
+    expectNoRawKeys(container);
+  });
+});
+
+describe('the inventory movements page in Arabic', () => {
+  it('translates the movement-type tag of a table row', async () => {
+    await i18n.changeLanguage('ar');
+    applyDocumentLocale('ar');
+    vi.mocked(inventoryApi.list).mockResolvedValue({ data: { items: [], totalCount: 0 } } as never);
+    vi.mocked(inventoryApi.movements).mockResolvedValue({ data: { items: [movement()], totalCount: 1 } } as never);
+
+    const { container } = renderAt(<InventoryMovementsPage />, '/dashboard/inventory/movements');
+
+    expect(await screen.findByText(wording('ar', 'enums', 'movementType.Transfer'))).toBeInTheDocument();
     expect(screen.queryByText('Transfer')).toBeNull();
     expectNoRawKeys(container);
   });

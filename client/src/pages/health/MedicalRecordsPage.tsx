@@ -11,7 +11,7 @@ import { lookupsApi } from '../../api/attendance';
 import { getApiError } from '../../api/farmApi';
 import type { MedicalRecordListItem, MedicalRecordStatus } from '../../types';
 import { useTranslation } from 'react-i18next';
-import { useEnumOptions } from '../../i18n/enumOptions';
+import { useEnumOptions, enumLabelOf } from '../../i18n/enumOptions';
 
 const STATUS_COLORS: Record<MedicalRecordStatus, string> = {
   Open: 'gold',
@@ -204,7 +204,12 @@ const MedicalRecordsPage: React.FC = () => {const { t } = useTranslation(['healt
       title: t('status'),
       dataIndex: 'statusName',
       width: 110,
-      render: (name: string) => <Tag color={STATUS_COLORS[name as MedicalRecordStatus]}>{name}</Tag>,
+      // `name` is the server's `MedicalRecordStatus.ToString()`, so it keys the colour
+      // and is not what the reader should see. Printing it left Open/InProgress/Resolved
+      // in English in es and ar.
+      render: (name: string) => (
+        <Tag color={STATUS_COLORS[name as MedicalRecordStatus]}>{enumLabelOf('medicalStatus', name)}</Tag>
+      ),
     },
     {
       title: t('actions'),

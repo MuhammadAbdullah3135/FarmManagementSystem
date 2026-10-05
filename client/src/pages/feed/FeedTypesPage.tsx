@@ -5,6 +5,7 @@ import {
 import { PlusOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { formatDate } from '../../i18n/format';
+import { enumLabelOf } from '../../i18n/enumOptions';
 
 import { feedInventoryApi, feedTypesApi } from '../../api/feed';
 import { getApiError } from '../../api/farmApi';
@@ -182,8 +183,12 @@ const FeedTypesPage: React.FC = () => {const { t: translate } = useTranslation([
     {
       title: translate('type'),
       dataIndex: 'movementTypeName',
+      // The colour keys off the raw wire value; the reader gets the localized label.
+      // Printing `t` here is what left Purchase/Consumption in English in es and ar.
       render: (t: string) => (
-        <Tag color={t === 'Purchase' ? 'green' : t === 'Consumption' ? 'red' : 'blue'}>{t}</Tag>
+        <Tag color={t === 'Purchase' ? 'green' : t === 'Consumption' ? 'red' : 'blue'}>
+          {enumLabelOf('movementType', t)}
+        </Tag>
       ),
     },
     { title: translate('qty'), dataIndex: 'signedQuantity', align: 'right' },
