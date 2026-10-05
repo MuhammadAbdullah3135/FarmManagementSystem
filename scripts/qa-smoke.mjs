@@ -114,6 +114,20 @@ const authHeaders = (extra = {}) => ({
 
 const header = (text) => console.log(`\n${text}`);
 
+// The mode, before anything runs, because the two modes report different totals and the
+// difference is five checks rather than one: 24 with the write path, 19 without it. Both were
+// read off a real run. Printing the count here is what stops the two being compared with each
+// other -- and the count is not derivable from the source, since the read-path section emits ten
+// checks from a single call site.
+//
+// This line states what the run will do. It adds no check, changes no exit code, and touches no
+// branch below it.
+console.log(
+  `Smoke check: ${READ_ONLY ? 'read-only' : 'write mode'}`
+  + ` — ${READ_ONLY ? '19' : '24'} checks expected`
+  + (EXPECTED_SHA ? `, asserting ${EXPECTED_SHA}` : ', provenance reported but not asserted (no FMS_SMOKE_SHA)'),
+);
+
 // ── 1. the release is serving ───────────────────────────────
 //
 // Heroku restarts the dyno to swap the container, so the first requests after a release can
