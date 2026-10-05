@@ -1324,10 +1324,16 @@ user does; the QA account stored locale was left as `ar`, its documented value.
 
 ### Post-push acceptance
 
-CI green on both workflows, then `FMS_SMOKE_SHA=<full sha> node scripts/qa-smoke.mjs --read-only`
-must report 17/17 against the new release (the script asserts the FULL sha; a short sha reads
-as a failure). If it does not: `heroku rollback v40 --app fms-api` and re-run Pages on
-`929856f`, then investigate before any fix-forward.
+CI green on both workflows, then `FMS_SMOKE_SHA=<full sha> node scripts/qa-smoke.mjs` must report
+**24/24** against the new release (the script asserts the FULL sha; a short sha reads as a
+failure). That is the count CI itself produces: `deploy.yml` runs the script **without**
+`--read-only`, so the run creates, updates and deletes one smoke expense and verifies the cleanup
+and the final row count. If it does not pass: `heroku rollback v40 --app fms-api` and re-run Pages
+on `929856f`, then investigate before any fix-forward.
+
+`--read-only` reports **19/19** — the same five write-path checks are skipped, not failed. It is
+the lower-risk variant for a local run, not what the pipeline does, and the two numbers should not
+be compared against each other.
 ## Automated QA scripts
 
 Three dependency-free scripts in `scripts/` run against the deployed API
@@ -1382,14 +1388,19 @@ another container: `gh workflow run deploy.yml -f skip_deploy=true`.
 Running it by hand:
 
 ```bash
-node scripts/qa-smoke.mjs --read-only               # nothing is written
-node scripts/qa-smoke.mjs                           # includes create → update → delete
+node scripts/qa-smoke.mjs                           # 24 checks — what CI runs; writes one expense
+node scripts/qa-smoke.mjs --read-only               # 19 checks — nothing is written
 FMS_SMOKE_SHA=<commit> node scripts/qa-smoke.mjs    # also asserts /health reports that commit
 FMS_SMOKE_FARM=OtherFarm node scripts/qa-smoke.mjs  # writes only if the account owns that farm
 FMS_API=https://<app>.herokuapp.com/api node scripts/qa-smoke.mjs
 FMS_PAGES_URL=https://<user>.github.io/<repo>/ node scripts/qa-smoke.mjs   # the deployed web app
 FMS_PAGES_SETTLE_MS=0 node scripts/qa-smoke.mjs  # do not wait for Pages to catch up
 ```
+
+The two counts are mode-qualified, not competing. Write mode adds five checks over read-only — the
+create → read → update → delete → confirm-gone sequence — so **24** against **19**. Both were
+measured against production rather than derived by counting `check()` call sites: the read-path
+section alone emits ten checks from one call site, so the static count is neither number.
 
 `FMS_PAGES_URL` is the deployed web app, including its project path — this repository is served
 from `https://<user>.github.io/<repo>/`, and the bare host is a 404. The CORS origin is *derived*
