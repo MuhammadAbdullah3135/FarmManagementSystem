@@ -131,9 +131,23 @@ const WeightCheckSchedulePage: React.FC = () => {const { t } = useTranslation('h
   };
 
   const columns: ColumnsType<WeightCheckSchedule> = [
-    { title: t('animalType'), dataIndex: 'animalTypeName', render: (n?: string) => n || 'All Types' },
-    { title: t('breed'), dataIndex: 'breedName', render: (n?: string) => n || 'All Breeds' },
-    { title: t('ageCategory'), dataIndex: 'ageCategoryName', render: (n?: string) => n || 'All Ages' },
+    {
+      title: t('animalType'),
+      dataIndex: 'animalTypeName',
+      // A blank means the schedule covers everything, not that the name is missing.
+      // Phrased by the reader's language, as VaccinationSchedulePage does beside it.
+      render: (n?: string) => n || <Tag>{t('allTypes')}</Tag>,
+    },
+    {
+      title: t('breed'),
+      dataIndex: 'breedName',
+      render: (n?: string) => n || <Tag>{t('allBreeds')}</Tag>,
+    },
+    {
+      title: t('ageCategory'),
+      dataIndex: 'ageCategoryName',
+      render: (n?: string) => n || <Tag>{t('allAgeCategories')}</Tag>,
+    },
     {
       title: t('interval'),
       dataIndex: 'recurrenceDays',

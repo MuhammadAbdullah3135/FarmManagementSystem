@@ -2,23 +2,47 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor, renderHook, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { Children, cloneElement, type ComponentProps, type ReactElement, type ReactNode } from 'react';
 import i18n, { NAMESPACES, resources } from './index';
 import { applyDocumentLocale } from './locale';
 import { flatten } from '../../tools/i18n/check-locale-coverage.mjs';
 import { useEnumOptions } from './enumOptions';
 import AuditLogPage from '../pages/admin/AuditLogPage';
 import InventoryMovementsPage from '../pages/inventory/InventoryMovementsPage';
+import InventoryReportsPage from '../pages/inventory/InventoryReportsPage';
 import FeedTypesPage from '../pages/feed/FeedTypesPage';
+import MedicalRecordsPage from '../pages/health/MedicalRecordsPage';
 import { auditLogsApi } from '../api/auditLogs';
 import { inventoryApi } from '../api/inventory';
 import { feedTypesApi, feedInventoryApi } from '../api/feed';
+import { medicalRecordsApi } from '../api/health';
+import { lookupsApi } from '../api/attendance';
 import type { AuditLogEntry } from '../api/auditLogs';
-import type { FeedStockMovement, StockMovement } from '../types';
+import type { FeedStockMovement, InventoryReport, MedicalRecordListItem, StockMovement } from '../types';
 import { useFarmStore } from '../stores/farmStore';
 import type { Farm } from '../types';
 
+// jsdom measures every container as zero-width and never advances recharts' animation
+// frames, so a ResponsiveContainer would draw nothing and the axis under test would never
+// appear. Same approach as BreedingReportsPage.test.tsx: pin the size, drop the animation.
+vi.mock('recharts', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('recharts')>();
+  return {
+    ...actual,
+    ResponsiveContainer: ({ children }: { children?: ReactNode }) => {
+      const child = Children.only(children) as ReactElement<{ width?: number; height?: number }>;
+      return cloneElement(child, { width: 400, height: 220 });
+    },
+    Bar: (props: ComponentProps<typeof actual.Bar>) => <actual.Bar {...props} isAnimationActive={false} />,
+  };
+});
+
 vi.mock('../api/auditLogs', () => ({ auditLogsApi: { getLogs: vi.fn() } }));
-vi.mock('../api/inventory', () => ({ inventoryApi: { list: vi.fn(), movements: vi.fn() } }));
+vi.mock('../api/inventory', () => ({ inventoryApi: { list: vi.fn(), movements: vi.fn(), report: vi.fn() } }));
+vi.mock('../api/health', () => ({
+  medicalRecordsApi: { list: vi.fn(), get: vi.fn(), create: vi.fn(), update: vi.fn(), remove: vi.fn() },
+}));
+vi.mock('../api/attendance', () => ({ lookupsApi: { animals: vi.fn() } }));
 vi.mock('../api/feed', () => ({
   feedTypesApi: { list: vi.fn(), create: vi.fn(), update: vi.fn(), remove: vi.fn() },
   feedInventoryApi: { stock: vi.fn(), movements: vi.fn(), recordMovement: vi.fn() },
@@ -117,6 +141,32 @@ const feedMovement = (overrides: Partial<FeedStockMovement> = {}): FeedStockMove
     movementDate: '2026-10-01T12:00:00Z',
     ...overrides,
   }) as FeedStockMovement;
+
+const medicalRecord = (overrides: Partial<MedicalRecordListItem> = {}): MedicalRecordListItem => ({
+  id: 'mrec-1',
+  animalId: 'animal-1',
+  animalTagNumber: 'TAG-001',
+  cost: 25,
+  dateRecorded: '2026-10-01T12:00:00Z',
+  status: 'InProgress',
+  statusName: 'InProgress',
+  ...overrides,
+});
+
+const inventoryReport = (overrides: Partial<InventoryReport> = {}): InventoryReport => ({
+  totalStockValue: 0,
+  totalItems: 0,
+  lowStockItemCount: 0,
+  totalMovementQuantity: 0,
+  currentStock: [],
+  lowStockAlerts: [],
+  movementSummary: [{ movementType: 'Transfer', movementTypeName: 'Transfer', movementCount: 1, quantity: 5 }],
+  ...overrides,
+});
+
+/** Every text node recharts drew, axis ticks included. */
+const chartTexts = (): string[] =>
+  [...document.querySelectorAll('.recharts-surface text')].map((el) => el.textContent ?? '');
 
 /**
  * Both of FeedTypesPage's loaders run on mount, so opening the stock-movements tab
@@ -315,6 +365,81 @@ describe('the inventory movements page in Arabic', () => {
 
     expect(await screen.findByText(wording('ar', 'enums', 'movementType.Transfer'))).toBeInTheDocument();
     expect(screen.queryByText('Transfer')).toBeNull();
+    expectNoRawKeys(container);
+  });
+});
+
+describe('the medical records status column in Spanish', () => {
+  it('translates the server status name rather than printing Open/InProgress/Resolved', async () => {
+    await i18n.changeLanguage('es');
+    vi.mocked(medicalRecordsApi.list).mockResolvedValue({
+      data: { items: [medicalRecord()], totalCount: 1 },
+    } as never);
+    vi.mocked(lookupsApi.animals).mockResolvedValue({ data: { items: [], totalCount: 0 } } as never);
+
+    const { container } = renderAt(<MedicalRecordsPage />, '/dashboard/health/medical-records');
+
+    // Anchored on the row's animal tag, then asserted synchronously — waiting on the
+    // translated label itself would time out rather than name the offending word.
+    await screen.findByText('TAG-001');
+    expect(screen.queryByText('InProgress')).toBeNull();
+    expect(screen.getByText(wording('es', 'enums', 'medicalStatus.InProgress'))).toBeInTheDocument();
+    expectNoRawKeys(container);
+  });
+});
+
+describe('the medical records status column in Arabic', () => {
+  it('translates the server status name and lays the document out right-to-left', async () => {
+    await i18n.changeLanguage('ar');
+    applyDocumentLocale('ar');
+    vi.mocked(medicalRecordsApi.list).mockResolvedValue({
+      data: { items: [medicalRecord({ status: 'Resolved', statusName: 'Resolved' })], totalCount: 1 },
+    } as never);
+    vi.mocked(lookupsApi.animals).mockResolvedValue({ data: { items: [], totalCount: 0 } } as never);
+
+    const { container } = renderAt(<MedicalRecordsPage />, '/dashboard/health/medical-records');
+
+    await screen.findByText('TAG-001');
+    expect(screen.queryByText('Resolved')).toBeNull();
+    expect(screen.getByText(wording('ar', 'enums', 'medicalStatus.Resolved'))).toBeInTheDocument();
+    expect(document.documentElement.dir).toBe('rtl');
+    expectNoRawKeys(container);
+  });
+});
+
+describe('the inventory reports movement chart in Spanish', () => {
+  it('labels the axis with the translated movement type, not the server wire name', async () => {
+    await i18n.changeLanguage('es');
+    vi.mocked(inventoryApi.report).mockResolvedValue({ data: inventoryReport() } as never);
+
+    const { container } = renderAt(<InventoryReportsPage />, '/dashboard/inventory/reports');
+
+    // Anchor on the chart having drawn at all — deliberately independent of the
+    // translation, so this wait still succeeds when the bug is present and the
+    // failure below names the offending word instead of timing out.
+    await waitFor(() => expect(chartTexts().length).toBeGreaterThan(0));
+    expect(chartTexts()).toContain(wording('es', 'enums', 'movementType.Transfer'));
+    expect(chartTexts()).not.toContain('Transfer');
+    expectNoRawKeys(container);
+  });
+});
+
+describe('the inventory reports movement chart in Arabic', () => {
+  it('labels the axis with the translated movement type and lays out right-to-left', async () => {
+    await i18n.changeLanguage('ar');
+    applyDocumentLocale('ar');
+    vi.mocked(inventoryApi.report).mockResolvedValue({
+      data: inventoryReport({
+        movementSummary: [{ movementType: 'Purchase', movementTypeName: 'Purchase', movementCount: 1, quantity: 7 }],
+      }),
+    } as never);
+
+    const { container } = renderAt(<InventoryReportsPage />, '/dashboard/inventory/reports');
+
+    await waitFor(() => expect(chartTexts().length).toBeGreaterThan(0));
+    expect(chartTexts()).toContain(wording('ar', 'enums', 'movementType.Purchase'));
+    expect(chartTexts()).not.toContain('Purchase');
+    expect(document.documentElement.dir).toBe('rtl');
     expectNoRawKeys(container);
   });
 });
