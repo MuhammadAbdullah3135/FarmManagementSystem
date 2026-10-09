@@ -168,7 +168,7 @@ export default function LineagePage() {
             // Same label shape as the birth-recording form, including its untranslated
             // fallback name: that string is shared, so changing it here alone would make the
             // two pickers disagree.
-            label: `${animal.tagNumber} - ${animal.name || 'Unnamed'}`,
+            label: `${animal.tagNumber} - ${animal.name || t('common:unnamed')}`,
           }))}
         />
         <Space>

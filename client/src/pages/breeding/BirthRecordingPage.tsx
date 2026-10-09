@@ -241,7 +241,7 @@ export default function BirthRecordingPage() {const { t } = useTranslation(['bre
               placeholder={t('selectDam')}
               optionFilterProp="label"
               onChange={handleDamChange}
-              options={animals.map(a => ({ value: a.id, label: `${a.tagNumber} - ${a.name || 'Unnamed'}` }))}
+              options={animals.map(a => ({ value: a.id, label: `${a.tagNumber} - ${a.name || t('common:unnamed')}` }))}
             />
           </Form.Item>
 

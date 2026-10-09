@@ -64,6 +64,15 @@
         "tool": "Codebuff agent (GLM)",
         "date": "2026-10-03",
         "reviewed": false
+      },
+      {
+        "files": [
+          "es/common.json (unnamed)"
+        ],
+        "source": "en",
+        "tool": "AI agent (model name unavailable)",
+        "date": "2026-10-08",
+        "reviewed": false
       }
     ]
   },
@@ -132,6 +141,15 @@
         "source": "en",
         "tool": "Codebuff agent (GLM)",
         "date": "2026-10-03",
+        "reviewed": false
+      },
+      {
+        "files": [
+          "ar/common.json (unnamed)"
+        ],
+        "source": "en",
+        "tool": "AI agent (model name unavailable)",
+        "date": "2026-10-08",
         "reviewed": false
       }
     ]
