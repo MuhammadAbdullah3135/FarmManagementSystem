@@ -788,7 +788,7 @@ public static class DemoDataSeeder
 
     private static string FullName(Employee e) => $"{e.FirstName} {e.LastName}".Trim();
 
-    private static async Task<Role?> EnsureSystemOwnerRoleAsync(FmsDbContext context, DateTime now)
+    private static async Task<Role> EnsureSystemOwnerRoleAsync(FmsDbContext context, DateTime now)
     {
         var existing = await context.Roles.FirstOrDefaultAsync(r => r.Name == FarmRoles.SystemOwner);
         if (existing != null) return existing;
