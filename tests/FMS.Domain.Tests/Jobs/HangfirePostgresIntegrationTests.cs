@@ -40,10 +40,11 @@ public class HangfirePostgresIntegrationTests : IClassFixture<HangfirePostgresIn
     /// Creates a throwaway database per run (dropped on dispose) so a real
     /// PostgreSQL server can be used without touching its existing data.
     /// </summary>
-    public class PostgresDatabaseFixture : IDisposable
+    public class PostgresDatabaseFixture : IAsyncLifetime, IDisposable
     {
         private readonly string _adminConnectionString;
         private string? _testDbName;
+        private bool _disposed;
 
         public PostgresDatabaseFixture()
         {
@@ -54,16 +55,26 @@ public class HangfirePostgresIntegrationTests : IClassFixture<HangfirePostgresIn
             {
                 Timeout = 3 // fail fast when no server is reachable
             }.ConnectionString;
-
-            // See PostgresIntegrationFactory: the probe must not capture the caller's
-            // SynchronizationContext. Class-fixture constructors run on xUnit's bounded
-            // MaxConcurrencySyncContext, so blocking on a context-captured continuation
-            // deadlocks the whole run. Task.Run runs the probe on the thread pool.
-            UnavailableReason = Task.Run(ProbeAndPrepareAsync).GetAwaiter().GetResult();
         }
 
         /// <summary>Non-null → PostgreSQL unreachable; tests skip with this message.</summary>
         public string? UnavailableReason { get; private set; }
+
+        // See PostgresIntegrationFactory: xUnit constructs a class fixture and then awaits
+        // InitializeAsync before the class's tests run. The old constructor blocked on
+        // GetAwaiter().GetResult() while the probe's awaits captured xUnit's bounded
+        // MaxConcurrencySyncContext, which deadlocked the run once enough fixtures blocked at
+        // once. Awaiting the probe on xUnit's async path avoids that blocked thread entirely.
+        public async Task InitializeAsync()
+        {
+            UnavailableReason = await ProbeAndPrepareAsync();
+        }
+
+        public Task DisposeAsync()
+        {
+            Dispose();
+            return Task.CompletedTask;
+        }
 
         public string ConnectionString =>
             new NpgsqlConnectionStringBuilder(_adminConnectionString) { Database = _testDbName }.ConnectionString;
@@ -152,6 +163,13 @@ public class HangfirePostgresIntegrationTests : IClassFixture<HangfirePostgresIn
 
         public void Dispose()
         {
+            if (_disposed)
+            {
+                return;
+            }
+
+            _disposed = true;
+
             if (_testDbName is null)
             {
                 return;
@@ -166,6 +184,8 @@ public class HangfirePostgresIntegrationTests : IClassFixture<HangfirePostgresIn
                 cmd.ExecuteNonQuery();
             }
             catch { /* best effort cleanup */ }
+
+            _testDbName = null;
         }
     }
 

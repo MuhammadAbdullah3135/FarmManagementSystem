@@ -22,10 +22,11 @@ namespace FMS.Domain.Tests.E2E;
 /// remains usable on machines without a database.
 /// </para>
 /// </summary>
-public class PostgresIntegrationFactory : TestWebApplicationFactory, IDisposable
+public class PostgresIntegrationFactory : TestWebApplicationFactory, IDisposable, IAsyncLifetime
 {
     private readonly string _adminConnectionString;
     private string? _testDbName;
+    private bool _disposed;
 
     public PostgresIntegrationFactory()
     {
@@ -37,22 +38,29 @@ public class PostgresIntegrationFactory : TestWebApplicationFactory, IDisposable
             Timeout = 3 // fail fast when no server is reachable
         };
         _adminConnectionString = builder.ConnectionString;
-
-        // The probe must not run on the caller's SynchronizationContext. This constructor runs
-        // on xUnit's bounded MaxConcurrencySyncContext (class fixtures are created from the
-        // test-collection runner), and its awaits would otherwise capture that context. Blocking
-        // here with GetAwaiter().GetResult() while the awaited continuations need the very same
-        // context deadlocks once enough fixtures block at once - which is exactly what stalled
-        // the combined parallel run. Task.Run clears the captured context, so the probe's
-        // continuations go to the thread pool and always complete.
-        UnavailableReason = Task.Run(ProbeAndPrepareAsync).GetAwaiter().GetResult();
     }
 
     /// <summary>Non-null → PostgreSQL unreachable; tests skip with this message.</summary>
-    public string? UnavailableReason { get; }
+    public string? UnavailableReason { get; private set; }
 
     /// <summary>Shadows the base property; only valid after <c>Host</c> was touched (tests guard via Skip).</summary>
     public new ApiSeedData.SeedIds SeedData => base.SeedData;
+
+    // xUnit constructs a class fixture and then awaits InitializeAsync before the class's tests
+    // run, so the probe belongs here rather than a constructor. The old constructor blocked on
+    // GetAwaiter().GetResult() while the probe's awaits captured xUnit's bounded
+    // MaxConcurrencySyncContext, which deadlocked the run once enough fixtures blocked at once.
+    // Awaiting the probe on xUnit's async path keeps that blocked thread out of the picture.
+    public async Task InitializeAsync()
+    {
+        UnavailableReason = await ProbeAndPrepareAsync();
+    }
+
+    public Task DisposeAsync()
+    {
+        ((IDisposable)this).Dispose();
+        return Task.CompletedTask;
+    }
 
     protected override void ConfigureDbContextOptions(DbContextOptionsBuilder options)
     {
@@ -87,9 +95,15 @@ public class PostgresIntegrationFactory : TestWebApplicationFactory, IDisposable
     }
 
     // Re-implement IDisposable so xunit's fixture disposal (via the
-    // interface) runs this cleanup, not only the base implementation.
+    // interface) runs this cleanup, not only the base implementation. xUnit calls DisposeAsync
+    // and then Dispose for a fixture that implements both, so the guard makes it run once.
     void IDisposable.Dispose()
     {
+        if (_disposed)
+            return;
+
+        _disposed = true;
+
         if (_testDbName is not null)
         {
             try
@@ -101,6 +115,8 @@ public class PostgresIntegrationFactory : TestWebApplicationFactory, IDisposable
                 cmd.ExecuteNonQuery();
             }
             catch { /* best effort cleanup */ }
+
+            _testDbName = null;
         }
 
         base.Dispose();
