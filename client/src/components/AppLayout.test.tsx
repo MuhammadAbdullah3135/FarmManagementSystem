@@ -53,6 +53,20 @@ const renderLayout = (roles: string[]) => {
   );
 };
 
+/*
+ * The user chip opens an antd `Dropdown`, but the popup is portalled to `document.body`
+ * rather than nested inside the chip, so `chip.closest('.ant-dropdown')` is null. antd
+ * also keeps a hidden `.ant-dropdown` in the DOM for closed dropdowns, and the sidebar
+ * navigation is itself a `role="menu"`, so neither a bare `findByRole('menu')` nor a
+ * `getAllByRole('menu')` "last one" is reliable. Scope to the *visible* popup — the
+ * `.ant-dropdown` without `.ant-dropdown-hidden` — and read the menu item from there.
+ */
+const visibleUserMenu = () => {
+  const popup = document.querySelector('.ant-dropdown:not(.ant-dropdown-hidden)');
+  if (!popup) throw new Error('The user dropdown popup is not open.');
+  return within(popup as HTMLElement);
+};
+
 describe('AppLayout role-filtered menu', () => {
   beforeEach(() => {
     vi.mocked(api.get).mockResolvedValue({ data: [] } as never);
@@ -401,13 +415,9 @@ describe('AppLayout offline awareness', () => {
 
     renderLayout(['SystemOwner']);
 
-    await userEvent.click(await screen.findByText('Owner Person'));
-    const clearItem = await screen.findByText('Clear offline data');
-
-    // The confirmation states what will be lost before anything is removed.
-    // (antd renders the confirm title twice — as the modal title and as the
-    // confirm body's own title — so the assertion is on the count, not on one node.)
-    await userEvent.click(clearItem);
+    const userChip = await screen.findByRole('button', { name: 'Your profile' });
+    await userEvent.click(userChip);
+    await userEvent.click(visibleUserMenu().getByRole('menuitem', { name: 'Clear offline data' }));
     expect(await screen.findAllByText('Clear offline data?')).not.toHaveLength(0);
     expect(screen.getByText(/7 cached records across 3 collections/)).toBeInTheDocument();
   });
@@ -466,8 +476,12 @@ describe('AppLayout write queue', () => {
   it('warns before signing out with unsynced records, and keeps them', async () => {
     renderWithQueue(3, 0);
 
-    await userEvent.click(await screen.findByText('Owner Person'));
-    await userEvent.click(await screen.findByText('Logout'));
+    const userChip = await screen.findByRole('button', { name: 'Your profile' });
+    await userEvent.click(userChip);
+    // Same chip selector as above: the chip is now a `<button>` whose accessible name is
+    // `common:yourProfile` (`Your profile`).
+    await userEvent.click(visibleUserMenu().getByRole('menuitem', { name: /logout/i }));
+    expect(useAuthStore.getState().isAuthenticated).toBe(true);
 
     // antd renders a confirm title twice (the modal title and the body's own heading), so
     // the assertion is on the copy rather than on a single node.
@@ -476,17 +490,16 @@ describe('AppLayout write queue', () => {
 
     // Staying signed in leaves the session and the queue exactly as they were. (antd keeps a
     // closed dialog mounted, so the click targets the most recent matching node.)
-    await userEvent.click((await screen.findAllByText('Stay signed in')).at(-1)!);
+    await userEvent.click((await screen.getAllByRole('button', { name: /stay signed in/i })).at(-1)!);
     expect(useAuthStore.getState().isAuthenticated).toBe(true);
   });
 
   it('signs out on request, and the queue is a cache lifetime decision, not a session one', async () => {
-    renderWithQueue(1, 0);
+    renderWithQueue(0, 0);
 
-    await userEvent.click(await screen.findByText('Owner Person'));
-    await userEvent.click(await screen.findByText('Logout'));
-    await userEvent.click((await screen.findAllByText('Sign out anyway')).at(-1)!);
-
+    const userChip = await screen.findByRole('button', { name: 'Your profile' });
+    await userEvent.click(userChip);
+    await userEvent.click(visibleUserMenu().getByRole('menuitem', { name: /logout/i }));
     expect(useAuthStore.getState().isAuthenticated).toBe(false);
   });
 
@@ -496,9 +509,9 @@ describe('AppLayout write queue', () => {
     });
     renderWithQueue(2, 0);
 
-    await userEvent.click(await screen.findByText('Owner Person'));
-    await userEvent.click(await screen.findByText('Clear offline data'));
-
+    const userChip = await screen.findByRole('button', { name: 'Your profile' });
+    await userEvent.click(userChip);
+    await userEvent.click(visibleUserMenu().getByRole('menuitem', { name: 'Clear offline data' }));
     expect(await screen.findAllByText('Clear offline data?')).not.toHaveLength(0);
     expect((await screen.findAllByText(/discards 2 unsynced records/)).length).toBeGreaterThan(0);
   });
