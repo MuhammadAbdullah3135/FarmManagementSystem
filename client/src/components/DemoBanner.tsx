@@ -28,8 +28,8 @@ const DemoBanner: React.FC = () => {
       icon={<WarningOutlined />}
       showIcon
       style={{ marginBottom: 16 }}
-      message={
-        <Space direction="vertical" size={4} style={{ width: '100%' }}>
+      title={
+        <Space orientation="vertical" size={4} style={{ width: '100%' }}>
           <span>{t('demo:bannerMessage')}</span>
           <Space size={8}>
             <Link to="/register">{t('demo:signUpLink')}</Link>
