@@ -10,7 +10,9 @@ using FMS.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.TestHost;
+using FMS.API.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -53,6 +55,9 @@ public class DemoSmokeTests
                 webBuilder.Configure(app =>
                 {
                     app.UseRouting();
+                    // Registered from the same helper Program.cs uses, so these tests exercise
+                    // the real demo policies rather than a drifting copy.
+                    app.UseRateLimiter();
                     app.UseAuthentication();
                     app.UseAuthorization();
                     app.UseEndpoints(e => e.MapControllers());
@@ -69,6 +74,7 @@ public class DemoSmokeTests
                     services.AddScoped<ICurrentUserService, CurrentUserService>();
                     services.AddScoped<IAuthService, AuthService>();
                     services.AddScoped<IJwtTokenService, JwtTokenService>();
+                    services.AddRateLimiter(DemoRateLimitPolicies.Add);
                     services.AddSingleton<IEmailService, PasswordResetE2ETests.TestEmailService>();
                     services.AddLogging();
                     services.AddAuthentication("Test")
@@ -165,5 +171,45 @@ public class DemoSmokeTests
                 "Bearer", JwtTokenHelper.GenerateTestToken(Guid.NewGuid(), new[] { "SystemOwner" }));
         var reset = await resetClient.PostAsync("/api/auth/demo-reset", null);
         Assert.Equal(HttpStatusCode.Gone, reset.StatusCode);
+    }
+
+    [Fact]
+    public async Task Demo_login_is_rate_limited_over_the_policy_budget()
+    {
+        using var host = BuildHost(demoEnabled: true);
+        var client = host.GetTestClient();
+
+        // The "demo-login" policy permits 10 per minute per IP. The first ten are served; the
+        // eleventh is refused by the limiter (not by the handler).
+        var statuses = new List<HttpStatusCode>();
+        for (var i = 0; i < 11; i++)
+            statuses.Add((await client.PostAsJsonAsync("/api/auth/demo-login", new { })).StatusCode);
+
+        Assert.DoesNotContain(HttpStatusCode.TooManyRequests, statuses.Take(10));
+        Assert.Equal(HttpStatusCode.TooManyRequests, statuses[10]);
+    }
+
+    [Fact]
+    public async Task Demo_reset_is_rate_limited_over_the_policy_budget()
+    {
+        using var host = BuildHost(demoEnabled: true);
+
+        // Seed the demo user and get a SystemOwner token through the real login path.
+        var login = await host.GetTestClient().PostAsJsonAsync("/api/auth/demo-login", new { });
+        Assert.Equal(HttpStatusCode.OK, login.StatusCode);
+        using var json = JsonDocument.Parse(await login.Content.ReadAsStringAsync());
+        var token = json.RootElement.GetProperty("accessToken").GetString();
+
+        var resetClient = host.GetTestClient();
+        resetClient.DefaultRequestHeaders.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+        // The "demo-reset" policy permits 5 per minute per IP; the sixth is refused.
+        var statuses = new List<HttpStatusCode>();
+        for (var i = 0; i < 6; i++)
+            statuses.Add((await resetClient.PostAsync("/api/auth/demo-reset", null)).StatusCode);
+
+        Assert.DoesNotContain(HttpStatusCode.TooManyRequests, statuses.Take(5));
+        Assert.Equal(HttpStatusCode.TooManyRequests, statuses[5]);
     }
 }

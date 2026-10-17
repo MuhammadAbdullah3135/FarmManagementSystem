@@ -11,6 +11,7 @@ using FMS.API.Binding;
 using FMS.API.Health;
 using FMS.API.Jobs;
 using FMS.API.Middleware;
+using FMS.API.RateLimiting;
 using FMS.API.Security;
 using FMS.Application.Animal;
 using FMS.Application.Animal.Import;
@@ -319,34 +320,7 @@ builder.Services.AddScoped<IPushSubscriptionService, PushSubscriptionService>();
 // endpoints return 410 Gone rather than 404, so a deployment without a demo simply has no
 // reachable demo surface (and a scanner cannot tell whether the route exists).
 builder.Services.Configure<DemoOptions>(builder.Configuration.GetSection(DemoOptions.SectionName));
-builder.Services.AddRateLimiter(options =>
-{
-    options.RejectionStatusCode = 429;
-    // Dedicated, much tighter bucket for the credential-free demo-login path so a scanner
-    // cannot burn the global 300/min bucket on a public demo button.
-    options.AddPolicy("demo-login", httpContext =>
-        RateLimitPartition.GetFixedWindowLimiter(
-            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-            factory: _ => new FixedWindowRateLimiterOptions
-            {
-                AutoReplenishment = true,
-                PermitLimit = 10,
-                QueueLimit = 0,
-                Window = TimeSpan.FromMinutes(1)
-            }));
-    // The demo-reset endpoint is an admin action (SystemOwner only) but is still gated so a
-    // noisy caller cannot hammer the DB reset path. Reuses the same tight bucket as demo-login.
-    options.AddPolicy("demo-reset", httpContext =>
-        RateLimitPartition.GetFixedWindowLimiter(
-            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-            factory: _ => new FixedWindowRateLimiterOptions
-            {
-                AutoReplenishment = true,
-                PermitLimit = 5,
-                QueueLimit = 0,
-                Window = TimeSpan.FromMinutes(1)
-            }));
-});
+builder.Services.AddRateLimiter(options => DemoRateLimitPolicies.Add(options));
 
 // ── Background jobs ────────────────────────────────────────────────────
 // Hangfire schedules the recurring work (daily feeding-task generation, hourly
