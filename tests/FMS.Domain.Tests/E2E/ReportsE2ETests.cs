@@ -205,7 +205,8 @@ public class ReportsE2ETests : IClassFixture<ReportsE2ETests.Factory>, IDisposab
     [Fact]
     public async Task AllEndpoints_ReturnUnauthorized_WithoutToken()
     {
-        var client = new TestWebApplicationFactory().CreateClient(); // no auth
+        using var factory = new TestWebApplicationFactory();
+        using var client = factory.CreateClient(); // no auth
         var farmId = Guid.NewGuid();
 
         var endpoints = new[]

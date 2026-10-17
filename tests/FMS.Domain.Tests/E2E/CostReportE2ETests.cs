@@ -266,7 +266,8 @@ public class CostReportE2ETests : IClassFixture<CostReportE2ETests.Factory>
     [Fact]
     public async Task CostReport_WithoutAToken_IsUnauthorized()
     {
-        var client = new TestWebApplicationFactory().CreateClient();
+        using var factory = new TestWebApplicationFactory();
+        using var client = factory.CreateClient();
         var farmId = Guid.NewGuid();
 
         var response = await client.GetAsync($"/api/farm/{farmId}/reports/cost-per-animal");

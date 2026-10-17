@@ -188,7 +188,8 @@ public class DashboardE2ETests : IClassFixture<DashboardE2ETests.Factory>, IDisp
     [Fact]
     public async Task Charts_Anonymous_ReturnsUnauthorized()
     {
-        var client = new TestWebApplicationFactory().CreateClient(); // no auth
+        using var factory = new TestWebApplicationFactory();
+        using var client = factory.CreateClient(); // no auth
         var response = await client.GetAsync($"/api/farm/{Guid.NewGuid()}/dashboard/summary");
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
