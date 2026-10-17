@@ -24,8 +24,7 @@ Run all of these from the repo root unless noted.
 # Build the whole .NET solution
 dotnet build FarmManagementSystem.slnx
 
-# Backend tests — the whole project runs in one command. Test collections are serialized
-# (see xunit.runner.json and "Known issues"), so this completes; it takes ~2.5 minutes.
+# Backend tests — the whole project runs in one command; it takes ~1.5 minutes.
 dotnet test tests/FMS.Domain.Tests/FMS.Domain.Tests.csproj
 
 # Optional faster split, if you only need one partition (each completes on its own):
@@ -94,11 +93,14 @@ owning one farm that is restored to seed state by `POST /auth/demo-reset`.
 
 ## Known issues
 
-- **The combined backend test run is serialized on purpose.** The E2E/`TestServer` suites
-  each start an in-process `IHost`; running those collections in parallel intermittently
-  deadlocks the test host — the run stalls with many host-based tests in flight and never
-  finishes. `tests/FMS.Domain.Tests/xunit.runner.json` sets
-  `parallelizeTestCollections: false`, so `dotnet test` over the whole project completes.
-  The two-filter split above is no longer required, but is still a valid faster run.
+- **The old parallel-run deadlock is fixed.** The E2E/`TestServer` suites each start an
+  in-process `IHost`, and the two PostgreSQL fixtures used to probe for a server with
+  `GetAwaiter().GetResult()` inside their constructors. Class-fixture constructors run on
+  xUnit's bounded `MaxConcurrencySyncContext`, so blocking there while the probe's `await`s
+  captured that same context deadlocked the run once enough fixtures blocked at once; the
+  full run stalled with many host-based tests in flight. The probes now run via `Task.Run`,
+  which clears the captured context, so collections run in parallel again and no
+  `xunit.runner.json` override is needed. See `docs/test-hang-investigation.md`. The
+  two-filter split above is optional.
 - Tests that need real PostgreSQL or a real mailbox **skip** (never fail) when the
   environment variables above are unset.
