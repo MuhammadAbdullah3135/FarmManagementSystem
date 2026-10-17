@@ -33,7 +33,8 @@ state by `POST /api/auth/demo-reset`.
 - Client: `client/src/api/demo.ts`, `client/src/stores/authStore.ts`,
   `client/src/components/DemoBanner.tsx`, `client/src/pages/LoginPage.tsx`,
   `client/src/i18n/locales/{en,es,ar}/demo.json`
-- Tests: `tests/FMS.Domain.Tests/Demo/` (`DemoSmokeTests`, `DemoGuardsTests`)
+- Tests: `tests/FMS.Domain.Tests/Demo/` (`DemoSmokeTests`, `DemoGuardsTests`,
+  `DemoEmailTransportTests`)
 
 ## Commits on this branch
 
@@ -43,6 +44,8 @@ state by `POST /api/auth/demo-reset`.
 | --- | --- | --- |
 | `30fefb4` | 2026-10-17 | Add the missing migration for `User.IsDemo` |
 | `c33d26f` | 2026-10-17 | Use antd v6 prop names in the demo banner |
+| `769ef4b` | 2026-10-17 | Add the demo-account pull-request description |
+| `ec229dd` | 2026-10-17 | Test that demo recipient emails never reach the transport |
 
 > Note: the demo feature itself already sits on the local `main` branch; this branch
 > carries the follow-up fixes found while verifying it. The feature's own commits
@@ -65,7 +68,7 @@ Backend (xUnit, `tests/FMS.Domain.Tests`):
 | --- | --- |
 | Full suite with `FMS_TEST_POSTGRES` set | **1119 passed, 3 skipped, 0 failed** (~1m37s) |
 | PostgreSQL-gated subset (`~Postgres`) | **17 passed, 0 failed, 0 skipped** |
-| Demo folder (`~FMS.Domain.Tests.Demo`) | **16 passed** (`DemoGuardsTests` 12, `DemoSmokeTests` 4) |
+| Demo folder (`~FMS.Domain.Tests.Demo`) | **18 passed, 0 skipped, 0 failed** (`DemoGuardsTests` 12, `DemoSmokeTests` 4, `DemoEmailTransportTests` 2) |
 
 The 3 skips are `RealEmailDeliveryTests` (they need a real mailbox); there are no
 PostgreSQL-gated skips.
@@ -96,25 +99,32 @@ Guard round (this branch):
     member of every farm they administer, so the invite never reaches the send).
   - As a real user on their own farm, the same invite → **200**, and **no**
     `x-message-key` (the guard is a silent no-op by design).
+  - The transport skip itself is now pinned by `DemoEmailTransportTests`: a send to the
+    demo address leaves a recording transport untouched, while the same three sends to a
+    normal address reach it (the control).
 - **Delete-account guard** (`demoDeleteAccountDisabled`): no account-deletion endpoint
   exists in this build, so it could not be exercised at the endpoint level.
 
 ## Known gaps
 
-- **No test exercises `EmailService.IsDemoRecipient`.** `DemoGuardsTests` asserts only the
-  guard's *shape* (that `DemoGuards.DemoEmailSendingBlocked()` returns the
-  `validation.demo.demoEmailSendingDisabled` key). Nothing asserts that a real send to
-  the demo address skips the transport.
-- **Two guard message keys are unreachable from an endpoint.**
-  `DemoGuards.DemoEmailSendingBlocked()` and `DemoGuards.DemoDeleteAccountBlocked()` have
-  no production caller: the email suppression is silent (no key), and there is no
-  account-deletion endpoint. Their keys exist for a future wire-up.
-- **Application logging is not wired.** `src/FMS.API/Program.cs:111` calls
-  `builder.Host.UseSerilog()` without `ReadFrom.Configuration(...)`, and there is no other
-  `LoggerConfiguration`/`Log.Logger`. The Serilog sinks configured in `appsettings.json`
-  (Console + rolling File) are therefore inert and the app emits no logs. This is
-  pre-existing and unrelated to the demo feature, but it means the "email to the demo
-  address was not delivered" Debug line could not be captured as evidence.
+- **Delete-account guard has no endpoint.** `DemoGuards.DemoDeleteAccountBlocked()` has no
+  production caller and there is no account-deletion endpoint anywhere in the API, so the
+  guard cannot be exercised. None was invented. (No account-deletion capability is
+  expected in this build.)
+- **Email guard is now covered; two message keys remain unreachable from an endpoint.**
+  `DemoEmailTransportTests` pins that a send to the demo address never reaches the
+  transport, and `DemoGuardsTests` asserts the guard's *shape* (the
+  `validation.demo.demoEmailSendingDisabled` key). But `DemoGuards.DemoEmailSendingBlocked()`
+  and `DemoGuards.DemoDeleteAccountBlocked()` have no production caller: the email
+  suppression is silent (no key is emitted) and there is no deletion endpoint. Both keys
+  exist only for a future wire-up.
+- **Application logging is not wired (pre-existing, unrelated).**
+  `src/FMS.API/Program.cs:111` calls `builder.Host.UseSerilog()` without
+  `ReadFrom.Configuration(...)`, and there is no other `LoggerConfiguration`/`Log.Logger`.
+  The Serilog sinks configured in `appsettings.json` (Console + rolling File) are
+  therefore inert and the app emits no logs. This pre-dates the demo feature and is not
+  touched here, but it means the "email to the demo address was not delivered" Debug line
+  could not be captured as evidence.
 - **Environment coverage.** Verified only against a throwaway PostgreSQL 16.11 and an
   InMemory test host; the 3 skipped tests need a real mailbox
   (`FMS_TEST_POSTGRES` / mailbox env). Not tested against another PostgreSQL version or
