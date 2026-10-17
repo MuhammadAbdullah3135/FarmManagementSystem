@@ -38,7 +38,14 @@ public class PostgresIntegrationFactory : TestWebApplicationFactory, IDisposable
         };
         _adminConnectionString = builder.ConnectionString;
 
-        UnavailableReason = ProbeAndPrepareAsync().GetAwaiter().GetResult();
+        // The probe must not run on the caller's SynchronizationContext. This constructor runs
+        // on xUnit's bounded MaxConcurrencySyncContext (class fixtures are created from the
+        // test-collection runner), and its awaits would otherwise capture that context. Blocking
+        // here with GetAwaiter().GetResult() while the awaited continuations need the very same
+        // context deadlocks once enough fixtures block at once - which is exactly what stalled
+        // the combined parallel run. Task.Run clears the captured context, so the probe's
+        // continuations go to the thread pool and always complete.
+        UnavailableReason = Task.Run(ProbeAndPrepareAsync).GetAwaiter().GetResult();
     }
 
     /// <summary>Non-null → PostgreSQL unreachable; tests skip with this message.</summary>

@@ -55,7 +55,11 @@ public class HangfirePostgresIntegrationTests : IClassFixture<HangfirePostgresIn
                 Timeout = 3 // fail fast when no server is reachable
             }.ConnectionString;
 
-            UnavailableReason = ProbeAndPrepareAsync().GetAwaiter().GetResult();
+            // See PostgresIntegrationFactory: the probe must not capture the caller's
+            // SynchronizationContext. Class-fixture constructors run on xUnit's bounded
+            // MaxConcurrencySyncContext, so blocking on a context-captured continuation
+            // deadlocks the whole run. Task.Run runs the probe on the thread pool.
+            UnavailableReason = Task.Run(ProbeAndPrepareAsync).GetAwaiter().GetResult();
         }
 
         /// <summary>Non-null → PostgreSQL unreachable; tests skip with this message.</summary>
