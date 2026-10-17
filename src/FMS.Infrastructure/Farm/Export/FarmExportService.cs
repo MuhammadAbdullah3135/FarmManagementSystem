@@ -45,9 +45,7 @@ public class FarmExportService : IFarmExportService
         // disabled: the demo farm exists to be explored in the app, not scraped as a ZIP, and the
         // seeded sample data is already present on every screen. Ordinary report pages remain usable.
         if (await DemoGuards.CurrentUserIsDemoAsync(_db, userId))
-            return Result<FarmExportDto>.Validation(
-                "Real data export is disabled for the demo account.",
-                DomainMessageKeys.DemoRealExportDisabled);
+            return Result<FarmExportDto>.Failure(DemoGuards.DemoExportBlocked().Error!);
 
         var farmName = await _db.Farms
             .AsNoTracking()

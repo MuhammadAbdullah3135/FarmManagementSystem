@@ -308,6 +308,7 @@
     "demoEmailSendingDisabled": "إرسال رسائل البريد الإلكتروني معطّل للحساب التجريبي.",
     "demoRealPaymentsDisabled": "إجراء المدفوعات الحقيقية معطّل للحساب التجريبي.",
     "demoPasswordChangeDisabled": "تغيير كلمة مرور الحساب التجريبي معطّل.",
+    "demoPasswordResetDisabled": "إعادة تعيين كلمة مرور الحساب التجريبي معطّلة.",
     "demoDeleteAccountDisabled": "حذف الحساب التجريبي معطّل.",
     "demoRealExportDisabled": "تصدير البيانات الحقيقية معطّل للحساب التجريبي."
   }

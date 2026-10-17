@@ -19,7 +19,8 @@ namespace FMS.Infrastructure.Auth;
 ///   <item><description>Changing the demo user's password.</description></item>
 ///   <item><description>Deleting the demo account (no endpoint today, but guarded for the future).</description></item>
 ///   <item><description>Requesting a full-farm export of the demo farm.</description></item>
-///   <item><description>Real payments — not integrated today; see the note in each money path.</description></item>
+///   <item><description>Recording a real payment (a salary payment); there is no payment gateway
+///   in this build, so the money-moving action is the salary-payment ledger.</description></item>
 /// </list>
 ///
 /// Each guard returns a <c>Result</c> whose <c>Code</c> is one of the <c>validation.demo.*</c>
@@ -35,21 +36,19 @@ public static class DemoGuards
     /// </summary>
     public static async Task<bool> CurrentUserIsDemoAsync(FmsDbContext context, Guid userId)
     {
-        return await context.Users
-            .AsNoTracking()
-            .AnyAsync(u => u.Id == userId && u.IsDemo);
+        return await IsDemoUserAsync(context, userId);
     }
 
     /// <summary>
-    /// Refuses an action because the current caller is the demo user. The returned error is
-    /// intentionally generic — callers pick the precise message key that fits the action (password
-    /// change, email, export, etc.).
+    /// True when <paramref name="userId"/> is the shared demo user. Reads the real
+    /// <c>User.IsDemo</c> flag from the database — it does not trust a caller-supplied value —
+    /// so an unauthenticated or naive caller cannot widen a demo session into a real one.
     /// </summary>
-    public static bool IsDemoUser(FmsDbContext context, Guid userId, bool confirmed)
+    public static async Task<bool> IsDemoUserAsync(FmsDbContext context, Guid userId)
     {
-        // This overload is for callers that already know the current user is the demo user
-        // (e.g. from a prior check) and just want a consistent refusal shape.
-        return confirmed;
+        return await context.Users
+            .AsNoTracking()
+            .AnyAsync(u => u.Id == userId && u.IsDemo);
     }
 
     /// <summary>
@@ -63,8 +62,12 @@ public static class DemoGuards
     /// <summary>
     /// Shared refusal used by the password-reset-request path: the demo account does not receive
     /// password reset emails (it has no password to reset, and the demo login is credential-free).
+    /// Returns a failure rather than a silent success so the caller cannot mistake "nothing was
+    /// sent" for "a reset is on its way" for the one address that is known to exist.
     /// </summary>
-    public static Result DemoPasswordResetBlocked() => Result.Success(); // same shape as the existing "return success for unknown email" path, but with a demo marker below
+    public static Result DemoPasswordResetBlocked() => Result.Validation(
+        "Resetting the demo account password is disabled.",
+        DomainMessageKeys.DemoPasswordResetDisabled);
 
     /// <summary>
     /// Refuses sending an email because the recipient is the demo address (or the current user is
@@ -74,6 +77,16 @@ public static class DemoGuards
     public static Result DemoEmailSendingBlocked() => Result.Validation(
         "Email sending is disabled for the demo account.",
         DomainMessageKeys.DemoEmailSendingDisabled);
+
+    /// <summary>
+    /// Refuses a real payment (a salary payment recorded today is the only money-moving action
+    /// this build has; there is no payment gateway) because the current caller is the demo user.
+    /// The demo farm's ledger is sample data, and a visitor exploring the app must not be able to
+    /// post a payment that looks as if real money moved.
+    /// </summary>
+    public static Result DemoRealPaymentsBlocked() => Result.Validation(
+        "Real payments are disabled for the demo account.",
+        DomainMessageKeys.DemoStaffRealPaymentsDisabled);
 
     /// <summary>
     /// Refuses a full-farm export because the current caller is the demo user. Ordinary report

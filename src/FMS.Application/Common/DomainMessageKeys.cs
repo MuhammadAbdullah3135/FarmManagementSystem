@@ -754,6 +754,9 @@ public static class DomainMessageKeys
     /// <summary>The exact English this API has always answered: “Changing the demo account password is disabled.”</summary>
     public const string DemoPasswordChangeDisabled = "validation.demo.demoPasswordChangeDisabled";
 
+    /// <summary>The exact English this API has always answered: “Resetting the demo account password is disabled.”</summary>
+    public const string DemoPasswordResetDisabled = "validation.demo.demoPasswordResetDisabled";
+
     /// <summary>The exact English this API has always answered: “Deleting the demo account is disabled.”</summary>
     public const string DemoDeleteAccountDisabled = "validation.demo.demoDeleteAccountDisabled";
 

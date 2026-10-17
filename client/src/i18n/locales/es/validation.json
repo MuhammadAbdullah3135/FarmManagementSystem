@@ -308,6 +308,7 @@
     "demoEmailSendingDisabled": "El envío de correos está deshabilitado para la cuenta de demo.",
     "demoRealPaymentsDisabled": "Los pagos reales están deshabilitados para la cuenta de demo.",
     "demoPasswordChangeDisabled": "Cambiar la contraseña de la cuenta de demo está deshabilitado.",
+    "demoPasswordResetDisabled": "Restablecer la contraseña de la cuenta de demo está deshabilitado.",
     "demoDeleteAccountDisabled": "Eliminar la cuenta de demo está deshabilitado.",
     "demoRealExportDisabled": "La exportación de datos reales está deshabilitada para la cuenta de demo."
   }

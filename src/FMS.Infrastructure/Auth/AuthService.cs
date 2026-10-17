@@ -340,9 +340,10 @@ public class AuthService : IAuthService
 
         // The demo account has no password to reset — it is reached credential-free through
         // DemoLoginAsync. Do not allow a reset flow to touch the demo user or to send the demo
-        // address a reset email.
+        // address a reset email; say so through the shared guard rather than a silent success so
+        // the demo is not treated as a normal (if unknown) address.
         if (user.IsDemo)
-            return Result.Success(); // same shape as the unknown-email path; the demo address is treated as "no reset needed"
+            return DemoGuards.DemoPasswordResetBlocked();
 
         var rawToken = _jwtTokenService.GenerateRefreshToken();
         var tokenHash = HashToken(rawToken);

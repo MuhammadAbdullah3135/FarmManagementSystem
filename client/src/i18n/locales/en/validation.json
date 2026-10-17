@@ -308,6 +308,7 @@
     "demoEmailSendingDisabled": "Email sending is disabled for the demo account.",
     "demoRealPaymentsDisabled": "Real payments are disabled for the demo account.",
     "demoPasswordChangeDisabled": "Changing the demo account password is disabled.",
+    "demoPasswordResetDisabled": "Resetting the demo account password is disabled.",
     "demoDeleteAccountDisabled": "Deleting the demo account is disabled.",
     "demoRealExportDisabled": "Real data export is disabled for the demo account."
   }

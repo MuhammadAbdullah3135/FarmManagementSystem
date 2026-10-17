@@ -124,7 +124,13 @@ public class AuthController : ControllerBase
             return Ok();
 
         ApiMessageKeys.Attach(Response, result.Error);
-        return StatusCode(500, result.Error?.Message);
+        return result.Error?.Code switch
+        {
+            // The only way this path fails is the demo-account refusal; a non-demo address
+            // always answers 200 (including unknown ones, to avoid enumeration).
+            "Validation" => BadRequest(result.Error.Message),
+            _ => StatusCode(500, result.Error?.Message)
+        };
     }
 
     [HttpPost("confirm-reset-password")]

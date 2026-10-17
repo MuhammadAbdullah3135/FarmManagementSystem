@@ -2,6 +2,7 @@ using FMS.Application.Common;
 using FMS.Application.Employees;
 using FMS.Domain.Entities;
 using FMS.Domain.Enums;
+using FMS.Infrastructure.Auth;
 using FMS.Infrastructure.Common;
 using FMS.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -517,6 +518,13 @@ public class EmployeeService : IEmployeeService
 
     public async Task<Result<SalaryPaymentDto>> RecordSalaryPaymentAsync(Guid farmId, Guid employeeId, RecordSalaryPaymentRequest request)
     {
+        // Recording a salary payment is the only money-moving action in this build (there is no
+        // payment gateway), so it is the "real payments" restriction the demo spec calls out: a
+        // visitor exploring the app must not post a payment into the shared sample ledger.
+        var callerId = _currentUser.GetUserId();
+        if (callerId is { } payingUserId && await DemoGuards.IsDemoUserAsync(_context, payingUserId))
+            return Result<SalaryPaymentDto>.Failure(DemoGuards.DemoRealPaymentsBlocked().Error!);
+
         var employee = await _context.Employees
             .FirstOrDefaultAsync(e => e.Id == employeeId && e.FarmId == farmId && !e.IsDeleted);
         if (employee == null)
