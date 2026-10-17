@@ -31,7 +31,8 @@ state by `POST /api/auth/demo-reset`.
   `src/FMS.Infrastructure/Auth/AuthService.cs`
 - Endpoints: `src/FMS.API/Controllers/AuthController.cs`
 - Client: `client/src/api/demo.ts`, `client/src/stores/authStore.ts`,
-  `client/src/components/DemoBanner.tsx`, `client/src/pages/LoginPage.tsx`,
+  `client/src/pages/LoginPage.tsx`, `client/src/components/DemoBanner.tsx`
+  (rendered by `client/src/components/AppLayout.tsx`),
   `client/src/i18n/locales/{en,es,ar}/demo.json`
 - Tests: `tests/FMS.Domain.Tests/Demo/` (`DemoSmokeTests`, `DemoGuardsTests`,
   `DemoEmailTransportTests`)
@@ -46,14 +47,20 @@ state by `POST /api/auth/demo-reset`.
 | `c33d26f` | 2026-10-17 | Use antd v6 prop names in the demo banner |
 | `769ef4b` | 2026-10-17 | Add the demo-account pull-request description |
 | `ec229dd` | 2026-10-17 | Test that demo recipient emails never reach the transport |
+| `16f3ab3` | 2026-10-17 | Update the PR description with final commits and test coverage |
 
+> The table tracks `git log main..feature/demo-account`. A later commit that only edits
+> this document (the correction carrying this note) is not itemized, because a document
+> cannot list the commit that contains it.
+>
 > Note: the demo feature itself already sits on the local `main` branch; this branch
-> carries the follow-up fixes found while verifying it. The feature's own commits
-> (`git log origin/main..main`) include `c5991ef` "Add the shared demo account, and fix
-> what verifying it surfaced", `b296dd5` "Enforce the demo-account guards instead of
-> leaving them as no-ops", `d4ca697` "Share and test the demo rate-limit policies", and
-> `0b07d63` "Fix the DemoDataSeeder nullable warnings and drop the stray .env.example
-> line".
+> carries the follow-up fixes found while verifying it. The demo-related commits in
+> `git log origin/main..main` (that range also carries unrelated test-hang and i18n work)
+> include `c5991ef` "Add the shared demo account, and fix what verifying it surfaced",
+> `b296dd5` "Enforce the demo-account guards instead of leaving them as no-ops",
+> `d4ca697` "Share and test the demo rate-limit policies", `0b07d63` "Fix the
+> DemoDataSeeder nullable warnings and drop the stray .env.example line", and `b94c4a1`
+> "Add AGENTS.md with build/test conventions and the demo-account decisions".
 
 ## Verification performed
 
@@ -66,12 +73,16 @@ Backend (xUnit, `tests/FMS.Domain.Tests`):
 
 | Run | Result |
 | --- | --- |
-| Full suite with `FMS_TEST_POSTGRES` set | **1119 passed, 3 skipped, 0 failed** (~1m37s) |
-| PostgreSQL-gated subset (`~Postgres`) | **17 passed, 0 failed, 0 skipped** |
+| Full suite, `FMS_TEST_POSTGRES` **unset** (this pre-submission check) | **1107 passed, 17 skipped, 0 failed** (2m20s) |
+| Full suite, `FMS_TEST_POSTGRES` **set** (measured before `ec229dd` added 2 tests) | **1119 passed, 3 skipped, 0 failed** (~1m37s); a re-run would add those 2 tests (1121) |
+| `~Postgres` filter, `FMS_TEST_POSTGRES` **set** | **17 passed, 0 failed, 0 skipped** (the filter also matches 3 tests that do not need PostgreSQL) |
 | Demo folder (`~FMS.Domain.Tests.Demo`) | **18 passed, 0 skipped, 0 failed** (`DemoGuardsTests` 12, `DemoSmokeTests` 4, `DemoEmailTransportTests` 2) |
 
-The 3 skips are `RealEmailDeliveryTests` (they need a real mailbox); there are no
-PostgreSQL-gated skips.
+With `FMS_TEST_POSTGRES` unset, 17 tests skip: the 14 PostgreSQL-gated integration tests
+(`DashboardPostgresIntegrationTests` 7, `HangfirePostgresIntegrationTests` 3,
+`IdempotencyIndexPostgresIntegrationTests` 2, `FarmExportLargeFarmPostgresTests` 1,
+`ReportQueryCountPostgresTests` 1) plus the 3 `RealEmailDeliveryTests` (they need a real
+mailbox). With the variable set, only the 3 mailbox tests skip. No test that runs fails.
 
 Demo flow end to end:
 
@@ -126,15 +137,18 @@ Guard round (this branch):
   touched here, but it means the "email to the demo address was not delivered" Debug line
   could not be captured as evidence.
 - **Environment coverage.** Verified only against a throwaway PostgreSQL 16.11 and an
-  InMemory test host; the 3 skipped tests need a real mailbox
-  (`FMS_TEST_POSTGRES` / mailbox env). Not tested against another PostgreSQL version or
-  production.
+  InMemory test host. Without `FMS_TEST_POSTGRES`, the 14 PostgreSQL-gated tests skip;
+  the 3 `RealEmailDeliveryTests` skip unless `FMS_TEST_EMAIL` (plus
+  `FMS_TEST_EMAIL_PROVIDER`, `FMS_TEST_SENDGRID_API_KEY`, `FMS_TEST_EMAIL_FROM`) is set.
+  Not tested against another PostgreSQL version or production.
 - **UI automation.** The walkthrough used a manual/harness browser session, not an
   automated Playwright suite; there is no automated regression test for `DemoBanner`.
 - **Flaky frontend run.** A first full frontend run reported 11 failing tests across 4
   files while other work was running on the machine; an immediate clean re-run passed
-  **804/804**. The failures did not reproduce and are unrelated to this change
-  (`DemoBanner` is not rendered by any test).
+  **804/804**. It reproduced during this check: with the backend suites running
+  concurrently, 5 tests across 3 files timed out at 5s; each passed on an isolated
+  re-run and an uncontended full run passed **804/804** (85 files). The failures are
+  unrelated to this change (`DemoBanner` is not rendered by any test).
 
 ## Enabling demo mode
 
