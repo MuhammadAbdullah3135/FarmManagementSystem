@@ -24,9 +24,11 @@ Run all of these from the repo root unless noted.
 # Build the whole .NET solution
 dotnet build FarmManagementSystem.slnx
 
-# Backend tests — run the two partitions SEPARATELY.
-# Running every backend test in one process hangs (see "Known issues"); these two
-# filters together cover the whole suite and each completes.
+# Backend tests — the whole project runs in one command. Test collections are serialized
+# (see xunit.runner.json and "Known issues"), so this completes; it takes ~2.5 minutes.
+dotnet test tests/FMS.Domain.Tests/FMS.Domain.Tests.csproj
+
+# Optional faster split, if you only need one partition (each completes on its own):
 dotnet test tests/FMS.Domain.Tests/FMS.Domain.Tests.csproj --filter "FullyQualifiedName!~FMS.Domain.Tests.E2E"
 dotnet test tests/FMS.Domain.Tests/FMS.Domain.Tests.csproj --filter "FullyQualifiedName~FMS.Domain.Tests.E2E"
 
@@ -92,10 +94,11 @@ owning one farm that is restored to seed state by `POST /auth/demo-reset`.
 
 ## Known issues
 
-- **The combined backend test run hangs.** Running the entire
-  `tests/FMS.Domain.Tests` suite in one process stalls after some tests; each partition
-  (`~FMS.Domain.Tests.E2E` and its complement) passes cleanly on its own. Always use the
-  two-filter split above. If a change needs the union count, add the two partitions'
-  numbers.
+- **The combined backend test run is serialized on purpose.** The E2E/`TestServer` suites
+  each start an in-process `IHost`; running those collections in parallel intermittently
+  deadlocks the test host — the run stalls with many host-based tests in flight and never
+  finishes. `tests/FMS.Domain.Tests/xunit.runner.json` sets
+  `parallelizeTestCollections: false`, so `dotnet test` over the whole project completes.
+  The two-filter split above is no longer required, but is still a valid faster run.
 - Tests that need real PostgreSQL or a real mailbox **skip** (never fail) when the
   environment variables above are unset.

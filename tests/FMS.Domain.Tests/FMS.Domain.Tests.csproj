@@ -28,6 +28,16 @@
     <Using Include="Xunit" />
   </ItemGroup>
 
+  <!-- The E2E/TestServer suites each start an in-process IHost. Running those collections in
+       parallel intermittently deadlocks the test host (a full run stalls with many host-based
+       tests in flight and never finishes); serializing collections makes the combined run
+       complete. This file is discovered by the xUnit VSTest adapter from the output directory. -->
+  <ItemGroup>
+    <None Update="xunit.runner.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\..\src\FMS.API\FMS.API.csproj" />
     <ProjectReference Include="..\..\src\FMS.Application\FMS.Application.csproj" />
