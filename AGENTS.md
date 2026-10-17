@@ -98,9 +98,10 @@ owning one farm that is restored to seed state by `POST /auth/demo-reset`.
   `GetAwaiter().GetResult()` inside their constructors. Class-fixture constructors run on
   xUnit's bounded `MaxConcurrencySyncContext`, so blocking there while the probe's `await`s
   captured that same context deadlocked the run once enough fixtures blocked at once; the
-  full run stalled with many host-based tests in flight. The probes now run via `Task.Run`,
-  which clears the captured context, so collections run in parallel again and no
-  `xunit.runner.json` override is needed. See `docs/test-hang-investigation.md`. The
-  two-filter split above is optional.
+  full run stalled with many host-based tests in flight. The probes now live in
+  `IAsyncLifetime.InitializeAsync`, which xUnit awaits before the class's tests run, so no
+  fixture-construction thread blocks and collections run in parallel again with no
+  `xunit.runner.json` override. See `docs/test-hang-investigation.md`. The two-filter split
+  above is optional.
 - Tests that need real PostgreSQL or a real mailbox **skip** (never fail) when the
   environment variables above are unset.

@@ -7,14 +7,16 @@ xUnit ran test collections in parallel. The fix (commit `a093a1e`) was to serial
 collections via `xunit.runner.json`. This document records the follow-up investigation that
 found the actual cause, the fix, and how to reproduce the original hang.
 
-**Root cause:** two PostgreSQL integration fixtures probe for a reachable server with
+**Root cause:** two PostgreSQL integration fixtures probed for a reachable server with
 `GetAwaiter().GetResult()` in their **constructors**. xUnit constructs class fixtures on its
 bounded `MaxConcurrencySyncContext`, and the probe's `await`s captured that same context.
 Blocking a worker while the awaited continuation needs that same worker starves the context
-once enough fixtures block at once, so nothing finishes. Running the probe on the thread pool
-via `Task.Run` clears the captured context and removes the deadlock.
+once enough fixtures block at once, so nothing finishes.
 
-The serialization is therefore no longer needed and has been removed.
+It was first worked around by running the probe on the thread pool via `Task.Run` (`e945431`),
+and then fixed properly by moving the probe to xUnit's `IAsyncLifetime.InitializeAsync`
+(`6eb32a6`), which xUnit awaits before the class's tests run — so no fixture-construction
+worker blocks at all. The serialization workaround (`a093a1e`) is gone (`8b92298`).
 
 ## Symptoms
 
@@ -92,39 +94,69 @@ This also explains the intermittency and why serialization hid it: with collecti
 serialized, at most one blocking fixture exists at a time, so a worker is always free to run
 the continuation.
 
-## The fix
+## The fixes
 
-Run the probes on the thread pool so their continuations never need the xUnit sync context:
+The probe lived in the constructors of two fixtures:
 
-- `tests/FMS.Domain.Tests/E2E/PostgresIntegrationFactory.cs` — constructor probe.
+- `tests/FMS.Domain.Tests/E2E/PostgresIntegrationFactory.cs`
 - `tests/FMS.Domain.Tests/Jobs/HangfirePostgresIntegrationTests.cs` — `PostgresDatabaseFixture`
-  constructor probe.
+
+**1. Workaround (`e945431`).** Run the probe on the thread pool so its continuations never
+need the xUnit sync context:
 
 ```csharp
 UnavailableReason = Task.Run(ProbeAndPrepareAsync).GetAwaiter().GetResult();
 ```
 
 `Task.Run` runs the probe with `SynchronizationContext.Current == null`, so its `await`s post
-continuations to the thread pool; the blocking `GetResult()` then always unblocks.
+continuations to the thread pool and the blocking `GetResult()` always unblocks. It removes the
+deadlock but still blocks a thread in the constructor.
 
-Removed as part of the same change:
+**2. Proper fix (`6eb32a6`).** Implement `IAsyncLifetime` and move the probe into
+`InitializeAsync`, which xUnit awaits (`XunitTestClassRunner.CreateClassFixtureAsync`) before
+the class's tests run. `UnavailableReason` is set by then, so `Skip.If` still skips the
+Postgres-gated tests when no server is reachable. Cleanup moves behind an idempotency guard in
+`Dispose`, because xUnit calls **both** `DisposeAsync` and `Dispose` for a fixture that
+implements both `IAsyncLifetime` and `IDisposable`.
+
+```csharp
+public async Task InitializeAsync() => UnavailableReason = await ProbeAndPrepareAsync();
+
+public Task DisposeAsync() { Dispose(); return Task.CompletedTask; }
+```
+
+**3. Leaked test hosts (`c8c0e38`).** Three E2E call sites created a `TestWebApplicationFactory`
+and never disposed it (`DashboardE2ETests.cs`, `ReportsE2ETests.cs`, `CostReportE2ETests.cs`);
+each now wraps the factory and its client in `using` declarations. No assertions changed.
+
+Removed with the workaround (`8b92298`):
 - `tests/FMS.Domain.Tests/xunit.runner.json` (the `parallelizeTestCollections: false` override).
 - The corresponding `<None Update="xunit.runner.json">` item in
   `tests/FMS.Domain.Tests/FMS.Domain.Tests.csproj`.
 
 ## Verification
 
-- `dotnet build FarmManagementSystem.slnx` → **0 errors**.
-- `dotnet test tests/FMS.Domain.Tests/FMS.Domain.Tests.csproj` with collections back in
-  parallel, run three times:
+- `dotnet build FarmManagementSystem.slnx` → **0 errors**, and no new warnings from the changed
+  files.
+- `dotnet test tests/FMS.Domain.Tests/FMS.Domain.Tests.csproj`, collections parallel, each run
+  guarded with `--blame-hang --blame-hang-timeout 180s`:
 
-  | Run | Result | Time |
-  | --- | --- | --- |
-  | 1 | 1105 passed, 17 skipped, 0 failed | 1m18s |
-  | 2 | 1105 passed, 17 skipped, 0 failed | 1m18s |
-  | 3 | 1105 passed, 17 skipped, 0 failed | 1m13s |
+  | Stage | Run | Result | Time |
+  | --- | --- | --- | --- |
+  | `Task.Run` workaround | 1 | 1105 passed, 17 skipped, 0 failed | 1m18s |
+  | `Task.Run` workaround | 2 | 1105 passed, 17 skipped, 0 failed | 1m18s |
+  | `Task.Run` workaround | 3 | 1105 passed, 17 skipped, 0 failed | 1m13s |
+  | `IAsyncLifetime` fix | 1 | 1105 passed, 17 skipped, 0 failed | 1m07s |
+  | `IAsyncLifetime` fix | 2 | 1105 passed, 17 skipped, 0 failed | 1m07s |
+  | `IAsyncLifetime` fix | 3 | 1105 passed, 17 skipped, 0 failed | 1m12s |
 
-  Each run was also guarded with `--blame-hang --blame-hang-timeout 180s`; none aborted.
+  None aborted. The `IAsyncLifetime` change is verified by these runs: the Postgres-gated tests
+  still skip (not fail), which is only possible if xUnit awaited `InitializeAsync` and set
+  `UnavailableReason` before the tests ran.
+- Postgres gating, isolated: `dotnet test tests/FMS.Domain.Tests/FMS.Domain.Tests.csproj
+  --filter "FullyQualifiedName~Postgres"` → **3 passed, 14 skipped, 0 failed**. The 14 skipped
+  are exactly the gated integration tests, each reporting the "no PostgreSQL server reachable"
+  message; the 3 that pass are unrelated tests whose names merely contain "Postgres".
 
 ## Open questions / residual risk
 
@@ -134,7 +166,8 @@ Removed as part of the same change:
   so it does not return to the xUnit context and did not reproduce the deadlock. It is left
   as-is.
 - xUnit's `MaxParallelThreads` defaults to the processor count; raising it would also mask a
-  recurrence rather than fix it, which is why the fix targets the context capture instead.
+  recurrence rather than fix it, which is why the fix removes the blocking rather than the
+  parallelism bound.
 - The `HangfirePostgresIntegrationTests` fixture lives in the same `Jobs` area that
   `SchedulerTestProvider` documents as sharing process-global Hangfire state
   (`JobStorage.Current`, the Hangfire log provider). That shared state is a separate,
