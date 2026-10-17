@@ -123,7 +123,7 @@ public class DomainMessageKeyParityTests
         string[] groups =
         {
             "lookup.", "conflict.", "supersede.", "validation.", "unauthorized.",
-            "unexpected.", "unavailable.",
+            "unexpected.", "unavailable.", "demo.",
         };
 
         var bundle = ClientBundles.Bundle("en", "validation");

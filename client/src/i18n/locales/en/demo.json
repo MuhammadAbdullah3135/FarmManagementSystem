@@ -1,0 +1,16 @@
+{
+  "bannerMessage": "You are viewing a demo account. This is shared, sample data — not your own farm. Sign up to save your own data.",
+  "signUpLink": "Sign up",
+  "resetDemoButton": "Reset demo data",
+  "loginFormHint": "Or try the live demo with no sign-up:",
+  "tryDemoButton": "Try demo",
+  "tryDemoLoading": "Loading demo…",
+  "demoFailed": "Demo sign-in failed. Try again, or create your own account.",
+  "resetSuccess": "Demo data has been restored to its sample state.",
+  "resetFailed": "Could not reset the demo data. Please try again.",
+  "demoEmailSendingDisabled": "Email sending is disabled for the demo account.",
+  "demoStaffRealPaymentsDisabled": "Real payments are disabled for the demo account.",
+  "demoPasswordChangeDisabled": "Changing the demo account password is disabled.",
+  "demoDeleteAccountDisabled": "Deleting the demo account is disabled.",
+  "demoRealExportDisabled": "Real data export is disabled for the demo account."
+}

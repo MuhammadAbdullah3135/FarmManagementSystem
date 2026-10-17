@@ -211,7 +211,18 @@ describe('a Spanish session renders real pages', () => {
     vi.mocked(dashboardApi.summary).mockResolvedValue({ data: summary } as never);
     vi.mocked(dashboardApi.alerts).mockResolvedValue({ data: [alert] } as never);
     vi.mocked(dashboardApi.charts).mockResolvedValue({
-      data: { animalTrends: [], expenseBreakdown: null, feedConsumptionTrend: [], monthlyPL: [] },
+      data: {
+        animalTrends: [],
+        expenseBreakdown: null,
+        feedConsumptionTrend: [
+          { periodStart: '2026-09-01', label: 'Sep', quantity: 10, cost: 200 },
+          { periodStart: '2026-10-01', label: 'Oct', quantity: 12, cost: 240 },
+        ],
+        monthlyPL: [
+          { year: 2026, month: 9, monthName: 'September', income: 500, expenses: 300, net: 200 },
+          { year: 2026, month: 10, monthName: 'October', income: 600, expenses: 350, net: 250 },
+        ],
+      },
     } as never);
 
     const { container } = render(
@@ -231,6 +242,11 @@ describe('a Spanish session renders real pages', () => {
     for (const key of ['totalAnimals', 'dueWeightChecks', 'upcomingBirths', 'view']) {
       expectSpanishNotEnglish('dashboard', key);
     }
+
+    // Chart legend labels are rendered by recharts inside SVG and are asserted in
+    // dashboardLegendRender.test.tsx, which renders the charts with data so the
+    // legends actually appear. The dashboard cards above render without chart data.
+    expectNoRawKeys(container);
 
     // Rendered through the key, not the English string that travelled with it.
     expect(

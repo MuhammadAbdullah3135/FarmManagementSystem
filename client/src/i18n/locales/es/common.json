@@ -17,6 +17,8 @@
   "expires": "Caduca",
   "export": "Exportar",
   "exportCsv": "Exportar CSV",
+  "fromDatePlaceholder": "Desde",
+  "toDatePlaceholder": "Hasta",
   "exportExcel": "Exportar Excel",
   "exportPdf": "Exportar PDF",
   "farmMembers": "Miembros de la granja",
@@ -78,5 +80,6 @@
   "waitingToSync": "pendientes de sincronizar.",
   "waitingToSyncCount": "{{count}} pendientes de sincronizar",
   "youAreNotAMemberOfAnyFarm": "No eres miembro de ninguna granja. Pide a un propietario que te invite y abre después el enlace de la invitación de tu correo.",
-  "yourAccessToThatFarmWasRemoved": "Se ha retirado tu acceso a esa granja."
+  "yourAccessToThatFarmWasRemoved": "Se ha retirado tu acceso a esa granja.",
+  "yourProfile": "Tu perfil"
 }

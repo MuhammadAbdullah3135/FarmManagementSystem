@@ -89,3 +89,40 @@ public class ConfirmResetPasswordRequest
     public string Token { get; set; } = string.Empty;
     public string NewPassword { get; set; } = string.Empty;
 }
+
+/// <summary>
+/// Request body for <c>POST /auth/demo-login</c>. Kept explicit (rather than reusing
+/// <c>LoginRequest</c>) so the credential-free intent is visible in the API surface and
+/// validators/guards can special-case it without touching the real login path.
+/// </summary>
+public class DemoLoginRequest
+{
+    /// <summary>
+    /// Present so common request-binding/logging patterns keep working; ignored on validate.
+    /// A fixed demo address makes logs and support traces readable.
+    /// </summary>
+    public string Email { get; set; } = DemoLoginRequest.DemoEmail;
+
+    /// <summary>The demo address printed on the demo user and in logs.</summary>
+    public const string DemoEmail = "demo@farm.local";
+}
+
+/// <summary>
+/// Response from <c>POST /auth/demo-login</c>. Same shape as <c>AuthResponse</c> so the
+/// client's existing sign-in path can store it unchanged; the <c>IsDemo</c> flag is what the
+/// client uses to render the demo banner and to decide whether restricted actions are stubbed.
+/// </summary>
+public class DemoLoginResponse
+{
+    public string AccessToken { get; set; } = string.Empty;
+    public string RefreshToken { get; set; } = string.Empty;
+    public Guid UserId { get; set; }
+    public Guid AccountId { get; set; }
+    public string Email { get; set; } = string.Empty;
+    public string FirstName { get; set; } = string.Empty;
+    public string LastName { get; set; } = string.Empty;
+    public List<string> Roles { get; set; } = new();
+    public string? Locale { get; set; }
+    /// <summary>Always <c>true</c> for a demo login.</summary>
+    public bool IsDemo { get; set; }
+}

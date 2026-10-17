@@ -53,6 +53,13 @@ public class Result<T>
 
     public static Result<T> Unexpected(string message = "An unexpected error occurred", string? messageKey = null, IReadOnlyDictionary<string, object?>? messageArgs = null) =>
         Failure(Error.Unexpected(message, messageKey, messageArgs));
+
+    /// <summary>
+    /// The feature this request addressed is intentionally not available on this server (410 Gone).
+    /// Same rationale as <see cref="Error.Gone"/>.
+    /// </summary>
+    public static Result<T> Gone(string message, string? messageKey = null, IReadOnlyDictionary<string, object?>? messageArgs = null) =>
+        Failure(Error.Gone(message, messageKey, messageArgs));
 }
 
 public class Result
@@ -87,4 +94,10 @@ public class Result
 
     public static Result Unexpected(string message = "An unexpected error occurred", string? messageKey = null, IReadOnlyDictionary<string, object?>? messageArgs = null) =>
         Failure(Error.Unexpected(message, messageKey, messageArgs));
+
+    /// <summary>
+    /// The feature this request addressed is intentionally not available on this server (410 Gone).
+    /// </summary>
+    public static Result Gone(string message, string? messageKey = null, IReadOnlyDictionary<string, object?>? messageArgs = null) =>
+        Failure(Error.Gone(message, messageKey, messageArgs));
 }

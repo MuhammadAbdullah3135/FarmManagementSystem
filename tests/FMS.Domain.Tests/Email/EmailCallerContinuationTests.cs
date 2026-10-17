@@ -10,6 +10,7 @@ using FMS.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace FMS.Domain.Tests.Email;
 
@@ -76,7 +77,7 @@ public class EmailCallerContinuationTests : IDisposable
         _membershipLogs = membershipLogs;
 
         // A transport whose every send fails the way an outage or a rejected key does.
-        var emailService = new EmailService(new AlwaysFailingTransport(), _configuration);
+        var emailService = new EmailService(new AlwaysFailingTransport(), _configuration, NullLogger<EmailService>.Instance);
 
         Auth = new AuthService(_context, new JwtTokenService(_configuration), _configuration, emailService, authLogger);
         Membership = new FarmMembershipService(
@@ -204,7 +205,7 @@ public class EmailCallerContinuationTests : IDisposable
     {
         // The continuation must not have been bought by never sending.
         var transport = new CapturingTransport();
-        var service = new EmailService(transport, _configuration);
+        var service = new EmailService(transport, _configuration, NullLogger<EmailService>.Instance);
         var (logger, _) = TestLoggers.Create<AuthService>();
         var auth = new AuthService(_context, new JwtTokenService(_configuration), _configuration, service, logger);
 
@@ -224,7 +225,7 @@ public class EmailCallerContinuationTests : IDisposable
         // provider client can fail in ways we did not enumerate, and none of them should
         // turn into a 500 on the login page.
         var transport = new AlwaysFailingTransport { Failure = new OutOfMemoryException("(test) provider client blew up") };
-        var service = new EmailService(transport, _configuration);
+        var service = new EmailService(transport, _configuration, NullLogger<EmailService>.Instance);
         var (logger, logs) = TestLoggers.Create<AuthService>();
         var auth = new AuthService(_context, new JwtTokenService(_configuration), _configuration, service, logger);
 
@@ -290,7 +291,7 @@ public class EmailCallerContinuationTests : IDisposable
     public async Task Invite_WithAWorkingSend_DeliversTheLinkAndExpiry()
     {
         var transport = new CapturingTransport();
-        var service = new EmailService(transport, _configuration);
+        var service = new EmailService(transport, _configuration, NullLogger<EmailService>.Instance);
         var (logger, _) = TestLoggers.Create<FarmMembershipService>();
         var membership = new FarmMembershipService(
             _context, service, new JwtTokenService(_configuration), _configuration, logger);

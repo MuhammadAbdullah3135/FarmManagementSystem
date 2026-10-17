@@ -20,7 +20,15 @@ export interface User {
   roles: string[];
   /** Carried from the sign-in response so a later device can adopt the account's language. */
   locale?: string | null;
+  /** True for the shared demo account. Drives the demo banner and restricted-action stubs. */
+  isDemo?: boolean;
 }
+
+/** Response shape for <c>POST /auth/demo-login</c>. Same fields as <c>AuthResponse</c> plus the demo flag. */
+export interface DemoLoginResponse extends AuthResponse {
+  isDemo: true;
+}
+
 
 export interface Farm {
   id: string;

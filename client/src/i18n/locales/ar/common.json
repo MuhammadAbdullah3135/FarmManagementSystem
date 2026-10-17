@@ -17,6 +17,8 @@
   "expires": "ينتهي",
   "export": "تصدير",
   "exportCsv": "تصدير CSV",
+  "fromDatePlaceholder": "من",
+  "toDatePlaceholder": "إلى",
   "exportExcel": "تصدير Excel",
   "exportPdf": "تصدير PDF",
   "farmMembers": "أعضاء المزرعة",
@@ -90,5 +92,6 @@
   "waitingToSyncCount_two": "سجلان في انتظار المزامنة",
   "waitingToSyncCount_zero": "لا شيء في انتظار المزامنة",
   "youAreNotAMemberOfAnyFarm": "أنت لست عضوًا في أي مزرعة. اطلب من مالك المزرعة أن يدعوك، ثم افتح رابط الدعوة من بريدك الإلكتروني.",
-  "yourAccessToThatFarmWasRemoved": "تمت إزالة وصولك إلى تلك المزرعة."
+  "yourAccessToThatFarmWasRemoved": "تمت إزالة وصولك إلى تلك المزرعة.",
+  "yourProfile": "ملفك الشخصي"
 }

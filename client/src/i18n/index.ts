@@ -33,6 +33,7 @@ import imports from './locales/en/imports.json';
 import validation from './locales/en/validation.json';
 import errors from './locales/en/errors.json';
 import enums from './locales/en/enums.json';
+import demo from './locales/en/demo.json';
 
 // Spanish, machine-translated and not yet reviewed by a translator (see
 // locales/README.md and locales/translation-status.json). The keys mirror English
@@ -58,6 +59,7 @@ import esImports from './locales/es/imports.json';
 import esValidation from './locales/es/validation.json';
 import esErrors from './locales/es/errors.json';
 import esEnums from './locales/es/enums.json';
+import esDemo from './locales/es/demo.json';
 
 // Arabic, machine-translated and not yet reviewed by a translator (see
 // locales/README.md and locales/translation-status.json). Arabic is the first
@@ -84,12 +86,14 @@ import arImports from './locales/ar/imports.json';
 import arValidation from './locales/ar/validation.json';
 import arErrors from './locales/ar/errors.json';
 import arEnums from './locales/ar/enums.json';
+import arDemo from './locales/ar/demo.json';
 
 /** One namespace per feature area, so a translation file maps onto a screen. */
 export const NAMESPACES = [
   'common',
   'nav',
   'auth',
+  'demo',
   'dashboard',
   'animals',
   'breeding',
@@ -108,6 +112,7 @@ export const NAMESPACES = [
   'validation',
   'errors',
   'enums',
+  'demo',
 ] as const;
 
 export type Namespace = (typeof NAMESPACES)[number];
@@ -135,9 +140,11 @@ export const resources = {
     validation,
     errors,
     enums,
+    demo,
   },
   es: {
     common: esCommon,
+    demo: esDemo,
     nav: esNav,
     auth: esAuth,
     dashboard: esDashboard,
@@ -181,6 +188,7 @@ export const resources = {
     validation: arValidation,
     errors: arErrors,
     enums: arEnums,
+    demo: arDemo,
   },
 } as const;
 

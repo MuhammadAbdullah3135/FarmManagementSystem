@@ -301,5 +301,14 @@
   },
   "unavailable": {
     "exportJobsDisabled": "تصدير المزرعة بالكامل غير متاح لأن المهام الخلفية معطّلة في هذا النشر (Jobs:Enabled = false)، لذا لن يُنشأ الملف. اطلب من المسؤول تفعيل نظام المهام."
+  },
+  "demo": {
+    "demoNotEnabled": "ميزة العرض التوضيحي غير مفعّلة على هذا الخادم.",
+    "demoUnavailable": "العرض التوضيحي غير متاح الآن.",
+    "demoEmailSendingDisabled": "إرسال رسائل البريد الإلكتروني معطّل للحساب التجريبي.",
+    "demoRealPaymentsDisabled": "إجراء المدفوعات الحقيقية معطّل للحساب التجريبي.",
+    "demoPasswordChangeDisabled": "تغيير كلمة مرور الحساب التجريبي معطّل.",
+    "demoDeleteAccountDisabled": "حذف الحساب التجريبي معطّل.",
+    "demoRealExportDisabled": "تصدير البيانات الحقيقية معطّل للحساب التجريبي."
   }
 }

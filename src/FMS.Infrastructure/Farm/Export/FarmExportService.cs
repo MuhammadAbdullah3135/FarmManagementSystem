@@ -3,6 +3,7 @@ using FMS.Application.Common;
 using FMS.Application.Farm.Export;
 using FMS.Application.Jobs;
 using FMS.Domain.Entities;
+using FMS.Infrastructure.Auth;
 using FMS.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -40,6 +41,14 @@ public class FarmExportService : IFarmExportService
         Guid userId,
         CancellationToken cancellationToken = default)
     {
+        // Full-farm export is a bulk data-copy action. For the shared demo account that action is
+        // disabled: the demo farm exists to be explored in the app, not scraped as a ZIP, and the
+        // seeded sample data is already present on every screen. Ordinary report pages remain usable.
+        if (await DemoGuards.CurrentUserIsDemoAsync(_db, userId))
+            return Result<FarmExportDto>.Validation(
+                "Real data export is disabled for the demo account.",
+                DomainMessageKeys.DemoRealExportDisabled);
+
         var farmName = await _db.Farms
             .AsNoTracking()
             .Where(farm => farm.Id == farmId)

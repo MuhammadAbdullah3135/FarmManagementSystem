@@ -5,7 +5,7 @@ import { getApiError } from '../api/farmApi';
 import { clearOfflineDataOnSignOut } from '../offline/offlineData';
 import { reconcileLocaleOnSignIn } from '../i18n/localeSync';
 import { useFarmStore } from './farmStore';
-import type { AuthResponse, User, LoginRequest, RegisterRequest, ResetPasswordRequest, ConfirmResetPasswordRequest } from '../types';
+import type { AuthResponse, User, LoginRequest, RegisterRequest, ResetPasswordRequest, ConfirmResetPasswordRequest, DemoLoginResponse } from '../types';
 
 interface AuthState {
   user: User | null;
@@ -13,6 +13,7 @@ interface AuthState {
   isLoading: boolean;
   error: string | null;
   login: (request: LoginRequest) => Promise<boolean>;
+  loginAsDemo: () => Promise<boolean>;
   register: (request: RegisterRequest) => Promise<boolean>;
   resetPassword: (request: ResetPasswordRequest) => Promise<boolean>;
   confirmResetPassword: (request: ConfirmResetPasswordRequest) => Promise<boolean>;
@@ -58,6 +59,42 @@ export const useAuthStore = create<AuthState>()(
           return true;
         } catch (error: any) {
           const message = getApiError(error, 'Login failed');
+          set({ error: message, isLoading: false });
+          return false;
+        }
+      },
+
+      loginAsDemo: async () => {
+        set({ isLoading: true, error: null });
+        try {
+          const response = await api.post<DemoLoginResponse>('/auth/demo-login', {});
+          const {
+            accessToken, refreshToken, userId, accountId, email,
+            firstName, lastName, roles, locale, isDemo,
+          } = response.data;
+
+          localStorage.setItem('accessToken', accessToken);
+          localStorage.setItem('refreshToken', refreshToken);
+
+          const user: User = {
+            userId,
+            accountId,
+            email,
+            firstName,
+            lastName,
+            roles: roles ?? [],
+            locale: locale ?? null,
+            isDemo: isDemo === true,
+          };
+
+          localStorage.setItem('user', JSON.stringify(user));
+          set({ user, isAuthenticated: true, isLoading: false });
+
+          void reconcileLocaleOnSignIn(locale);
+
+          return true;
+        } catch (error: any) {
+          const message = getApiError(error, 'Demo login failed');
           set({ error: message, isLoading: false });
           return false;
         }

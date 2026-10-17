@@ -17,6 +17,8 @@
   "expires": "Expires",
   "export": "Export",
   "exportCsv": "Export CSV",
+  "fromDatePlaceholder": "From",
+  "toDatePlaceholder": "To",
   "exportExcel": "Export Excel",
   "exportPdf": "Export PDF",
   "farmMembers": "Farm members",
@@ -78,5 +80,6 @@
   "waitingToSync": "waiting to sync.",
   "waitingToSyncCount": "{{count}} waiting to sync",
   "youAreNotAMemberOfAnyFarm": "You are not a member of any farm. Ask a farm owner to invite you, then open the invitation link from your email.",
-  "yourAccessToThatFarmWasRemoved": "Your access to that farm was removed."
+  "yourAccessToThatFarmWasRemoved": "Your access to that farm was removed.",
+  "yourProfile": "Your profile"
 }

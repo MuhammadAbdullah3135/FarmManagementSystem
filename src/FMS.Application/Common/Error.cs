@@ -14,6 +14,9 @@ public sealed class Error
     /// <summary>The code for <see cref="Unavailable"/>.</summary>
     public const string UnavailableCode = "Unavailable";
 
+    /// <summary>The code for <see cref="Gone"/>.</summary>
+    public const string GoneCode = "Gone";
+
     public string Code { get; }
     public string Message { get; }
 
@@ -82,6 +85,16 @@ public sealed class Error
         => new(UnavailableCode, message, messageKey, messageArgs);
 
     /// <summary>
+    /// The feature this request addressed is intentionally not available on this server.
+    /// Unlike <see cref="Unavailable"/> (the server cannot do the work at all), <c>Gone</c>
+    /// means the endpoint exists but the feature is switched off — used for the demo endpoints
+    /// when <c>Demo__Enabled</c> is false, so a deployment without a demo returns 410 rather than
+    /// 404 and a scanner cannot tell whether the route exists.
+    /// </summary>
+    public static Error Gone(string message, string? messageKey = null, IReadOnlyDictionary<string, object?>? messageArgs = null)
+        => new(GoneCode, message, messageKey, messageArgs);
+
+    /// <summary>
     /// The change was not applied because existing state already means what the caller asked
     /// for — nothing was written, and nothing is wrong.
     ///
@@ -93,7 +106,6 @@ public sealed class Error
     /// </summary>
     public static Error Superseded(string message, string? messageKey = null, IReadOnlyDictionary<string, object?>? messageArgs = null)
         => new(SupersededCode, message, messageKey, messageArgs);
-
 
     public override string ToString() => $"{Code}: {Message}";
 }

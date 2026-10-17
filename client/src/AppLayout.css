@@ -1,3 +1,14 @@
+.fms-user-chip {
+  /* The chip that owns the user dropdown: allowed to wrap so a long name can stack below
+     the avatar instead of forcing the avatar + name onto one line. */
+  flex-wrap: wrap;
+}
+
+.fms-user-chip-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .fms-sider-scroll {
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.25) transparent;

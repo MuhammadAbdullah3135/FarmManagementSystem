@@ -3,6 +3,7 @@ using FMS.Application.Email;
 using FMS.Application.Notifications;
 using FMS.Infrastructure.Auth;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace FMS.Domain.Tests.Email;
 
@@ -63,7 +64,7 @@ public class EmailServiceRenderingTests
         var configuration = new ConfigurationBuilder().AddInMemoryCollection(settings).Build();
         var transport = new RecordingTransport();
 
-        return (new EmailService(transport, configuration), transport);
+        return (new EmailService(transport, configuration, NullLogger<EmailService>.Instance), transport);
     }
 
     private static NotificationEmailItem Alert(

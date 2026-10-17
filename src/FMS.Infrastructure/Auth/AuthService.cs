@@ -32,6 +32,11 @@ public class AuthService : IAuthService
         _logger = logger;
     }
 
+    private DemoOptions DemoOptions => _configuration.GetSection(DemoOptions.SectionName).Get<DemoOptions>()
+        ?? new DemoOptions();
+
+    private bool DemoEnabled => DemoOptions.Enabled;
+
     public async Task<Result<AuthResponse>> RegisterAsync(RegisterRequest request)
     {
         if (await _context.Users.AnyAsync(u => u.Email == request.Email))
@@ -333,6 +338,12 @@ public class AuthService : IAuthService
             return Result.Success();
         }
 
+        // The demo account has no password to reset — it is reached credential-free through
+        // DemoLoginAsync. Do not allow a reset flow to touch the demo user or to send the demo
+        // address a reset email.
+        if (user.IsDemo)
+            return Result.Success(); // same shape as the unknown-email path; the demo address is treated as "no reset needed"
+
         var rawToken = _jwtTokenService.GenerateRefreshToken();
         var tokenHash = HashToken(rawToken);
 
@@ -391,6 +402,10 @@ public class AuthService : IAuthService
         if (user == null)
             return Result.Validation("Invalid or expired reset token", DomainMessageKeys.InvalidOrExpiredResetToken);
 
+        // The demo account must not have its password changed through the reset flow.
+        if (user.IsDemo)
+            return DemoGuards.DemoPasswordChangeBlocked();
+
         user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
         resetToken.IsUsed = true;
         resetToken.UsedAt = DateTime.UtcNow;
@@ -426,4 +441,96 @@ public class AuthService : IAuthService
     // Delegates to the shared hasher so the reset and invitation flows cannot
     // drift apart.
     private static string HashToken(string token) => TokenHasher.Hash(token);
+
+    public async Task<Result<DemoLoginResponse>> DemoLoginAsync()
+    {
+        if (!DemoEnabled)
+            return Result<DemoLoginResponse>.Gone(
+                "The demo feature is not enabled on this server.",
+                DomainMessageKeys.DemoNotEnabled);
+
+        await EnsureDemoDataExistsAsync();
+
+        var demoUser = await _context.Users
+            .Include(u => u.Account)
+            .Include(u => u.UserRoles)
+                .ThenInclude(ur => ur.Role)
+            .FirstOrDefaultAsync(u => u.IsDemo && u.IsActive);
+
+        if (demoUser == null)
+            return Result<DemoLoginResponse>.Gone(
+                "The demo is not available right now.",
+                DomainMessageKeys.DemoUnavailable);
+
+        var roles = demoUser.UserRoles.Select(ur => ur.Role.Name).ToList();
+        var accessToken = _jwtTokenService.GenerateAccessToken(
+            demoUser.Id, demoUser.AccountId, demoUser.Email, roles);
+        var refreshToken = _jwtTokenService.GenerateRefreshToken();
+
+        _context.RefreshTokens.Add(new RefreshToken
+        {
+            Id = Guid.NewGuid(),
+            UserId = demoUser.Id,
+            Token = refreshToken,
+            ExpiresAt = DateTime.UtcNow.AddDays(double.Parse(_configuration["Jwt:RefreshTokenExpiryDays"]!)),
+            CreatedAt = DateTime.UtcNow
+        });
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation(
+            "Demo login: user {UserId} ({Email}) signed in from {RemoteIp}",
+            demoUser.Id, demoUser.Email,
+            _configuration["Demo:LogRemoteIp"] != null
+                ? "redacted-by-config"
+                : "no-remote-ip-in-log");
+
+        return Result<DemoLoginResponse>.Success(new DemoLoginResponse
+        {
+            AccessToken = accessToken,
+            RefreshToken = refreshToken,
+            UserId = demoUser.Id,
+            AccountId = demoUser.AccountId,
+            Email = demoUser.Email,
+            FirstName = demoUser.FirstName,
+            LastName = demoUser.LastName,
+            Roles = roles,
+            Locale = demoUser.Locale,
+            IsDemo = true,
+        });
+    }
+
+    public async Task<Result> ResetDemoDataAsync()
+    {
+        if (!DemoEnabled)
+            return Result.Gone(
+                "The demo feature is not enabled on this server.",
+                DomainMessageKeys.DemoNotEnabled);
+
+        var demoUser = await _context.Users.FirstOrDefaultAsync(u => u.IsDemo);
+        if (demoUser == null)
+            return Result.NotFound(
+                "No demo user found; nothing to reset.",
+                DomainMessageKeys.UserNotFound);
+
+        await DemoDataSeeder.ResetDemoDataAsync(_context, DemoOptions, DateTime.UtcNow);
+
+        _logger.LogInformation(
+            "Demo reset: demo user {UserId} ({Email}) farm restored to seed state",
+            demoUser.Id, demoUser.Email);
+
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Ensures the shared demo user and its farm exist with sample data. Idempotent: safe to call
+    /// on every demo login. A no-op when the demo user already exists.
+    /// </summary>
+    private async Task EnsureDemoDataExistsAsync()
+    {
+        var exists = await _context.Users.AnyAsync(u => u.IsDemo && u.IsActive);
+        if (exists)
+            return;
+
+        await DemoDataSeeder.EnsureDemoDataExistsAsync(_context, DemoOptions, DateTime.UtcNow);
+    }
 }

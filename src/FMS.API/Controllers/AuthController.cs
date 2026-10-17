@@ -2,6 +2,7 @@ using FMS.Application.Auth;
 using FMS.Application.Common;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using System.Security.Claims;
 
 namespace FMS.API.Controllers;
@@ -15,6 +16,54 @@ public class AuthController : ControllerBase
     public AuthController(IAuthService authService)
     {
         _authService = authService;
+    }
+
+    /// <summary>
+    /// Signs the caller into the shared demo account without credentials.
+    /// Disabled entirely when <c>DEMO_MODE_ENABLED</c> is not <c>true</c> (410 Gone), so a
+    /// deployment that never wanted a demo simply has no reachable demo endpoint.
+    /// </summary>
+    [HttpPost("demo-login")]
+    [AllowAnonymous]
+    [EnableRateLimiting("demo-login")]
+    public async Task<IActionResult> DemoLogin([FromBody] DemoLoginRequest request)
+    {
+        var result = await _authService.DemoLoginAsync();
+
+        if (result.IsSuccess)
+            return Ok(result.Value);
+
+        ApiMessageKeys.Attach(Response, result.Error);
+        return result.Error?.Code switch
+        {
+            "Gone" => StatusCode(410, result.Error.Message),
+            "Unauthorized" => Unauthorized(result.Error.Message),
+            "Validation" => BadRequest(result.Error.Message),
+            _ => StatusCode(500, result.Error?.Message)
+        };
+    }
+
+    /// <summary>
+    /// Restores the demo account, farm, and seeded sample data to the original seed state.
+    /// Rate-limited as an admin action; disabled when demo mode is off (410 Gone).
+    /// </summary>
+    [HttpPost("demo-reset")]
+    [Authorize(Roles = "SystemOwner")]
+    [EnableRateLimiting("demo-reset")]
+    public async Task<IActionResult> DemoReset()
+    {
+        var result = await _authService.ResetDemoDataAsync();
+
+        if (result.IsSuccess)
+            return Ok(new { demoReset = true });
+
+        ApiMessageKeys.Attach(Response, result.Error);
+        return result.Error?.Code switch
+        {
+            "Gone" => StatusCode(410, result.Error.Message),
+            "NotFound" => NotFound(result.Error.Message),
+            _ => StatusCode(500, result.Error?.Message)
+        };
     }
 
     [HttpPost("register")]

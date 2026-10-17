@@ -67,6 +67,7 @@ using FMS.Infrastructure.Persistence.Interceptors;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Serilog;
@@ -314,6 +315,39 @@ builder.Services.AddHttpClient<IPushSender, WebPushSender>(client =>
 });
 builder.Services.AddScoped<IPushSubscriptionService, PushSubscriptionService>();
 
+// Demo feature: feature-gated behind Demo__Enabled. When off, the demo-login/demo-reset
+// endpoints return 410 Gone rather than 404, so a deployment without a demo simply has no
+// reachable demo surface (and a scanner cannot tell whether the route exists).
+builder.Services.Configure<DemoOptions>(builder.Configuration.GetSection(DemoOptions.SectionName));
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = 429;
+    // Dedicated, much tighter bucket for the credential-free demo-login path so a scanner
+    // cannot burn the global 300/min bucket on a public demo button.
+    options.AddPolicy("demo-login", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                AutoReplenishment = true,
+                PermitLimit = 10,
+                QueueLimit = 0,
+                Window = TimeSpan.FromMinutes(1)
+            }));
+    // The demo-reset endpoint is an admin action (SystemOwner only) but is still gated so a
+    // noisy caller cannot hammer the DB reset path. Reuses the same tight bucket as demo-login.
+    options.AddPolicy("demo-reset", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                AutoReplenishment = true,
+                PermitLimit = 5,
+                QueueLimit = 0,
+                Window = TimeSpan.FromMinutes(1)
+            }));
+});
+
 // ── Background jobs ────────────────────────────────────────────────────
 // Hangfire schedules the recurring work (daily feeding-task generation, hourly
 // health-status snapshots) against the same PostgreSQL database the app already
@@ -488,4 +522,18 @@ if (!string.IsNullOrWhiteSpace(herokuPort))
     app.Urls.Clear();
     app.Urls.Add($"http://+:{herokuPort}");
 }
+
+// Local operator convenience: `dotnet run --project src/FMS.API -- demo:reset` restores the
+// shared demo farm to its seed state and exits. This is a one-shot management command, not a
+// server feature — the HTTP surface for reset is POST /auth/demo-reset (SystemOwner only).
+if (args.Length > 0 && args[0] == "demo:reset")
+{
+    using var scope = app.Services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<FmsDbContext>();
+    var demoOptions = scope.ServiceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<DemoOptions>>().Value;
+    await DemoDataSeeder.ResetDemoDataAsync(db, demoOptions, DateTime.UtcNow);
+    app.Logger.LogInformation("Demo reset complete (CLI). Demo email: {DemoEmail}", demoOptions.DemoEmail);
+    return;
+}
+
 app.Run();

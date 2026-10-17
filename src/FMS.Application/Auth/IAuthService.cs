@@ -23,4 +23,18 @@ public interface IAuthService
     /// treats null/blank as "clear the choice" rather than as an error.
     /// </summary>
     Task<Result<string?>> SetLocaleAsync(Guid userId, string? locale);
+
+    /// <summary>
+    /// Signs the caller into the shared demo user without credentials. Only available when
+    /// <c>DEMO_MODE_ENABLED=true</c>. The demo user is a single flagged account whose farm is
+    /// seeded with realistic sample data by <c>DemoDataSeeder</c>.
+    /// </summary>
+    Task<Result<DemoLoginResponse>> DemoLoginAsync();
+
+    /// <summary>
+    /// Restores the demo user, its account, its farm, and all seeded demo data to the original
+    /// seed state. Idempotent. Does nothing when no demo user exists. Safe to call from an admin
+    /// route, a scheduled job, or <c>dotnet run --project src/FMS.API -- demo:reset</c>.
+    /// </summary>
+    Task<Result> ResetDemoDataAsync();
 }

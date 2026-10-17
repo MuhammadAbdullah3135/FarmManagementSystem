@@ -72,3 +72,18 @@ public class ConfirmResetPasswordRequestValidator : AbstractValidator<ConfirmRes
             .MaximumLength(100);
     }
 }
+
+/// <summary>
+/// Validates the request shape for <c>POST /auth/demo-login</c>. The body is effectively
+/// ignored on the back end (credential-free), but the endpoint still validates the posted
+/// JSON so malformed requests fail fast with the same shape as every other auth endpoint.
+/// </summary>
+public class DemoLoginRequestValidator : AbstractValidator<DemoLoginRequest>
+{
+    public DemoLoginRequestValidator()
+    {
+        RuleFor(x => x.Email)
+            .NotEmpty().WithMessage("Email is required")
+            .EmailAddress().WithMessage("Invalid email format");
+    }
+}

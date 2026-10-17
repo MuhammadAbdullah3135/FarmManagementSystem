@@ -73,6 +73,24 @@
         "tool": "AI agent (model name unavailable)",
         "date": "2026-10-08",
         "reviewed": false
+      },
+      {
+        "files": [
+          "es/dashboard.json (chart legends)"
+        ],
+        "source": "en",
+        "tool": "AI agent (model name unavailable)",
+        "date": "2026-10-10",
+        "reviewed": false
+      },
+      {
+        "files": [
+          "es/common.json (from/to date placeholders)"
+        ],
+        "source": "en",
+        "tool": "AI agent (model name unavailable)",
+        "date": "2026-10-10",
+        "reviewed": false
       }
     ]
   },
@@ -150,6 +168,24 @@
         "source": "en",
         "tool": "AI agent (model name unavailable)",
         "date": "2026-10-08",
+        "reviewed": false
+      },
+      {
+        "files": [
+          "ar/dashboard.json (chart legends)"
+        ],
+        "source": "en",
+        "tool": "AI agent (model name unavailable)",
+        "date": "2026-10-10",
+        "reviewed": false
+      },
+      {
+        "files": [
+          "ar/common.json (from/to date placeholders)"
+        ],
+        "source": "en",
+        "tool": "AI agent (model name unavailable)",
+        "date": "2026-10-10",
         "reviewed": false
       }
     ]

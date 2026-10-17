@@ -12,6 +12,15 @@ public class User : AuditableEntity
     public bool IsActive { get; set; } = true;
 
     /// <summary>
+    /// When true, this account is the shared demo user. Demo logins authenticate as this
+    /// user without credentials and are gated behind <c>DEMO_MODE_ENABLED</c>. Demo sessions
+    /// are restricted from irreversible/sensitive actions (real email, real payments, password
+    /// change, account deletion, real data export) and the demo farm is restored to seed state
+    /// by <c>DemoDataSeeder</c> / the demo reset path.
+    /// </summary>
+    public bool IsDemo { get; set; }
+
+    /// <summary>
     /// The language this user reads, as a BCP-47 language subtag (<c>en</c>, <c>es</c>).
     /// Null until the user chooses one; the client then treats it as unspecified and keeps
     /// whatever the device already uses. The set of accepted values lives in

@@ -280,8 +280,8 @@ const DashboardPage: React.FC = () => {const { t } = useTranslation('dashboard')
                       <YAxis />
                       <Tooltip />
                       <Legend />
-                      <Line type="monotone" dataKey="quantity" name="Quantity" stroke="#1677ff" dot={false} />
-                      <Line type="monotone" dataKey="cost" name="Cost" stroke="#52c41a" dot={false} />
+                      <Line type="monotone" dataKey="quantity" name={t('quantityLegend')} stroke="#1677ff" dot={false} />
+                      <Line type="monotone" dataKey="cost" name={t('costLegend')} stroke="#52c41a" dot={false} />
                     </LineChart>
                   </ResponsiveContainer>
                 ) : (
@@ -301,8 +301,8 @@ const DashboardPage: React.FC = () => {const { t } = useTranslation('dashboard')
                       <YAxis />
                       <Tooltip formatter={(value) => formatCurrency(Number(value ?? 0))} />
                       <Legend />
-                      <Bar dataKey="income" name="Income" fill="#52c41a" />
-                      <Bar dataKey="expenses" name="Expenses" fill="#ff4d4f" />
+                      <Bar dataKey="income" name={t('incomeLegend')} fill="#52c41a" />
+                      <Bar dataKey="expenses" name={t('expensesLegend')} fill="#ff4d4f" />
                     </BarChart>
                   </ResponsiveContainer>
                 ) : (

@@ -1,0 +1,16 @@
+{
+  "bannerMessage": "Estás viendo una cuenta de prueba. Estos son datos compartidos de ejemplo, no tu propia granja. Regístrate para guardar tus propios datos.",
+  "signUpLink": "Regístrate",
+  "resetDemoButton": "Restablecer datos de prueba",
+  "loginFormHint": "O prueba la demo en vivo sin registrarte:",
+  "tryDemoButton": "Probar demo",
+  "tryDemoLoading": "Cargando demo…",
+  "demoFailed": "Error al iniciar la demo. Inténtalo de nuevo o crea tu propia cuenta.",
+  "resetSuccess": "Los datos de prueba se han restaurado al estado de ejemplo.",
+  "resetFailed": "No se pudieron restablecer los datos de prueba. Inténtalo de nuevo.",
+  "demoEmailSendingDisabled": "El envío de correos está deshabilitado para la cuenta de prueba.",
+  "demoStaffRealPaymentsDisabled": "Los pagos reales están deshabilitados para la cuenta de prueba.",
+  "demoPasswordChangeDisabled": "Cambiar la contraseña de la cuenta de prueba está deshabilitado.",
+  "demoDeleteAccountDisabled": "Eliminar la cuenta de prueba está deshabilitado.",
+  "demoRealExportDisabled": "La exportación real de datos está deshabilitada para la cuenta de prueba."
+}

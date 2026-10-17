@@ -301,5 +301,14 @@
   },
   "unavailable": {
     "exportJobsDisabled": "La exportación de toda la granja no está disponible porque los trabajos en segundo plano están desactivados en esta implementación (Jobs:Enabled = false), por lo que no se generaría el archivo. Pide a un administrador que active el subsistema de trabajos."
+  },
+  "demo": {
+    "demoNotEnabled": "La función de demo no está activada en este servidor.",
+    "demoUnavailable": "La demo no está disponible ahora mismo.",
+    "demoEmailSendingDisabled": "El envío de correos está deshabilitado para la cuenta de demo.",
+    "demoRealPaymentsDisabled": "Los pagos reales están deshabilitados para la cuenta de demo.",
+    "demoPasswordChangeDisabled": "Cambiar la contraseña de la cuenta de demo está deshabilitado.",
+    "demoDeleteAccountDisabled": "Eliminar la cuenta de demo está deshabilitado.",
+    "demoRealExportDisabled": "La exportación de datos reales está deshabilitada para la cuenta de demo."
   }
 }

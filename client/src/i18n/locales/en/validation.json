@@ -301,5 +301,14 @@
   },
   "unavailable": {
     "exportJobsDisabled": "Full-farm export is unavailable because background jobs are disabled in this deployment (Jobs:Enabled = false), so nothing would build the archive. Ask an operator to enable the job subsystem."
+  },
+  "demo": {
+    "demoNotEnabled": "The demo feature is not enabled on this server.",
+    "demoUnavailable": "The demo is not available right now.",
+    "demoEmailSendingDisabled": "Email sending is disabled for the demo account.",
+    "demoRealPaymentsDisabled": "Real payments are disabled for the demo account.",
+    "demoPasswordChangeDisabled": "Changing the demo account password is disabled.",
+    "demoDeleteAccountDisabled": "Deleting the demo account is disabled.",
+    "demoRealExportDisabled": "Real data export is disabled for the demo account."
   }
 }

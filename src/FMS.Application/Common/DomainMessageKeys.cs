@@ -738,6 +738,28 @@ public static class DomainMessageKeys
     /// <summary>The exact English this API has always answered: “The export archive is no longer stored. Create a new export to replace it.”</summary>
     public const string ExportArchiveGone = "validation.lookup.exportArchiveGone";
 
+    // ── demo ──────────────────────────────────────────────────────────────────────────────
+    /// <summary>The exact English this API has always answered: “The demo feature is not enabled on this server.”</summary>
+    public const string DemoNotEnabled = "validation.demo.demoNotEnabled";
+
+    /// <summary>The exact English this API has always answered: “The demo is not available right now.”</summary>
+    public const string DemoUnavailable = "validation.demo.demoUnavailable";
+
+    /// <summary>The exact English this API has always answered: “Email sending is disabled for the demo account.”</summary>
+    public const string DemoEmailSendingDisabled = "validation.demo.demoEmailSendingDisabled";
+
+    /// <summary>The exact English this API has always answered: “Real payments are disabled for the demo account.”</summary>
+    public const string DemoStaffRealPaymentsDisabled = "validation.demo.demoRealPaymentsDisabled";
+
+    /// <summary>The exact English this API has always answered: “Changing the demo account password is disabled.”</summary>
+    public const string DemoPasswordChangeDisabled = "validation.demo.demoPasswordChangeDisabled";
+
+    /// <summary>The exact English this API has always answered: “Deleting the demo account is disabled.”</summary>
+    public const string DemoDeleteAccountDisabled = "validation.demo.demoDeleteAccountDisabled";
+
+    /// <summary>The exact English this API has always answered: “Real data export is disabled for the demo account.”</summary>
+    public const string DemoRealExportDisabled = "validation.demo.demoRealExportDisabled";
+
     // ── storage ───────────────────────────────────────────────────────────────────────────
     /// <summary>The exact English this API has always answered: “Presigned URLs are not supported by local file storage”</summary>
     public const string PresignedUrlsUnsupported = "validation.unexpected.presignedUrlsUnsupported";

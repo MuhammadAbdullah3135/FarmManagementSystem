@@ -35,7 +35,7 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({ onChange, defaultValu
         value={range as [Dayjs, Dayjs]}
         onChange={(dates) => handleChange(dates as [Dayjs | null, Dayjs | null] | null)}
         allowClear
-        placeholder={['From', 'To']}
+        placeholder={[t('fromDatePlaceholder'), t('toDatePlaceholder')]}
       />
       <Button icon={<ReloadOutlined />} onClick={handleReset}>
         {t('reset')}

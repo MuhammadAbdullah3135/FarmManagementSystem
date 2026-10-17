@@ -4,6 +4,7 @@ using FMS.Application.Auth;
 using FMS.Application.Email;
 using FMS.Application.Notifications;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace FMS.Infrastructure.Auth;
 
@@ -21,6 +22,13 @@ namespace FMS.Infrastructure.Auth;
 /// Everything interpolated from the database - farm names, alert titles and messages -
 /// is HTML-encoded: those strings come from user input, and an email is an HTML
 /// document.
+///
+/// Demo-account emails are never delivered. The demo user is reached credential-free through
+/// <c>DemoLoginAsync</c> and has no real inbox, so sending it reset/invitation/digest emails
+/// would be both pointless and a leak of internal links. Each <c>Send*</c> method refuses the
+/// demo address silently (logged at Debug) rather than failing the caller, so a demo session
+/// can still *request* a reset or accept an invitation without a mail error interrupting it —
+/// the durable part of those flows (the token / the membership) is unaffected.
 /// </summary>
 public class EmailService : IEmailService
 {
@@ -31,19 +39,47 @@ public class EmailService : IEmailService
 
     private const string NotificationPreferencesPath = "/dashboard/notifications/preferences";
 
+    /// <summary>
+    /// The demo address as configured. A send to this address is a no-op: nothing is delivered,
+    /// nothing is thrown, and the caller continues as if the message were queued. This is
+    /// defense-in-depth: the password-reset path already refuses to call send for the demo user,
+    /// but invitations and the alert digest can still be addressed to the demo account from other
+    /// flows, so the transport layer refuses here too.
+    /// </summary>
+    private string DemoEmail => _configuration["Demo:DemoEmail"]?.ToString() ?? "demo@farm.local";
+
     private readonly IEmailTransport _transport;
     private readonly IConfiguration _configuration;
+    private readonly ILogger<EmailService> _logger;
 
-    public EmailService(IEmailTransport transport, IConfiguration configuration)
+    public EmailService(IEmailTransport transport, IConfiguration configuration, ILogger<EmailService> logger)
     {
         _transport = transport;
         _configuration = configuration;
+        _logger = logger;
     }
+
+    /// <summary>
+    /// True when the recipient is the demo address. In that case the transport send is skipped
+    /// (logged at Debug) and a completed task is returned, so callers never see an error from a
+    /// demo address — the durable part of each flow (reset token, invitation membership, alert
+    /// state) is unaffected by the email being undeliverable.
+    /// </summary>
+    private bool IsDemoRecipient(string email) =>
+        string.Equals(email, DemoEmail, StringComparison.OrdinalIgnoreCase);
 
     // ── password reset ────────────────────────────────────
 
     public Task SendPasswordResetEmailAsync(string email, string resetLink)
     {
+        if (IsDemoRecipient(email))
+        {
+            _logger.LogDebug(
+                "Email to demo address {Email} not delivered (demo feature): password-reset link would be {ResetLink}",
+                email, resetLink);
+            return Task.CompletedTask;
+        }
+
         var subject = $"Reset your {ApplicationName} password";
 
         var text = $"""
@@ -74,6 +110,14 @@ public class EmailService : IEmailService
 
     public Task SendFarmInvitationEmailAsync(string email, string farmName, string inviteLink)
     {
+        if (IsDemoRecipient(email))
+        {
+            _logger.LogDebug(
+                "Email to demo address {Email} not delivered (demo feature): farm-invitation link would be {InviteLink}",
+                email, inviteLink);
+            return Task.CompletedTask;
+        }
+
         var displayFarmName = DisplayName(farmName, "a farm");
         var expiryDays = InvitationExpiryDays;
 
@@ -110,6 +154,14 @@ public class EmailService : IEmailService
         string farmName,
         IReadOnlyList<NotificationEmailItem> notifications)
     {
+        if (IsDemoRecipient(email))
+        {
+            _logger.LogDebug(
+                "Email to demo address {Email} not delivered (demo feature): alert digest with {Count} notifications",
+                email, notifications.Count);
+            return Task.CompletedTask;
+        }
+
         var count = notifications.Count;
         var plural = count == 1 ? "" : "s";
         var displayFarmName = DisplayName(farmName, "your farm");

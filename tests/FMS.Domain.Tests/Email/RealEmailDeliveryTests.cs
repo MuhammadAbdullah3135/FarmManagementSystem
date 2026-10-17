@@ -103,7 +103,7 @@ public class RealEmailDeliveryTests
 
         // The real provider, wrapped so the test can also show what it rendered.
         transport = new RecordingTransport(sendGrid);
-        return new EmailService(transport, configuration);
+        return new EmailService(transport, configuration, NullLogger<EmailService>.Instance);
     }
 
     /// <summary>Passes through to the real transport and keeps a copy of each message.</summary>

@@ -36,6 +36,7 @@ import { useOfflineStore } from '../offline/connectivity';
 import { useSyncStore } from '../offline/syncStatus';
 import { clearAllOfflineData, clearOfflineDataForFarm } from '../offline/offlineData';
 import OfflineBanner from './OfflineBanner';
+import DemoBanner from './DemoBanner';
 import RouteErrorBoundary from './RouteErrorBoundary';
 import { AnimalScanButton } from './AnimalScanModal';
 import { filterMenuByRole } from '../utils/permissions';
@@ -653,16 +654,29 @@ const isFarmIndependent = (pathname: string) =>
               <Badge count={unreadNotifications} size="small" overflowCount={99}>
                 <BellOutlined style={{ fontSize: 16 }} />
               </Badge>
-            </Button>
-
-            <Dropdown menu={{ items: userMenuItems }} trigger={['click']}>
-            <div style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-              <Avatar icon={<UserOutlined />} />
-              <Text style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: isMobile ? 90 : undefined }}>
+            </Button>          <Dropdown menu={{ items: userMenuItems }} trigger={['click']}>
+            <button type="button" className="fms-user-chip" style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flexWrap: 'wrap', background: 'transparent', border: 'none', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'inherit' }} aria-label={t('yourProfile', { defaultValue: 'Your profile' }) }>
+              <Avatar
+                icon={<UserOutlined />}
+                style={{ flexShrink: 0, width: 28, height: 28, fontSize: 14 }}
+              />
+              <Text
+                className="fms-user-chip-name"
+                style={{
+                  textOverflow: 'ellipsis',
+                  overflow: 'hidden',
+                  whiteSpace: 'normal',
+                  maxWidth: '100%',
+                  minWidth: 0,
+                  lineHeight: 1.25,
+                  display: 'block',
+                }}
+                title={`@${user?.firstName ?? ''} @${user?.lastName ?? ''}`.trim()}
+              >
                 {user?.firstName} {user?.lastName}
               </Text>
-            </div>
-            </Dropdown>
+            </button>
+          </Dropdown>
           </Space>
         </Header>
 
@@ -673,6 +687,10 @@ const isFarmIndependent = (pathname: string) =>
           {/* Outside the farm/pages branch on purpose: connectivity is a property of the
               device, so the banner is present even while no farm is selected. */}
           <OfflineBanner />
+
+          {/* Persistent demo notice: shown for the shared demo account so the visitor knows
+              this is not their own data and can restore the seed when they have made it messy. */}
+          <DemoBanner />
 
           {activeFarm || isFarmIndependent(stripBase(location.pathname)) ? (
             /* Keyed by route: a screen that failed stays failed only while you are on it, so
