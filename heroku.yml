@@ -1,0 +1,9 @@
+# Heroku remote build for the demo app.
+#
+# The production workflow (.github/workflows/deploy.yml) uses `heroku container:push`,
+# which needs Docker on the machine running it. This file lets the demo app build the
+# same Dockerfile on Heroku's builders with a normal `git push heroku`, so no local
+# Docker installation is required. It changes nothing for the production app.
+build:
+  docker:
+    web: Dockerfile
