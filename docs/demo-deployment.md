@@ -61,6 +61,9 @@ that must be approved before it runs.
 | `Frontend__BaseUrl` | Public URL of the demo client | Used for links in any rendered messages. |
 | `Cors__AllowedOrigins__0` | Public origin of the demo client (e.g. `https://<user>.github.io`) | Origin only, **no path**; the GitHub Pages app lives under `/FarmManagementSystem/`. |
 | `Storage__Provider` | `Local` | Sample data does not need durable uploads; local disk is ephemeral. |
+| `ForwardedHeaders__Enabled` | `true` | Trust the proxy's `X-Forwarded-For`/`X-Forwarded-Proto`; required for per-IP rate limits behind Heroku. |
+| `ForwardedHeaders__TrustAllProxies` | `true` | Heroku's router addresses are not stable; the dyno is not directly reachable. |
+| `ForwardedHeaders__ForwardLimit` | `1` | One proxy hop (the Heroku router). |
 | `Jobs__Enabled` | `true` or `false` | Either works; if `false`, scheduled feed-task/alert jobs do not run. |
 | `FMS_BUILD_SHA` | Commit SHA of the released image | Optional; `/health` reports it. |
 
@@ -97,10 +100,11 @@ For a public URL:
   non-default), not a wildcard. Add more indexed entries if the demo is reachable from more
   than one origin.
 - Confirm whether the host sits behind a proxy/load balancer. The demo limits partition on
-  `HttpContext.Connection.RemoteIpAddress`, and no forwarded-header middleware is configured
-  in `src/FMS.API`; behind a proxy, many visitors could share one partition and exhaust the
-  10/min login budget together. If the chosen host proxies requests, plan to enable forwarded
-  headers (a code/config change, to be reviewed separately) or accept the shared budget.
+  `HttpContext.Connection.RemoteIpAddress`. The API now supports opt-in forwarded headers
+  (`ForwardedHeaders:Enabled=true` + `TrustAllProxies=true` for Heroku) so the limiter sees the
+  visitor's address rather than the proxy's; `src/FMS.API/Networking/ForwardedHeadersSetup.cs`
+  implements it and `ForwardedHeadersTests` covers the partition behaviour. Leave it disabled
+  for a directly exposed deployment.
 - Consider platform-level request/timeout limits as a second layer, but do not rely on them
   instead of the in-app policies.
 

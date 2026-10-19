@@ -11,6 +11,7 @@ using FMS.API.Binding;
 using FMS.API.Health;
 using FMS.API.Jobs;
 using FMS.API.Middleware;
+using FMS.API.Networking;
 using FMS.API.RateLimiting;
 using FMS.API.Security;
 using FMS.Application.Animal;
@@ -410,6 +411,15 @@ else
     app.Logger.LogWarning(
         "Background jobs are disabled (Jobs:Enabled = false): no scheduled feed-task generation or health-status " +
         "recalculation will run in this process. The job status view reports this.");
+}
+
+// Must run before anything reads Connection.RemoteIpAddress (the rate limiter below) or the
+// request scheme (HTTPS redirection): behind Heroku's router both otherwise describe the proxy,
+// not the visitor, which would put every demo visitor in one rate-limit partition. Opt-in via
+// ForwardedHeaders:Enabled so a directly exposed deployment does not trust a spoofable header.
+if (ForwardedHeadersSetup.IsEnabled(app.Configuration))
+{
+    app.UseForwardedHeaders(ForwardedHeadersSetup.CreateOptions(app.Configuration));
 }
 
 app.UseMiddleware<GlobalExceptionMiddleware>();
