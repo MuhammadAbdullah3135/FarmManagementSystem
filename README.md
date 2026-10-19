@@ -289,6 +289,38 @@ Notification centre (farm-scoped, always your own notifications):
 
 Push is Web Push (RFC 8030/8188/8291/8292) with VAPID, implemented in-tree with no extra package, and **off until an operator supplies keys**: the `Push` section (`Enabled`, `Subject`, `PublicKey`, `PrivateKey`, `TtlSeconds`, `MaxSubscriptionsPerUser`, `RequestTimeoutSeconds`). With it off, the preferences screen says so instead of offering a switch that cannot deliver, and `POST …/push` refuses rather than storing a device nothing would ever use. Outside Development, an enabled-but-unusable configuration refuses to start. A subscription belongs to a **user**, not a farm: the same browser signing in as someone else moves the row, while which alerts reach it stays per farm in the preferences matrix. One push is sent per recipient per dispatch run ("3 new alerts on Farm A"), not one per alert. The Android wrapper cannot receive push — its WebView has neither the Push API nor a notification permission — so that app reports the state instead of pretending; see [`src/FMS.Mobile/README.md`](src/FMS.Mobile/README.md).
 
+### Demo account
+
+A shared, credential-free sandbox account a visitor can explore without registering. It is
+not a real user: a single account flagged with `User.IsDemo`, reached only through the
+demo-login endpoint, owns one farm (`Sunrise Ranch`) whose sample data can be restored to
+its seed state on demand. Demo mode is **off by default** and must be turned on
+deliberately.
+
+Enable it for local development by setting `Demo__Enabled=true` (in `appsettings` the same
+setting is `Demo:Enabled`). `appsettings.Development.json` already does this;
+`appsettings.json` and `.env.example` ship `false`, and it should stay `false` in
+production. The demo email address is `Demo__DemoEmail` (`Demo:DemoEmail`), which defaults
+to `demo@farm.local`.
+
+| Endpoint | Access | What it does |
+|---|---|---|
+| `POST /api/auth/demo-login` | anonymous | Signs the caller into the shared demo account; no credentials required. |
+| `POST /api/auth/demo-reset` | `SystemOwner` only | Restores the demo account, farm and seeded sample data to their original seed state. |
+
+The demo login returns the `SystemOwner` role on the demo farm, so the same session can call
+`demo-reset` to reset the demo data. When `Demo__Enabled` is `false`, both endpoints return
+**410 Gone** (not 404), so a deployment that never wanted a demo has no discoverable demo
+surface.
+
+Known limits:
+
+- **No delete-account endpoint.** This build has no account-deletion endpoint anywhere, so
+  the demo delete-account guard cannot be exercised; none was added for it.
+- **Email to the demo address is silently suppressed.** A send addressed to the demo
+  address never reaches the email transport and emits no message key — the suppression is
+  silent by design, not an observable error.
+
 ### Email delivery
 
 The API sends three emails — password reset, farm invitation, and one alert digest per
