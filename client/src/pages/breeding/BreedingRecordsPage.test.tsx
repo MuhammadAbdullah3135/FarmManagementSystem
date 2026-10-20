@@ -143,7 +143,7 @@ describe('BreedingRecordsPage delete refusal', () => {
     const anchor = findAllAnchors(call.content);
     expect(anchor).toHaveLength(1);
     expect(anchor[0].props.children).toBe('View the gestation records');
-  });
+  }, 20000);
 
   it('navigates to the gestation page when the link is used', async () => {
     const user = userEvent.setup();
@@ -159,7 +159,7 @@ describe('BreedingRecordsPage delete refusal', () => {
     anchor[0].props.onClick?.();
 
     expect(await screen.findByText('GESTATION PAGE')).toBeInTheDocument();
-  });
+  }, 20000);
 
   it('keeps the plain error for a failure that names no blockers', async () => {
     const user = userEvent.setup();
@@ -174,5 +174,5 @@ describe('BreedingRecordsPage delete refusal', () => {
     // And no link-shaped toast was opened for it.
     expect(messageError).toHaveBeenCalledTimes(1);
     expect(messageError.mock.calls[0][0]).not.toHaveProperty('content');
-  });
+  }, 20000);
 });

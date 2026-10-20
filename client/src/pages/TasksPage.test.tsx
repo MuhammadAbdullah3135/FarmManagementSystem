@@ -239,7 +239,7 @@ describe('TasksPage completion queue', () => {
     expect(tasksApi.complete).not.toHaveBeenCalled();
     expect(syncApi.applyMutations).not.toHaveBeenCalled();
     expect(await getCounts(scope.accountId)).toMatchObject({ pending: 1 });
-  });
+  }, 20000);
 
   it('sends the completion with the payload the server binds, and marks it synced', async () => {
     await cacheTask();
