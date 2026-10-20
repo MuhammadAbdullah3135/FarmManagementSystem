@@ -4,11 +4,14 @@ import { PlusOutlined, UploadOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import type { ColumnsType } from 'antd/es/table';
 import { inventoryApi } from '../../api/inventory';
+import { configurationApi, flattenLocations } from '../../api/configuration';
 import { getApiError } from '../../api/farmApi';
 import { formatNumber } from '../../i18n/format';
 import type { InventoryItem } from '../../types';
 import { useTranslation } from 'react-i18next';
 import { useEnumOptions } from '../../i18n/enumOptions';
+import LookupOrText from '../../components/LookupOrText';
+import type { EntityOption } from '../../components/EntityPicker';
 
 /**
  * Money in this table has no currency symbol — the column headers say what the figure is,
@@ -33,6 +36,16 @@ const InventoryItemsPage: React.FC = () => {const { t } = useTranslation(['inven
   const [movementModalOpen, setMovementModalOpen] = useState(false);
   const [movementItem, setMovementItem] = useState<InventoryItem | null>(null);
   const [movementForm] = Form.useForm();
+
+  // InventoryItem.Location stores a label. Configuration already owns the tree,
+  // so the flat list is a choice list without changing what gets saved.
+  const loadLocationOptions = useCallback(async (): Promise<EntityOption[]> => {
+    const res = await configurationApi.locations();
+    return flattenLocations(res.data).map((location) => ({
+      value: location.name,
+      label: `${'  '.repeat(location.depth)}${location.name}`,
+    }));
+  }, []);
 
   const load = useCallback(async (nextPage: number) => {
     setLoading(true);
@@ -168,7 +181,14 @@ const InventoryItemsPage: React.FC = () => {const { t } = useTranslation(['inven
             <Form.Item name="unitCost" label={t('unitCost')} rules={[{ required: true }]}><InputNumber min={0} precision={2} style={{ width: '100%' }} /></Form.Item>
           </Col>
         </Row>
-        <Form.Item name="location" label={t('location')}><Input maxLength={200} placeholder={t('mainStore')} /></Form.Item>
+        <Form.Item name="location" label={t('location')}>
+          <LookupOrText
+            loadOptions={loadLocationOptions}
+            placeholder={t('mainStore')}
+            recentStorageKey="inventory-location"
+            allowClear
+          />
+        </Form.Item>
       </Form>
     </Modal>
 
