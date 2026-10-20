@@ -47,7 +47,10 @@ const EXPECTED: ExpectedField[] = [
   { file: 'pages/feed/FeedRecordsPage.tsx', marker: 'name="locationId"', kind: 'location' },
   { file: 'pages/feed/DietPlansPage.tsx', marker: 'name="animalTypeId"', kind: 'animalType' },
   { file: 'pages/feed/DietPlansPage.tsx', marker: 'name="ageCategoryId"', kind: 'ageCategory' },
-  { file: 'pages/feed/DietPlansPage.tsx', marker: 'name="feedTypeId"', kind: 'feedType' },
+  // The ration builder edits rows in a table rather than one Form.Item per feed, so
+  // this marker points at the picker itself; the fieldBlock scan still reaches the
+  // enclosing Form.Item's closing tag.
+  { file: 'pages/feed/DietPlansPage.tsx', marker: 'kind="feedType"', kind: 'feedType' },
 
   // Health.
   { file: 'pages/health/VaccinationRecordsPage.tsx', marker: 'name="vaccineTypeId"', kind: 'vaccineType' },
