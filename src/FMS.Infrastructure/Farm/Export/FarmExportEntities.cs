@@ -249,6 +249,7 @@ public static class FarmExportEntities
         FarmExportTable<GestationRecord>.ReflectedForFarm("GestationRecords", "gestation-records.csv"),
         FarmExportTable<IdentificationType>.ReflectedForFarm("IdentificationTypes", "identification-types.csv"),
         FarmExportTable<IncomeCategory>.ReflectedForFarm("IncomeCategories", "income-categories.csv"),
+        FarmExportTable<InventoryCategory>.ReflectedForFarm("InventoryCategories", "inventory-categories.csv"),
         FarmExportTable<Location>.ReflectedForFarm("Locations", "locations.csv"),
         FarmExportTable<LocationType>.ReflectedForFarm("LocationTypes", "location-types.csv"),
         FarmExportTable<MedicalRecord>.ReflectedForFarm("MedicalRecords", "medical-records.csv"),
