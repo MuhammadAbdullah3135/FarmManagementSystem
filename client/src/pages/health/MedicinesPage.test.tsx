@@ -42,6 +42,31 @@ beforeEach(() => {
   );
 });
 
+describe('MedicinesPage unit picker', () => {
+  it('offers units already in use, stores the selected unit, and sends it on save', async () => {
+    const user = userEvent.setup();
+    render(<MemoryRouter><MedicinesPage /></MemoryRouter>);
+
+    await user.click(await screen.findByRole('button', { name: /Add Medicine/i }));
+
+    const modal = (
+      await screen.findByText('Add Medicine', { selector: '.ant-modal-title' })
+    ).closest('.ant-modal') as HTMLElement;
+
+    await user.type(within(formItem(modal, 'Name')).getByRole('textbox'), 'Penicillin');
+
+    const unit = formItem(modal, 'Unit');
+    await user.click(within(unit).getByRole('combobox'));
+    await user.click(await screen.findByText('ml', { selector: '.ant-select-item-option-content' }));
+
+    await user.click(within(modal).getByRole('button', { name: 'OK' }));
+
+    expect(medicinesApi.create).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'Penicillin', unit: 'ml' }),
+    );
+  }, 30000);
+});
+
 describe('MedicinesPage supplier picker', () => {
   it('loads suppliers, stores the selected name, and sends it when adding a batch', async () => {
     const user = userEvent.setup();

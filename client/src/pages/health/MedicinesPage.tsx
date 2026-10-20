@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Button, Card, Col, DatePicker, Drawer, Form, Input, InputNumber, Modal, Popconfirm, Row, Space, Table, message,
 } from 'antd';
@@ -34,6 +34,20 @@ const MedicinesPage: React.FC = () => {const { t } = useTranslation(['health', '
     const res = await suppliersApi.list({ pageSize: 100 });
     return res.data.items.map((supplier) => ({ value: supplier.name, label: supplier.name }));
   }, []);
+
+  // Unit stays a free-text string. The picker offers units already in use on
+  // this page, so common values can be reused without restricting new ones.
+  const unitOptions = useMemo<EntityOption[]>(() => {
+    const seen = new Set<string>();
+    const options: EntityOption[] = [];
+    for (const medicine of medicines) {
+      const unit = medicine.unit?.trim();
+      if (!unit || seen.has(unit)) continue;
+      seen.add(unit);
+      options.push({ value: unit, label: unit });
+    }
+    return options;
+  }, [medicines]);
 
   const load = useCallback(async (p: number) => {
     setLoading(true);
@@ -261,7 +275,11 @@ const MedicinesPage: React.FC = () => {const { t } = useTranslation(['health', '
             <Input.TextArea rows={2} maxLength={1000} />
           </Form.Item>
           <Form.Item name="unit" label={t('unit')} rules={[{ required: true, message: t('validation:common.unitRequired') }]}>
-            <Input maxLength={50} placeholder={t('eGDosesMlTablets')} />
+            <LookupOrText
+              options={unitOptions}
+              placeholder={t('eGDosesMlTablets')}
+              textPlaceholder={t('eGDosesMlTablets')}
+            />
           </Form.Item>
           <Row gutter={[16, 16]}>
             <Col xs={24} sm={12}>
