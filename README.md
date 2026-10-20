@@ -3,6 +3,8 @@
 A full-stack farm management platform for livestock operations. Track animals, health records, breeding, feed, inventory, employees, and finances — all from a single dashboard.
 
 **Live site:** https://muhammadabdullah3135.github.io/FarmManagementSystem/
+**Public demo (no account needed):** https://fms-demo-client.netlify.app/ — open it and choose **Try demo**
+**Production API health:** https://fms-api-3ba95327d590.herokuapp.com/health
 
 > **Android APK:** No APK is published to GitHub Releases yet. Once a release exists, downloads will appear at **[github.com/MuhammadAbdullah3135/FarmManagementSystem/releases](https://github.com/MuhammadAbdullah3135/FarmManagementSystem/releases)** — to set that up, follow GitHub's guide to [creating a release](https://docs.github.com/en/repositories/releasing-projects-on-github/managing-releases-in-a-repository#creating-a-release) and attach the signed APK. Until then, build it yourself using the instructions in [src/FMS.Mobile](src/FMS.Mobile/).
 
@@ -12,12 +14,12 @@ A full-stack farm management platform for livestock operations. Track animals, h
 
 | Layer | Technology |
 |---|---|
-| **Backend API** | .NET 8 / ASP.NET Core, Entity Framework Core, PostgreSQL (Neon) |
+| **Backend API** | .NET 8 / ASP.NET Core, Entity Framework Core, PostgreSQL (Supabase) |
 | **Frontend** | React 19, TypeScript 6, Vite 8, Ant Design 6, Recharts |
 | **Mobile** | .NET MAUI Android (WebView wrapper), Firebase Crashlytics (optional) |
 | **Auth** | JWT (HMAC-SHA256), BCrypt password hashing, refresh tokens |
 | **Deployment** | API on Heroku (Docker), frontend on GitHub Pages |
-| **Database** | PostgreSQL with auto-migrations on startup |
+| **Database** | PostgreSQL (Supabase) with auto-migrations on startup |
 | **Testing** | xUnit, EF Core InMemory, EF Core SQLite (relational, where a real provider is the point), ASP.NET Core `TestWebApplicationFactory` |
 
 ## Architecture
@@ -31,7 +33,7 @@ A full-stack farm management platform for livestock operations. Track animals, h
                                                  |
                                           +------+-------+
                                           |  PostgreSQL  |
-                                          |  (Neon)      |
+                                          |  (Supabase)  |
                                           +--------------+
 ```
 
@@ -49,6 +51,19 @@ FMS.API -> FMS.Infrastructure -> FMS.Application -> FMS.Domain
 | `src/FMS.Infrastructure` | EF Core DbContext, service implementations, auth |
 | `src/FMS.Mobile` | .NET MAUI Android WebView wrapper (no duplicate UI code) |
 | `client/` | React SPA (Vite + Ant Design) |
+
+## Deployments
+
+| Environment | URL | Notes |
+|---|---|---|
+| **Production app** | https://muhammadabdullah3135.github.io/FarmManagementSystem/ | React SPA on GitHub Pages. Share this base URL, not a `/login` deep link (Pages returns 404 for deep links). |
+| **Production API** | https://fms-api-3ba95327d590.herokuapp.com | .NET 8 API on Heroku; `/health` reports API and database status. |
+| **Production database** | *(private)* | PostgreSQL 17 on Supabase. |
+| **Public demo** | https://fms-demo-client.netlify.app/ | Separate API and database. Open it and choose **Try demo** — no credentials needed. |
+
+Production and the demo are fully isolated: separate Heroku apps, databases, JWT secrets and email transports. Data entered in one never reaches the other, and an account created in one does not exist in the other. The demo is a shared sandbox that can be reset to its seed state, so do not enter real or personal data there.
+
+For the demo's deployment details, see [docs/demo-deployment.md](docs/demo-deployment.md).
 
 ## Features
 
@@ -247,7 +262,7 @@ dotnet test tests/FMS.Domain.Tests/FMS.Domain.Tests.csproj --filter FullyQualifi
 ### Prerequisites
 - [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0) — API and tests
 - [Node.js 22+](https://nodejs.org/) — frontend
-- [PostgreSQL](https://www.postgresql.org/) (or a [Neon](https://neon.tech/) cloud database)
+- [PostgreSQL](https://www.postgresql.org/) (or a [Supabase](https://supabase.com/) cloud database)
 - [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) + .NET MAUI workload + Android SDK (mobile builds only)
 
 ### API Backend
