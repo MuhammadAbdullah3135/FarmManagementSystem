@@ -118,5 +118,17 @@
   "unitLiter": "L",
   "unitBale": "bale",
   "unitBag": "bag",
-  "unitOther": "other"
+  "unitOther": "other",
+  "addFeed": "Add feed",
+  "duplicateFeed": "Each feed can appear only once in a ration.",
+  "incompleteRation": "Choose a feed and a positive quantity for every row.",
+  "mixedUnitsNote": "This ration mixes feed units. The share is of the total quantity across rows; the weight total covers only kilogram, gram, and ton feeds.",
+  "noFeedsInRation": "No feeds in this ration yet.",
+  "percentagesMustSumTo100": "The ration shares must add up to 100%.",
+  "ration": "Ration",
+  "removeFeed": "Remove feed",
+  "shareOfRation": "Share of ration",
+  "totalCost": "Total cost",
+  "totalKg": "Total weight (kg)",
+  "totalPercent": "Total share"
 }
