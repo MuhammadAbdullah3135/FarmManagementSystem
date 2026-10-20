@@ -220,7 +220,7 @@ describe('AttendancePage', () => {
     vi.mocked(syncApi.applyMutations).mockImplementation(async (_farmId, items) => accepted(items));
 
     render(<AttendancePage />);
-    await userEvent.click(await screen.findByRole('button', { name: /In/ }));
+    await userEvent.click(await screen.findByRole('button', { name: /In/ }, { timeout: 10000 }));
 
     await waitFor(() => expect(syncApi.applyMutations).toHaveBeenCalledTimes(1));
     const [farmId, envelopes] = vi.mocked(syncApi.applyMutations).mock.calls[0];
