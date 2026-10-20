@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  Button, Card, DatePicker, Form, Input, Modal, Popconfirm, Select, Space, Switch, Table, TimePicker, Tag, message,
+  Button, Card, DatePicker, Form, Modal, Popconfirm, Select, Space, Switch, Table, TimePicker, Tag, message,
 } from 'antd';
 import { PlusOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
@@ -9,6 +9,8 @@ import { feedingSchedulesApi, feedingTasksApi, dietPlansApi } from '../../api/fe
 import { getApiError } from '../../api/farmApi';
 import type { DietPlan, FeedingSchedule } from '../../types';
 import { useTranslation } from 'react-i18next';
+import LookupOrText from '../../components/LookupOrText';
+import { FEEDING_LABELS } from '../../utils/feedOptions';
 
 /**
  * The DTO stores HH:mm, while TimePicker works with Dayjs. Both helpers use
@@ -169,7 +171,12 @@ const FeedingSchedulesPage: React.FC = () => {const { t } = useTranslation('feed
             />
           </Form.Item>
           <Form.Item name="label" label={t('label')}>
-            <Input maxLength={100} />
+            <LookupOrText
+              options={FEEDING_LABELS.map((label) => ({ value: label, label }))}
+              placeholder={t('label')}
+              textPlaceholder={t('customLabel')}
+              allowClear
+            />
           </Form.Item>
         </Form>
       </Modal>

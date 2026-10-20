@@ -63,6 +63,7 @@
   "items": "العناصر",
   "kg": "كجم",
   "label": "التسمية",
+  "customLabel": "تسمية مخصصة",
   "location": "الموقع",
   "locationTab": "حسب الموقع",
   "monthly": "شهري",

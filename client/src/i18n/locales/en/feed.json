@@ -63,6 +63,7 @@
   "items": "Items",
   "kg": "kg",
   "label": "Label",
+  "customLabel": "Custom label",
   "location": "Location",
   "locationTab": "By Location",
   "monthly": "Monthly",

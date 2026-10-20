@@ -63,6 +63,7 @@
   "items": "Artículos",
   "kg": "kg",
   "label": "Etiqueta",
+  "customLabel": "Etiqueta personalizada",
   "location": "Ubicación",
   "locationTab": "Por ubicación",
   "monthly": "Mensual",

@@ -51,4 +51,32 @@ describe('FeedingSchedulesPage time picker', () => {
       expect.objectContaining({ dietPlanId: 'dp-1', timeOfDay: '07:00' }),
     );
   }, 90000);
+
+  it('stores a preset feeding label and sends it on create', async () => {
+    const user = userEvent.setup();
+    render(<FeedingSchedulesPage />);
+
+    await user.click(await screen.findByRole('button', { name: /Add Schedule/i }));
+    const modal = (
+      await screen.findByText('New Feeding Schedule', { selector: '.ant-modal-title' })
+    ).closest('.ant-modal') as HTMLElement;
+
+    const dietPlan = formItem(modal, 'Diet Plan');
+    await user.click(within(dietPlan).getByRole('combobox'));
+    await user.click(await screen.findByText('Starter ration', { selector: '.ant-select-item-option-content' }));
+
+    const timeOfDay = formItem(modal, 'Time of Day');
+    await user.click(within(timeOfDay).getByPlaceholderText('e.g. 07:00'));
+    await user.click(await screen.findByText('Morning'));
+
+    const label = formItem(modal, 'Label');
+    await user.click(within(label).getByRole('combobox'));
+    await user.click(await screen.findByText('Morning feed', { selector: '.ant-select-item-option-content' }));
+
+    await user.click(within(modal).getByRole('button', { name: 'OK' }));
+
+    expect(feedingSchedulesApi.create).toHaveBeenCalledWith(
+      expect.objectContaining({ dietPlanId: 'dp-1', timeOfDay: '07:00', label: 'Morning feed' }),
+    );
+  }, 90000);
 });
