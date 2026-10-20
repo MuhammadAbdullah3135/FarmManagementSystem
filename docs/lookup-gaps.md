@@ -1,11 +1,12 @@
 # Lookup gaps after Phase C
 
 This memo records the free-text fields that still have no backend-maintained list, how
-each one is classified, and what would be needed to close it. It is a decision document,
-not an implementation plan for schema changes. Nothing in the "needs a new master list"
-or "proposal" sections has been built.
+each one is classified, and what would be needed to close it. The Phase C.6 status table
+above section 1 is the current snapshot. Bucket 1 and the client-side Bucket 2 work are
+implemented; the Bucket 3 master lists remain proposals and nothing in those sections has
+been built.
 
-Line references are to the current working tree.
+Line references are to the current working tree at the start of Phase C.6.
 
 ## 1. Field-by-field report
 
@@ -31,6 +32,30 @@ Line references are to the current working tree.
 | 18 | Feeding schedule — `label` | `LookupOrText` at `client/src/pages/feed/FeedingSchedulesPage.tsx:173` | `CreateFeedingScheduleRequest.Label`, `src/FMS.Application/Feed/FeedDtos.cs:204` | None; now fixed presets plus a retained free-text input. | 2 — fixed option set |
 | 19 | Salary payment — `reference` | `Input` with a Generate button at `client/src/pages/hr/SalaryPaymentsPage.tsx:298` | `RecordSalaryPaymentRequest.Reference`, `src/FMS.Application/Employees/EmployeeDtos.cs:124` | None. | 4 — auto-generate |
 
+### Phase C.6 status
+
+| # | Field | Status | Where it stands |
+|---|-------|--------|-----------------|
+| 1 | Medical `vetName` | Awaiting approval | Bucket 3 vet master only; not built. |
+| 2 | Medical `dosage` | Done | `LookupOrText` backed by `GET /api/farms/{farmId}/suggestions/medicalDosage`. |
+| 3 | Medical `diagnosis` | Done | `LookupOrText` backed by `GET /api/farms/{farmId}/suggestions/medicalDiagnosis`. |
+| 4 | Vaccination `vetName` | Awaiting approval | Bucket 3 vet master only; not built. |
+| 5 | Vaccination `batchNumber` | Awaiting approval | Bucket 3 batch master only; not built. |
+| 6 | Breeding `vetName` | Awaiting approval | Bucket 3 vet master only; not built. |
+| 7 | Birth `vetName` | Awaiting approval | Bucket 3 vet master only; not built. |
+| 8 | Gestation `performedBy` | Done | Employee names loaded from the existing employees list. |
+| 9 | Medicine `unit` | Done | Distinct units from the medicines already loaded on the page. |
+| 10 | Medicine stock `batchNumber` | Awaiting approval | Bucket 3 batch master only; not built. |
+| 11 | Vaccine type `defaultDosage` | Done | Existing dosages, plus `1 <linked medicine unit>` when a medicine is selected. |
+| 12 | Inventory item `category` | Awaiting approval | Proposal written in `docs/inventory-categories-proposal.md`; no entity or migration created. |
+| 13 | Inventory item `unit` | Done | Fixed list plus retained free text. |
+| 14 | Feed type `unit` | Done | Domain enum; not a gap. |
+| 15 | Inventory adjustment `reason` | Done | Preset reasons plus retained free text. |
+| 16 | Feed stock movement reason | Still open | No reason field exists; needs a schema/DTO decision, not a lookup. |
+| 17 | Supplier `productsSupplied` | Done | `LookupOrText` backed by `GET /api/farms/{farmId}/suggestions/supplierProductsSupplied`. |
+| 18 | Feeding schedule `label` | Done | Fixed presets plus retained free text. |
+| 19 | Salary payment `reference` | Done | Editable client-generated suggestion; duplicate employee/month references get `-2`, `-3`, … |
+
 ### What is not a gap
 
 - **Feed type `unit` should stay fixed.** It is a domain enum, not a free text field. Its
@@ -48,28 +73,31 @@ Line references are to the current working tree.
 
 These values already exist in the database, but the page cannot list them cheaply today.
 The safe pattern is a read-only suggestions endpoint (or a client-side derivation when the
-source endpoint already returns a complete list). No schema change is needed.
+source endpoint already returns a complete list). No schema change is needed. **Phase C.6
+implemented this bucket.**
 
-- Medical `dosage` and `diagnosis`: distinct non-empty values across the farm's medical
-  records. The list endpoint is paged (`MedicalRecordsController.cs:20`), so deriving these
-  from the currently loaded page would be wrong. Proposal: a read-only
-  `GET /api/farm/{farmId}/medical-records/suggestions` returning
-  `{ diagnoses: string[], dosages: string[] }`, or a generic
-  `GET /api/farm/{farmId}/suggestions?field=diagnosis|dosage`. Not added now.
-- Gestation `performedBy`: use the existing employees list. A `LookupOrText` with employee
-  names keeps the current free-text escape hatch for a vet who is not an employee.
-- Medicine `unit`: derive from `GET .../medicines` (it already returns `Unit`) or add a
-  small `GET .../medicines/units`. Client-side de-duplication is acceptable once the list
-  request is complete (`pageSize: 100` is the existing client pattern).
-- Vaccine type `defaultDosage`: derive from existing vaccine types and, when a linked
-  medicine is chosen, offer `1 <medicine.unit>` as a suggestion. Keep it editable.
-- Supplier `productsSupplied`: use inventory item names as chips with `allowCustom`. The
-  values are already stored as free text, so a multi-select can write the same string.
+- Medical `dosage` and `diagnosis`: done through one read-only endpoint,
+  `GET /api/farms/{farmId}/suggestions/{field}`, with the whitelist
+  `medicalDiagnosis`, `medicalDosage`, `supplierProductsSupplied`. It returns at most 50
+  distinct non-empty strings, most recently used first, scoped to the farm. Unknown fields
+  return `404`. Medical fields follow the medical-record list's authenticated-member
+  access; supplier products keep the supplier directory's
+  `Employee`/`FarmManager`/`SystemOwner` role gate.
+- Gestation `performedBy`: done. `LookupOrText` offers employee names from the existing
+  employees list and keeps the current free-text escape hatch for a vet who is not an
+  employee.
+- Medicine `unit`: done. `LookupOrText` offers distinct units from the medicines already
+  loaded on the page; the original free-text input remains.
+- Vaccine type `defaultDosage`: done. Existing dosages are offered, plus
+  `1 <linked medicine unit>` when a linked medicine is chosen. The field stays editable.
+- Supplier `productsSupplied`: done through the same suggestions endpoint, using values
+  previously stored on the farm's suppliers. The original text field remains beside the
+  picker.
 
 ### Bucket 2 — Fixed option set
 
-A short, stable list that belongs in code. These are the only option lists implemented in
-this phase.
+A short, stable list that belongs in code. These are implemented with the exact values
+below.
 
 - Inventory unit
 - Inventory adjustment reason
@@ -233,6 +261,10 @@ InventoryCategory
 
 Owner: Inventory, managed from Configuration → Inventory categories or the Inventory page.
 
+**Full decision package:** `docs/inventory-categories-proposal.md`. It covers the field
+list, owning module, migration and backfill, endpoints, UI change, estimated files, and the
+open decisions. Status: **awaiting approval**; no entity or migration has been created.
+
 Migration proposal:
 
 - Create `InventoryCategories`.
@@ -255,9 +287,10 @@ SAL-<payment month YYYY-MM>-<employee key>
 - The employee key is the first initial plus the last name, uppercased and stripped to
   `A-Z0-9`, capped at 12 characters. If no employee is selected, the key is `EMP`.
 - Example: Ayesha Khan paid in October 2026 → `SAL-2026-10-AKHAN`.
-- The value is a suggestion in the existing free-text field. It is editable and is not
-  guaranteed unique. If the farm needs unique references, add an employee code (Bucket 3)
-  or a server-side sequence.
+- The value is a suggestion in the existing free-text field. It is editable. When the same
+  employee/month already uses the generated value (or `-2`, `-3`, …), the generator appends
+  the next available numeric suffix. If the farm needs uniqueness across all time and
+  employees, add an employee code (Bucket 3) or a server-side sequence.
 
 ### Batch suggestions (not implemented)
 
@@ -267,27 +300,27 @@ Bucket 3 batch decision is made.
 
 ## 6. Recommended build order
 
-| Order | Work | Approximate files touched |
-|-------|------|---------------------------|
-| 1 | Bucket 2 selects (this phase): inventory unit, inventory adjustment reason, feeding label | 4 page/utility files + 3 test files + locale keys |
-| 2 | Bucket 4 salary reference (this phase) | 1 page + 1 test + locale keys |
-| 3 | Bucket 1 client-side suggestions: gestation `performedBy`, medicine `unit`, vaccine `defaultDosage` | 3 pages + 3 tests |
-| 4 | Bucket 1 read-only suggestions: medical `diagnosis`/`dosage`, supplier `productsSupplied` | 2 backend files + 2 client files + tests |
-| 5 | Bucket 3 inventory categories (smallest master) | 5–8 files + migration |
-| 6 | Bucket 3 vets | 8–12 files + migration + backfill |
-| 7 | Bucket 3 batches (or fold into medicine stock) | 6–10 files + migration + backfill |
+| Order | Work | Approximate files touched | Status |
+|-------|------|---------------------------|--------|
+| 1 | Bucket 2 selects: inventory unit, inventory adjustment reason, feeding label | 4 page/utility files + 3 test files + locale keys | Done |
+| 2 | Bucket 4 salary reference | 1 page + 1 test + locale keys | Done |
+| 3 | Bucket 1 client-side suggestions: gestation `performedBy`, medicine `unit`, vaccine `defaultDosage` | 3 pages + 3 tests | Done |
+| 4 | Bucket 1 read-only suggestions: medical `diagnosis`/`dosage`, supplier `productsSupplied` | generic endpoint + 2 client pages + tests | Done |
+| 5 | Bucket 3 inventory categories (smallest master) | proposal estimates 18–22 files + migration | Awaiting approval |
+| 6 | Bucket 3 vets | 8–12 files + migration + backfill | Awaiting approval |
+| 7 | Bucket 3 batches (or fold into medicine stock) | 6–10 files + migration + backfill | Awaiting approval |
 
 The order is deliberate: no migration is needed for steps 1–4, and each master list is
 smaller and less risky than the one after it.
 
 ## 7. Decisions needed before the next phase
 
-1. Approve or change the three Bucket 2 lists above. They are implemented with the exact
-   values shown; the farm's preferred wording can be swapped without a schema change.
-2. Approve whether Bucket 1 suggestions should be a generic endpoint or per-screen
-   endpoints.
-3. Approve which Bucket 3 master comes first. Inventory categories are the smallest;
-   vets unlock four clinical screens; batches duplicate part of the existing medicine
-   stock model.
-4. Approve the salary reference format, or provide an employee code/number to make it
-   unique.
+1. **Answered during Phase C.6:** Bucket 1 uses one generic, whitelisted read-only
+   endpoint rather than per-screen endpoints. The allowlist is closed and unknown fields
+   return `404`.
+2. **Answered:** inventory categories are the first Bucket 3 master. Approve the proposal
+   in `docs/inventory-categories-proposal.md` before any entity or migration work.
+3. **Open:** provide an employee code/number if references must be unique across
+   employees; the same-employee/month collision fallback is implemented.
+4. **Open:** approve the remaining Bucket 3 masters (vets and batches) after inventory
+   categories. Neither has been started.
