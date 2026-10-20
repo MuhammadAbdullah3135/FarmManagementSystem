@@ -1,7 +1,9 @@
 using System.Security.Claims;
 using System.Text;
 using FMS.API.Binding;
+using FMS.Application.Suggestions;
 using FMS.Infrastructure.Persistence;
+using FMS.Infrastructure.Suggestions;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -157,6 +159,7 @@ public class TestWebApplicationFactory : IDisposable
                     services.AddScoped<FMS.Application.Reports.IReportService, FMS.Infrastructure.Reports.ReportService>();
                     services.AddScoped<FMS.Application.Reports.ICostAttributionService, FMS.Infrastructure.Reports.CostAttributionService>();
                     services.AddScoped<FMS.Application.AuditLog.IAuditLogService, FMS.Infrastructure.AuditLog.AuditLogService>();
+                    services.AddScoped<ISuggestionService, SuggestionService>();
                     // Configuration lookups (same registration shape as Program.cs).
                     services.AddMemoryCache();
                     services.AddScoped<FMS.Infrastructure.Configuration.ConfigurationService>();

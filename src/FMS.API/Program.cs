@@ -38,6 +38,7 @@ using FMS.Application.Email;
 using FMS.Application.Jobs;
 using FMS.Application.Notifications;
 using FMS.Application.Reports;
+using FMS.Application.Suggestions;
 using FMS.Application.Sync;
 using FMS.Application.Tasks;
 using FMS.Application.AuditLog;
@@ -62,6 +63,7 @@ using FMS.Infrastructure.Email;
 using FMS.Infrastructure.Jobs;
 using FMS.Infrastructure.Notifications;
 using FMS.Infrastructure.Reports;
+using FMS.Infrastructure.Suggestions;
 using FMS.Infrastructure.Sync;
 using FMS.Infrastructure.AuditLog;
 using FMS.Infrastructure.Persistence;
@@ -293,6 +295,7 @@ builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddScoped<IReportService, ReportService>();
 builder.Services.AddScoped<ICostAttributionService, CostAttributionService>();
 builder.Services.AddScoped<IAuditLogService, AuditLogService>();
+builder.Services.AddScoped<ISuggestionService, SuggestionService>();
 
 // ── Notifications ──────────────────────────────────────────────────────
 // The recipient's own alert history: persisted notifications, per-user channel

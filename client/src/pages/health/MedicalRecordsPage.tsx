@@ -8,6 +8,7 @@ import { formatDate, formatMoney } from '../../i18n/format';
 import dayjs from 'dayjs';
 import { medicalRecordsApi, medicinesApi } from '../../api/health';
 import { lookupsApi } from '../../api/attendance';
+import { suggestionsApi } from '../../api/suggestions';
 import { getApiError } from '../../api/farmApi';
 import type { MedicalRecordListItem, MedicalRecordStatus } from '../../types';
 import { useTranslation } from 'react-i18next';
@@ -55,6 +56,18 @@ const MedicalRecordsPage: React.FC = () => {const { t } = useTranslation(['healt
   const loadMedicineOptions = useCallback(async (): Promise<EntityOption[]> => {
     const res = await medicinesApi.list({ pageSize: 100 });
     return res.data.items.map((medicine) => ({ value: medicine.name, label: medicine.name }));
+  }, []);
+
+  // Diagnosis and dosage still store free text. The suggestions endpoint only
+  // contributes recently used values as choices; typing remains available.
+  const loadDiagnosisOptions = useCallback(async (): Promise<EntityOption[]> => {
+    const res = await suggestionsApi.list('medicalDiagnosis');
+    return res.data.map((value) => ({ value, label: value }));
+  }, []);
+
+  const loadDosageOptions = useCallback(async (): Promise<EntityOption[]> => {
+    const res = await suggestionsApi.list('medicalDosage');
+    return res.data.map((value) => ({ value, label: value }));
   }, []);
 
   const load = useCallback(async (p: number) => {
@@ -288,7 +301,12 @@ const MedicalRecordsPage: React.FC = () => {const { t } = useTranslation(['healt
             <Input.TextArea rows={2} maxLength={2000} placeholder={t('describeSymptoms')} />
           </Form.Item>
           <Form.Item name="diagnosis" label={t('diagnosis')}>
-            <Input maxLength={500} placeholder={t('diagnosis')} />
+            <LookupOrText
+              loadOptions={loadDiagnosisOptions}
+              placeholder={t('diagnosis')}
+              recentStorageKey="medicalDiagnosis"
+              allowClear
+            />
           </Form.Item>
           <Form.Item name="treatment" label={t('treatment')}>
             <Input.TextArea rows={2} maxLength={1000} placeholder={t('treatmentPlan')} />
@@ -306,7 +324,13 @@ const MedicalRecordsPage: React.FC = () => {const { t } = useTranslation(['healt
             </Col>
             <Col xs={24} sm={12}>
               <Form.Item name="dosage" label={t('dosage')}>
-                <Input maxLength={200} placeholder={t('eG10mlTwiceDaily')} />
+                <LookupOrText
+                  loadOptions={loadDosageOptions}
+                  placeholder={t('eG10mlTwiceDaily')}
+                  textPlaceholder={t('eG10mlTwiceDaily')}
+                  recentStorageKey="medicalDosage"
+                  allowClear
+                />
               </Form.Item>
             </Col>
           </Row>
