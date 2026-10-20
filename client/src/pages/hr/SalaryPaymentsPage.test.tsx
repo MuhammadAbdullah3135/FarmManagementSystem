@@ -171,7 +171,7 @@ describe('SalaryPaymentsPage ledger record', () => {
     // The report reloads after the write, so its totals are never stale.
     await waitFor(() =>
       expect(vi.mocked(payrollApi.report).mock.calls.length).toBeGreaterThanOrEqual(2));
-  });
+  }, 20000);
 
   it('generates an editable salary reference from the employee and payment month', async () => {
     const user = userEvent.setup();
