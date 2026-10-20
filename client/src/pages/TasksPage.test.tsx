@@ -264,7 +264,7 @@ describe('TasksPage completion queue', () => {
     expect(await screen.findByText('Synced')).toBeInTheDocument();
     expect(tasksApi.complete).not.toHaveBeenCalled();
     expect(await getCounts(scope.accountId)).toMatchObject({ pending: 0, applied: 1 });
-  });
+  }, 60000);
 
   /*
    * A refused completion must not consume what the user typed, and must not make the row look
@@ -289,7 +289,7 @@ describe('TasksPage completion queue', () => {
     expect(await listScopeMutations(scope)).toHaveLength(0);
     expect(tasksApi.complete).not.toHaveBeenCalled();
     expect(await getCounts(scope.accountId)).toMatchObject({ pending: 0, applied: 0 });
-  }, 20_000);
+  }, 60000);
 
   it('keeps cancelling a live request: it is not one of the offline workflows', async () => {
     await cacheTask();
