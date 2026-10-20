@@ -289,6 +289,7 @@ builder.Services.AddScoped<IVaccineService, VaccineService>();
 builder.Services.AddScoped<IWeightCheckScheduleService, WeightCheckScheduleService>();
 builder.Services.AddScoped<IHealthCostService, HealthCostService>();
 builder.Services.AddScoped<IInventoryService, InventoryService>();
+builder.Services.AddScoped<IInventoryCategoryBackfillService, InventoryCategoryBackfillService>();
 builder.Services.AddScoped<ISupplierService, SupplierService>();
 builder.Services.AddScoped<ICustomerService, CustomerService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
@@ -510,9 +511,42 @@ if (!string.IsNullOrWhiteSpace(herokuPort))
     app.Urls.Add($"http://+:{herokuPort}");
 }
 
+// The backfill is a separate operator step, not part of the schema migration, so it can
+// be dry-run before it writes. The schema migration above has to have run, which is why
+// this branch sits after it.
+//
+//   dotnet run --project src/FMS.API -- inventory:categories:backfill
+//   dotnet run --project src/FMS.API -- inventory:categories:backfill --apply
+if (args.Length > 0 && args[0] == "inventory:categories:backfill")
+{
+    using var backfillScope = app.Services.CreateScope();
+    var backfill = backfillScope.ServiceProvider
+        .GetRequiredService<IInventoryCategoryBackfillService>();
+    var apply = args.Skip(1).Any(arg => arg == "--apply");
+
+    var report = await backfill.RunAsync(apply);
+
+    Console.WriteLine(apply
+        ? "Inventory category backfill applied."
+        : "Inventory category backfill dry run (no changes written).");
+    Console.WriteLine($"categories created: {report.CategoriesCreated}");
+    Console.WriteLine($"items linked: {report.ItemsLinked}");
+    Console.WriteLine($"blank-category items left null: {report.BlankCategoryItemsLeftNull}");
+    foreach (var farm in report.Farms)
+    {
+        Console.WriteLine(
+            $"  farm {farm.FarmId}: categories={farm.CategoriesCreated}, " +
+            $"linked={farm.ItemsLinked}, blank={farm.BlankCategoryItemsLeftNull}");
+    }
+
+    if (!apply)
+        Console.WriteLine("Re-run with --apply to write these changes.");
+    return;
+}
+
 // Local operator convenience: `dotnet run --project src/FMS.API -- demo:reset` restores the
 // shared demo farm to its seed state and exits. This is a one-shot management command, not a
-// server feature — the HTTP surface for reset is POST /auth/demo-reset (SystemOwner only).
+// server feature - the HTTP surface for reset is POST /auth/demo-reset (SystemOwner only).
 if (args.Length > 0 && args[0] == "demo:reset")
 {
     using var scope = app.Services.CreateScope();
