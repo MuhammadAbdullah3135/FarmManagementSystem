@@ -45,24 +45,24 @@ public class DomainMessageKeyParityTests
         // an equality: the total can only grow as families are keyed, and the lookup family
         // itself is pinned at its own count so a reflection change that dropped *one* group
         // while keeping another would still be caught.
-        // 68 lookup + 47 conflict + 3 supersede + 73 validation + 4 unauthorized
-        // + 1 unexpected + 1 unavailable = 197.
+        // 70 lookup + 49 conflict + 3 supersede + 76 validation + 4 unauthorized
+        // + 1 unexpected + 1 unavailable = 204.
         Assert.True(
             keys.Count >= 196,
             $"Only {keys.Count} domain message keys were found; at least 196 are expected. A "
             + "reflection change that enumerates fewer keys than the class declares would make "
             + "this test pass for the wrong reason.");
-        Assert.Equal(68, keys.Count(key => key.StartsWith("validation.lookup.", StringComparison.Ordinal)));
+        Assert.Equal(70, keys.Count(key => key.StartsWith("validation.lookup.", StringComparison.Ordinal)));
         // The conflict and supersede families separately, so neither can be emptied by a
         // reflection change that still leaves the other one populated. 47 is 27 argument-free
         // plus 20 argument-taking; the supersede family is 2 argument-free plus 1.
-        Assert.Equal(47, keys.Count(key => key.StartsWith("validation.conflict.", StringComparison.Ordinal)));
+        Assert.Equal(49, keys.Count(key => key.StartsWith("validation.conflict.", StringComparison.Ordinal)));
         Assert.Equal(3, keys.Count(key => key.StartsWith("validation.supersede.", StringComparison.Ordinal)));
         // The validation family is pinned for the same reason, and is the one still growing:
         // 16 argument-taking sentences, then 23 argument-free across FeedService and
         // AnimalService. Each service's sweep raises this number, which is the point of pinning
         // it — a reflection change that missed the newest group would otherwise go unnoticed.
-        Assert.Equal(73, keys.Count(key => key.StartsWith("validation.validation.", StringComparison.Ordinal)));
+        Assert.Equal(76, keys.Count(key => key.StartsWith("validation.validation.", StringComparison.Ordinal)));
         // The unauthorized family is four keys — two argument-taking frames and two argument-free
         // login refusals — and is pinned for the same reason as the rest: it is the newest
         // family, so it is the one a reflection change would drop silently.

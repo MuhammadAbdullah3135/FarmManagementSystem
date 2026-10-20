@@ -137,6 +137,8 @@ public class TestWebApplicationFactory : IDisposable
                     // Register all application services needed by controllers
                     services.AddScoped<FMS.Application.Common.ICurrentUserService, FMS.Infrastructure.Auth.CurrentUserService>();
                     services.AddScoped<FMS.Application.Inventory.IInventoryService, FMS.Infrastructure.Inventory.InventoryService>();
+                    services.AddScoped<FMS.Application.Inventory.IInventoryCategoryService, FMS.Infrastructure.Inventory.InventoryCategoryService>();
+                    services.AddScoped<FMS.Application.Inventory.IInventoryCategoryBackfillService, FMS.Infrastructure.Inventory.InventoryCategoryBackfillService>();
                     services.AddScoped<FMS.Application.Inventory.ISupplierService, FMS.Infrastructure.Inventory.SupplierService>();
                     services.AddScoped<FMS.Application.Inventory.ICustomerService, FMS.Infrastructure.Inventory.CustomerService>();
                     services.AddScoped<FMS.Application.Feed.IFeedService, FMS.Infrastructure.Feed.FeedService>();
