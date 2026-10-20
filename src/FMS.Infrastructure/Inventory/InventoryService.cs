@@ -22,7 +22,9 @@ public class InventoryService : IInventoryService
     {
         page = page < 1 ? 1 : page;
         pageSize = pageSize is < 1 or > 100 ? 20 : pageSize;
-        var query = _context.InventoryItems.AsNoTracking().Where(i => i.FarmId == farmId);
+        var query = _context.InventoryItems.AsNoTracking()
+            .Include(i => i.CategoryLookup)
+            .Where(i => i.FarmId == farmId);
         if (!string.IsNullOrWhiteSpace(search))
         {
             var term = search.Trim();
@@ -46,6 +48,7 @@ public class InventoryService : IInventoryService
     public async Task<Result<InventoryItemDto>> GetItemByIdAsync(Guid farmId, Guid id)
     {
         var item = await _context.InventoryItems.AsNoTracking()
+            .Include(i => i.CategoryLookup)
             .FirstOrDefaultAsync(i => i.FarmId == farmId && i.Id == id);
         return item == null
             ? Result<InventoryItemDto>.NotFound("Inventory item not found", DomainMessageKeys.InventoryItemNotFound)
@@ -65,7 +68,15 @@ public class InventoryService : IInventoryService
         if (await _context.InventoryItems.AnyAsync(i => i.FarmId == farmId && i.Name == name))
             return Result<InventoryItemDto>.Conflict(InventoryItemRules.DuplicateNameMessage);
 
-        var item = InventoryItemRules.Build(farmId, request, _currentUser.GetUserId());
+        var categoryResult = await ResolveCategoryAsync(farmId, request.CategoryId);
+        if (!categoryResult.IsSuccess)
+            return Result<InventoryItemDto>.Validation(
+                categoryResult.Error!.Message, categoryResult.Error.MessageKey, categoryResult.Error.MessageArgs);
+
+        var category = categoryResult.Value;
+        var item = InventoryItemRules.Build(
+            farmId, request, _currentUser.GetUserId(), resolvedCategoryName: category?.Name);
+        item.CategoryLookup = category;
         _context.InventoryItems.Add(item);
         await _context.SaveChangesAsync();
         return Result<InventoryItemDto>.Success(ToDto(item));
@@ -180,7 +191,9 @@ public class InventoryService : IInventoryService
 
     public async Task<Result<InventoryItemDto>> UpdateItemAsync(Guid farmId, Guid id, UpdateInventoryItemRequest request)
     {
-        var item = await _context.InventoryItems.FirstOrDefaultAsync(i => i.FarmId == farmId && i.Id == id);
+        var item = await _context.InventoryItems
+            .Include(i => i.CategoryLookup)
+            .FirstOrDefaultAsync(i => i.FarmId == farmId && i.Id == id);
         if (item == null) return Result<InventoryItemDto>.NotFound("Inventory item not found", DomainMessageKeys.InventoryItemNotFound);
 
         var error = InventoryItemRules.Validate(
@@ -191,8 +204,16 @@ public class InventoryService : IInventoryService
         if (await _context.InventoryItems.AnyAsync(i => i.FarmId == farmId && i.Id != id && i.Name == name))
             return Result<InventoryItemDto>.Conflict(InventoryItemRules.DuplicateNameMessage);
 
+        var categoryResult = await ResolveCategoryAsync(farmId, request.CategoryId);
+        if (!categoryResult.IsSuccess)
+            return Result<InventoryItemDto>.Validation(
+                categoryResult.Error!.Message, categoryResult.Error.MessageKey, categoryResult.Error.MessageArgs);
+
+        var category = categoryResult.Value;
         item.Name = name;
-        item.Category = Clean(request.Category);
+        item.CategoryId = request.CategoryId;
+        item.Category = category?.Name ?? Clean(request.Category);
+        item.CategoryLookup = category;
         item.Unit = request.Unit.Trim();
         item.ReorderLevel = request.ReorderLevel;
         item.UnitCost = request.UnitCost;
@@ -305,6 +326,20 @@ public class InventoryService : IInventoryService
         });
     }
 
+    private async Task<Result<InventoryCategory?>> ResolveCategoryAsync(Guid farmId, Guid? categoryId)
+    {
+        if (!categoryId.HasValue)
+            return Result<InventoryCategory?>.Success(null);
+
+        var category = await _context.InventoryCategories
+            .FirstOrDefaultAsync(c => c.FarmId == farmId && c.Id == categoryId.Value);
+        return category == null
+            ? Result<InventoryCategory?>.Validation(
+                "Inventory category not found in this farm",
+                DomainMessageKeys.InventoryCategoryNotFoundInFarm)
+            : Result<InventoryCategory?>.Success(category);
+    }
+
     private static string? Clean(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     private static StockMovementDto ToMovementDto(StockMovement movement, InventoryItem item) => new()
@@ -317,7 +352,8 @@ public class InventoryService : IInventoryService
 
     private static InventoryItemDto ToDto(InventoryItem item) => new()
     {
-        Id = item.Id, FarmId = item.FarmId, Name = item.Name, Category = item.Category, Unit = item.Unit,
+        Id = item.Id, FarmId = item.FarmId, Name = item.Name, CategoryId = item.CategoryId,
+        Category = item.CategoryLookup?.Name ?? item.Category, Unit = item.Unit,
         Quantity = item.Quantity, ReorderLevel = item.ReorderLevel, UnitCost = item.UnitCost,
         Location = item.Location, CreatedAt = item.CreatedAt
     };

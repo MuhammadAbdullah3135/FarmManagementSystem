@@ -289,6 +289,7 @@ builder.Services.AddScoped<IVaccineService, VaccineService>();
 builder.Services.AddScoped<IWeightCheckScheduleService, WeightCheckScheduleService>();
 builder.Services.AddScoped<IHealthCostService, HealthCostService>();
 builder.Services.AddScoped<IInventoryService, InventoryService>();
+builder.Services.AddScoped<IInventoryCategoryService, InventoryCategoryService>();
 builder.Services.AddScoped<IInventoryCategoryBackfillService, InventoryCategoryBackfillService>();
 builder.Services.AddScoped<ISupplierService, SupplierService>();
 builder.Services.AddScoped<ICustomerService, CustomerService>();

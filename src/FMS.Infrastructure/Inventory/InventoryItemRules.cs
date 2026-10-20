@@ -106,13 +106,15 @@ public static class InventoryItemRules
         Guid farmId,
         CreateInventoryItemRequest request,
         Guid? userId,
-        DateTime? movementDate = null)
+        DateTime? movementDate = null,
+        string? resolvedCategoryName = null)
     {
         var item = new InventoryItem
         {
             FarmId = farmId,
             Name = request.Name.Trim(),
-            Category = Clean(request.Category),
+            CategoryId = request.CategoryId,
+            Category = resolvedCategoryName ?? Clean(request.Category),
             Unit = request.Unit.Trim(),
             Quantity = 0,
             ReorderLevel = request.ReorderLevel,

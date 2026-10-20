@@ -147,6 +147,12 @@ public static class DomainMessageKeys
     /// <summary>The exact English this API has always answered: “Income record not found”.</summary>
     public const string IncomeRecordNotFound = "validation.lookup.income";
 
+    /// <summary>The exact English this API has always answered: “Inventory category not found”.</summary>
+    public const string InventoryCategoryNotFound = "validation.lookup.inventoryCategory";
+
+    /// <summary>The exact English this API has always answered: “Inventory category not found in this farm”.</summary>
+    public const string InventoryCategoryNotFoundInFarm = "validation.lookup.inventoryCategoryInFarm";
+
     /// <summary>The exact English this API has always answered: “Inventory item not found”.</summary>
     public const string InventoryItemNotFound = "validation.lookup.inventoryItem";
 
@@ -272,6 +278,9 @@ public static class DomainMessageKeys
     /// <summary>The exact English this API has always answered: “Cannot delete an income category that has income records”</summary>
     public const string IncomeCategoryHasRecords = "validation.conflict.incomeCategoryInUse";
 
+    /// <summary>The exact English this API has always answered: “Cannot delete an inventory category that has items; deactivate it instead”</summary>
+    public const string InventoryCategoryHasItems = "validation.conflict.inventoryCategoryHasItems";
+
     /// <summary>The exact English this API has always answered: “Cannot delete an inventory item with stock movement history”</summary>
     public const string InventoryItemHasStockHistory = "validation.conflict.inventoryItemHasHistory";
 
@@ -337,6 +346,9 @@ public static class DomainMessageKeys
 
     /// <summary>The exact English this API has always answered: “An expense category named '{name}' already exists”</summary>
     public const string ExpenseCategoryNameExists = "validation.conflict.expenseCategoryNameExists";
+
+    /// <summary>The exact English this API has always answered: “An inventory category named '{name}' already exists”</summary>
+    public const string InventoryCategoryNameExists = "validation.conflict.inventoryCategoryNameExists";
 
     /// <summary>The exact English this API has always answered: “A payment method named '{name}' already exists”</summary>
     public const string PaymentMethodNameExists = "validation.conflict.paymentMethodNameExists";
@@ -545,6 +557,15 @@ public static class DomainMessageKeys
 
     /// <summary>The exact English this API has always answered: “Category is required”</summary>
     public const string AnimalDocumentCategoryRequired = "validation.validation.animalDocumentCategoryRequired";
+
+    /// <summary>The exact English this API has always answered: “Category name is required”</summary>
+    public const string InventoryCategoryNameRequired = "validation.inventoryCategory.nameRequired";
+
+    /// <summary>The exact English this API has always answered: “Category name cannot exceed {max} characters”</summary>
+    public const string InventoryCategoryNameMaxLength = "validation.inventoryCategory.nameMaxLength";
+
+    /// <summary>The exact English this API has always answered: “Description cannot exceed {max} characters”</summary>
+    public const string InventoryCategoryDescriptionMaxLength = "validation.inventoryCategory.descriptionMaxLength";
 
     /// <summary>The exact English this API has always answered: “Document file is missing from storage”</summary>
     public const string DocumentFileMissing = "validation.validation.documentFileMissing";

@@ -7,6 +7,7 @@ public class InventoryItemDto
     public Guid Id { get; set; }
     public Guid FarmId { get; set; }
     public string Name { get; set; } = string.Empty;
+    public Guid? CategoryId { get; set; }
     public string? Category { get; set; }
     public string Unit { get; set; } = string.Empty;
     public decimal Quantity { get; set; }
@@ -21,6 +22,7 @@ public class InventoryItemDto
 public class CreateInventoryItemRequest
 {
     public string Name { get; set; } = string.Empty;
+    public Guid? CategoryId { get; set; }
     public string? Category { get; set; }
     public string Unit { get; set; } = string.Empty;
     public decimal Quantity { get; set; }
@@ -57,6 +59,7 @@ public class StockMovementDto
 public class UpdateInventoryItemRequest
 {
     public string Name { get; set; } = string.Empty;
+    public Guid? CategoryId { get; set; }
     public string? Category { get; set; }
     public string Unit { get; set; } = string.Empty;
     public decimal ReorderLevel { get; set; }
