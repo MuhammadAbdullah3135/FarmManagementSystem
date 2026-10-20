@@ -559,13 +559,13 @@ public static class DomainMessageKeys
     public const string AnimalDocumentCategoryRequired = "validation.validation.animalDocumentCategoryRequired";
 
     /// <summary>The exact English this API has always answered: “Category name is required”</summary>
-    public const string InventoryCategoryNameRequired = "validation.inventoryCategory.nameRequired";
+    public const string InventoryCategoryNameRequired = "validation.validation.inventoryCategoryNameRequired";
 
     /// <summary>The exact English this API has always answered: “Category name cannot exceed {max} characters”</summary>
-    public const string InventoryCategoryNameMaxLength = "validation.inventoryCategory.nameMaxLength";
+    public const string InventoryCategoryNameMaxLength = "validation.validation.inventoryCategoryNameMaxLength";
 
     /// <summary>The exact English this API has always answered: “Description cannot exceed {max} characters”</summary>
-    public const string InventoryCategoryDescriptionMaxLength = "validation.inventoryCategory.descriptionMaxLength";
+    public const string InventoryCategoryDescriptionMaxLength = "validation.validation.inventoryCategoryDescriptionMaxLength";
 
     /// <summary>The exact English this API has always answered: “Document file is missing from storage”</summary>
     public const string DocumentFileMissing = "validation.validation.documentFileMissing";

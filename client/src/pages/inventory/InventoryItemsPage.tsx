@@ -309,6 +309,10 @@ const InventoryItemsPage: React.FC = () => {const { t } = useTranslation(['inven
         <Row gutter={[16, 16]}>
           <Col xs={24} sm={12}>
             <Form.Item label={t('category')}>
+              {/* Register both values so validateFields returns them; the visible picker
+                  and text input below are controlled by these watched values. */}
+              <Form.Item name="categoryId" hidden><Input /></Form.Item>
+              <Form.Item name="category" hidden><Input /></Form.Item>
               <Space.Compact block>
                 <EntityPicker
                   options={categoryOptions}
@@ -401,7 +405,7 @@ const InventoryItemsPage: React.FC = () => {const { t } = useTranslation(['inven
           label={t('name')}
           rules={[
             { required: true, message: t('validation:common.nameRequired') },
-            { max: 100, message: t('validation:inventoryCategory.nameMaxLength', { max: 100 }) },
+            { max: 100, message: t('validation:validation.inventoryCategoryNameMaxLength', { max: 100 }) },
           ]}
         >
           <Input maxLength={100} placeholder={t('supplies')} />
@@ -409,7 +413,7 @@ const InventoryItemsPage: React.FC = () => {const { t } = useTranslation(['inven
         <Form.Item
           name="description"
           label={t('description')}
-          rules={[{ max: 500, message: t('validation:inventoryCategory.descriptionMaxLength', { max: 500 }) }]}
+          rules={[{ max: 500, message: t('validation:validation.inventoryCategoryDescriptionMaxLength', { max: 500 }) }]}
         >
           <Input.TextArea rows={2} maxLength={500} />
         </Form.Item>

@@ -123,11 +123,6 @@
     "dateNotFuture": "La fecha del ingreso no puede ser futura",
     "descriptionMaxLength": "La descripción no puede superar los {{max}} caracteres"
   },
-  "inventoryCategory": {
-    "descriptionMaxLength": "La descripción no puede superar los {{max}} caracteres",
-    "nameMaxLength": "El nombre de la categoría no puede superar los {{max}} caracteres",
-    "nameRequired": "El nombre de la categoría es obligatorio"
-  },
   "inventoryItem": {
     "categoryMaxLength": "La categoría no puede superar los {{max}} caracteres",
     "locationMaxLength": "La ubicación no puede superar los {{max}} caracteres",
@@ -226,6 +221,9 @@
     "productsSuppliedMaxLength": "Los productos suministrados no pueden superar los {{max}} caracteres"
   },
   "validation": {
+    "inventoryCategoryNameRequired": "El nombre de la categoría es obligatorio",
+    "inventoryCategoryNameMaxLength": "El nombre de la categoría no puede superar los {{max}} caracteres",
+    "inventoryCategoryDescriptionMaxLength": "La descripción no puede superar los {{max}} caracteres",
     "invalidFarmRole": "'{{role}}' no es un rol de granja válido",
     "fileTooLarge": "El archivo supera el tamaño máximo permitido de {{max}} MB",
     "fileTypeNotAllowed": "El tipo de archivo '{{extension}}' no está permitido. Tipos permitidos: {{allowed}}",

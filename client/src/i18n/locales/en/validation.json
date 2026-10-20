@@ -123,11 +123,6 @@
     "dateNotFuture": "Income date cannot be in the future",
     "descriptionMaxLength": "Description cannot exceed {{max}} characters"
   },
-  "inventoryCategory": {
-    "descriptionMaxLength": "Description cannot exceed {{max}} characters",
-    "nameMaxLength": "Category name cannot exceed {{max}} characters",
-    "nameRequired": "Category name is required"
-  },
   "inventoryItem": {
     "categoryMaxLength": "Category cannot exceed {{max}} characters",
     "locationMaxLength": "Location cannot exceed {{max}} characters",
@@ -226,6 +221,9 @@
     "productsSuppliedMaxLength": "Products supplied cannot exceed {{max}} characters"
   },
   "validation": {
+    "inventoryCategoryNameRequired": "Category name is required",
+    "inventoryCategoryNameMaxLength": "Category name cannot exceed {{max}} characters",
+    "inventoryCategoryDescriptionMaxLength": "Description cannot exceed {{max}} characters",
     "invalidFarmRole": "'{{role}}' is not a valid farm role",
     "fileTooLarge": "File exceeds the maximum allowed size of {{max}} MB",
     "fileTypeNotAllowed": "File type '{{extension}}' is not allowed. Allowed types: {{allowed}}",

@@ -123,11 +123,6 @@
     "dateNotFuture": "لا يمكن أن يكون تاريخ الإيراد في المستقبل",
     "descriptionMaxLength": "لا يمكن أن يتجاوز الوصف {{max}} حرفًا"
   },
-  "inventoryCategory": {
-    "descriptionMaxLength": "لا يمكن أن يتجاوز الوصف {{max}} حرفًا",
-    "nameMaxLength": "لا يمكن أن يتجاوز اسم الفئة {{max}} حرفًا",
-    "nameRequired": "اسم الفئة مطلوب"
-  },
   "inventoryItem": {
     "categoryMaxLength": "لا يمكن أن تتجاوز الفئة {{max}} حرفًا",
     "locationMaxLength": "لا يمكن أن يتجاوز الموقع {{max}} حرفًا",
@@ -226,6 +221,9 @@
     "productsSuppliedMaxLength": "لا يمكن أن تتجاوز المنتجات المورّدة {{max}} حرفًا"
   },
   "validation": {
+    "inventoryCategoryNameRequired": "اسم الفئة مطلوب",
+    "inventoryCategoryNameMaxLength": "لا يمكن أن يتجاوز اسم الفئة {{max}} حرفًا",
+    "inventoryCategoryDescriptionMaxLength": "لا يمكن أن يتجاوز الوصف {{max}} حرفًا",
     "invalidFarmRole": "'{{role}}' ليس دورًا صالحًا في المزرعة",
     "fileTooLarge": "حجم الملف يتجاوز الحد الأقصى المسموح به {{max}} ميغابايت",
     "fileTypeNotAllowed": "نوع الملف '{{extension}}' غير مسموح به. الأنواع المسموحة: {{allowed}}",

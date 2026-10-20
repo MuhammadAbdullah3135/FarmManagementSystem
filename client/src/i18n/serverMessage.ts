@@ -126,8 +126,8 @@ const ARG_KINDS: Record<string, Record<string, ArgKind>> = {
   'validation.validation.vaccineStockInsufficient': { available: 'quantity', required: 'quantity' },
 
   // ── inventory categories ──
-  'validation.inventoryCategory.nameMaxLength': { max: 'quantity' },
-  'validation.inventoryCategory.descriptionMaxLength': { max: 'quantity' },
+  'validation.validation.inventoryCategoryNameMaxLength': { max: 'quantity' },
+  'validation.validation.inventoryCategoryDescriptionMaxLength': { max: 'quantity' },
 
   // ── files ──
   'validation.validation.fileTooLarge': { max: 'megabytes' },
