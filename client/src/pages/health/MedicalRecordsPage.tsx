@@ -6,12 +6,14 @@ import { PlusOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { formatDate, formatMoney } from '../../i18n/format';
 import dayjs from 'dayjs';
-import { medicalRecordsApi } from '../../api/health';
+import { medicalRecordsApi, medicinesApi } from '../../api/health';
 import { lookupsApi } from '../../api/attendance';
 import { getApiError } from '../../api/farmApi';
 import type { MedicalRecordListItem, MedicalRecordStatus } from '../../types';
 import { useTranslation } from 'react-i18next';
 import { useEnumOptions, enumLabelOf } from '../../i18n/enumOptions';
+import LookupOrText from '../../components/LookupOrText';
+import type { EntityOption } from '../../components/EntityPicker';
 
 const STATUS_COLORS: Record<MedicalRecordStatus, string> = {
   Open: 'gold',
@@ -47,6 +49,13 @@ const MedicalRecordsPage: React.FC = () => {const { t } = useTranslation(['healt
     notes?: string;
   } | null>(null);
   const [form] = Form.useForm();
+
+  // The medical record DTO stores a medicine label, not an id, so the picker
+  // selects the medicine name and keeps the existing string field unchanged.
+  const loadMedicineOptions = useCallback(async (): Promise<EntityOption[]> => {
+    const res = await medicinesApi.list({ pageSize: 100 });
+    return res.data.items.map((medicine) => ({ value: medicine.name, label: medicine.name }));
+  }, []);
 
   const load = useCallback(async (p: number) => {
     setLoading(true);
@@ -287,7 +296,12 @@ const MedicalRecordsPage: React.FC = () => {const { t } = useTranslation(['healt
           <Row gutter={[16, 16]}>
             <Col xs={24} sm={12}>
               <Form.Item name="medicineUsed" label={t('medicineUsed')}>
-                <Input maxLength={500} placeholder={t('medicineName')} />
+                <LookupOrText
+                  loadOptions={loadMedicineOptions}
+                  placeholder={t('medicineName')}
+                  recentStorageKey="medicine"
+                  allowClear
+                />
               </Form.Item>
             </Col>
             <Col xs={24} sm={12}>
