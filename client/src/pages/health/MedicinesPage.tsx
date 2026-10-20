@@ -7,9 +7,12 @@ import type { ColumnsType } from 'antd/es/table';
 import { formatDate, formatMoney } from '../../i18n/format';
 import dayjs from 'dayjs';
 import { medicinesApi } from '../../api/health';
+import { suppliersApi } from '../../api/suppliers';
 import { getApiError } from '../../api/farmApi';
 import type { MedicineListItem, MedicineStock } from '../../types';
 import { useTranslation } from 'react-i18next';
+import LookupOrText from '../../components/LookupOrText';
+import type { EntityOption } from '../../components/EntityPicker';
 
 const MedicinesPage: React.FC = () => {const { t } = useTranslation(['health', 'validation']); 
   const [medicines, setMedicines] = useState<MedicineListItem[]>([]);
@@ -25,6 +28,12 @@ const MedicinesPage: React.FC = () => {const { t } = useTranslation(['health', '
   const [stockModalOpen, setStockModalOpen] = useState(false);
   const [form] = Form.useForm();
   const [stockForm] = Form.useForm();
+
+  // MedicineStock still stores the supplier name as a string.
+  const loadSupplierOptions = useCallback(async (): Promise<EntityOption[]> => {
+    const res = await suppliersApi.list({ pageSize: 100 });
+    return res.data.items.map((supplier) => ({ value: supplier.name, label: supplier.name }));
+  }, []);
 
   const load = useCallback(async (p: number) => {
     setLoading(true);
@@ -317,7 +326,11 @@ const MedicinesPage: React.FC = () => {const { t } = useTranslation(['health', '
             <DatePicker style={{ width: '100%' }} />
           </Form.Item>
           <Form.Item name="supplier" label={t('supplier')}>
-            <Input maxLength={200} />
+            <LookupOrText
+              loadOptions={loadSupplierOptions}
+              recentStorageKey="supplier"
+              allowClear
+            />
           </Form.Item>
           <Form.Item name="dateReceived" label={t('dateReceived')}>
             <DatePicker style={{ width: '100%' }} />
