@@ -140,10 +140,10 @@ public class InventoryCategoryService : IInventoryCategoryService
     private Task<bool> NameExistsAsync(Guid farmId, string name, Guid? exceptId)
     {
         var normalized = name.ToLower();
-        return _context.InventoryCategories.AnyAsync(c =>
-            c.FarmId == farmId
-            && c.Id != exceptId
-            && c.Name.ToLower() == normalized);
+        var query = _context.InventoryCategories.Where(c => c.FarmId == farmId);
+        if (exceptId.HasValue)
+            query = query.Where(c => c.Id != exceptId.Value);
+        return query.AnyAsync(c => c.Name.ToLower() == normalized);
     }
 
     private static Result<InventoryCategoryDto> Duplicate(string name) =>
