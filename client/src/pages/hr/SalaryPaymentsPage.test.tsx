@@ -172,6 +172,27 @@ describe('SalaryPaymentsPage ledger record', () => {
       expect(vi.mocked(payrollApi.report).mock.calls.length).toBeGreaterThanOrEqual(2));
   });
 
+  it('generates an editable salary reference from the employee and payment month', async () => {
+    const user = userEvent.setup();
+    render(<SalaryPaymentsPage />);
+
+    await selectEmployee(user);
+    await user.click(await screen.findByRole('button', { name: /record payment/i }));
+
+    await user.type(await screen.findByLabelText('Amount'), '50000');
+    await user.click(await screen.findByRole('button', { name: /generate/i }));
+
+    const reference = screen.getByLabelText('Reference') as HTMLInputElement;
+    expect(reference.value).toMatch(/^SAL-\d{4}-\d{2}-AKHAN$/);
+
+    await user.click(modal().querySelector('.ant-modal-footer .ant-btn-primary') as HTMLElement);
+
+    await waitFor(() => expect(salaryPaymentsApi.record).toHaveBeenCalled());
+    expect(vi.mocked(salaryPaymentsApi.record).mock.calls[0][1].reference).toMatch(
+      /^SAL-\d{4}-\d{2}-AKHAN$/,
+    );
+  }, 20000);
+
   it('demands a reason before deleting a payment and sends it', async () => {
     vi.mocked(salaryPaymentsApi.list).mockResolvedValue({
       data: { items: [PAYMENT], totalCount: 1, page: 1, pageSize: 10 },
