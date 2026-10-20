@@ -675,6 +675,9 @@ public static class DomainMessageKeys
     /// <summary>The exact English this API has always answered: “The file has no data rows below the header row.”</summary>
     public const string NoDataRowsBelowHeader = "validation.validation.noDataRowsBelowHeader";
 
+    /// <summary>The exact English this API has always answered: “Unknown suggestion field”</summary>
+    public const string UnknownSuggestionField = "validation.validation.unknownSuggestionField";
+
     // ── unauthorized, argument-taking ──────────────────────────────────────────────────────
     // A fifth family, and the first whose argument is a phrase rather than a value. The eight
     // refusals that say "Only farm owners and managers can …" differ only in what follows, so

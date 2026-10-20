@@ -286,6 +286,7 @@
     "transferAdjustmentQuantityZero": "Transfer or adjustment quantity cannot be zero",
     "movementTypeFilterInvalid": "Movement type must be Purchase, Consumption, Transfer, or Adjustment",
     "noDataRowsBelowHeader": "The file has no data rows below the header row.",
+    "unknownSuggestionField": "Unknown suggestion field",
     "invalidOrExpiredResetToken": "Invalid or expired reset token",
     "resetTokenAlreadyUsed": "Reset token has already been used",
     "resetTokenExpired": "Reset token has expired"

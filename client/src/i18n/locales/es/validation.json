@@ -286,6 +286,7 @@
     "transferAdjustmentQuantityZero": "La cantidad de transferencia o ajuste no puede ser cero",
     "movementTypeFilterInvalid": "El tipo de movimiento debe ser Compra, Consumo, Transferencia o Ajuste",
     "noDataRowsBelowHeader": "El archivo no tiene filas de datos debajo de la fila de encabezado.",
+    "unknownSuggestionField": "Campo de sugerencia desconocido",
     "invalidOrExpiredResetToken": "El token de restablecimiento no es válido o ha caducado",
     "resetTokenAlreadyUsed": "El token de restablecimiento ya se ha utilizado",
     "resetTokenExpired": "El token de restablecimiento ha caducado"

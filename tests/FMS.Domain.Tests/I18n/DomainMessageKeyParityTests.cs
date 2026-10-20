@@ -45,8 +45,8 @@ public class DomainMessageKeyParityTests
         // an equality: the total can only grow as families are keyed, and the lookup family
         // itself is pinned at its own count so a reflection change that dropped *one* group
         // while keeping another would still be caught.
-        // 68 lookup + 47 conflict + 3 supersede + 72 validation + 4 unauthorized
-        // + 1 unexpected + 1 unavailable = 196.
+        // 68 lookup + 47 conflict + 3 supersede + 73 validation + 4 unauthorized
+        // + 1 unexpected + 1 unavailable = 197.
         Assert.True(
             keys.Count >= 196,
             $"Only {keys.Count} domain message keys were found; at least 196 are expected. A "
@@ -62,7 +62,7 @@ public class DomainMessageKeyParityTests
         // 16 argument-taking sentences, then 23 argument-free across FeedService and
         // AnimalService. Each service's sweep raises this number, which is the point of pinning
         // it — a reflection change that missed the newest group would otherwise go unnoticed.
-        Assert.Equal(72, keys.Count(key => key.StartsWith("validation.validation.", StringComparison.Ordinal)));
+        Assert.Equal(73, keys.Count(key => key.StartsWith("validation.validation.", StringComparison.Ordinal)));
         // The unauthorized family is four keys — two argument-taking frames and two argument-free
         // login refusals — and is pinned for the same reason as the rest: it is the newest
         // family, so it is the one a reflection change would drop silently.

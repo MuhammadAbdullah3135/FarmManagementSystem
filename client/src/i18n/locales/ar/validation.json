@@ -286,6 +286,7 @@
     "transferAdjustmentQuantityZero": "لا يمكن أن تكون كمية التحويل أو التسوية صفرًا",
     "movementTypeFilterInvalid": "يجب أن يكون نوع الحركة إحدى: شراء، استهلاك، تحويل، تسوية",
     "noDataRowsBelowHeader": "لا يحتوي الملف على صفوف بيانات أسفل صف العناوين.",
+    "unknownSuggestionField": "حقل الاقتراح غير معروف",
     "invalidOrExpiredResetToken": "رمز إعادة تعيين كلمة المرور غير صالح أو منتهي الصلاحية",
     "resetTokenAlreadyUsed": "تم استخدام رمز إعادة تعيين كلمة المرور بالفعل",
     "resetTokenExpired": "انتهت صلاحية رمز إعادة تعيين كلمة المرور"

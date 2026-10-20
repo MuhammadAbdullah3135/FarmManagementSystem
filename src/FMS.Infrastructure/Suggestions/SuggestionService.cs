@@ -17,7 +17,8 @@ public class SuggestionService : ISuggestionService
             SuggestionFields.MedicalDiagnosis => GetMedicalValuesAsync(farmId, SuggestionFields.MedicalDiagnosis),
             SuggestionFields.MedicalDosage => GetMedicalValuesAsync(farmId, SuggestionFields.MedicalDosage),
             SuggestionFields.SupplierProductsSupplied => GetSupplierProductsAsync(farmId),
-            _ => Task.FromResult(Result<IReadOnlyList<string>>.NotFound("Unknown suggestion field"))
+            _ => Task.FromResult(Result<IReadOnlyList<string>>.NotFound(
+                "Unknown suggestion field", DomainMessageKeys.UnknownSuggestionField))
         };
 
     private async Task<Result<IReadOnlyList<string>>> GetMedicalValuesAsync(Guid farmId, string field)
