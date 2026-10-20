@@ -177,10 +177,21 @@ export interface InventoryLowStockAlert {
   location?: string;
 }
 
+export interface InventoryCategory {
+  id: string;
+  farmId: string;
+  name: string;
+  description?: string;
+  isActive: boolean;
+  itemCount: number;
+  createdAt: string;
+}
+
 export interface InventoryItem {
   id: string;
   farmId: string;
   name: string;
+  categoryId?: string;
   category?: string;
   unit: string;
   quantity: number;

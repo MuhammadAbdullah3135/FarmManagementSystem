@@ -113,6 +113,7 @@ const ARG_KINDS: Record<string, Record<string, ArgKind>> = {
   'validation.conflict.roleNameExists': { name: 'text' },
   'validation.conflict.feedTypeNameExists': { name: 'text' },
   'validation.conflict.expenseCategoryNameExists': { name: 'text' },
+  'validation.conflict.inventoryCategoryNameExists': { name: 'text' },
   'validation.conflict.paymentMethodNameExists': { name: 'text' },
   'validation.conflict.incomeCategoryNameExists': { name: 'text' },
   'validation.conflict.feedTypeAlreadyInDietPlan': { name: 'text' },
@@ -123,6 +124,10 @@ const ARG_KINDS: Record<string, Record<string, ArgKind>> = {
   // ── health: a medicine's unit is free text the farm typed, not the feed-unit enum ──
   'validation.validation.medicineStockInsufficient': { available: 'quantity', unit: 'text', requested: 'quantity' },
   'validation.validation.vaccineStockInsufficient': { available: 'quantity', required: 'quantity' },
+
+  // ── inventory categories ──
+  'validation.inventoryCategory.nameMaxLength': { max: 'quantity' },
+  'validation.inventoryCategory.descriptionMaxLength': { max: 'quantity' },
 
   // ── files ──
   'validation.validation.fileTooLarge': { max: 'megabytes' },

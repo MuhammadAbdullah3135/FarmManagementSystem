@@ -58,6 +58,8 @@
     "feedTypeHasStockMovements": "No se puede eliminar un tipo de alimento que tiene movimientos de existencias",
     "feedTypeInDietPlan": "No se puede eliminar un tipo de alimento que se usa en un plan de dieta",
     "incomeCategoryInUse": "No se puede eliminar una categoría de ingreso que tiene registros de ingresos",
+    "inventoryCategoryHasItems": "No se puede eliminar una categoría de inventario con artículos; desactívala en su lugar",
+    "inventoryCategoryNameExists": "Ya existe una categoría de inventario con el nombre '{{name}}'",
     "inventoryItemHasHistory": "No se puede eliminar un artículo de inventario con historial de movimientos de existencias",
     "invitationNotPending": "Solo se pueden revocar las invitaciones pendientes",
     "invitationPending": "Ya hay una invitación pendiente para ese correo electrónico",
@@ -121,6 +123,11 @@
     "dateNotFuture": "La fecha del ingreso no puede ser futura",
     "descriptionMaxLength": "La descripción no puede superar los {{max}} caracteres"
   },
+  "inventoryCategory": {
+    "descriptionMaxLength": "La descripción no puede superar los {{max}} caracteres",
+    "nameMaxLength": "El nombre de la categoría no puede superar los {{max}} caracteres",
+    "nameRequired": "El nombre de la categoría es obligatorio"
+  },
   "inventoryItem": {
     "categoryMaxLength": "La categoría no puede superar los {{max}} caracteres",
     "locationMaxLength": "La ubicación no puede superar los {{max}} caracteres",
@@ -173,6 +180,8 @@
     "image": "No se encontró la imagen",
     "incomeCategory": "No se encontró la categoría de ingreso",
     "income": "No se encontró el registro de ingreso",
+    "inventoryCategory": "No se encontró la categoría de inventario",
+    "inventoryCategoryInFarm": "No se encontró la categoría de inventario en esta granja",
     "inventoryItem": "No se encontró el artículo de inventario",
     "invitation": "No se encontró la invitación",
     "linkedMedicineInFarm": "No se encontró el medicamento vinculado en esta granja",

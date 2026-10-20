@@ -58,6 +58,8 @@
     "feedTypeHasStockMovements": "Cannot delete a feed type that has stock movements",
     "feedTypeInDietPlan": "Cannot delete a feed type that is used in a diet plan",
     "incomeCategoryInUse": "Cannot delete an income category that has income records",
+    "inventoryCategoryHasItems": "Cannot delete an inventory category that has items; deactivate it instead",
+    "inventoryCategoryNameExists": "An inventory category named '{{name}}' already exists",
     "inventoryItemHasHistory": "Cannot delete an inventory item with stock movement history",
     "invitationNotPending": "Only pending invitations can be revoked",
     "invitationPending": "An invitation for that email is already pending",
@@ -121,6 +123,11 @@
     "dateNotFuture": "Income date cannot be in the future",
     "descriptionMaxLength": "Description cannot exceed {{max}} characters"
   },
+  "inventoryCategory": {
+    "descriptionMaxLength": "Description cannot exceed {{max}} characters",
+    "nameMaxLength": "Category name cannot exceed {{max}} characters",
+    "nameRequired": "Category name is required"
+  },
   "inventoryItem": {
     "categoryMaxLength": "Category cannot exceed {{max}} characters",
     "locationMaxLength": "Location cannot exceed {{max}} characters",
@@ -173,6 +180,8 @@
     "image": "Image not found",
     "incomeCategory": "Income category not found",
     "income": "Income record not found",
+    "inventoryCategory": "Inventory category not found",
+    "inventoryCategoryInFarm": "Inventory category not found in this farm",
     "inventoryItem": "Inventory item not found",
     "invitation": "Invitation not found",
     "linkedMedicineInFarm": "Linked medicine not found in this farm",

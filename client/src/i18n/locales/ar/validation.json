@@ -58,6 +58,8 @@
     "feedTypeHasStockMovements": "لا يمكن حذف نوع علف لديه حركات مخزون",
     "feedTypeInDietPlan": "لا يمكن حذف نوع علف مستخدم في نظام غذائي",
     "incomeCategoryInUse": "لا يمكن حذف فئة إيرادات لديها سجلات إيرادات",
+    "inventoryCategoryHasItems": "لا يمكن حذف فئة مخزون تحتوي على أصناف؛ عطّلها بدلاً من ذلك",
+    "inventoryCategoryNameExists": "توجد بالفعل فئة مخزون باسم '{{name}}'",
     "inventoryItemHasHistory": "لا يمكن حذف عنصر مخزون لديه سجل حركات مخزون",
     "invitationNotPending": "يمكن إلغاء الدعوات المعلقة فقط",
     "invitationPending": "توجد دعوة معلقة بالفعل لعنوان البريد الإلكتروني هذا",
@@ -121,6 +123,11 @@
     "dateNotFuture": "لا يمكن أن يكون تاريخ الإيراد في المستقبل",
     "descriptionMaxLength": "لا يمكن أن يتجاوز الوصف {{max}} حرفًا"
   },
+  "inventoryCategory": {
+    "descriptionMaxLength": "لا يمكن أن يتجاوز الوصف {{max}} حرفًا",
+    "nameMaxLength": "لا يمكن أن يتجاوز اسم الفئة {{max}} حرفًا",
+    "nameRequired": "اسم الفئة مطلوب"
+  },
   "inventoryItem": {
     "categoryMaxLength": "لا يمكن أن تتجاوز الفئة {{max}} حرفًا",
     "locationMaxLength": "لا يمكن أن يتجاوز الموقع {{max}} حرفًا",
@@ -173,6 +180,8 @@
     "image": "لم يتم العثور على الصورة",
     "incomeCategory": "لم يتم العثور على فئة الإيراد",
     "income": "لم يتم العثور على سجل الإيراد",
+    "inventoryCategory": "لم يتم العثور على فئة المخزون",
+    "inventoryCategoryInFarm": "لم يتم العثور على فئة المخزون في هذه المزرعة",
     "inventoryItem": "لم يتم العثور على الصنف",
     "invitation": "لم يتم العثور على الدعوة",
     "linkedMedicineInFarm": "لم يتم العثور على الدواء المرتبط في هذه المزرعة",
