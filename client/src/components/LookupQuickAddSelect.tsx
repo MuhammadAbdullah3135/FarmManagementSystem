@@ -1,5 +1,5 @@
 import { useId, useState, type CSSProperties, type ReactElement } from 'react';
-import { Button, Divider, Form, Input, InputNumber, Modal, Select, Switch, message } from 'antd';
+import { Button, Divider, Form, Input, InputNumber, Modal, Select, Switch, message, type SelectProps } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import { getApiError } from '../api/farmApi';
 import {
@@ -32,7 +32,7 @@ interface LookupQuickAddSelectProps {
   variant?: QuickAddVariant;
   /** Shown on the footer button ("Add Breed") and as the modal title. */
   label?: string;
-  options: { value: string; label: string }[];
+  options: NonNullable<SelectProps['options']>;
   /** Injected by Form.Item. */
   value?: string;
   onChange?: (value?: string) => void;
@@ -55,6 +55,8 @@ interface LookupQuickAddSelectProps {
   /** Called when the select value changes (user pick or quick-add). */
   onValueSelected?: (value?: string) => void;
   disabled?: boolean;
+  /** Shows the select's loading state while an async option list is fetched. */
+  loading?: boolean;
   /** Disables only the inline quick-add (the select itself stays openable). */
   addDisabled?: boolean;
   /** Shown in the popup footer instead of the Add button when addDisabled. */
@@ -78,6 +80,7 @@ const LookupQuickAddSelect = ({
   onCreated,
   onValueSelected,
   disabled = false,
+  loading,
   addDisabled = false,
   disabledHint,
   placeholder,
@@ -158,6 +161,7 @@ const LookupQuickAddSelect = ({
         optionFilterProp="label"
         allowClear={allowClear}
         disabled={disabled}
+        loading={loading}
         placeholder={placeholder ?? `Select ${resolvedLabel.toLowerCase()}`}
         popupMatchSelectWidth={popupMatchSelectWidth}
         style={{ width: '100%', ...style }}

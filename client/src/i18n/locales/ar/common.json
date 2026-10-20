@@ -93,5 +93,18 @@
   "waitingToSyncCount_zero": "لا شيء في انتظار المزامنة",
   "youAreNotAMemberOfAnyFarm": "أنت لست عضوًا في أي مزرعة. اطلب من مالك المزرعة أن يدعوك، ثم افتح رابط الدعوة من بريدك الإلكتروني.",
   "yourAccessToThatFarmWasRemoved": "تمت إزالة وصولك إلى تلك المزرعة.",
-  "yourProfile": "ملفك الشخصي"
+  "yourProfile": "ملفك الشخصي",
+  "addAnotherValue": "إضافة قيمة أخرى",
+  "addNote": "إضافة ملاحظة",
+  "allOptions": "كل الخيارات",
+  "custom": "مخصص",
+  "describeReason": "صف السبب",
+  "hideEmptyNote": "إخفاء الملاحظة الفارغة",
+  "noteOptional": "ملاحظة (اختياري)",
+  "rating": "التقييم",
+  "reason": "السبب",
+  "recentlyUsed": "المستخدمة مؤخرًا",
+  "searchOrSelect": "اكتب للبحث أو الاختيار",
+  "selectReason": "اختر سببًا",
+  "startFromTemplate": "البدء من قالب"
 }
