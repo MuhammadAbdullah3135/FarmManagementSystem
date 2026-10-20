@@ -130,5 +130,8 @@
   "shareOfRation": "Share of ration",
   "totalCost": "Total cost",
   "totalKg": "Total weight (kg)",
-  "totalPercent": "Total share"
+  "totalPercent": "Total share",
+  "morning": "Morning",
+  "midday": "Midday",
+  "evening": "Evening"
 }

@@ -130,5 +130,8 @@
   "shareOfRation": "نسبة الحصة",
   "totalCost": "التكلفة الإجمالية",
   "totalKg": "الوزن الإجمالي (كغ)",
-  "totalPercent": "النسبة الإجمالية"
+  "totalPercent": "النسبة الإجمالية",
+  "morning": "صباحًا",
+  "midday": "ظهرًا",
+  "evening": "مساءً"
 }
