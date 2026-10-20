@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, fireEvent, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import dayjs from 'dayjs';
 import SalaryPaymentsPage from './SalaryPaymentsPage';
 import { salaryPaymentsApi, payrollApi, employeesApi } from '../../api/hr';
 import type { SalaryPayment } from '../../types';
@@ -191,6 +192,31 @@ describe('SalaryPaymentsPage ledger record', () => {
     expect(vi.mocked(salaryPaymentsApi.record).mock.calls[0][1].reference).toMatch(
       /^SAL-\d{4}-\d{2}-AKHAN$/,
     );
+  }, 20000);
+
+  it('adds a numeric suffix when the generated reference is already used', async () => {
+    const base = `SAL-${dayjs().format('YYYY-MM')}-AKHAN`;
+    vi.mocked(salaryPaymentsApi.list).mockResolvedValue({
+      data: {
+        items: [
+          { ...PAYMENT, reference: base },
+          { ...PAYMENT, id: 'p2', reference: `${base}-2` },
+        ],
+        totalCount: 2,
+        page: 1,
+        pageSize: 10,
+      },
+    } as never);
+    const user = userEvent.setup();
+    render(<SalaryPaymentsPage />);
+
+    await selectEmployee(user);
+    await user.click(await screen.findByRole('button', { name: /record payment/i }));
+    await user.type(await screen.findByLabelText('Amount'), '50000');
+    await user.click(await screen.findByRole('button', { name: /generate/i }));
+
+    const reference = screen.getByLabelText('Reference') as HTMLInputElement;
+    await waitFor(() => expect(reference.value).toBe(`${base}-3`));
   }, 20000);
 
   it('demands a reason before deleting a payment and sends it', async () => {

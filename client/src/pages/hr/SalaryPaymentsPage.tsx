@@ -17,14 +17,29 @@ const PAYMENT_TYPES: SalaryPaymentType[] = ['Cash', 'BankTransfer', 'MobileMoney
 /**
  * A readable, editable reference. The month comes from the payment date (the form sets
  * today when the modal opens). There is no employee number in the model, so the suffix is
- * the first initial plus the last name; two employees with the same initials and surname
- * would collide, which is acceptable because the field stays editable.
+ * the first initial plus the last name. Two employees with the same initials and surname
+ * can still collide; the field stays editable, and this generator only avoids duplicates
+ * it can see for the selected employee.
  */
 const salaryReferenceFor = (employee: Employee | undefined, paymentDate: Dayjs): string => {
   const employeeKey = employee
     ? `${employee.firstName.charAt(0)}${employee.lastName}`.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12)
     : 'EMP';
   return `SAL-${paymentDate.format('YYYY-MM')}-${employeeKey || 'EMP'}`;
+};
+
+/** Append -2, -3, … until the generated reference is not already used. */
+const nextAvailableReference = (base: string, existing: (string | undefined)[]): string => {
+  const taken = new Set(
+    existing
+      .filter((reference): reference is string => Boolean(reference?.trim()))
+      .map((reference) => reference.trim().toUpperCase()),
+  );
+  if (!taken.has(base.toUpperCase())) return base;
+  for (let suffix = 2; ; suffix += 1) {
+    const candidate = `${base}-${suffix}`;
+    if (!taken.has(candidate.toUpperCase())) return candidate;
+  }
 };
 
 const SalaryPaymentsPage: React.FC = () => {
@@ -46,6 +61,25 @@ const SalaryPaymentsPage: React.FC = () => {
   ]);
   const [form] = Form.useForm();
   const selectedEmployee = employees.find((employee) => employee.id === selectedEmp);
+
+  const generateReference = async () => {
+    const base = salaryReferenceFor(
+      selectedEmployee,
+      (form.getFieldValue('paymentDate') as Dayjs | undefined) ?? dayjs(),
+    );
+    let references = payments.map((payment) => payment.reference);
+    if (selectedEmp) {
+      try {
+        // The table only holds the current page; read the employee's recent payments
+        // so a duplicate in the same month is found even when it is off-page.
+        const res = await salaryPaymentsApi.list(selectedEmp, 1, 100);
+        references = res.data.items.map((payment) => payment.reference);
+      } catch {
+        // Keep the already-loaded references; the field remains editable.
+      }
+    }
+    form.setFieldValue('reference', nextAvailableReference(base, references));
+  };
 
   const loadEmployees = useCallback(async () => {
     try {
@@ -303,10 +337,7 @@ const SalaryPaymentsPage: React.FC = () => {
                   type="link"
                   size="small"
                   style={{ padding: 0 }}
-                  onClick={() => form.setFieldValue(
-                    'reference',
-                    salaryReferenceFor(selectedEmployee, (form.getFieldValue('paymentDate') as Dayjs | undefined) ?? dayjs()),
-                  )}
+                  onClick={() => void generateReference()}
                 >
                   {t('generateReference')}
                 </Button>
