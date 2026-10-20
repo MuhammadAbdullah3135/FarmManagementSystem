@@ -26,19 +26,14 @@ const money = (value: number): string =>
 const PRESET_REASONS = new Set(INVENTORY_ADJUSTMENT_REASONS.map((reason) => reason.value));
 
 /**
- * The form keeps `reason` as the same string the API already accepts. A preset round-trips
- * as itself; anything else opens as "Other" with the old text in the note, so editing an
- * old adjustment never silently loses the reason.
+ * The form keeps `reason` as the same string the API already accepts. The preset is a
+ * shortcut that writes into that field; the textarea beside it stays available for a
+ * reason the list does not contain.
  */
-const toReasonValue = (value?: string): ReasonValue | undefined => {
-  if (!value) return undefined;
-  return PRESET_REASONS.has(value) ? { code: value } : { code: 'other', note: value };
-};
+const toReasonValue = (value?: string): ReasonValue | undefined =>
+  value && PRESET_REASONS.has(value) ? { code: value } : undefined;
 
-const fromReasonValue = (value?: ReasonValue): string | undefined => {
-  if (!value?.code) return undefined;
-  return value.code === 'other' ? value.note?.trim() || undefined : value.code;
-};
+const fromReasonValue = (value?: ReasonValue): string | undefined => value?.code;
 
 const InventoryItemsPage: React.FC = () => {const { t } = useTranslation(['inventory', 'validation']); 
   const movementTypeOptions = useEnumOptions('movementType');
@@ -55,6 +50,7 @@ const InventoryItemsPage: React.FC = () => {const { t } = useTranslation(['inven
   const [movementModalOpen, setMovementModalOpen] = useState(false);
   const [movementItem, setMovementItem] = useState<InventoryItem | null>(null);
   const [movementForm] = Form.useForm();
+  const movementReason = Form.useWatch('reason', movementForm);
 
   // InventoryItem.Location stores a label. Configuration already owns the tree,
   // so the flat list is a choice list without changing what gets saved.
@@ -227,13 +223,15 @@ const InventoryItemsPage: React.FC = () => {const { t } = useTranslation(['inven
           <InputNumber precision={3} style={{ width: '100%' }} />
         </Form.Item>
         <Form.Item name="movementDate" label={t('date')}><DatePicker style={{ width: '100%' }} /></Form.Item>
-        <Form.Item
-          name="reason"
-          label={t('reason')}
-          getValueProps={(value?: string) => ({ value: toReasonValue(value) })}
-          normalize={(value?: ReasonValue) => fromReasonValue(value)}
-        >
-          <ReasonSelect options={INVENTORY_ADJUSTMENT_REASONS} />
+        <Form.Item label={t('suggestedReason')}>
+          <ReasonSelect
+            options={INVENTORY_ADJUSTMENT_REASONS}
+            value={toReasonValue(movementReason)}
+            onChange={(value) => movementForm.setFieldValue('reason', fromReasonValue(value))}
+          />
+        </Form.Item>
+        <Form.Item name="reason" label={t('reason')}>
+          <Input.TextArea rows={3} maxLength={1000} />
         </Form.Item>
       </Form>
     </Modal>

@@ -29,5 +29,4 @@ export const INVENTORY_ADJUSTMENT_REASONS: { value: string; label: string }[] = 
   { value: 'Stock count correction', label: 'Stock count correction' },
   { value: 'Returned to supplier', label: 'Returned to supplier' },
   { value: 'Used for maintenance', label: 'Used for maintenance' },
-  { value: 'other', label: 'Other' },
 ];

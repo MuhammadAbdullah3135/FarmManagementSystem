@@ -98,9 +98,13 @@ describe('InventoryItemsPage location picker', () => {
 
     await user.type(within(formItem(modal, 'Quantity')).getByRole('spinbutton'), '-1');
 
-    const reason = formItem(modal, 'Reason');
-    await user.click(within(reason).getByRole('combobox'));
+    const suggestedReason = formItem(modal, 'Suggested reason');
+    await user.click(within(suggestedReason).getByRole('combobox'));
     await user.click(await screen.findByText('Damaged', { selector: '.ant-select-item-option-content' }));
+
+    // The original free-text reason field is still there and receives the preset.
+    expect((within(formItem(modal, 'Reason')).getByRole('textbox') as HTMLTextAreaElement).value)
+      .toBe('Damaged');
 
     await user.click(within(modal).getByRole('button', { name: 'OK' }));
 

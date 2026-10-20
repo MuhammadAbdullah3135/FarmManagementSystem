@@ -25,7 +25,7 @@ Line references are to the current working tree.
 | 12 | Inventory item — `category` | `Input` at `client/src/pages/inventory/InventoryItemsPage.tsx:188` | `CreateInventoryItemRequest.Category`, `src/FMS.Application/Inventory/InventoryDtos.cs:24` | None. | 3 — new master list |
 | 13 | Inventory item — `unit` | `LookupOrText` at `client/src/pages/inventory/InventoryItemsPage.tsx:191` | `CreateInventoryItemRequest.Unit`, `src/FMS.Application/Inventory/InventoryDtos.cs:25` | None; now a fixed list plus the retained free-text input. | 2 — fixed option set |
 | 14 | Feed type — `unit` | `Select` over `FEED_UNITS` at `client/src/pages/feed/FeedTypesPage.tsx:269-270` | `CreateFeedTypeRequest.Unit` is the `FeedUnit` enum, `src/FMS.Application/Feed/FeedDtos.cs:21` | Already a fixed domain enum, `src/FMS.Domain/Enums/FeedUnit.cs:3-12`. | Fixed enum — not a gap |
-| 15 | Inventory adjustment — `reason` | `ReasonSelect` at `client/src/pages/inventory/InventoryItemsPage.tsx:231` | `RecordStockMovementRequest.Reason`, `src/FMS.Application/Inventory/InventoryDtos.cs:38` | None; now a fixed list with an Other note. | 2 — fixed option set |
+| 15 | Inventory adjustment — `reason` | `ReasonSelect` preset plus the retained `Input.TextArea` at `client/src/pages/inventory/InventoryItemsPage.tsx:231-239` | `RecordStockMovementRequest.Reason`, `src/FMS.Application/Inventory/InventoryDtos.cs:38` | None; now a fixed preset list that writes into the existing free-text reason. | 2 — fixed option set |
 | 16 | Feed stock movement — reason | **No reason field.** The form only has `notes` at `client/src/pages/feed/FeedTypesPage.tsx:308-309`; the request has `Notes` at `src/FMS.Application/Feed/FeedDtos.cs:61`. | `RecordStockMovementRequest.Notes` | None, because there is no field to populate. | Schema gap — not a lookup-gap target |
 | 17 | Supplier — `productsSupplied` | `Input.TextArea` at `client/src/pages/inventory/SuppliersPage.tsx:29` | `CreateSupplierRequest.ProductsSupplied`, `src/FMS.Application/Inventory/SupplierDtos.cs:20` | No product list. Inventory item names are the closest existing data (`src/FMS.API/Controllers/InventoryItemsController.cs:20`). | 1 — select from existing data |
 | 18 | Feeding schedule — `label` | `LookupOrText` at `client/src/pages/feed/FeedingSchedulesPage.tsx:173` | `CreateFeedingScheduleRequest.Label`, `src/FMS.Application/Feed/FeedDtos.cs:204` | None; now fixed presets plus a retained free-text input. | 2 — fixed option set |
@@ -136,13 +136,12 @@ export const INVENTORY_ADJUSTMENT_REASONS = [
   { value: 'Stock count correction', label: 'Stock count correction' },
   { value: 'Returned to supplier', label: 'Returned to supplier' },
   { value: 'Used for maintenance', label: 'Used for maintenance' },
-  { value: 'other', label: 'Other' },
 ] as const;
 ```
 
-`ReasonSelect` shows the free-text note when "Other" is chosen; a preset value is stored
-as the human-readable string in the existing `Reason` field. An old reason that is not in
-the list reopens as "Other" with its text preserved.
+The preset `ReasonSelect` writes the chosen string into the existing free-text `Reason`
+field, which stays on the form. A reason that is not in the list is typed into that field
+directly; editing an old adjustment therefore never loses its text.
 
 ### Feeding schedule labels
 

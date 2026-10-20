@@ -57,6 +57,7 @@
   "purchases": "المشتريات",
   "quantity": "الكمية",
   "reason": "السبب",
+  "suggestedReason": "سبب مقترح",
   "recordCustomerSale": "تسجيل بيع لعميل",
   "recordPurchase": "تسجيل شراء",
   "recordSale": "تسجيل بيع",

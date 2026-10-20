@@ -57,6 +57,7 @@
   "purchases": "Compras",
   "quantity": "Cantidad",
   "reason": "Motivo",
+  "suggestedReason": "Motivo sugerido",
   "recordCustomerSale": "Registrar venta a cliente",
   "recordPurchase": "Registrar compra",
   "recordSale": "Registrar venta",

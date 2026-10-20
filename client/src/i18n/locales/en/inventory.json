@@ -57,6 +57,7 @@
   "purchases": "Purchases",
   "quantity": "Quantity",
   "reason": "Reason",
+  "suggestedReason": "Suggested reason",
   "recordCustomerSale": "Record customer sale",
   "recordPurchase": "Record purchase",
   "recordSale": "Record sale",
