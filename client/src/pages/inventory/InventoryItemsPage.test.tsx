@@ -56,7 +56,10 @@ describe('InventoryItemsPage location picker', () => {
     expect(configurationApi.locations).toHaveBeenCalled();
 
     await user.type(within(formItem(modal, 'Name')).getByRole('textbox'), 'Fence wire');
-    await user.type(within(formItem(modal, 'Unit')).getByRole('textbox'), 'rolls');
+
+    const unit = formItem(modal, 'Unit');
+    await user.click(within(unit).getByRole('combobox'));
+    await user.click(await screen.findByText('Roll', { selector: '.ant-select-item-option-content' }));
 
     const location = formItem(modal, 'Location');
     await user.click(within(location).getByRole('combobox'));
@@ -65,7 +68,45 @@ describe('InventoryItemsPage location picker', () => {
     await user.click(within(modal).getByRole('button', { name: 'OK' }));
 
     expect(inventoryApi.create).toHaveBeenCalledWith(
-      expect.objectContaining({ name: 'Fence wire', unit: 'rolls', location: 'Main Barn' }),
+      expect.objectContaining({ name: 'Fence wire', unit: 'Roll', location: 'Main Barn' }),
+    );
+  }, 90000);
+
+  it('stores a preset adjustment reason on the stock movement', async () => {
+    vi.mocked(inventoryApi.list).mockResolvedValue(res({
+      items: [{
+        id: 'item-1',
+        name: 'Fence wire',
+        category: 'Supplies',
+        unit: 'Roll',
+        quantity: 4,
+        reorderLevel: 1,
+        unitCost: 10,
+        location: 'Main Barn',
+        stockValue: 40,
+        isLowStock: false,
+      }],
+      totalCount: 1,
+    }));
+    const user = userEvent.setup();
+    render(<MemoryRouter><InventoryItemsPage /></MemoryRouter>);
+
+    await user.click(await screen.findByRole('button', { name: /Adjust Stock/i }));
+    const modal = (
+      await screen.findByText(/Adjust stock/i, { selector: '.ant-modal-title' })
+    ).closest('.ant-modal') as HTMLElement;
+
+    await user.type(within(formItem(modal, 'Quantity')).getByRole('spinbutton'), '-1');
+
+    const reason = formItem(modal, 'Reason');
+    await user.click(within(reason).getByRole('combobox'));
+    await user.click(await screen.findByText('Damaged', { selector: '.ant-select-item-option-content' }));
+
+    await user.click(within(modal).getByRole('button', { name: 'OK' }));
+
+    expect(inventoryApi.recordMovement).toHaveBeenCalledWith(
+      'item-1',
+      expect.objectContaining({ reason: 'Damaged', quantity: -1 }),
     );
   }, 90000);
 });

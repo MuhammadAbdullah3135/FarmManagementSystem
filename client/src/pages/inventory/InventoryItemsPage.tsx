@@ -11,7 +11,9 @@ import type { InventoryItem } from '../../types';
 import { useTranslation } from 'react-i18next';
 import { useEnumOptions } from '../../i18n/enumOptions';
 import LookupOrText from '../../components/LookupOrText';
+import ReasonSelect, { type ReasonValue } from '../../components/ReasonSelect';
 import type { EntityOption } from '../../components/EntityPicker';
+import { INVENTORY_ADJUSTMENT_REASONS, INVENTORY_UNITS } from '../../utils/inventoryOptions';
 
 /**
  * Money in this table has no currency symbol — the column headers say what the figure is,
@@ -20,6 +22,23 @@ import type { EntityOption } from '../../components/EntityPicker';
  */
 const money = (value: number): string =>
   formatNumber(value, undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+const PRESET_REASONS = new Set(INVENTORY_ADJUSTMENT_REASONS.map((reason) => reason.value));
+
+/**
+ * The form keeps `reason` as the same string the API already accepts. A preset round-trips
+ * as itself; anything else opens as "Other" with the old text in the note, so editing an
+ * old adjustment never silently loses the reason.
+ */
+const toReasonValue = (value?: string): ReasonValue | undefined => {
+  if (!value) return undefined;
+  return PRESET_REASONS.has(value) ? { code: value } : { code: 'other', note: value };
+};
+
+const fromReasonValue = (value?: ReasonValue): string | undefined => {
+  if (!value?.code) return undefined;
+  return value.code === 'other' ? value.note?.trim() || undefined : value.code;
+};
 
 const InventoryItemsPage: React.FC = () => {const { t } = useTranslation(['inventory', 'validation']); 
   const movementTypeOptions = useEnumOptions('movementType');
@@ -169,7 +188,14 @@ const InventoryItemsPage: React.FC = () => {const { t } = useTranslation(['inven
             <Form.Item name="category" label={t('category')}><Input maxLength={100} placeholder={t('supplies')} /></Form.Item>
           </Col>
           <Col xs={24} sm={12}>
-            <Form.Item name="unit" label={t('unit')} rules={[{ required: true, message: t('validation:common.unitRequired') }]}><Input maxLength={50} placeholder={t('rollsPieces')} /></Form.Item>
+            <Form.Item name="unit" label={t('unit')} rules={[{ required: true, message: t('validation:common.unitRequired') }]}>
+              <LookupOrText
+                options={INVENTORY_UNITS.map((unit) => ({ value: unit, label: unit }))}
+                placeholder={t('unit')}
+                textPlaceholder={t('rollsPieces')}
+                allowClear
+              />
+            </Form.Item>
           </Col>
         </Row>
         {!editing && <Form.Item name="quantity" label={t('openingQuantity')} rules={[{ required: true }]}><InputNumber min={0} precision={3} style={{ width: '100%' }} /></Form.Item>}
@@ -201,7 +227,14 @@ const InventoryItemsPage: React.FC = () => {const { t } = useTranslation(['inven
           <InputNumber precision={3} style={{ width: '100%' }} />
         </Form.Item>
         <Form.Item name="movementDate" label={t('date')}><DatePicker style={{ width: '100%' }} /></Form.Item>
-        <Form.Item name="reason" label={t('reason')}><Input.TextArea rows={3} maxLength={1000} /></Form.Item>
+        <Form.Item
+          name="reason"
+          label={t('reason')}
+          getValueProps={(value?: string) => ({ value: toReasonValue(value) })}
+          normalize={(value?: ReasonValue) => fromReasonValue(value)}
+        >
+          <ReasonSelect options={INVENTORY_ADJUSTMENT_REASONS} />
+        </Form.Item>
       </Form>
     </Modal>
   </>;
