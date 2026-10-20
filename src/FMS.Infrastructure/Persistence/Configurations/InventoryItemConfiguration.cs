@@ -19,6 +19,7 @@ public class InventoryItemConfiguration : IEntityTypeConfiguration<InventoryItem
 
         builder.HasIndex(i => new { i.FarmId, i.Name }).IsUnique();
         builder.HasIndex(i => new { i.FarmId, i.Category });
+        builder.HasIndex(i => i.CategoryId);
 
         builder.HasOne(i => i.Farm)
             .WithMany()

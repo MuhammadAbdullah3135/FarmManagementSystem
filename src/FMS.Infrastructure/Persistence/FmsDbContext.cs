@@ -82,6 +82,7 @@ public class FmsDbContext : DbContext
     public DbSet<BirthRecord> BirthRecords => Set<BirthRecord>();
     public DbSet<BirthOffspring> BirthOffspring => Set<BirthOffspring>();
     public DbSet<InventoryItem> InventoryItems => Set<InventoryItem>();
+    public DbSet<InventoryCategory> InventoryCategories => Set<InventoryCategory>();
     public DbSet<StockMovement> StockMovements => Set<StockMovement>();
     public DbSet<Supplier> Suppliers => Set<Supplier>();
     public DbSet<SupplierPurchase> SupplierPurchases => Set<SupplierPurchase>();

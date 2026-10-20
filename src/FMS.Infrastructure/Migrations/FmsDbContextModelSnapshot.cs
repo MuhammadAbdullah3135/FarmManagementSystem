@@ -2198,6 +2198,48 @@ namespace FMS.Infrastructure.Migrations
                     b.ToTable("IncomeRecords");
                 });
 
+            modelBuilder.Entity("FMS.Domain.Entities.InventoryCategory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<Guid>("FarmId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
+
+                    b.Property<DateTime?>("ModifiedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FarmId", "IsActive");
+
+                    b.ToTable("InventoryCategories");
+                });
+
             modelBuilder.Entity("FMS.Domain.Entities.InventoryItem", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2207,6 +2249,9 @@ namespace FMS.Infrastructure.Migrations
                     b.Property<string>("Category")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
+
+                    b.Property<Guid?>("CategoryId")
+                        .HasColumnType("uuid");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -2250,6 +2295,8 @@ namespace FMS.Infrastructure.Migrations
                         .HasColumnType("numeric(18,2)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CategoryId");
 
                     b.HasIndex("FarmId", "Category");
 
@@ -4446,13 +4493,31 @@ namespace FMS.Infrastructure.Migrations
                     b.Navigation("PaymentMethod");
                 });
 
-            modelBuilder.Entity("FMS.Domain.Entities.InventoryItem", b =>
+            modelBuilder.Entity("FMS.Domain.Entities.InventoryCategory", b =>
                 {
                     b.HasOne("FMS.Domain.Entities.Farm", "Farm")
                         .WithMany()
                         .HasForeignKey("FarmId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Farm");
+                });
+
+            modelBuilder.Entity("FMS.Domain.Entities.InventoryItem", b =>
+                {
+                    b.HasOne("FMS.Domain.Entities.InventoryCategory", "CategoryLookup")
+                        .WithMany("Items")
+                        .HasForeignKey("CategoryId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("FMS.Domain.Entities.Farm", "Farm")
+                        .WithMany()
+                        .HasForeignKey("FarmId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("CategoryLookup");
 
                     b.Navigation("Farm");
                 });
@@ -5080,6 +5145,11 @@ namespace FMS.Infrastructure.Migrations
             modelBuilder.Entity("FMS.Domain.Entities.IncomeCategory", b =>
                 {
                     b.Navigation("IncomeRecords");
+                });
+
+            modelBuilder.Entity("FMS.Domain.Entities.InventoryCategory", b =>
+                {
+                    b.Navigation("Items");
                 });
 
             modelBuilder.Entity("FMS.Domain.Entities.InventoryItem", b =>
