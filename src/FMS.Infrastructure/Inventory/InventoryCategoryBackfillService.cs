@@ -23,17 +23,23 @@ public class InventoryCategoryBackfillService : IInventoryCategoryBackfillServic
     public async Task<InventoryCategoryBackfillReport> RunAsync(
         bool apply, CancellationToken cancellationToken = default)
     {
-        var unlinkedItems = await _context.InventoryItems
-            .Where(item => item.CategoryId == null
-                && item.Category != null
-                && item.Category.Trim() != string.Empty)
-            .ToListAsync(cancellationToken);
+        // Only items that are still unlinked matter, so a second run sees an empty set.
+        // The whitespace test is done in memory: PostgreSQL and the InMemory provider do
+        // not agree on how `Trim()` behaves for nulls in a translated predicate, and the
+        // backfill's correctness must not depend on the provider's null semantics.
+        var unlinkedItems = (await _context.InventoryItems
+                .Where(item => item.CategoryId == null)
+                .ToListAsync(cancellationToken))
+            .Where(item => !string.IsNullOrWhiteSpace(item.Category))
+            .ToList();
 
-        var blankFarmIds = await _context.InventoryItems
-            .Where(item => item.CategoryId == null
-                && (item.Category == null || item.Category.Trim() == string.Empty))
+        var blankFarmIds = (await _context.InventoryItems
+                .Where(item => item.CategoryId == null)
+                .Select(item => new { item.FarmId, item.Category })
+                .ToListAsync(cancellationToken))
+            .Where(item => string.IsNullOrWhiteSpace(item.Category))
             .Select(item => item.FarmId)
-            .ToListAsync(cancellationToken);
+            .ToList();
 
         var existingCategories = await _context.InventoryCategories
             .ToListAsync(cancellationToken);
@@ -116,6 +122,7 @@ public class InventoryCategoryBackfillService : IInventoryCategoryBackfillServic
         report.Farms = reportsByFarm.Values
             .OrderBy(row => row.FarmId)
             .ToList();
+        report.BlankCategoryItemsLeftNull = report.Farms.Sum(row => row.BlankCategoryItemsLeftNull);
         return report;
     }
 
