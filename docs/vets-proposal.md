@@ -1,8 +1,9 @@
 # Vets — proposal
 
-Status: **proposal awaiting approval**. No entity, migration, endpoint, backfill, or UI
+Status: **reviewed, awaiting approval**. No entity, migration, endpoint, backfill, or UI
 change has been created. This document is the decision package for the second Bucket 3
-master list, following `docs/inventory-categories-proposal.md`.
+master list, following `docs/inventory-categories-proposal.md`. It was checked against the
+four current clinical entities and `HealthCostService` during Phase C.9.
 
 ## Why vets next
 
@@ -35,9 +36,9 @@ Vet : AuditableEntity
   LicenseNumber  string(100), optional
   IsActive       bool, default true
   Notes          string(2000), optional
-  CreatedAt      DateTime (from AuditableEntity)
+  CreatedAt      DateTime (from BaseEntity)
+  ModifiedAt     DateTime?  (from BaseEntity)
   CreatedBy      Guid?      (from AuditableEntity)
-  ModifiedAt     DateTime?  (from AuditableEntity)
   ModifiedBy     Guid?      (from AuditableEntity)
 ```
 
@@ -69,7 +70,7 @@ Rules:
   message; callers deactivate it instead. `IsActive=false` hides it from new selections but
   keeps it readable on existing records.
 - A vet belongs to exactly one farm. Cross-farm sharing would need a join table and is out
-  of scope (see open questions).
+  of scope (see Decisions locked).
 
 ## Transitional columns on the four clinical records
 
@@ -102,7 +103,7 @@ in `FarmContextMiddleware`, which today means any member of that farm. The vet c
 must not be stricter or looser than that, so no user gains or loses access when this lands.
 Reads also follow the existing clinical-record reads (any farm member). If the intent is
 to narrow both surfaces to `Veterinarian`/`FarmManager`/`SystemOwner`, that should be a
-separate, explicit decision for the medical-record endpoints too (see open questions).
+separate, explicit decision for the medical-record endpoints too (see Open for owner).
 
 ## Migration steps
 
@@ -132,7 +133,11 @@ dotnet run --project src/FMS.API -- vets:backfill --apply
 
 Behaviour:
 
-- Scope: all four clinical tables, per farm.
+- Scope: all four clinical tables, per farm. `MedicalRecord` is the only one of the four
+  that is soft-deletable (`SoftDeleteEntity`); its soft-deleted rows still carry a
+  `VetName` and are included in the backfill so a later restore does not need a second
+  pass. `VaccinationRecord`, `BreedingRecord`, and `BirthRecord` derive from
+  `AuditableEntity` and have no soft-delete flag.
 - Input: distinct, non-empty `trim(VetName)` values per farm. Blank, whitespace-only, and
   null names stay `null` and are reported as left null.
 - Grouping: case-insensitive (`lower(trim(VetName))`), one row per farm and normalized
@@ -151,8 +156,17 @@ Behaviour:
 ## Reporting
 
 **Vet-cost grouping does not change in this phase.** `HealthCostService.GetCostsByVetAsync`
-continues to group medical and vaccination costs by the retained `VetName` string exactly
-as it does today. Consequences, accepted for one release:
+continues to group by the retained `VetName` string exactly as it does today:
+
+- `MedicalRecords` are filtered to `FarmId`, `!IsDeleted`, `Cost > 0`, non-null `VetName`,
+  and the optional `DateRecorded` range, then grouped by the exact `VetName` string.
+- `VaccinationRecords` are filtered to `FarmId`, `Cost > 0`, non-null `VetName`, and the
+  optional `DateGiven` range, then grouped by the exact `VetName` string. This table has
+  no soft-delete flag.
+- The two grouped lists are concatenated and merged by the exact string, then ordered by
+  total cost. `VetId` is not read by this method in this phase.
+
+Consequences, accepted for one release:
 
 - Backfilled and newly linked records report under the same names as before.
 - Renaming a vet in the master list does not rewrite historical `VetName` values, so the
@@ -240,8 +254,9 @@ Approximately **26–32 files**, including tests and the migration:
 
 ## Backfill dry run and database setup
 
-The dry run needs a reachable PostgreSQL with the `AddVets` migration applied **before**
-this proposal is implemented; until then there is nothing to dry-run. Once approved, the
+Until this proposal is approved and the `AddVets` migration exists, there is nothing to
+dry-run. After approval, the migration is applied to a non-production copy (so `Vets` and
+the four `VetId` columns exist) and only then is the backfill dry run possible. The
 operator command is handled before API startup, so it does not migrate or seed by itself.
 The connection setup required is the same as inventory categories: a non-production
 database whose connection string is supplied through `ConnectionStrings__DefaultConnection`
@@ -249,24 +264,44 @@ database whose connection string is supplied through `ConnectionStrings__Default
 for explicit confirmation of that database before running the dry run, and will not run
 `--apply` without a separate approval.
 
-## Open questions
+## Decisions locked
 
-Defaults in bold are the ones this proposal assumes unless you answer otherwise.
+These defaults were set during the Phase C.8/C.9 review and are no longer open:
 
-1. **A vet belongs to one farm only.** No cross-farm sharing in this phase. A vet who
-   works for several farms is entered once per farm; a shared-vet join table is a later
-   decision.
-2. **`LicenseNumber` is optional and unique per farm when present** (case-insensitive,
-   trimmed, blank stored as `null`).
-3. **Deleting a referenced vet is blocked; deactivate instead.** This mirrors inventory
-   categories and keeps history readable.
-4. **Vet writes keep the existing medical-record write rules** (today: any farm member,
-   via farm context). Narrowing both to `Veterinarian`/`FarmManager`/`SystemOwner` is a
-   separate decision because it changes existing clinical endpoints too.
-5. **Renaming a vet does not rewrite historical `VetName` strings**, and vet-cost grouping
-   stays on `VetName` for this phase. A later phase can switch grouping to `VetId`.
-6. **`GestationHealthCheck.PerformedBy` stays employee-backed** and is not part of the vet
-   list in this phase.
-7. **No automatic creation from free text.** A typed name that does not match a vet stays
-   `vetId = null` until someone adds it to the list; the backfill only runs as the
-   explicit, dry-runnable operator step.
+1. **One vet belongs to one farm.** There is no cross-farm sharing in this phase; a vet
+   working for several farms is entered once per farm. A shared-vet join table would be a
+   later decision.
+2. **`LicenseNumber` is optional and unique per farm when present** (trimmed,
+   case-insensitive, blank stored as `null`; partial unique index where it is not null).
+3. Names are unique per farm, case-insensitively, with a functional index plus a service
+   check, matching inventory categories.
+4. The **Health** module owns the entity, service, controller, and UI.
+5. `VetId` is nullable on the four clinical records; `VetName` is retained for at least
+   one release, and a selected vet's name is mirrored into it.
+6. Vet writes follow the **current medical-record writers** (any farm member via farm
+   context today); reads follow current clinical-record reads.
+7. Vet-cost grouping stays on `VetName` in this phase; no report or grouping code changes.
+8. `GestationHealthCheck.PerformedBy` stays employee-backed and is not part of this phase.
+9. The backfill is a separate, idempotent, dry-runnable operator step. `--apply` needs its
+   own approval and is never part of a migration.
+
+## Open for owner
+
+1. **Approve the proposal as a whole** (entity, migration, backfill, endpoints, and UI) so
+   implementation can start.
+2. **Should clinical write roles be narrowed?** The default keeps the current medical-record
+   rules (any farm member). Narrowing to `Veterinarian`/`FarmManager`/`SystemOwner` would
+   also change existing medical and vaccination endpoints, so it is a separate decision.
+3. **Rename propagation:** confirm that renaming a vet should leave historical `VetName`
+   strings untouched (the locked default), or say whether a rename should rewrite them in a
+   later phase once grouping moves to `VetId`.
+4. **Picker strictness:** keep the free-text fallback on the four screens for a vet who is
+   not in the list (the proposed default), or make the picker mandatory over the master
+   list? The free-text path leaves `VetId` null.
+5. **Menu placement:** Health → Vets (proposed) or Configuration → Vets?
+6. **Farm export:** should `Vets` be added to the full-farm export when the entity is
+   built? The proposal currently does not include it.
+7. **Retiring `VetName`:** when may the retained column be dropped? The proposal assumes a
+   later release after every client writes `VetId`, not this phase.
+8. **Gestation `performedBy`:** leave it employee-backed permanently, or revisit it as a
+   vet reference in a later phase?
