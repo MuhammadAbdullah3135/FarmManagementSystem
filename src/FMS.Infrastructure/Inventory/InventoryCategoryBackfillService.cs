@@ -23,6 +23,38 @@ public class InventoryCategoryBackfillService : IInventoryCategoryBackfillServic
     public async Task<InventoryCategoryBackfillReport> RunAsync(
         bool apply, CancellationToken cancellationToken = default)
     {
+        if (apply)
+            return await RunCoreAsync(apply: true, cancellationToken);
+
+        // A dry run is belt-and-braces read-only: it reports without staging changes, and
+        // it runs inside a transaction that is always rolled back. On PostgreSQL the
+        // transaction is additionally marked READ ONLY, so even a future change that
+        // accidentally stages an update would be rejected by the database rather than
+        // silently written. Providers without transaction support (the InMemory test
+        // provider) simply get the report-only behaviour.
+        if (!_context.Database.IsRelational())
+            return await RunCoreAsync(apply: false, cancellationToken);
+
+        await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+        try
+        {
+            if (_context.Database.IsNpgsql())
+                await _context.Database.ExecuteSqlRawAsync("SET TRANSACTION READ ONLY", cancellationToken);
+
+            var report = await RunCoreAsync(apply: false, cancellationToken);
+            await transaction.RollbackAsync(cancellationToken);
+            return report;
+        }
+        catch
+        {
+            await transaction.RollbackAsync(CancellationToken.None);
+            throw;
+        }
+    }
+
+    private async Task<InventoryCategoryBackfillReport> RunCoreAsync(
+        bool apply, CancellationToken cancellationToken)
+    {
         // Only items that are still unlinked matter, so a second run sees an empty set.
         // The whitespace test is done in memory: PostgreSQL and the InMemory provider do
         // not agree on how `Trim()` behaves for nulls in a translated predicate, and the

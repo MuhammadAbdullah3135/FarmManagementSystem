@@ -379,6 +379,22 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+// Management commands run BEFORE the host starts, so they cannot pick up the automatic
+// MigrateAsync() and role seeding below. The inventory-category backfill has to be
+// dry-runnable against an untouched schema, and a branch after the migration block would
+// have written (or at least attempted) schema changes before it printed a single count.
+//
+//   dotnet run --project src/FMS.API -- inventory:categories:backfill
+//   dotnet run --project src/FMS.API -- inventory:categories:backfill --apply
+if (InventoryCategoryBackfillCommand.Matches(args))
+{
+    using var backfillScope = app.Services.CreateScope();
+    var backfill = backfillScope.ServiceProvider
+        .GetRequiredService<IInventoryCategoryBackfillService>();
+    Environment.ExitCode = await InventoryCategoryBackfillCommand.RunAsync(backfill, args, Console.Out);
+    return;
+}
+
 if (usingLocalStorage && !app.Environment.IsDevelopment())
 {
     app.Logger.LogWarning(
@@ -510,39 +526,6 @@ if (!string.IsNullOrWhiteSpace(herokuPort))
 {
     app.Urls.Clear();
     app.Urls.Add($"http://+:{herokuPort}");
-}
-
-// The backfill is a separate operator step, not part of the schema migration, so it can
-// be dry-run before it writes. The schema migration above has to have run, which is why
-// this branch sits after it.
-//
-//   dotnet run --project src/FMS.API -- inventory:categories:backfill
-//   dotnet run --project src/FMS.API -- inventory:categories:backfill --apply
-if (args.Length > 0 && args[0] == "inventory:categories:backfill")
-{
-    using var backfillScope = app.Services.CreateScope();
-    var backfill = backfillScope.ServiceProvider
-        .GetRequiredService<IInventoryCategoryBackfillService>();
-    var apply = args.Skip(1).Any(arg => arg == "--apply");
-
-    var report = await backfill.RunAsync(apply);
-
-    Console.WriteLine(apply
-        ? "Inventory category backfill applied."
-        : "Inventory category backfill dry run (no changes written).");
-    Console.WriteLine($"categories created: {report.CategoriesCreated}");
-    Console.WriteLine($"items linked: {report.ItemsLinked}");
-    Console.WriteLine($"blank-category items left null: {report.BlankCategoryItemsLeftNull}");
-    foreach (var farm in report.Farms)
-    {
-        Console.WriteLine(
-            $"  farm {farm.FarmId}: categories={farm.CategoriesCreated}, " +
-            $"linked={farm.ItemsLinked}, blank={farm.BlankCategoryItemsLeftNull}");
-    }
-
-    if (!apply)
-        Console.WriteLine("Re-run with --apply to write these changes.");
-    return;
 }
 
 // Local operator convenience: `dotnet run --project src/FMS.API -- demo:reset` restores the
