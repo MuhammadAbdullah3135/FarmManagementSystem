@@ -1,7 +1,7 @@
 # Inventory category backfill — runbook
 
-Status: **dry run not yet run**. This runbook is for the owner to run the read-only dry run
-against a non-production copy. Nothing in this document authorises `--apply`.
+Status: **dry run completed against an empty local database only**. Real-data duplicate
+checks are still pending. Nothing in this document authorises `--apply`.
 
 ## What the command does
 
@@ -125,6 +125,45 @@ Re-run with --apply to write these changes.
 ```
 
 The numbers are placeholders. The totals are the sums of the per-farm rows.
+
+## Dry-run results
+
+**Date:** 2026-10-21
+
+**Environment:** local Windows VM, PostgreSQL 18.6, `localhost:5433/fms_copy`, read-only
+role `fms_readonly`. This is a **fresh, empty local database**, created by applying all 13
+EF migrations with the admin role. It is **not production**, and no Supabase or Neon
+database was read or written.
+
+**Migrations applied:** all 13, from `20260908091002_InitialPostgres` through
+`20261020152830_AddInventoryCategories`.
+
+**Checks:**
+
+| Check | Result |
+|---|---|
+| `20261020152830_AddInventoryCategories` in `__EFMigrationsHistory` | present |
+| `InventoryCategories` rows | 0 |
+| `InventoryItems` rows | 0 |
+| unlinked non-blank `InventoryItems` | 0 |
+| duplicate query rows | 0 |
+
+**Duplicate query output:** no rows returned.
+
+**Dry-run output:**
+
+```text
+Inventory category backfill dry run (no changes written).
+categories created: 0
+items linked: 0
+blank-category items left null: 0
+Re-run with --apply to write these changes.
+```
+
+Because the database is empty, these zero counts validate only that the command runs
+against the migrated schema. **Duplicate checks against real farm data are still
+pending.** No canonical-name proposals can be made from this run, and nothing was
+renamed or merged. `--apply` was not run.
 
 ## Interpreting the counts
 
