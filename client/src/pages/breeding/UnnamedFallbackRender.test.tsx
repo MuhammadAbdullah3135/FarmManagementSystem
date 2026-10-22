@@ -11,6 +11,7 @@ import { useFarmStore } from '../../stores/farmStore';
 import { lookupsApi } from '../../api/attendance';
 import BirthRecordingPage from './BirthRecordingPage';
 import LineagePage from './LineagePage';
+import type { LineageResponse } from '../../types';
 vi.mock('../../api/attendance', () => ({
   lookupsApi: {
     animals: vi.fn(),
