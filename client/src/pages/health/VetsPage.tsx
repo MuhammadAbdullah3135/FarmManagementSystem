@@ -36,7 +36,8 @@ const VetsPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    load();
+    const timer = window.setTimeout(() => { load(); }, 0);
+    return () => window.clearTimeout(timer);
   }, [load]);
 
   const openCreate = () => {

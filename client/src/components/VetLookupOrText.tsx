@@ -24,10 +24,10 @@ interface VetLookupOrTextProps {
 }
 
 /**
- * Loads the farm's active vets as picker options. Kept at module scope so a
- * page can pass it directly and the picker's effect does not refetch each render.
+ * Loads the farm's active vets as picker options. Kept at module scope so the
+ * picker's effect does not refetch each render.
  */
-export const loadVetOptions = async (): Promise<EntityOption[]> => {
+const loadVetOptions = async (): Promise<EntityOption[]> => {
   const response = await vetsApi.list(false);
   return response.data.map((vet) => ({ value: vet.id, label: vet.name }));
 };
@@ -54,7 +54,6 @@ const VetLookupOrText = ({
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
     loadOptions()
       .then((rows) => {
         if (!cancelled) setOptions(rows);
