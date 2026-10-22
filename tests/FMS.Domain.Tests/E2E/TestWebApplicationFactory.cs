@@ -147,6 +147,7 @@ public class TestWebApplicationFactory : IDisposable
                     services.AddScoped<FMS.Application.Health.IMedicineService, FMS.Infrastructure.Health.MedicineService>();
                     services.AddScoped<FMS.Application.Health.IMedicalRecordService, FMS.Infrastructure.Health.MedicalRecordService>();
                     services.AddScoped<FMS.Application.Health.IHealthCostService, FMS.Infrastructure.Health.HealthCostService>();
+                    services.AddScoped<FMS.Application.Health.IVetService, FMS.Infrastructure.Health.VetService>();
                     services.AddScoped<FMS.Application.Health.IWeightCheckScheduleService, FMS.Infrastructure.Health.WeightCheckScheduleService>();
                     services.AddScoped<FMS.Application.Tasks.IFarmTaskService, FMS.Infrastructure.Tasks.FarmTaskService>();
                     services.AddScoped<FMS.Application.Attendance.IAttendanceService, FMS.Infrastructure.Attendance.AttendanceService>();
