@@ -205,13 +205,34 @@ This is destructive:
    636.45s, 610.65s), and `tsc -b`, lint, `vite build`, and the backend suite all passed. No
    test timeout was raised.
 
-## 10. Sign-off
+## 10. Sign-off gates
+
+All gates must be checked before final sign-off.
+
+- [ ] Backup or PITR confirmed with timestamp: ______________________
+- [ ] Production migration history confirmed by the owner: ______________________
+- [ ] Deploy window chosen (recorded in section 11).
+- [ ] Smoke checks passed: ______________________
+- [ ] Rollback rehearsed or documented: ______________________
+
+## 11. Deploy window
+
+**Owner to fill in before sign-off.**
+
+| Field | Value |
+|-------|-------|
+| Deploy date and time | |
+| Timezone | |
+| Expected duration | |
+| Low-traffic / write-freeze window | |
+| Deployment owner | |
+| Rollback owner | |
+
+## 12. Deployment record
 
 | Item | Owner | Result / timestamp |
 |------|-------|--------------------|
-| Backup or PITR confirmed | | |
-| Pending migration set confirmed | | |
 | API deployed and migrated | | |
 | Client deployed | | |
-| Smoke checks passed | | |
+| Post-deploy smoke checks | | |
 | Rollback decision (if needed) | | |
