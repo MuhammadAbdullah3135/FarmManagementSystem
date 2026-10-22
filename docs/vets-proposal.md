@@ -301,3 +301,80 @@ change has been made yet.
 ## Open for owner
 
 _None._
+
+## Vets dry-run results — 2026-10-22
+
+Target: the local PostgreSQL copy `localhost:5433/fms_prod_copy`, account `postgres`.
+No production database was contacted and no credentials are recorded here.
+
+### Migration state
+
+Before this run, `__EFMigrationsHistory` contained 13 migrations. The latest was
+`20261020152830_AddInventoryCategories`; `20261022092559_AddVets` was absent.
+
+After explicit approval, `20261022092559_AddVets` was applied to this local copy only.
+Verification confirmed:
+
+- `20261022092559_AddVets` is recorded with `ProductVersion` `8.0.32`.
+- `VetId` exists as a nullable `uuid` column on `BirthRecords`, `BreedingRecords`,
+  `MedicalRecords`, and `VaccinationRecords`.
+- `IX_Vets_FarmId_IsActive`, `IX_Vets_FarmId_LicenseNumberLower`,
+  `IX_Vets_FarmId_NameLower`, and `PK_Vets` exist.
+
+One application attempt failed before executing any statement because the generated
+script had a UTF-8 BOM, which psql rejected at `START TRANSACTION`. A verification run
+immediately afterwards showed no migration row and no `VetId` columns; the script was then
+re-run from a BOM-free copy and committed. The failed attempt wrote nothing.
+
+The backfill was not applied.
+
+### Dry run
+
+Command, with no `--apply`:
+
+```text
+dotnet run --project src/FMS.API -- vets:backfill
+```
+
+Output:
+
+```text
+Vet backfill dry run (no changes written).
+vets created: 0
+medical records linked: 0
+vaccination records linked: 0
+breeding records linked: 0
+birth records linked: 0
+blank vet names left null: 0
+Re-run with --apply to write these changes.
+```
+
+### Source data
+
+Read-only counts from the four clinical tables:
+
+| Table | Rows | Unlinked (`VetId IS NULL`) | Non-blank `VetName` | Blank/null `VetName` |
+|-------|-----:|---------------------------:|--------------------:|---------------------:|
+| `BirthRecords` | 0 | 0 | 0 | 0 |
+| `BreedingRecords` | 0 | 0 | 0 | 0 |
+| `MedicalRecords` | 0 | 0 | 0 | 0 |
+| `VaccinationRecords` | 0 | 0 | 0 | 0 |
+
+`Vets` rows: **0**.
+
+Distinct `VetName` values: **none**. Case-insensitive duplicate names: **none**.
+
+### Interpretation
+
+`fms_prod_copy` contains no clinical records in the four backfilled tables, so the
+backfill had nothing to create or link. The zero result is data-dependent, not a backfill
+failure. Re-running the dry run after the copy contains clinical records will exercise the
+grouping, blank-name, and duplicate-name paths.
+
+### Baseline
+
+- Backend: **1138 passed, 17 skipped, 0 failed**.
+- Frontend: **95 files / 832 tests passed**.
+- `npx tsc -b`, `npm run lint`, and `npx vite build` passed.
+
+No `--apply` was run. No production database was contacted.
