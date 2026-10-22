@@ -3,7 +3,6 @@
 A full-stack farm management platform for livestock operations. Track animals, health records, breeding, feed, inventory, employees, and finances — all from a single dashboard.
 
 **Live site:** https://muhammadabdullah3135.github.io/FarmManagementSystem/
-**Public demo (no account needed):** https://fms-demo-client.netlify.app/ — open it and choose **Try demo**
 **Production API health:** https://fms-api-3ba95327d590.herokuapp.com/health
 
 > **Android APK:** No APK is published to GitHub Releases yet. Once a release exists, downloads will appear at **[github.com/MuhammadAbdullah3135/FarmManagementSystem/releases](https://github.com/MuhammadAbdullah3135/FarmManagementSystem/releases)** — to set that up, follow GitHub's guide to [creating a release](https://docs.github.com/en/repositories/releasing-projects-on-github/managing-releases-in-a-repository#creating-a-release) and attach the signed APK. Until then, build it yourself using the instructions in [src/FMS.Mobile](src/FMS.Mobile/).
@@ -59,11 +58,10 @@ FMS.API -> FMS.Infrastructure -> FMS.Application -> FMS.Domain
 | **Production app** | https://muhammadabdullah3135.github.io/FarmManagementSystem/ | React SPA on GitHub Pages. Share this base URL, not a `/login` deep link (Pages returns 404 for deep links). |
 | **Production API** | https://fms-api-3ba95327d590.herokuapp.com | .NET 8 API on Heroku; `/health` reports API and database status. |
 | **Production database** | *(private)* | PostgreSQL 17 on Supabase. |
-| **Public demo** | https://fms-demo-client.netlify.app/ | Separate API and database. Open it and choose **Try demo** — no credentials needed. |
 
-Production and the demo are fully isolated: separate Heroku apps, databases, JWT secrets and email transports. Data entered in one never reaches the other, and an account created in one does not exist in the other. The demo is a shared sandbox that can be reset to its seed state, so do not enter real or personal data there.
-
-For the demo's deployment details, see [docs/demo-deployment.md](docs/demo-deployment.md).
+GitHub Pages is the only supported frontend. The shared demo account is a feature of the
+same app and is off in production by default; see [Demo account](#demo-account). For a
+separate isolated demo deployment, see [docs/demo-deployment.md](docs/demo-deployment.md).
 
 ## Features
 

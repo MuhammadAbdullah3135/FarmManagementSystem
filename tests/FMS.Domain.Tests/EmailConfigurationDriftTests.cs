@@ -12,15 +12,15 @@ namespace FMS.Domain.Tests;
 /// <list type="number">
 /// <item>merging the SendGrid transport changes no runtime behaviour — the shipped
 /// default is the Log transport, with no credentials anywhere in the repository; and</item>
-/// <item>the value that would silently break every email is flagged by the guard, so the
+/// <item>the value that would silently break every email is flagged by the guard, so a
 /// <c>Frontend:BaseUrl</c> placeholder in Production cannot ride along unnoticed into
 /// messages whose links would point nowhere.</item>
 /// </list>
 ///
 /// <para>
-/// A note on the second point: this is a tripwire, not a fix. Production still ships the
-/// template URL, and it must be set by whoever owns the deployment — a test asserting it
-/// has already been fixed would be asserting a precondition that has not been met.
+/// Production now names the GitHub Pages deployment as its only frontend, so the guard
+/// stays quiet and the values below also pin the exact origin and base path that the
+/// deployed app uses.
 /// </para>
 /// </summary>
 public class EmailConfigurationDriftTests
@@ -156,8 +156,8 @@ public class EmailConfigurationDriftTests
     public void AppSettings_Production_FrontendUrl_AndTheGuardAgree()
     {
         // Invariant rather than a fixed expectation: whatever Production ships, the guard's
-        // verdict about it must match. Today that value is the template URL, so the guard
-        // warns; once the owner sets the real URL, this keeps passing without an edit.
+        // verdict about it must match. Today that value is the GitHub Pages URL, so the
+        // guard stays quiet.
         var baseUrl = AppSettings("appsettings.Production.json")
             .GetProperty("Frontend").GetProperty("BaseUrl").GetString();
 
@@ -185,30 +185,31 @@ public class EmailConfigurationDriftTests
     }
 
     [Fact]
-    public void AppSettings_Production_StillNeedsItsFrontendUrlSetBeforeDeliveryIsEnabled()
+    public void AppSettings_Production_FrontendUrlIsTheGitHubPagesSite()
     {
-        // Stated as an explicit precondition so it cannot be forgotten between subphases:
-        // as long as this holds, enabling SendGrid in production would send real reset and
-        // invitation emails whose links point at a host that does not serve the app.
+        // Every email link is built from this setting, and Pages serves the app from a repo
+        // subpath, so the path is part of the value. No trailing slash: the reset and
+        // invitation callers append their own leading slash.
         var baseUrl = AppSettings("appsettings.Production.json")
             .GetProperty("Frontend").GetProperty("BaseUrl").GetString();
 
-        Assert.Contains("yourdomain.com", baseUrl!, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal("https://muhammadabdullah3135.github.io/FarmManagementSystem", baseUrl);
+        Assert.DoesNotContain("yourdomain.com", baseUrl!, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
-    public void AppSettings_Production_CorsOriginIsStillTheTemplateValue()
+    public void AppSettings_Production_CorsOriginIsTheGitHubPagesOrigin()
     {
-        // The same precondition on the client side: the deployed site's own API calls
-        // would be blocked until this matches where the frontend is actually served.
+        // The origin has no repo path. The retired Netlify frontend must not remain an
+        // allowed caller, otherwise it would still be able to reach the production API.
         var origins = AppSettings("appsettings.Production.json")
             .GetProperty("Cors").GetProperty("AllowedOrigins");
 
         var values = origins.EnumerateArray().Select(o => o.GetString()).ToList();
 
-        Assert.True(
-            values.Any(v => v is not null && v.Contains("yourdomain.com", StringComparison.OrdinalIgnoreCase)),
-            $"expected a template origin in Production CORS, found: {string.Join(", ", values)}");
+        Assert.Contains("https://muhammadabdullah3135.github.io", values);
+        Assert.DoesNotContain(values, v => v is not null && v.Contains("netlify", StringComparison.OrdinalIgnoreCase));
+        Assert.DoesNotContain(values, v => v is not null && v.Contains("yourdomain.com", StringComparison.OrdinalIgnoreCase));
     }
 
     // ── the interface three features depend on ────────────
