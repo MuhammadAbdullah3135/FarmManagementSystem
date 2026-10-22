@@ -249,6 +249,7 @@ public static class FarmExportEntities
         FarmExportTable<GestationRecord>.ReflectedForFarm("GestationRecords", "gestation-records.csv"),
         FarmExportTable<IdentificationType>.ReflectedForFarm("IdentificationTypes", "identification-types.csv"),
         FarmExportTable<IncomeCategory>.ReflectedForFarm("IncomeCategories", "income-categories.csv"),
+        FarmExportTable<InventoryCategory>.ReflectedForFarm("InventoryCategories", "inventory-categories.csv"),
         FarmExportTable<Location>.ReflectedForFarm("Locations", "locations.csv"),
         FarmExportTable<LocationType>.ReflectedForFarm("LocationTypes", "location-types.csv"),
         FarmExportTable<MedicalRecord>.ReflectedForFarm("MedicalRecords", "medical-records.csv"),
@@ -281,6 +282,13 @@ public static class FarmExportEntities
     /// </summary>
     public static readonly IReadOnlyList<FarmExportExclusionDto> Exclusions =
     [
+        new()
+        {
+            Entity = "Vet",
+            Reason = "Vet master data was added after the archive's table list was fixed. Writing a " 
+                + "vet table and its clinical file is deferred, so this phase's archive leaves vets " 
+                + "out rather than risking an incomplete or unreadable file."
+        },
         new()
         {
             Entity = "FarmHealthStatusSnapshot",

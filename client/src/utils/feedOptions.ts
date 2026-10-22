@@ -26,3 +26,15 @@ export const FEED_UNITS: FeedUnit[] = [
   'Bag',
   'Other',
 ];
+
+/**
+ * Preset labels for a feeding schedule. The field stays a free-text string, so a
+ * schedule can still be named something the farm has not used before.
+ */
+export const FEEDING_LABELS = [
+  'Morning feed',
+  'Midday feed',
+  'Evening feed',
+  'Night feed',
+  'Supplement',
+] as const;

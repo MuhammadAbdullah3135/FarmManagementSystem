@@ -420,29 +420,25 @@ runbook as their skip message rather than pretending to pass:
 | `RealEmailDeliveryTests.FarmInvitation_IsDeliveredToARealInbox` | farm invitation |
 | `RealEmailDeliveryTests.AlertDigest_IsDeliveredToARealInbox` | alert digest (two alerts, one Critical, one Warning) |
 
-### Preconditions — these block a live send, not optional
+### Link and CORS targets
 
-Both are owner actions. Enabling `Email:Provider=SendGrid` with either still in place sends
-**real** emails to **real** inboxes.
+GitHub Pages is the only supported frontend. Its values are now committed in
+`appsettings.Production.json` and must stay in sync with the Heroku config vars.
 
-1. **`Frontend:BaseUrl` must be the deployed frontend URL.**
-   `appsettings.Production.json` still ships the template value `https://yourdomain.com`.
-   Every email contains a link built from this setting, so with it in place the recipient
-   gets a dead link in a message that looks legitimate. The guard warns about exactly this
-   at startup (`Email configuration: Frontend:BaseUrl is still the template value…`), and
-   `EmailConfigurationDriftTests` asserts the warning and the value stay consistent.
-   Set `Frontend__BaseUrl` (Heroku config var) to the real URL, **including any base path**
-   — the Pages deployment is served from a repo subpath, so the trailing path matters.
-2. **`Cors:AllowedOrigins` must match that URL.** Not an email setting, but the same
-   consequence: `appsettings.Production.json` still lists `https://yourdomain.com`, so the
-   deployed site's own API calls would be rejected until it matches. Set
-   `Cors__AllowedOrigins__0` to the deployed frontend origin.
+1. **`Frontend:BaseUrl` is the deployed frontend URL.**
+   The committed value is `https://muhammadabdullah3135.github.io/FarmManagementSystem`.
+   Every email contains a link built from this setting, **including the repo subpath** the
+   Pages deployment is served from. Keep `Frontend__BaseUrl` (Heroku config var) equal to
+   it; a template or host-only value makes every reset and invitation link dead.
+2. **`Cors:AllowedOrigins` matches that URL's origin.**
+   The committed value is `https://muhammadabdullah3135.github.io` — scheme + host, with
+   **no** `/FarmManagementSystem` path. The retired Netlify origin is intentionally absent,
+   so that deployment can no longer call the production API.
 
-Both are asserted as still-unfixed today by `EmailConfigurationDriftTests`
-(`AppSettings_Production_StillNeedsItsFrontendUrlSetBeforeDeliveryIsEnabled`,
-`AppSettings_Production_CorsOriginIsStillTheTemplateValue`), so they cannot be forgotten
-silently — those two tests start failing the moment the values are corrected, at which
-point delete them.
+`EmailConfigurationDriftTests` pins both values
+(`AppSettings_Production_FrontendUrlIsTheGitHubPagesSite`,
+`AppSettings_Production_CorsOriginIsTheGitHubPagesOrigin`). If the frontend moves, update
+the config and those two assertions together.
 
 ### Runbook
 

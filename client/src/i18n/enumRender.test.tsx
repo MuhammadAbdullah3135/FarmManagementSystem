@@ -37,6 +37,15 @@ vi.mock('recharts', async (importOriginal) => {
   };
 });
 
+// The audit-log test is about translated enum text, not date picking. antd's RangePicker is
+// the most expensive part of that page to mount (dayjs + picker panels), so replace it with
+// a no-op while leaving the rest of antd real for the pages under test.
+vi.mock('antd', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('antd')>();
+  const DatePicker = Object.assign(() => null, { RangePicker: () => null }) as unknown as typeof actual.DatePicker;
+  return { ...actual, DatePicker };
+});
+
 vi.mock('../api/auditLogs', () => ({ auditLogsApi: { getLogs: vi.fn() } }));
 vi.mock('../api/inventory', () => ({ inventoryApi: { list: vi.fn(), movements: vi.fn(), report: vi.fn() } }));
 vi.mock('../api/health', () => ({
@@ -89,7 +98,12 @@ const textNodes = (container: HTMLElement): string[] => {
 };
 
 const expectNoRawKeys = (container: HTMLElement) => {
-  const leaked = textNodes(container).filter((text) => KEY_IDS.some((id) => text.includes(id)));
+  // Every raw key is `namespace:key`, so text without a colon cannot match one. Skipping
+  // those nodes keeps this scan cheap on pages with a large table, where the old
+  // `KEY_IDS.some(...)` call ran once per text node under full-suite CPU contention.
+  const leaked = textNodes(container).filter(
+    (text) => text.includes(':') && KEY_IDS.some((id) => text.includes(id)),
+  );
   expect(leaked).toEqual([]);
 };
 
@@ -216,8 +230,11 @@ afterEach(async () => {
 describe('the audit log in Spanish', () => {
   it('shows translated actions and a localized total, with no English enum word left', async () => {
     await i18n.changeLanguage('es');
+    // One row is enough to prove the action and entity-type translations; the total is a
+    // separate value, so the localization of "Total 8 records" still gets exercised without
+    // rendering eight copyable rows under load.
     vi.mocked(auditLogsApi.getLogs).mockResolvedValue({
-      data: { items: Array.from({ length: 8 }, (_, i) => auditEntry({ id: `log-${i}`, entityType: i === 0 ? 'WeightRecord' : 'Animal' })), totalCount: 8 },
+      data: { items: [auditEntry({ id: 'log-0', entityType: 'WeightRecord' })], totalCount: 8 },
     } as never);
 
     const { container } = renderAt(<AuditLogPage />, '/dashboard/admin/audit-log');

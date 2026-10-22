@@ -113,6 +113,9 @@ const ARG_KINDS: Record<string, Record<string, ArgKind>> = {
   'validation.conflict.roleNameExists': { name: 'text' },
   'validation.conflict.feedTypeNameExists': { name: 'text' },
   'validation.conflict.expenseCategoryNameExists': { name: 'text' },
+  'validation.conflict.inventoryCategoryNameExists': { name: 'text' },
+  'validation.conflict.vetNameExists': { name: 'text' },
+  'validation.conflict.vetLicenseNumberExists': { licenseNumber: 'text' },
   'validation.conflict.paymentMethodNameExists': { name: 'text' },
   'validation.conflict.incomeCategoryNameExists': { name: 'text' },
   'validation.conflict.feedTypeAlreadyInDietPlan': { name: 'text' },
@@ -123,6 +126,15 @@ const ARG_KINDS: Record<string, Record<string, ArgKind>> = {
   // ── health: a medicine's unit is free text the farm typed, not the feed-unit enum ──
   'validation.validation.medicineStockInsufficient': { available: 'quantity', unit: 'text', requested: 'quantity' },
   'validation.validation.vaccineStockInsufficient': { available: 'quantity', required: 'quantity' },
+
+  // ── inventory categories ──
+  'validation.validation.inventoryCategoryNameMaxLength': { max: 'quantity' },
+  'validation.validation.inventoryCategoryDescriptionMaxLength': { max: 'quantity' },
+  'validation.validation.vetNameMaxLength': { max: 'quantity' },
+  'validation.validation.vetPhoneMaxLength': { max: 'quantity' },
+  'validation.validation.vetEmailMaxLength': { max: 'quantity' },
+  'validation.validation.vetLicenseNumberMaxLength': { max: 'quantity' },
+  'validation.validation.vetNotesMaxLength': { max: 'quantity' },
 
   // ── files ──
   'validation.validation.fileTooLarge': { max: 'megabytes' },

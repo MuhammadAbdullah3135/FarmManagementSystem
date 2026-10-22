@@ -180,6 +180,7 @@ export const appMenuItems: AppMenuItem[] = [
     labelKey: 'nav:healthManagement',
     children: [
       { key: '/dashboard/health/medical', icon: <MedicineBoxOutlined />, labelKey: 'nav:medicalRecords' },
+      { key: '/dashboard/health/vets', labelKey: 'nav:vets' },
       { key: '/dashboard/health/medicines', icon: <MedicineBoxOutlined />, labelKey: 'nav:medicines' },
       { key: '/dashboard/health/medicines/alerts', icon: <MedicineBoxOutlined />, labelKey: 'nav:medicineAlerts' },
       { key: '/dashboard/health/vaccines', labelKey: 'nav:vaccineTypes' },

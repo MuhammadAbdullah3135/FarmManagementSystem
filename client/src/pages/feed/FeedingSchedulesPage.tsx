@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  Button, Card, DatePicker, Form, Input, Modal, Popconfirm, Select, Space, Switch, Table, Tag, message,
+  Button, Card, DatePicker, Form, Modal, Popconfirm, Select, Space, Switch, Table, TimePicker, Tag, message,
 } from 'antd';
 import { PlusOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
@@ -9,6 +9,19 @@ import { feedingSchedulesApi, feedingTasksApi, dietPlansApi } from '../../api/fe
 import { getApiError } from '../../api/farmApi';
 import type { DietPlan, FeedingSchedule } from '../../types';
 import { useTranslation } from 'react-i18next';
+import LookupOrText from '../../components/LookupOrText';
+import { FEEDING_LABELS } from '../../utils/feedOptions';
+
+/**
+ * The DTO stores HH:mm, while TimePicker works with Dayjs. Both helpers use
+ * today's date so the time is the only part that reaches the form value.
+ */
+const parseTimeOfDay = (value?: string): Dayjs | null => {
+  if (!value) return null;
+  const [hour, minute] = value.split(':').map(Number);
+  if (!Number.isInteger(hour) || !Number.isInteger(minute)) return null;
+  return dayjs().hour(hour).minute(minute).second(0).millisecond(0);
+};
 
 const FeedingSchedulesPage: React.FC = () => {const { t } = useTranslation('feed'); 
   const [schedules, setSchedules] = useState<FeedingSchedule[]>([]);
@@ -18,6 +31,12 @@ const FeedingSchedulesPage: React.FC = () => {const { t } = useTranslation('feed
   const [genDate, setGenDate] = useState<Dayjs | null>(dayjs());
   const [genLoading, setGenLoading] = useState(false);
   const [form] = Form.useForm();
+
+  const timePresets = [
+    { label: t('morning'), value: parseTimeOfDay('07:00')! },
+    { label: t('midday'), value: parseTimeOfDay('12:00')! },
+    { label: t('evening'), value: parseTimeOfDay('18:00')! },
+  ];
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -137,11 +156,27 @@ const FeedingSchedulesPage: React.FC = () => {const { t } = useTranslation('feed
           <Form.Item name="dietPlanId" label={t('dietPlan')} rules={[{ required: true }]}>
             <Select options={plans.map((p) => ({ value: p.id, label: p.name }))} />
           </Form.Item>
-          <Form.Item name="timeOfDay" label={t('timeOfDay')} rules={[{ required: true }]}>
-            <Input placeholder={t('eG0700')} />
+          <Form.Item
+            name="timeOfDay"
+            label={t('timeOfDay')}
+            rules={[{ required: true }]}
+            getValueProps={(value?: string) => ({ value: parseTimeOfDay(value) })}
+            normalize={(value?: Dayjs | null) => (value ? value.format('HH:mm') : undefined)}
+          >
+            <TimePicker
+              format="HH:mm"
+              presets={timePresets}
+              placeholder={t('eG0700')}
+              style={{ width: '100%' }}
+            />
           </Form.Item>
           <Form.Item name="label" label={t('label')}>
-            <Input maxLength={100} />
+            <LookupOrText
+              options={FEEDING_LABELS.map((label) => ({ value: label, label }))}
+              placeholder={t('label')}
+              textPlaceholder={t('customLabel')}
+              allowClear
+            />
           </Form.Item>
         </Form>
       </Modal>

@@ -81,5 +81,18 @@
   "waitingToSyncCount": "{{count}} waiting to sync",
   "youAreNotAMemberOfAnyFarm": "You are not a member of any farm. Ask a farm owner to invite you, then open the invitation link from your email.",
   "yourAccessToThatFarmWasRemoved": "Your access to that farm was removed.",
-  "yourProfile": "Your profile"
+  "yourProfile": "Your profile",
+  "addAnotherValue": "Add another value",
+  "addNote": "Add note",
+  "allOptions": "All options",
+  "custom": "Custom",
+  "describeReason": "Describe the reason",
+  "hideEmptyNote": "Hide empty note",
+  "noteOptional": "Note (optional)",
+  "rating": "Rating",
+  "reason": "Reason",
+  "recentlyUsed": "Recently used",
+  "searchOrSelect": "Type to search or select",
+  "selectReason": "Select a reason",
+  "startFromTemplate": "Start from a template"
 }

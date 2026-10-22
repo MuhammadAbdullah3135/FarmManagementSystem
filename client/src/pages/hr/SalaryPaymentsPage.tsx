@@ -10,8 +10,37 @@ import { salaryPaymentsApi, payrollApi, employeesApi } from '../../api/hr';
 import { getApiError } from '../../api/farmApi';
 import type { Employee, PayrollReport, SalaryPayment, SalaryPaymentType } from '../../types';
 import { useTranslation } from 'react-i18next';
+import CollapsedNote from '../../components/CollapsedNote';
 
 const PAYMENT_TYPES: SalaryPaymentType[] = ['Cash', 'BankTransfer', 'MobileMoney', 'Cheque', 'Other'];
+
+/**
+ * A readable, editable reference. The month comes from the payment date (the form sets
+ * today when the modal opens). There is no employee number in the model, so the suffix is
+ * the first initial plus the last name. Two employees with the same initials and surname
+ * can still collide; the field stays editable, and this generator only avoids duplicates
+ * it can see for the selected employee.
+ */
+const salaryReferenceFor = (employee: Employee | undefined, paymentDate: Dayjs): string => {
+  const employeeKey = employee
+    ? `${employee.firstName.charAt(0)}${employee.lastName}`.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12)
+    : 'EMP';
+  return `SAL-${paymentDate.format('YYYY-MM')}-${employeeKey || 'EMP'}`;
+};
+
+/** Append -2, -3, … until the generated reference is not already used. */
+const nextAvailableReference = (base: string, existing: (string | undefined)[]): string => {
+  const taken = new Set(
+    existing
+      .filter((reference): reference is string => Boolean(reference?.trim()))
+      .map((reference) => reference.trim().toUpperCase()),
+  );
+  if (!taken.has(base.toUpperCase())) return base;
+  for (let suffix = 2; ; suffix += 1) {
+    const candidate = `${base}-${suffix}`;
+    if (!taken.has(candidate.toUpperCase())) return candidate;
+  }
+};
 
 const SalaryPaymentsPage: React.FC = () => {
   const { t } = useTranslation('hr');
@@ -31,6 +60,26 @@ const SalaryPaymentsPage: React.FC = () => {
     dayjs().subtract(30, 'day'), dayjs(),
   ]);
   const [form] = Form.useForm();
+  const selectedEmployee = employees.find((employee) => employee.id === selectedEmp);
+
+  const generateReference = async () => {
+    const base = salaryReferenceFor(
+      selectedEmployee,
+      (form.getFieldValue('paymentDate') as Dayjs | undefined) ?? dayjs(),
+    );
+    let references = payments.map((payment) => payment.reference);
+    if (selectedEmp) {
+      try {
+        // The table only holds the current page; read the employee's recent payments
+        // so a duplicate in the same month is found even when it is off-page.
+        const res = await salaryPaymentsApi.list(selectedEmp, 1, 100);
+        references = res.data.items.map((payment) => payment.reference);
+      } catch {
+        // Keep the already-loaded references; the field remains editable.
+      }
+    }
+    form.setFieldValue('reference', nextAvailableReference(base, references));
+  };
 
   const loadEmployees = useCallback(async () => {
     try {
@@ -281,13 +330,25 @@ const SalaryPaymentsPage: React.FC = () => {
             />
           </Form.Item>
           <Form.Item name="reference" label={t('reference')} rules={[{ max: 100 }]}>
-            <Input maxLength={100} />
+            <Input
+              maxLength={100}
+              addonAfter={
+                <Button
+                  type="link"
+                  size="small"
+                  style={{ padding: 0 }}
+                  onClick={() => void generateReference()}
+                >
+                  {t('generateReference')}
+                </Button>
+              }
+            />
           </Form.Item>
           <Form.Item name="periodCovered" label={t('periodCovered')} extra={t('periodCoveredHint')}>
             <DatePicker picker="month" style={{ width: '100%' }} />
           </Form.Item>
           <Form.Item name="notes" label={t('notes')}>
-            <Input.TextArea rows={2} maxLength={1000} />
+            <CollapsedNote rows={2} maxLength={1000} />
           </Form.Item>
         </Form>
       </Modal>

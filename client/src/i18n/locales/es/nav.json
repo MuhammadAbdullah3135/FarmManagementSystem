@@ -56,5 +56,6 @@
   "vaccinationSchedules": "Programación de vacunación",
   "vaccineTypes": "Tipos de vacuna",
   "vetCosts": "Costos veterinarios",
-  "weightCheckSchedules": "Programación de control de peso"
+  "weightCheckSchedules": "Programación de control de peso",
+  "vets": "Veterinarios"
 }

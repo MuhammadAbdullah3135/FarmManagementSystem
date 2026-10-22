@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Button, Card, Col, DatePicker, Drawer, Form, Input, InputNumber, Modal, Popconfirm, Row, Space, Table, message,
 } from 'antd';
@@ -7,9 +7,12 @@ import type { ColumnsType } from 'antd/es/table';
 import { formatDate, formatMoney } from '../../i18n/format';
 import dayjs from 'dayjs';
 import { medicinesApi } from '../../api/health';
+import { suppliersApi } from '../../api/suppliers';
 import { getApiError } from '../../api/farmApi';
 import type { MedicineListItem, MedicineStock } from '../../types';
 import { useTranslation } from 'react-i18next';
+import LookupOrText from '../../components/LookupOrText';
+import type { EntityOption } from '../../components/EntityPicker';
 
 const MedicinesPage: React.FC = () => {const { t } = useTranslation(['health', 'validation']); 
   const [medicines, setMedicines] = useState<MedicineListItem[]>([]);
@@ -25,6 +28,26 @@ const MedicinesPage: React.FC = () => {const { t } = useTranslation(['health', '
   const [stockModalOpen, setStockModalOpen] = useState(false);
   const [form] = Form.useForm();
   const [stockForm] = Form.useForm();
+
+  // MedicineStock still stores the supplier name as a string.
+  const loadSupplierOptions = useCallback(async (): Promise<EntityOption[]> => {
+    const res = await suppliersApi.list({ pageSize: 100 });
+    return res.data.items.map((supplier) => ({ value: supplier.name, label: supplier.name }));
+  }, []);
+
+  // Unit stays a free-text string. The picker offers units already in use on
+  // this page, so common values can be reused without restricting new ones.
+  const unitOptions = useMemo<EntityOption[]>(() => {
+    const seen = new Set<string>();
+    const options: EntityOption[] = [];
+    for (const medicine of medicines) {
+      const unit = medicine.unit?.trim();
+      if (!unit || seen.has(unit)) continue;
+      seen.add(unit);
+      options.push({ value: unit, label: unit });
+    }
+    return options;
+  }, [medicines]);
 
   const load = useCallback(async (p: number) => {
     setLoading(true);
@@ -252,7 +275,11 @@ const MedicinesPage: React.FC = () => {const { t } = useTranslation(['health', '
             <Input.TextArea rows={2} maxLength={1000} />
           </Form.Item>
           <Form.Item name="unit" label={t('unit')} rules={[{ required: true, message: t('validation:common.unitRequired') }]}>
-            <Input maxLength={50} placeholder={t('eGDosesMlTablets')} />
+            <LookupOrText
+              options={unitOptions}
+              placeholder={t('eGDosesMlTablets')}
+              textPlaceholder={t('eGDosesMlTablets')}
+            />
           </Form.Item>
           <Row gutter={[16, 16]}>
             <Col xs={24} sm={12}>
@@ -317,7 +344,11 @@ const MedicinesPage: React.FC = () => {const { t } = useTranslation(['health', '
             <DatePicker style={{ width: '100%' }} />
           </Form.Item>
           <Form.Item name="supplier" label={t('supplier')}>
-            <Input maxLength={200} />
+            <LookupOrText
+              loadOptions={loadSupplierOptions}
+              recentStorageKey="supplier"
+              allowClear
+            />
           </Form.Item>
           <Form.Item name="dateReceived" label={t('dateReceived')}>
             <DatePicker style={{ width: '100%' }} />

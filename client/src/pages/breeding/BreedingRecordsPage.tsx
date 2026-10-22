@@ -7,6 +7,7 @@ import { lookupsApi } from '../../api/attendance';
 import { getApiError } from '../../api/farmApi';
 import { formatDate } from '../../i18n/format';
 import { blockersOf } from '../../utils/blockers';
+import VetLookupOrText from '../../components/VetLookupOrText';
 import dayjs from 'dayjs';
 import { useNavigate } from 'react-router-dom';
 import type { BreedingRecord } from '../../types';
@@ -94,7 +95,7 @@ export default function BreedingRecordsPage() {const { t } = useTranslation('bre
       damId: record.damId,
       breedingDate: dayjs(record.breedingDate),
       method: record.method,
-      vetName: record.vetName,
+      vet: { vetId: record.vetId, vetName: record.vetName },
       result: record.result,
       notes: record.notes,
     });
@@ -112,7 +113,8 @@ export default function BreedingRecordsPage() {const { t } = useTranslation('bre
           damId: values.damId,
           breedingDate,
           method: values.method,
-          vetName: values.vetName,
+          vetId: values.vet?.vetId,
+          vetName: values.vet?.vetName,
           result: values.result,
           notes: values.notes,
         };
@@ -124,7 +126,8 @@ export default function BreedingRecordsPage() {const { t } = useTranslation('bre
           damId: values.damId,
           breedingDate,
           method: values.method,
-          vetName: values.vetName,
+          vetId: values.vet?.vetId,
+          vetName: values.vet?.vetName,
           notes: values.notes,
         };
         await breedingRecordsApi.create(payload);
@@ -293,8 +296,8 @@ options={resultOptions}
               />
             </Form.Item>
           )}
-          <Form.Item name="vetName" label={t('veterinarian')}>
-            <Input maxLength={200} placeholder={t('vetName')} />
+          <Form.Item name="vet" label={t('veterinarian')}>
+            <VetLookupOrText textPlaceholder={t('vetName')} allowClear />
           </Form.Item>
           <Form.Item name="notes" label={t('notes')}>
             <Input.TextArea rows={2} maxLength={2000} />

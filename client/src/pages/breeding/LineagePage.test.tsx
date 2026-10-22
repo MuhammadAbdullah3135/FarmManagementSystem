@@ -76,11 +76,15 @@ const selectOption = (label: string) => {
   fireEvent.click(content!.closest('.ant-select-item-option') as HTMLElement);
 };
 
-const viewLineageOf = async (user: ReturnType<typeof userEvent.setup>, label: string) => {
-  await user.click(screen.getByRole('combobox'));
+const viewLineageOf = async (label: string) => {
+  // These tests assert the chart geometry, not pointer semantics. userEvent's pointer
+  // checks walk the DOM with getComputedStyle on every click, which is what pushed this
+  // 2s test past the 5s limit when 95 workers shared the CPU; fireEvent exercises the
+  // same antd handlers without that overhead.
+  fireEvent.mouseDown(screen.getByRole('combobox'));
   await waitFor(() => expect(document.querySelectorAll('.ant-select-item-option-content').length).toBeGreaterThan(0));
   selectOption(label);
-  await user.click(screen.getByRole('button', { name: /View Lineage/ }));
+  fireEvent.click(screen.getByRole('button', { name: /View Lineage/ }));
 };
 
 beforeEach(() => {
@@ -96,11 +100,10 @@ beforeEach(() => {
 
 describe('LineagePage chart', () => {
   it('draws the root, both parents and their connectors', async () => {
-    const user = userEvent.setup();
     vi.mocked(lineageApi.get).mockResolvedValue({ data: response(root) } as never);
 
     render(<LineagePage />);
-    await viewLineageOf(user, 'TAG-0079 - Boocho');
+    await viewLineageOf('TAG-0079 - Boocho');
 
     await waitFor(() => expect(cards()).toHaveLength(3));
     expect(cardFor('TAG-0079').textContent).toContain('Boocho');
@@ -116,11 +119,10 @@ describe('LineagePage chart', () => {
   });
 
   it('renders the female recorded as a sire as recorded, in the sire slot', async () => {
-    const user = userEvent.setup();
     vi.mocked(lineageApi.get).mockResolvedValue({ data: response(root) } as never);
 
     render(<LineagePage />);
-    await viewLineageOf(user, 'TAG-0079 - Boocho');
+    await viewLineageOf('TAG-0079 - Boocho');
 
     await waitFor(() => expect(cards()).toHaveLength(3));
     const sireCard = cardFor('TAG-0058-2');
@@ -131,12 +133,11 @@ describe('LineagePage chart', () => {
   });
 
   it('draws offspring below the root, on the generation under it', async () => {
-    const user = userEvent.setup();
     const calf = animal({ id: 'calf', tagNumber: 'TAG-0200', name: 'Calf One' });
     vi.mocked(lineageApi.get).mockResolvedValue({ data: response({ ...root, offspring: [calf] }) } as never);
 
     render(<LineagePage />);
-    await viewLineageOf(user, 'TAG-0079 - Boocho');
+    await viewLineageOf('TAG-0079 - Boocho');
 
     await waitFor(() => expect(cards()).toHaveLength(4));
     expect(linksOfSide('child')).toHaveLength(1);
@@ -149,12 +150,11 @@ describe('LineagePage chart', () => {
   });
 
   it('says so when nothing is recorded above or below instead of drawing an empty frame', async () => {
-    const user = userEvent.setup();
     const lonely = animal({ id: 'root', tagNumber: 'TAG-0079', name: 'Boocho', isRoot: true });
     vi.mocked(lineageApi.get).mockResolvedValue({ data: response(lonely) } as never);
 
     render(<LineagePage />);
-    await viewLineageOf(user, 'TAG-0079 - Boocho');
+    await viewLineageOf('TAG-0079 - Boocho');
 
     expect(await screen.findByText('No ancestors recorded')).toBeInTheDocument();
     expect(screen.getByText('No offspring recorded')).toBeInTheDocument();
@@ -163,7 +163,6 @@ describe('LineagePage chart', () => {
   });
 
   it('opens the chart on the animal that was asked about', async () => {
-    const user = userEvent.setup();
     const greatGrandSire = animal({ id: 'ggs', tagNumber: 'TAG-0001' });
     const deep = {
       ...root,
@@ -172,7 +171,7 @@ describe('LineagePage chart', () => {
     vi.mocked(lineageApi.get).mockResolvedValue({ data: response(deep, 5, 0) } as never);
 
     render(<LineagePage />);
-    await viewLineageOf(user, 'TAG-0079 - Boocho');
+    await viewLineageOf('TAG-0079 - Boocho');
 
     await waitFor(() => expect(cards()).toHaveLength(5));
     // Every offset is measured from the inline-start edge and none of them is negative, which
@@ -194,7 +193,7 @@ describe('LineagePage controls', () => {
     vi.mocked(lineageApi.get).mockResolvedValue({ data: response(root) } as never);
 
     render(<LineagePage />);
-    await viewLineageOf(user, 'TAG-0079 - Boocho');
+    await viewLineageOf('TAG-0079 - Boocho');
     expect(lineageApi.get).toHaveBeenCalledWith('root', 5, 3);
 
     const [ancestors] = screen.getAllByRole('spinbutton');
@@ -205,11 +204,10 @@ describe('LineagePage controls', () => {
   });
 
   it('warns instead of asking for an animal that was not chosen', async () => {
-    const user = userEvent.setup();
     const warn = vi.spyOn(message, 'warning').mockImplementation(() => undefined as never);
 
     render(<LineagePage />);
-    await user.click(screen.getByRole('button', { name: /View Lineage/ }));
+    fireEvent.click(screen.getByRole('button', { name: /View Lineage/ }));
 
     expect(warn).toHaveBeenCalledWith('Select an animal first');
     expect(lineageApi.get).not.toHaveBeenCalled();
@@ -217,12 +215,11 @@ describe('LineagePage controls', () => {
   });
 
   it('reports a failed lookup and leaves the chart empty', async () => {
-    const user = userEvent.setup();
     const fail = vi.spyOn(message, 'error').mockImplementation(() => undefined as never);
     vi.mocked(lineageApi.get).mockRejectedValue({ response: { status: 500, data: 'Lineage is unavailable' } });
 
     render(<LineagePage />);
-    await viewLineageOf(user, 'TAG-0079 - Boocho');
+    await viewLineageOf('TAG-0079 - Boocho');
 
     await waitFor(() => expect(fail).toHaveBeenCalledWith('Lineage is unavailable'));
     expect(cards()).toHaveLength(0);

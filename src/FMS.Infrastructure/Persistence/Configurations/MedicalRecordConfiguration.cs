@@ -21,6 +21,7 @@ public class MedicalRecordConfiguration : IEntityTypeConfiguration<MedicalRecord
         builder.HasIndex(m => new { m.FarmId, m.AnimalId });
         builder.HasIndex(m => new { m.FarmId, m.DateRecorded });
         builder.HasIndex(m => new { m.FarmId, m.Status });
+        builder.HasIndex(m => m.VetId);
 
         builder.HasOne(m => m.Farm)
             .WithMany()
@@ -31,6 +32,11 @@ public class MedicalRecordConfiguration : IEntityTypeConfiguration<MedicalRecord
             .WithMany()
             .HasForeignKey(m => m.AnimalId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(m => m.Vet)
+            .WithMany()
+            .HasForeignKey(m => m.VetId)
+            .OnDelete(DeleteBehavior.SetNull);
 
         builder.HasIndex(m => m.ExpenseId);
     }

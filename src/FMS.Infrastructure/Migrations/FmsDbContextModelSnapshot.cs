@@ -17,7 +17,7 @@ namespace FMS.Infrastructure.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "8.0.31")
+                .HasAnnotation("ProductVersion", "8.0.32")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -755,6 +755,9 @@ namespace FMS.Infrastructure.Migrations
                     b.Property<int>("OffspringCount")
                         .HasColumnType("integer");
 
+                    b.Property<Guid?>("VetId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("VetName")
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
@@ -766,6 +769,8 @@ namespace FMS.Infrastructure.Migrations
                     b.HasIndex("DamId");
 
                     b.HasIndex("GestationRecordId");
+
+                    b.HasIndex("VetId");
 
                     b.HasIndex("FarmId", "BirthDate");
 
@@ -846,6 +851,9 @@ namespace FMS.Infrastructure.Migrations
                     b.Property<Guid>("SireId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("VetId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("VetName")
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
@@ -855,6 +863,8 @@ namespace FMS.Infrastructure.Migrations
                     b.HasIndex("DamId");
 
                     b.HasIndex("SireId");
+
+                    b.HasIndex("VetId");
 
                     b.HasIndex("FarmId", "BreedingDate");
 
@@ -2198,6 +2208,48 @@ namespace FMS.Infrastructure.Migrations
                     b.ToTable("IncomeRecords");
                 });
 
+            modelBuilder.Entity("FMS.Domain.Entities.InventoryCategory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<Guid>("FarmId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
+
+                    b.Property<DateTime?>("ModifiedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FarmId", "IsActive");
+
+                    b.ToTable("InventoryCategories");
+                });
+
             modelBuilder.Entity("FMS.Domain.Entities.InventoryItem", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2207,6 +2259,9 @@ namespace FMS.Infrastructure.Migrations
                     b.Property<string>("Category")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
+
+                    b.Property<Guid?>("CategoryId")
+                        .HasColumnType("uuid");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -2250,6 +2305,8 @@ namespace FMS.Infrastructure.Migrations
                         .HasColumnType("numeric(18,2)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CategoryId");
 
                     b.HasIndex("FarmId", "Category");
 
@@ -2399,6 +2456,9 @@ namespace FMS.Infrastructure.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)");
 
+                    b.Property<Guid?>("VetId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("VetName")
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
@@ -2408,6 +2468,8 @@ namespace FMS.Infrastructure.Migrations
                     b.HasIndex("AnimalId");
 
                     b.HasIndex("ExpenseId");
+
+                    b.HasIndex("VetId");
 
                     b.HasIndex("FarmId", "AnimalId");
 
@@ -3315,6 +3377,9 @@ namespace FMS.Infrastructure.Migrations
                         .HasColumnType("boolean")
                         .HasDefaultValue(true);
 
+                    b.Property<bool>("IsDemo")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("LastName")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -3449,6 +3514,9 @@ namespace FMS.Infrastructure.Migrations
                     b.Property<Guid>("VaccineTypeId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("VetId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("VetName")
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
@@ -3458,6 +3526,8 @@ namespace FMS.Infrastructure.Migrations
                     b.HasIndex("ExpenseId");
 
                     b.HasIndex("VaccineTypeId");
+
+                    b.HasIndex("VetId");
 
                     b.HasIndex("AnimalId", "VaccineTypeId");
 
@@ -3564,6 +3634,60 @@ namespace FMS.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("VaccineTypes");
+                });
+
+            modelBuilder.Entity("FMS.Domain.Entities.Vet", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid>("FarmId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
+
+                    b.Property<string>("LicenseNumber")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTime?>("ModifiedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("Phone")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FarmId", "IsActive");
+
+                    b.ToTable("Vets");
                 });
 
             modelBuilder.Entity("FMS.Domain.Entities.WeightCheckSchedule", b =>
@@ -3918,6 +4042,11 @@ namespace FMS.Infrastructure.Migrations
                         .HasForeignKey("GestationRecordId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("FMS.Domain.Entities.Vet", "Vet")
+                        .WithMany()
+                        .HasForeignKey("VetId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.Navigation("BreedingRecord");
 
                     b.Navigation("Dam");
@@ -3925,6 +4054,8 @@ namespace FMS.Infrastructure.Migrations
                     b.Navigation("Farm");
 
                     b.Navigation("GestationRecord");
+
+                    b.Navigation("Vet");
                 });
 
             modelBuilder.Entity("FMS.Domain.Entities.Breed", b =>
@@ -3958,11 +4089,18 @@ namespace FMS.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("FMS.Domain.Entities.Vet", "Vet")
+                        .WithMany()
+                        .HasForeignKey("VetId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.Navigation("Dam");
 
                     b.Navigation("Farm");
 
                     b.Navigation("Sire");
+
+                    b.Navigation("Vet");
                 });
 
             modelBuilder.Entity("FMS.Domain.Entities.CustomFieldDefinition", b =>
@@ -4443,13 +4581,31 @@ namespace FMS.Infrastructure.Migrations
                     b.Navigation("PaymentMethod");
                 });
 
-            modelBuilder.Entity("FMS.Domain.Entities.InventoryItem", b =>
+            modelBuilder.Entity("FMS.Domain.Entities.InventoryCategory", b =>
                 {
                     b.HasOne("FMS.Domain.Entities.Farm", "Farm")
                         .WithMany()
                         .HasForeignKey("FarmId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Farm");
+                });
+
+            modelBuilder.Entity("FMS.Domain.Entities.InventoryItem", b =>
+                {
+                    b.HasOne("FMS.Domain.Entities.InventoryCategory", "CategoryLookup")
+                        .WithMany("Items")
+                        .HasForeignKey("CategoryId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("FMS.Domain.Entities.Farm", "Farm")
+                        .WithMany()
+                        .HasForeignKey("FarmId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("CategoryLookup");
 
                     b.Navigation("Farm");
                 });
@@ -4505,9 +4661,16 @@ namespace FMS.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("FMS.Domain.Entities.Vet", "Vet")
+                        .WithMany()
+                        .HasForeignKey("VetId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.Navigation("Animal");
 
                     b.Navigation("Farm");
+
+                    b.Navigation("Vet");
                 });
 
             modelBuilder.Entity("FMS.Domain.Entities.Medicine", b =>
@@ -4840,11 +5003,18 @@ namespace FMS.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("FMS.Domain.Entities.Vet", "Vet")
+                        .WithMany()
+                        .HasForeignKey("VetId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.Navigation("Animal");
 
                     b.Navigation("Farm");
 
                     b.Navigation("VaccineType");
+
+                    b.Navigation("Vet");
                 });
 
             modelBuilder.Entity("FMS.Domain.Entities.VaccinationSchedule", b =>
@@ -4896,6 +5066,17 @@ namespace FMS.Infrastructure.Migrations
                     b.Navigation("Farm");
 
                     b.Navigation("LinkedMedicine");
+                });
+
+            modelBuilder.Entity("FMS.Domain.Entities.Vet", b =>
+                {
+                    b.HasOne("FMS.Domain.Entities.Farm", "Farm")
+                        .WithMany()
+                        .HasForeignKey("FarmId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Farm");
                 });
 
             modelBuilder.Entity("FMS.Domain.Entities.WeightCheckSchedule", b =>
@@ -5077,6 +5258,11 @@ namespace FMS.Infrastructure.Migrations
             modelBuilder.Entity("FMS.Domain.Entities.IncomeCategory", b =>
                 {
                     b.Navigation("IncomeRecords");
+                });
+
+            modelBuilder.Entity("FMS.Domain.Entities.InventoryCategory", b =>
+                {
+                    b.Navigation("Items");
                 });
 
             modelBuilder.Entity("FMS.Domain.Entities.InventoryItem", b =>

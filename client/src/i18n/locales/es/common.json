@@ -81,5 +81,18 @@
   "waitingToSyncCount": "{{count}} pendientes de sincronizar",
   "youAreNotAMemberOfAnyFarm": "No eres miembro de ninguna granja. Pide a un propietario que te invite y abre después el enlace de la invitación de tu correo.",
   "yourAccessToThatFarmWasRemoved": "Se ha retirado tu acceso a esa granja.",
-  "yourProfile": "Tu perfil"
+  "yourProfile": "Tu perfil",
+  "addAnotherValue": "Añadir otro valor",
+  "addNote": "Añadir nota",
+  "allOptions": "Todas las opciones",
+  "custom": "Personalizado",
+  "describeReason": "Describe el motivo",
+  "hideEmptyNote": "Ocultar nota vacía",
+  "noteOptional": "Nota (opcional)",
+  "rating": "Valoración",
+  "reason": "Motivo",
+  "recentlyUsed": "Usados recientemente",
+  "searchOrSelect": "Escribe para buscar o seleccionar",
+  "selectReason": "Selecciona un motivo",
+  "startFromTemplate": "Empezar con una plantilla"
 }

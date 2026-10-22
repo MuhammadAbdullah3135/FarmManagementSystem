@@ -11,6 +11,7 @@ using FMS.API.Binding;
 using FMS.API.Health;
 using FMS.API.Jobs;
 using FMS.API.Middleware;
+using FMS.API.Networking;
 using FMS.API.RateLimiting;
 using FMS.API.Security;
 using FMS.Application.Animal;
@@ -37,6 +38,7 @@ using FMS.Application.Email;
 using FMS.Application.Jobs;
 using FMS.Application.Notifications;
 using FMS.Application.Reports;
+using FMS.Application.Suggestions;
 using FMS.Application.Sync;
 using FMS.Application.Tasks;
 using FMS.Application.AuditLog;
@@ -61,6 +63,7 @@ using FMS.Infrastructure.Email;
 using FMS.Infrastructure.Jobs;
 using FMS.Infrastructure.Notifications;
 using FMS.Infrastructure.Reports;
+using FMS.Infrastructure.Suggestions;
 using FMS.Infrastructure.Sync;
 using FMS.Infrastructure.AuditLog;
 using FMS.Infrastructure.Persistence;
@@ -286,12 +289,17 @@ builder.Services.AddScoped<IVaccineService, VaccineService>();
 builder.Services.AddScoped<IWeightCheckScheduleService, WeightCheckScheduleService>();
 builder.Services.AddScoped<IHealthCostService, HealthCostService>();
 builder.Services.AddScoped<IInventoryService, InventoryService>();
+builder.Services.AddScoped<IInventoryCategoryService, InventoryCategoryService>();
+builder.Services.AddScoped<IInventoryCategoryBackfillService, InventoryCategoryBackfillService>();
+builder.Services.AddScoped<IVetService, VetService>();
+builder.Services.AddScoped<IVetBackfillService, VetBackfillService>();
 builder.Services.AddScoped<ISupplierService, SupplierService>();
 builder.Services.AddScoped<ICustomerService, CustomerService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddScoped<IReportService, ReportService>();
 builder.Services.AddScoped<ICostAttributionService, CostAttributionService>();
 builder.Services.AddScoped<IAuditLogService, AuditLogService>();
+builder.Services.AddScoped<ISuggestionService, SuggestionService>();
 
 // ── Notifications ──────────────────────────────────────────────────────
 // The recipient's own alert history: persisted notifications, per-user channel
@@ -373,6 +381,33 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+// Management commands run BEFORE the host starts, so they cannot pick up the automatic
+// MigrateAsync() and role seeding below. The inventory-category backfill has to be
+// dry-runnable against an untouched schema, and a branch after the migration block would
+// have written (or at least attempted) schema changes before it printed a single count.
+//
+//   dotnet run --project src/FMS.API -- inventory:categories:backfill
+//   dotnet run --project src/FMS.API -- inventory:categories:backfill --apply
+if (InventoryCategoryBackfillCommand.Matches(args))
+{
+    using var backfillScope = app.Services.CreateScope();
+    var backfill = backfillScope.ServiceProvider
+        .GetRequiredService<IInventoryCategoryBackfillService>();
+    Environment.ExitCode = await InventoryCategoryBackfillCommand.RunAsync(backfill, args, Console.Out);
+    return;
+}
+
+//   dotnet run --project src/FMS.API -- vets:backfill
+//   dotnet run --project src/FMS.API -- vets:backfill --apply
+if (VetBackfillCommand.Matches(args))
+{
+    using var backfillScope = app.Services.CreateScope();
+    var backfill = backfillScope.ServiceProvider
+        .GetRequiredService<IVetBackfillService>();
+    Environment.ExitCode = await VetBackfillCommand.RunAsync(backfill, args, Console.Out);
+    return;
+}
+
 if (usingLocalStorage && !app.Environment.IsDevelopment())
 {
     app.Logger.LogWarning(
@@ -410,6 +445,15 @@ else
     app.Logger.LogWarning(
         "Background jobs are disabled (Jobs:Enabled = false): no scheduled feed-task generation or health-status " +
         "recalculation will run in this process. The job status view reports this.");
+}
+
+// Must run before anything reads Connection.RemoteIpAddress (the rate limiter below) or the
+// request scheme (HTTPS redirection): behind Heroku's router both otherwise describe the proxy,
+// not the visitor, which would put every demo visitor in one rate-limit partition. Opt-in via
+// ForwardedHeaders:Enabled so a directly exposed deployment does not trust a spoofable header.
+if (ForwardedHeadersSetup.IsEnabled(app.Configuration))
+{
+    app.UseForwardedHeaders(ForwardedHeadersSetup.CreateOptions(app.Configuration));
 }
 
 app.UseMiddleware<GlobalExceptionMiddleware>();
@@ -499,7 +543,7 @@ if (!string.IsNullOrWhiteSpace(herokuPort))
 
 // Local operator convenience: `dotnet run --project src/FMS.API -- demo:reset` restores the
 // shared demo farm to its seed state and exits. This is a one-shot management command, not a
-// server feature — the HTTP surface for reset is POST /auth/demo-reset (SystemOwner only).
+// server feature - the HTTP surface for reset is POST /auth/demo-reset (SystemOwner only).
 if (args.Length > 0 && args[0] == "demo:reset")
 {
     using var scope = app.Services.CreateScope();

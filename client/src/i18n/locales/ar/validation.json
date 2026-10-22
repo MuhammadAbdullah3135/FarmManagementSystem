@@ -58,6 +58,8 @@
     "feedTypeHasStockMovements": "لا يمكن حذف نوع علف لديه حركات مخزون",
     "feedTypeInDietPlan": "لا يمكن حذف نوع علف مستخدم في نظام غذائي",
     "incomeCategoryInUse": "لا يمكن حذف فئة إيرادات لديها سجلات إيرادات",
+    "inventoryCategoryHasItems": "لا يمكن حذف فئة مخزون تحتوي على أصناف؛ عطّلها بدلاً من ذلك",
+    "inventoryCategoryNameExists": "توجد بالفعل فئة مخزون باسم '{{name}}'",
     "inventoryItemHasHistory": "لا يمكن حذف عنصر مخزون لديه سجل حركات مخزون",
     "invitationNotPending": "يمكن إلغاء الدعوات المعلقة فقط",
     "invitationPending": "توجد دعوة معلقة بالفعل لعنوان البريد الإلكتروني هذا",
@@ -91,7 +93,10 @@
     "taskNotPendingToStart": "لا يمكن بدء سوى المهام المعلّقة. الحالة الحالية: {{status}}",
     "taskNotOpenToComplete": "لا يمكن إكمال سوى المهام المفتوحة. الحالة الحالية: {{status}}",
     "taskNotOpenToCancel": "لا يمكن إلغاء سوى المهام المفتوحة. الحالة الحالية: {{status}}",
-    "taskNotReopenable": "لا يمكن إعادة فتح سوى المهام المكتملة أو الملغاة. الحالة الحالية: {{status}}"
+    "taskNotReopenable": "لا يمكن إعادة فتح سوى المهام المكتملة أو الملغاة. الحالة الحالية: {{status}}",
+    "vetHasClinicalRecords": "لا يمكن حذف طبيب بيطري تشير إليه سجلات سريرية؛ قم بتعطيله بدلاً من ذلك",
+    "vetLicenseNumberExists": "يوجد طبيب بيطري بالفعل برقم الترخيص '{{licenseNumber}}'",
+    "vetNameExists": "يوجد طبيب بيطري بالفعل بالاسم '{{name}}'"
   },
   "customer": {
     "contactInfoMaxLength": "لا يمكن أن تتجاوز معلومات التواصل {{max}} حرفًا",
@@ -173,6 +178,8 @@
     "image": "لم يتم العثور على الصورة",
     "incomeCategory": "لم يتم العثور على فئة الإيراد",
     "income": "لم يتم العثور على سجل الإيراد",
+    "inventoryCategory": "لم يتم العثور على فئة المخزون",
+    "inventoryCategoryInFarm": "لم يتم العثور على فئة المخزون في هذه المزرعة",
     "inventoryItem": "لم يتم العثور على الصنف",
     "invitation": "لم يتم العثور على الدعوة",
     "linkedMedicineInFarm": "لم يتم العثور على الدواء المرتبط في هذه المزرعة",
@@ -203,7 +210,9 @@
     "noAttendanceToday": "لم يتم العثور على سجل حضور لهذا اليوم",
     "notFarmMember": "هذا الشخص ليس عضوًا في هذه المزرعة",
     "noExportArchiveYet": "لا يوجد ملف تصدير لهذه المزرعة بعد. أنشئ واحدًا ونزّله عندما يجهز.",
-    "exportArchiveGone": "لم يعد ملف التصدير مخزّنًا. أنشئ تصديرًا جديدًا لاستبداله."
+    "exportArchiveGone": "لم يعد ملف التصدير مخزّنًا. أنشئ تصديرًا جديدًا لاستبداله.",
+    "vet": "لم يتم العثور على الطبيب البيطري",
+    "vetInFarm": "لم يتم العثور على الطبيب البيطري في هذه المزرعة"
   },
   "supersede": {
     "completionAlreadyApplied": "تم تطبيق هذا الإكمال بالفعل",
@@ -217,6 +226,9 @@
     "productsSuppliedMaxLength": "لا يمكن أن تتجاوز المنتجات المورّدة {{max}} حرفًا"
   },
   "validation": {
+    "inventoryCategoryNameRequired": "اسم الفئة مطلوب",
+    "inventoryCategoryNameMaxLength": "لا يمكن أن يتجاوز اسم الفئة {{max}} حرفًا",
+    "inventoryCategoryDescriptionMaxLength": "لا يمكن أن يتجاوز الوصف {{max}} حرفًا",
     "invalidFarmRole": "'{{role}}' ليس دورًا صالحًا في المزرعة",
     "fileTooLarge": "حجم الملف يتجاوز الحد الأقصى المسموح به {{max}} ميغابايت",
     "fileTypeNotAllowed": "نوع الملف '{{extension}}' غير مسموح به. الأنواع المسموحة: {{allowed}}",
@@ -286,9 +298,16 @@
     "transferAdjustmentQuantityZero": "لا يمكن أن تكون كمية التحويل أو التسوية صفرًا",
     "movementTypeFilterInvalid": "يجب أن يكون نوع الحركة إحدى: شراء، استهلاك، تحويل، تسوية",
     "noDataRowsBelowHeader": "لا يحتوي الملف على صفوف بيانات أسفل صف العناوين.",
+    "unknownSuggestionField": "حقل الاقتراح غير معروف",
     "invalidOrExpiredResetToken": "رمز إعادة تعيين كلمة المرور غير صالح أو منتهي الصلاحية",
     "resetTokenAlreadyUsed": "تم استخدام رمز إعادة تعيين كلمة المرور بالفعل",
-    "resetTokenExpired": "انتهت صلاحية رمز إعادة تعيين كلمة المرور"
+    "resetTokenExpired": "انتهت صلاحية رمز إعادة تعيين كلمة المرور",
+    "vetNameRequired": "اسم الطبيب البيطري مطلوب",
+    "vetNameMaxLength": "لا يمكن أن يتجاوز اسم الطبيب البيطري {{max}} حرفًا",
+    "vetPhoneMaxLength": "لا يمكن أن يتجاوز رقم الهاتف {{max}} حرفًا",
+    "vetEmailMaxLength": "لا يمكن أن يتجاوز البريد الإلكتروني {{max}} حرفًا",
+    "vetLicenseNumberMaxLength": "لا يمكن أن يتجاوز رقم الترخيص {{max}} حرفًا",
+    "vetNotesMaxLength": "لا يمكن أن تتجاوز الملاحظات {{max}} حرفًا"
   },
   "unauthorized": {
     "farmOwnerOrManagerOnly": "يمكن فقط لمالكي المزرعة ومديريها {{action}}",

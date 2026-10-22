@@ -147,6 +147,18 @@ public static class DomainMessageKeys
     /// <summary>The exact English this API has always answered: “Income record not found”.</summary>
     public const string IncomeRecordNotFound = "validation.lookup.income";
 
+    /// <summary>The exact English this API has always answered: “Inventory category not found”.</summary>
+    public const string InventoryCategoryNotFound = "validation.lookup.inventoryCategory";
+
+    /// <summary>The exact English this API has always answered: "Inventory category not found in this farm".</summary>
+    public const string InventoryCategoryNotFoundInFarm = "validation.lookup.inventoryCategoryInFarm";
+
+    /// <summary>The exact English this API has always answered: "Vet not found".</summary>
+    public const string VetNotFound = "validation.lookup.vet";
+
+    /// <summary>The exact English this API has always answered: "Vet not found in this farm".</summary>
+    public const string VetNotFoundInFarm = "validation.lookup.vetInFarm";
+
     /// <summary>The exact English this API has always answered: “Inventory item not found”.</summary>
     public const string InventoryItemNotFound = "validation.lookup.inventoryItem";
 
@@ -272,6 +284,18 @@ public static class DomainMessageKeys
     /// <summary>The exact English this API has always answered: “Cannot delete an income category that has income records”</summary>
     public const string IncomeCategoryHasRecords = "validation.conflict.incomeCategoryInUse";
 
+    /// <summary>The exact English this API has always answered: "Cannot delete an inventory category that has items; deactivate it instead"</summary>
+    public const string InventoryCategoryHasItems = "validation.conflict.inventoryCategoryHasItems";
+
+    /// <summary>The exact English this API has always answered: "A vet named '{name}' already exists"</summary>
+    public const string VetNameExists = "validation.conflict.vetNameExists";
+
+    /// <summary>The exact English this API has always answered: "A vet with licence number '{licenseNumber}' already exists"</summary>
+    public const string VetLicenseNumberExists = "validation.conflict.vetLicenseNumberExists";
+
+    /// <summary>The exact English this API has always answered: "Cannot delete a vet that is referenced by clinical records; deactivate it instead"</summary>
+    public const string VetHasClinicalRecords = "validation.conflict.vetHasClinicalRecords";
+
     /// <summary>The exact English this API has always answered: “Cannot delete an inventory item with stock movement history”</summary>
     public const string InventoryItemHasStockHistory = "validation.conflict.inventoryItemHasHistory";
 
@@ -337,6 +361,9 @@ public static class DomainMessageKeys
 
     /// <summary>The exact English this API has always answered: “An expense category named '{name}' already exists”</summary>
     public const string ExpenseCategoryNameExists = "validation.conflict.expenseCategoryNameExists";
+
+    /// <summary>The exact English this API has always answered: “An inventory category named '{name}' already exists”</summary>
+    public const string InventoryCategoryNameExists = "validation.conflict.inventoryCategoryNameExists";
 
     /// <summary>The exact English this API has always answered: “A payment method named '{name}' already exists”</summary>
     public const string PaymentMethodNameExists = "validation.conflict.paymentMethodNameExists";
@@ -546,6 +573,33 @@ public static class DomainMessageKeys
     /// <summary>The exact English this API has always answered: “Category is required”</summary>
     public const string AnimalDocumentCategoryRequired = "validation.validation.animalDocumentCategoryRequired";
 
+    /// <summary>The exact English this API has always answered: “Category name is required”</summary>
+    public const string InventoryCategoryNameRequired = "validation.validation.inventoryCategoryNameRequired";
+
+    /// <summary>The exact English this API has always answered: “Category name cannot exceed {max} characters”</summary>
+    public const string InventoryCategoryNameMaxLength = "validation.validation.inventoryCategoryNameMaxLength";
+
+    /// <summary>The exact English this API has always answered: "Description cannot exceed {max} characters"</summary>
+    public const string InventoryCategoryDescriptionMaxLength = "validation.validation.inventoryCategoryDescriptionMaxLength";
+
+    /// <summary>The exact English this API has always answered: "Vet name is required"</summary>
+    public const string VetNameRequired = "validation.validation.vetNameRequired";
+
+    /// <summary>The exact English this API has always answered: "Vet name cannot exceed {max} characters"</summary>
+    public const string VetNameMaxLength = "validation.validation.vetNameMaxLength";
+
+    /// <summary>The exact English this API has always answered: "Phone cannot exceed {max} characters"</summary>
+    public const string VetPhoneMaxLength = "validation.validation.vetPhoneMaxLength";
+
+    /// <summary>The exact English this API has always answered: "Email cannot exceed {max} characters"</summary>
+    public const string VetEmailMaxLength = "validation.validation.vetEmailMaxLength";
+
+    /// <summary>The exact English this API has always answered: "Licence number cannot exceed {max} characters"</summary>
+    public const string VetLicenseNumberMaxLength = "validation.validation.vetLicenseNumberMaxLength";
+
+    /// <summary>The exact English this API has always answered: "Notes cannot exceed {max} characters"</summary>
+    public const string VetNotesMaxLength = "validation.validation.vetNotesMaxLength";
+
     /// <summary>The exact English this API has always answered: “Document file is missing from storage”</summary>
     public const string DocumentFileMissing = "validation.validation.documentFileMissing";
 
@@ -674,6 +728,9 @@ public static class DomainMessageKeys
     // the importer would report an empty sheet in one language and something else in another.
     /// <summary>The exact English this API has always answered: “The file has no data rows below the header row.”</summary>
     public const string NoDataRowsBelowHeader = "validation.validation.noDataRowsBelowHeader";
+
+    /// <summary>The exact English this API has always answered: “Unknown suggestion field”</summary>
+    public const string UnknownSuggestionField = "validation.validation.unknownSuggestionField";
 
     // ── unauthorized, argument-taking ──────────────────────────────────────────────────────
     // A fifth family, and the first whose argument is a phrase rather than a value. The eight

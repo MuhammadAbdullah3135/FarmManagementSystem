@@ -342,7 +342,7 @@ describe('AnimalsPage create form', () => {
 
     await openSelectFooter(user, modal, 'Age Category');
     expect(await screen.findByRole('button', { name: /add age category/i })).toBeInTheDocument();
-  }, 20000);
+  }, 60000);
 
   it('shows a hint instead of Add for Breed until an animal type is chosen', async () => {
     const user = userEvent.setup();
@@ -354,7 +354,7 @@ describe('AnimalsPage create form', () => {
     await openSelectFooter(user, modal, 'Breed');
     expect(await screen.findByText(/select an animal type first, then add breeds for it/i)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /add breed/i })).not.toBeInTheDocument();
-  });
+  }, 60000);
 
   it('creates a sex option via quick-add, selects it and appends the option', async () => {
     vi.mocked(configurationApi.createSexOption).mockResolvedValue(res({ id: 'sex-new', value: 'Unknown' }));

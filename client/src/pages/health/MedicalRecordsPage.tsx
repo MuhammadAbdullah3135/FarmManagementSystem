@@ -6,12 +6,16 @@ import { PlusOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { formatDate, formatMoney } from '../../i18n/format';
 import dayjs from 'dayjs';
-import { medicalRecordsApi } from '../../api/health';
+import { medicalRecordsApi, medicinesApi } from '../../api/health';
 import { lookupsApi } from '../../api/attendance';
+import { suggestionsApi } from '../../api/suggestions';
 import { getApiError } from '../../api/farmApi';
 import type { MedicalRecordListItem, MedicalRecordStatus } from '../../types';
 import { useTranslation } from 'react-i18next';
 import { useEnumOptions, enumLabelOf } from '../../i18n/enumOptions';
+import LookupOrText from '../../components/LookupOrText';
+import VetLookupOrText from '../../components/VetLookupOrText';
+import type { EntityOption } from '../../components/EntityPicker';
 
 const STATUS_COLORS: Record<MedicalRecordStatus, string> = {
   Open: 'gold',
@@ -47,6 +51,25 @@ const MedicalRecordsPage: React.FC = () => {const { t } = useTranslation(['healt
     notes?: string;
   } | null>(null);
   const [form] = Form.useForm();
+
+  // The medical record DTO stores a medicine label, not an id, so the picker
+  // selects the medicine name and keeps the existing string field unchanged.
+  const loadMedicineOptions = useCallback(async (): Promise<EntityOption[]> => {
+    const res = await medicinesApi.list({ pageSize: 100 });
+    return res.data.items.map((medicine) => ({ value: medicine.name, label: medicine.name }));
+  }, []);
+
+  // Diagnosis and dosage still store free text. The suggestions endpoint only
+  // contributes recently used values as choices; typing remains available.
+  const loadDiagnosisOptions = useCallback(async (): Promise<EntityOption[]> => {
+    const res = await suggestionsApi.list('medicalDiagnosis');
+    return res.data.map((value) => ({ value, label: value }));
+  }, []);
+
+  const loadDosageOptions = useCallback(async (): Promise<EntityOption[]> => {
+    const res = await suggestionsApi.list('medicalDosage');
+    return res.data.map((value) => ({ value, label: value }));
+  }, []);
 
   const load = useCallback(async (p: number) => {
     setLoading(true);
@@ -90,7 +113,7 @@ const MedicalRecordsPage: React.FC = () => {const { t } = useTranslation(['healt
         treatment: data.treatment,
         medicineUsed: data.medicineUsed,
         dosage: data.dosage,
-        vetName: data.vetName,
+        vet: { vetId: data.vetId, vetName: data.vetName },
         cost: data.cost,
         dateRecorded: dayjs(data.dateRecorded),
         followUpDate: data.followUpDate ? dayjs(data.followUpDate) : null,
@@ -129,7 +152,8 @@ const MedicalRecordsPage: React.FC = () => {const { t } = useTranslation(['healt
         treatment: values.treatment,
         medicineUsed: values.medicineUsed,
         dosage: values.dosage,
-        vetName: values.vetName,
+        vetId: values.vet?.vetId,
+        vetName: values.vet?.vetName,
         cost: values.cost || 0,
         dateRecorded: values.dateRecorded.format('YYYY-MM-DD'),
         followUpDate: values.followUpDate ? values.followUpDate.format('YYYY-MM-DD') : undefined,
@@ -279,7 +303,12 @@ const MedicalRecordsPage: React.FC = () => {const { t } = useTranslation(['healt
             <Input.TextArea rows={2} maxLength={2000} placeholder={t('describeSymptoms')} />
           </Form.Item>
           <Form.Item name="diagnosis" label={t('diagnosis')}>
-            <Input maxLength={500} placeholder={t('diagnosis')} />
+            <LookupOrText
+              loadOptions={loadDiagnosisOptions}
+              placeholder={t('diagnosis')}
+              recentStorageKey="medicalDiagnosis"
+              allowClear
+            />
           </Form.Item>
           <Form.Item name="treatment" label={t('treatment')}>
             <Input.TextArea rows={2} maxLength={1000} placeholder={t('treatmentPlan')} />
@@ -287,19 +316,33 @@ const MedicalRecordsPage: React.FC = () => {const { t } = useTranslation(['healt
           <Row gutter={[16, 16]}>
             <Col xs={24} sm={12}>
               <Form.Item name="medicineUsed" label={t('medicineUsed')}>
-                <Input maxLength={500} placeholder={t('medicineName')} />
+                <LookupOrText
+                  loadOptions={loadMedicineOptions}
+                  placeholder={t('medicineName')}
+                  recentStorageKey="medicine"
+                  allowClear
+                />
               </Form.Item>
             </Col>
             <Col xs={24} sm={12}>
               <Form.Item name="dosage" label={t('dosage')}>
-                <Input maxLength={200} placeholder={t('eG10mlTwiceDaily')} />
+                <LookupOrText
+                  loadOptions={loadDosageOptions}
+                  placeholder={t('eG10mlTwiceDaily')}
+                  textPlaceholder={t('eG10mlTwiceDaily')}
+                  recentStorageKey="medicalDosage"
+                  allowClear
+                />
               </Form.Item>
             </Col>
           </Row>
           <Row gutter={[16, 16]}>
             <Col xs={24} sm={12}>
-              <Form.Item name="vetName" label={t('veterinarian')}>
-                <Input maxLength={200} placeholder={t('vetName')} />
+              <Form.Item name="vet" label={t('veterinarian')}>
+                <VetLookupOrText
+                  textPlaceholder={t('vetName')}
+                  allowClear
+                />
               </Form.Item>
             </Col>
             <Col xs={24} sm={12}>

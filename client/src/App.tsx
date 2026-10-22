@@ -50,6 +50,7 @@ import VaccinationRecordsPage from './pages/health/VaccinationRecordsPage';
 import VaccinationSchedulePage from './pages/health/VaccinationSchedulePage';
 import WeightCheckSchedulePage from './pages/health/WeightCheckSchedulePage';
 import VetCostsPage from './pages/health/VetCostsPage';
+import VetsPage from './pages/health/VetsPage';
 import AnimalsPage from './pages/animals/AnimalsPage';
 import AnimalDetailPage from './pages/animals/AnimalDetailPage';
 import AnimalImportPage from './pages/animals/AnimalImportPage';
@@ -170,6 +171,7 @@ const App: React.FC = () => {
 
             {/* Health */}
             <Route path="health/medical" element={<MedicalRecordsPage />} />
+            <Route path="health/vets" element={<VetsPage />} />
             <Route path="health/medicines" element={<MedicinesPage />} />
             <Route path="health/medicines/alerts" element={<MedicineAlertsPage />} />
             <Route path="health/vaccines" element={<VaccineTypesPage />} />

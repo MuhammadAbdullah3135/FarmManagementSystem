@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Button, Card, Form, Input, Modal, Popconfirm, Space, Table, message,
 } from 'antd';
@@ -7,6 +7,8 @@ import type { ColumnsType } from 'antd/es/table';
 import { vaccineTypesApi, medicinesApi } from '../../api/health';
 import { getApiError } from '../../api/farmApi';
 import LookupQuickAddSelect from '../../components/LookupQuickAddSelect';
+import LookupOrText from '../../components/LookupOrText';
+import type { EntityOption } from '../../components/EntityPicker';
 import type { VaccineTypeListItem, MedicineListItem } from '../../types';
 import { useTranslation } from 'react-i18next';
 
@@ -20,6 +22,24 @@ const VaccineTypesPage: React.FC = () => {const { t } = useTranslation(['health'
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<VaccineTypeListItem | null>(null);
   const [form] = Form.useForm();
+  const linkedMedicineId = Form.useWatch('linkedMedicineId', form);
+
+  // Dosage remains free text. Existing dosages are offered first, plus one dose
+  // in the linked medicine's unit when the form has selected a medicine.
+  const dosageOptions = useMemo<EntityOption[]>(() => {
+    const values: string[] = [];
+    const seen = new Set<string>();
+    const add = (value?: string) => {
+      const dosage = value?.trim();
+      if (!dosage || seen.has(dosage)) return;
+      seen.add(dosage);
+      values.push(dosage);
+    };
+    for (const type of types) add(type.defaultDosage);
+    const linkedMedicine = medicines.find((medicine) => medicine.id === linkedMedicineId);
+    if (linkedMedicine?.unit) add(`1 ${linkedMedicine.unit}`);
+    return values.map((value) => ({ value, label: value }));
+  }, [types, medicines, linkedMedicineId]);
 
   const load = useCallback(async (p: number) => {
     setLoading(true);
@@ -171,7 +191,12 @@ const VaccineTypesPage: React.FC = () => {const { t } = useTranslation(['health'
             <Input maxLength={200} placeholder={t('eGFmdVaccine')} />
           </Form.Item>
           <Form.Item name="defaultDosage" label={t('defaultDosage')}>
-            <Input maxLength={200} placeholder={t('eG5ml')} />
+            <LookupOrText
+              options={dosageOptions}
+              placeholder={t('eG5ml')}
+              textPlaceholder={t('eG5ml')}
+              allowClear
+            />
           </Form.Item>
           <Form.Item name="linkedMedicineId" label={t('linkedMedicineOptional')}>
             <LookupQuickAddSelect

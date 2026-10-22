@@ -12,11 +12,13 @@ public class BirthRecord : AuditableEntity
     public DateTime BirthDate { get; set; }
     public int OffspringCount { get; set; }
     public string? Notes { get; set; }
+    public Guid? VetId { get; set; }
     public string? VetName { get; set; }
 
     public Farm Farm { get; set; } = null!;
     public Animal Dam { get; set; } = null!;
     public GestationRecord? GestationRecord { get; set; }
     public BreedingRecord? BreedingRecord { get; set; }
+    public Vet? Vet { get; set; }
     public ICollection<BirthOffspring> Offspring { get; set; } = new List<BirthOffspring>();
 }

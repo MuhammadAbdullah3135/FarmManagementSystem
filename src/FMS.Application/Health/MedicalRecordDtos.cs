@@ -10,6 +10,7 @@ public class CreateMedicalRecordRequest
     public string? Treatment { get; set; }
     public string? MedicineUsed { get; set; }
     public string? Dosage { get; set; }
+    public Guid? VetId { get; set; }
     public string? VetName { get; set; }
     public decimal Cost { get; set; }
     public DateTime DateRecorded { get; set; }
@@ -26,6 +27,7 @@ public class UpdateMedicalRecordRequest
     public string? Treatment { get; set; }
     public string? MedicineUsed { get; set; }
     public string? Dosage { get; set; }
+    public Guid? VetId { get; set; }
     public string? VetName { get; set; }
     public decimal Cost { get; set; }
     public DateTime DateRecorded { get; set; }
@@ -57,6 +59,7 @@ public class MedicalRecordDto
     public string? Treatment { get; set; }
     public string? MedicineUsed { get; set; }
     public string? Dosage { get; set; }
+    public Guid? VetId { get; set; }
     public string? VetName { get; set; }
     public decimal Cost { get; set; }
     public DateTime DateRecorded { get; set; }
@@ -75,6 +78,7 @@ public class MedicalRecordListItemDto
     public string AnimalTagNumber { get; set; } = string.Empty;
     public string? AnimalName { get; set; }
     public string? Diagnosis { get; set; }
+    public Guid? VetId { get; set; }
     public string? VetName { get; set; }
     public decimal Cost { get; set; }
     public DateTime DateRecorded { get; set; }

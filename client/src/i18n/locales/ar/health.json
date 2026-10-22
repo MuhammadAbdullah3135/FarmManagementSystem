@@ -169,5 +169,19 @@
   "veterinarian": "الطبيب البيطري",
   "view": "عرض",
   "weightCheckSchedules": "جداول فحص الوزن",
-  "yes": "نعم"
+  "yes": "نعم",
+  "vets": "الأطباء البيطريون",
+  "addVet": "إضافة طبيب بيطري",
+  "editVet": "تعديل الطبيب البيطري",
+  "vetCreated": "تم إنشاء الطبيب البيطري",
+  "vetUpdated": "تم تحديث الطبيب البيطري",
+  "vetActivated": "تم تفعيل الطبيب البيطري",
+  "vetDeactivated": "تم تعطيل الطبيب البيطري",
+  "vetDeleted": "تم حذف الطبيب البيطري",
+  "deleteThisVet": "هل تريد حذف هذا الطبيب البيطري؟",
+  "phone": "الهاتف",
+  "licenseNumber": "رقم الترخيص",
+  "inactive": "غير نشط",
+  "deactivate": "تعطيل",
+  "activate": "تفعيل"
 }

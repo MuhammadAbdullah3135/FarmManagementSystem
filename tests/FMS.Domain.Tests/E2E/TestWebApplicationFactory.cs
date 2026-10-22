@@ -1,7 +1,9 @@
 using System.Security.Claims;
 using System.Text;
 using FMS.API.Binding;
+using FMS.Application.Suggestions;
 using FMS.Infrastructure.Persistence;
+using FMS.Infrastructure.Suggestions;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -135,6 +137,8 @@ public class TestWebApplicationFactory : IDisposable
                     // Register all application services needed by controllers
                     services.AddScoped<FMS.Application.Common.ICurrentUserService, FMS.Infrastructure.Auth.CurrentUserService>();
                     services.AddScoped<FMS.Application.Inventory.IInventoryService, FMS.Infrastructure.Inventory.InventoryService>();
+                    services.AddScoped<FMS.Application.Inventory.IInventoryCategoryService, FMS.Infrastructure.Inventory.InventoryCategoryService>();
+                    services.AddScoped<FMS.Application.Inventory.IInventoryCategoryBackfillService, FMS.Infrastructure.Inventory.InventoryCategoryBackfillService>();
                     services.AddScoped<FMS.Application.Inventory.ISupplierService, FMS.Infrastructure.Inventory.SupplierService>();
                     services.AddScoped<FMS.Application.Inventory.ICustomerService, FMS.Infrastructure.Inventory.CustomerService>();
                     services.AddScoped<FMS.Application.Feed.IFeedService, FMS.Infrastructure.Feed.FeedService>();
@@ -143,6 +147,7 @@ public class TestWebApplicationFactory : IDisposable
                     services.AddScoped<FMS.Application.Health.IMedicineService, FMS.Infrastructure.Health.MedicineService>();
                     services.AddScoped<FMS.Application.Health.IMedicalRecordService, FMS.Infrastructure.Health.MedicalRecordService>();
                     services.AddScoped<FMS.Application.Health.IHealthCostService, FMS.Infrastructure.Health.HealthCostService>();
+                    services.AddScoped<FMS.Application.Health.IVetService, FMS.Infrastructure.Health.VetService>();
                     services.AddScoped<FMS.Application.Health.IWeightCheckScheduleService, FMS.Infrastructure.Health.WeightCheckScheduleService>();
                     services.AddScoped<FMS.Application.Tasks.IFarmTaskService, FMS.Infrastructure.Tasks.FarmTaskService>();
                     services.AddScoped<FMS.Application.Attendance.IAttendanceService, FMS.Infrastructure.Attendance.AttendanceService>();
@@ -157,6 +162,7 @@ public class TestWebApplicationFactory : IDisposable
                     services.AddScoped<FMS.Application.Reports.IReportService, FMS.Infrastructure.Reports.ReportService>();
                     services.AddScoped<FMS.Application.Reports.ICostAttributionService, FMS.Infrastructure.Reports.CostAttributionService>();
                     services.AddScoped<FMS.Application.AuditLog.IAuditLogService, FMS.Infrastructure.AuditLog.AuditLogService>();
+                    services.AddScoped<ISuggestionService, SuggestionService>();
                     // Configuration lookups (same registration shape as Program.cs).
                     services.AddMemoryCache();
                     services.AddScoped<FMS.Infrastructure.Configuration.ConfigurationService>();

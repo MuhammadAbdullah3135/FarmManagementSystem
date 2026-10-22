@@ -8,10 +8,13 @@ import { formatDate } from '../../i18n/format';
 import { enumLabelOf } from '../../i18n/enumOptions';
 
 import { feedInventoryApi, feedTypesApi } from '../../api/feed';
+import { suppliersApi } from '../../api/suppliers';
 import { getApiError } from '../../api/farmApi';
 import type { FeedStock, FeedType, FeedStockMovement } from '../../types';
 import { FEED_CATEGORIES, FEED_UNITS } from '../../utils/feedOptions';
 import { useTranslation } from 'react-i18next';
+import LookupOrText from '../../components/LookupOrText';
+import type { EntityOption } from '../../components/EntityPicker';
 
 const MOVEMENT_TYPES = ['Purchase', 'Adjustment'];
 
@@ -37,6 +40,12 @@ const FeedTypesPage: React.FC = () => {const { t: translate } = useTranslation([
   const [movementTarget, setMovementTarget] = useState<FeedType | null>(null);
   const [form] = Form.useForm();
   const [movementForm] = Form.useForm();
+
+  // Feed stock movements keep the supplier name as a string in the DTO.
+  const loadSupplierOptions = useCallback(async (): Promise<EntityOption[]> => {
+    const res = await suppliersApi.list({ pageSize: 100 });
+    return res.data.items.map((supplier) => ({ value: supplier.name, label: supplier.name }));
+  }, []);
 
   const loadTypes = useCallback(async () => {
     setLoading(true);
@@ -290,7 +299,11 @@ const FeedTypesPage: React.FC = () => {const { t: translate } = useTranslation([
             <InputNumber min={0} style={{ width: '100%' }} />
           </Form.Item>
           <Form.Item name="supplier" label={translate('supplier')}>
-            <Input maxLength={200} />
+            <LookupOrText
+              loadOptions={loadSupplierOptions}
+              recentStorageKey="supplier"
+              allowClear
+            />
           </Form.Item>
           <Form.Item name="notes" label={translate('notes')}>
             <Input.TextArea rows={2} maxLength={500} />

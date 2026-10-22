@@ -6,6 +6,7 @@ public class InventoryItem : AuditableEntity
 {
     public Guid FarmId { get; set; }
     public string Name { get; set; } = string.Empty;
+    public Guid? CategoryId { get; set; }
     public string? Category { get; set; }
     public string Unit { get; set; } = string.Empty;
     public decimal Quantity { get; set; }
@@ -14,5 +15,6 @@ public class InventoryItem : AuditableEntity
     public string? Location { get; set; }
 
     public Farm Farm { get; set; } = null!;
+    public InventoryCategory? CategoryLookup { get; set; }
     public ICollection<StockMovement> StockMovements { get; set; } = new List<StockMovement>();
 }

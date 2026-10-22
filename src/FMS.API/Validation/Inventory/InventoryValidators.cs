@@ -24,6 +24,22 @@ public class UpdateInventoryItemRequestValidator : AbstractValidator<UpdateInven
         RuleFor(x => x.UnitCost).GreaterThanOrEqualTo(0);
     }
 }
+public class CreateInventoryCategoryRequestValidator : AbstractValidator<CreateInventoryCategoryRequest>
+{
+    public CreateInventoryCategoryRequestValidator()
+    {
+        RuleFor(x => x.Name).NotEmpty().WithMessage("Category name is required").MaximumLength(100);
+        RuleFor(x => x.Description).MaximumLength(500);
+    }
+}
+public class UpdateInventoryCategoryRequestValidator : AbstractValidator<UpdateInventoryCategoryRequest>
+{
+    public UpdateInventoryCategoryRequestValidator()
+    {
+        RuleFor(x => x.Name).NotEmpty().WithMessage("Category name is required").MaximumLength(100);
+        RuleFor(x => x.Description).MaximumLength(500);
+    }
+}
 public class CreateSupplierRequestValidator : AbstractValidator<CreateSupplierRequest>
 {
     public CreateSupplierRequestValidator()

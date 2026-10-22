@@ -17,6 +17,7 @@ export interface CreateBreedingRecordPayload {
   damId: string;
   breedingDate: string;
   method: number;
+  vetId?: string;
   vetName?: string;
   notes?: string;
 }
@@ -102,6 +103,7 @@ export interface CreateBirthRecordPayload {
   gestationRecordId?: string;
   breedingRecordId?: string;
   birthDate: string;
+  vetId?: string;
   vetName?: string;
   notes?: string;
   offspring: CreateBirthOffspringPayload[];

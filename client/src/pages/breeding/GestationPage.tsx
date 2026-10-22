@@ -1,12 +1,15 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useMemo, useState, useEffect, useCallback } from 'react';
 import { Card, Table, Button, Tag, Space, Col, Drawer, Form, DatePicker, Input, InputNumber, message, Descriptions, Empty, Tooltip, Modal, Row } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { PlusOutlined, CloseCircleOutlined, HeartOutlined } from '@ant-design/icons';
 import { gestationApi, breedingRecordsApi, type ConfirmPregnancyPayload, type LogHealthCheckPayload } from '../../api/breeding';
+import { employeesApi } from '../../api/hr';
 import { getApiError } from '../../api/farmApi';
 import { formatDate } from '../../i18n/format';
 
-import type { GestationRecord, GestationHealthCheck, BreedingRecord } from '../../types';
+import type { Employee, GestationRecord, GestationHealthCheck, BreedingRecord } from '../../types';
+import LookupOrText from '../../components/LookupOrText';
+import type { EntityOption } from '../../components/EntityPicker';
 import { useTranslation } from 'react-i18next';
 
 const STAGE_LABELS: Record<number, string> = { 0: 'Early', 1: 'Mid', 2: 'Late', 3: 'Overdue' };
@@ -17,6 +20,17 @@ export default function GestationPage() {const { t } = useTranslation('breeding'
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+
+  // performedBy still stores the name the user typed, so the picker offers the
+  // farm's employees while leaving the free-text input beside it available.
+  const employeeOptions = useMemo<EntityOption[]>(
+    () => employees.map((employee) => ({
+      value: `${employee.firstName} ${employee.lastName}`.trim(),
+      label: `${employee.firstName} ${employee.lastName}`.trim(),
+    })),
+    [employees],
+  );
 
   // Health check drawer
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -47,6 +61,22 @@ export default function GestationPage() {const { t } = useTranslation('breeding'
     const timer = window.setTimeout(() => { void load(1); }, 0);
     return () => window.clearTimeout(timer);
   }, [load]);
+
+  useEffect(() => {
+    let cancelled = false;
+    employeesApi
+      .list({ page: 1, pageSize: 100 })
+      .then((res) => {
+        if (!cancelled) setEmployees(res.data.items);
+      })
+      .catch(() => {
+        // The free-text field still works when the optional employee list cannot load.
+        if (!cancelled) setEmployees([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const openHealthDrawer = async (record: GestationRecord) => {
     setSelectedGestation(record);
@@ -291,7 +321,11 @@ export default function GestationPage() {const { t } = useTranslation('breeding'
                 <Row gutter={[16, 16]}>
                   <Col xs={24} sm={12}>
                     <Form.Item name="performedBy" label={t('performedBy')}>
-                      <Input maxLength={200} />
+                      <LookupOrText
+                        options={employeeOptions}
+                        placeholder={t('performedBy')}
+                        allowClear
+                      />
                     </Form.Item>
                   </Col>
                   <Col xs={24} sm={12}>

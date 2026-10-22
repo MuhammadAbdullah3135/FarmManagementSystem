@@ -9,6 +9,7 @@ public class CreateBreedingRecordRequest
     public Guid DamId { get; set; }
     public DateTime BreedingDate { get; set; }
     public BreedingMethod Method { get; set; }
+    public Guid? VetId { get; set; }
     public string? VetName { get; set; }
     public string? Notes { get; set; }
 }
@@ -19,6 +20,7 @@ public class UpdateBreedingRecordRequest
     public Guid DamId { get; set; }
     public DateTime BreedingDate { get; set; }
     public BreedingMethod Method { get; set; }
+    public Guid? VetId { get; set; }
     public string? VetName { get; set; }
     public BreedingResult Result { get; set; }
     public string? Notes { get; set; }
@@ -48,6 +50,7 @@ public class BreedingRecordDto
     public string? DamName { get; set; }
     public DateTime BreedingDate { get; set; }
     public BreedingMethod Method { get; set; }
+    public Guid? VetId { get; set; }
     public string? VetName { get; set; }
     public BreedingResult Result { get; set; }
     public string? Notes { get; set; }

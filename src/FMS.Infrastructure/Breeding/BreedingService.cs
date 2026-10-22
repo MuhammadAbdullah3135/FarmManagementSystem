@@ -61,7 +61,8 @@ public class BreedingService : IBreedingService
                 DamName = br.Dam.Name,
                 BreedingDate = br.BreedingDate,
                 Method = br.Method,
-                VetName = br.VetName,
+                VetId = br.VetId,
+                VetName = br.Vet != null ? br.Vet.Name : br.VetName,
                 Result = br.Result,
                 Notes = br.Notes,
                 CreatedAt = br.CreatedAt
@@ -83,6 +84,7 @@ public class BreedingService : IBreedingService
             .AsNoTracking()
             .Include(br => br.Sire)
             .Include(br => br.Dam)
+            .Include(br => br.Vet)
             .FirstOrDefaultAsync(br => br.Id == id && br.FarmId == farmId);
 
         if (record == null)
@@ -106,6 +108,12 @@ public class BreedingService : IBreedingService
         if (request.SireId == request.DamId)
             return Result<BreedingRecordDto>.Validation("Sire and dam must be different animals", DomainMessageKeys.SireDamMustDiffer);
 
+        var vetResult = await ResolveVetAsync(farmId, request.VetId);
+        if (!vetResult.IsSuccess)
+            return Result<BreedingRecordDto>.Validation(
+                vetResult.Error!.Message, vetResult.Error.MessageKey, vetResult.Error.MessageArgs);
+
+        var vet = vetResult.Value;
         var userId = _currentUser.GetUserId();
         var now = DateTime.UtcNow;
 
@@ -117,7 +125,8 @@ public class BreedingService : IBreedingService
             DamId = request.DamId,
             BreedingDate = request.BreedingDate,
             Method = request.Method,
-            VetName = request.VetName?.Trim(),
+            VetId = vet?.Id,
+            VetName = vet?.Name ?? Clean(request.VetName),
             Result = BreedingResult.Pending,
             Notes = request.Notes?.Trim(),
             CreatedAt = now,
@@ -185,11 +194,18 @@ public class BreedingService : IBreedingService
         if (request.SireId == request.DamId)
             return Result<BreedingRecordDto>.Validation("Sire and dam must be different animals", DomainMessageKeys.SireDamMustDiffer);
 
+        var vetResult = await ResolveVetAsync(farmId, request.VetId);
+        if (!vetResult.IsSuccess)
+            return Result<BreedingRecordDto>.Validation(
+                vetResult.Error!.Message, vetResult.Error.MessageKey, vetResult.Error.MessageArgs);
+
+        var vet = vetResult.Value;
         record.SireId = request.SireId;
         record.DamId = request.DamId;
         record.BreedingDate = request.BreedingDate;
         record.Method = request.Method;
-        record.VetName = request.VetName?.Trim();
+        record.VetId = vet?.Id;
+        record.VetName = vet?.Name ?? Clean(request.VetName);
         record.Result = request.Result;
         record.Notes = request.Notes?.Trim();
         record.ModifiedAt = DateTime.UtcNow;
@@ -595,6 +611,22 @@ public class BreedingService : IBreedingService
         return GestationStage.Early;
     }
 
+    private async Task<Result<Vet?>> ResolveVetAsync(Guid farmId, Guid? vetId)
+    {
+        if (!vetId.HasValue)
+            return Result<Vet?>.Success(null);
+
+        var vet = await _context.Vets
+            .FirstOrDefaultAsync(v => v.Id == vetId.Value && v.FarmId == farmId);
+        return vet == null
+            ? Result<Vet?>.Validation(
+                "Vet not found in this farm", DomainMessageKeys.VetNotFoundInFarm)
+            : Result<Vet?>.Success(vet);
+    }
+
+    private static string? Clean(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
     private static BreedingRecordDto MapToDto(BreedingRecord record)
     {
         return new BreedingRecordDto
@@ -609,7 +641,8 @@ public class BreedingService : IBreedingService
             DamName = record.Dam.Name,
             BreedingDate = record.BreedingDate,
             Method = record.Method,
-            VetName = record.VetName,
+            VetId = record.VetId,
+            VetName = record.Vet != null ? record.Vet.Name : record.VetName,
             Result = record.Result,
             Notes = record.Notes,
             CreatedAt = record.CreatedAt
@@ -657,7 +690,8 @@ public class BreedingService : IBreedingService
                 BirthDate = br.BirthDate,
                 OffspringCount = br.OffspringCount,
                 AliveCount = br.Offspring.Count(o => o.Outcome == BirthOutcome.Alive),
-                VetName = br.VetName,
+                VetId = br.VetId,
+                VetName = br.Vet != null ? br.Vet.Name : br.VetName,
                 Notes = br.Notes,
                 CreatedAt = br.CreatedAt,
                 Offspring = br.Offspring.Select(o => new BirthOffspringDto
@@ -689,6 +723,7 @@ public class BreedingService : IBreedingService
         var record = await _context.BirthRecords
             .AsNoTracking()
             .Include(br => br.Dam)
+            .Include(br => br.Vet)
             .Include(br => br.Offspring)
                 .ThenInclude(bo => bo.SexOption)
             .FirstOrDefaultAsync(br => br.Id == id && br.FarmId == farmId);
@@ -711,6 +746,13 @@ public class BreedingService : IBreedingService
             .FirstOrDefaultAsync(a => a.Id == request.DamId && a.FarmId == farmId && !a.IsDeleted);
         if (dam == null)
             return Result<BirthRecordDto>.NotFound("Dam animal not found", DomainMessageKeys.DamNotFound);
+
+        var vetResult = await ResolveVetAsync(farmId, request.VetId);
+        if (!vetResult.IsSuccess)
+            return Result<BirthRecordDto>.Validation(
+                vetResult.Error!.Message, vetResult.Error.MessageKey, vetResult.Error.MessageArgs);
+
+        var vet = vetResult.Value;
 
         // Validate optional gestation record
         GestationRecord? gestationRecord = null;
@@ -762,7 +804,8 @@ public class BreedingService : IBreedingService
             BreedingRecordId = request.BreedingRecordId,
             BirthDate = request.BirthDate,
             OffspringCount = request.Offspring.Count,
-            VetName = request.VetName?.Trim(),
+            VetId = vet?.Id,
+            VetName = vet?.Name ?? Clean(request.VetName),
             Notes = request.Notes?.Trim(),
             CreatedAt = now,
             CreatedBy = userId
@@ -906,6 +949,7 @@ public class BreedingService : IBreedingService
             BirthDate = birthRecord.BirthDate,
             OffspringCount = birthRecord.OffspringCount,
             AliveCount = offspringDtos.Count(o => o.Outcome == BirthOutcome.Alive),
+            VetId = birthRecord.VetId,
             VetName = birthRecord.VetName,
             Notes = birthRecord.Notes,
             CreatedAt = birthRecord.CreatedAt,
@@ -942,7 +986,8 @@ public class BreedingService : IBreedingService
             BirthDate = record.BirthDate,
             OffspringCount = record.OffspringCount,
             AliveCount = record.Offspring.Count(o => o.Outcome == BirthOutcome.Alive),
-            VetName = record.VetName,
+            VetId = record.VetId,
+            VetName = record.Vet != null ? record.Vet.Name : record.VetName,
             Notes = record.Notes,
             CreatedAt = record.CreatedAt,
             Offspring = record.Offspring.Select(o => new BirthOffspringDto

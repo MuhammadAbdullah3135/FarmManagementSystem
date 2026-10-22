@@ -6,6 +6,7 @@ import { birthsApi, gestationApi, breedingRecordsApi, type CreateBirthRecordPayl
 import { lookupsApi } from '../../api/attendance';
 import { getApiError } from '../../api/farmApi';
 import LookupQuickAddSelect from '../../components/LookupQuickAddSelect';
+import VetLookupOrText from '../../components/VetLookupOrText';
 import { formatDate } from '../../i18n/format';
 
 import type { BirthRecord, GestationRecord, BreedingRecord } from '../../types';
@@ -114,7 +115,8 @@ export default function BirthRecordingPage() {const { t } = useTranslation(['bre
         gestationRecordId: values.gestationRecordId || undefined,
         breedingRecordId: values.breedingRecordId || undefined,
         birthDate: values.birthDate.toISOString(),
-        vetName: values.vetName,
+        vetId: values.vet?.vetId,
+        vetName: values.vet?.vetName,
         notes: values.notes,
         offspring: (values.offspring || []).map((off: Record<string, unknown>) => ({
           sexOptionId: off.sexOptionId,
@@ -287,8 +289,8 @@ export default function BirthRecordingPage() {const { t } = useTranslation(['bre
             <DatePicker style={{ width: '100%' }} />
           </Form.Item>
 
-          <Form.Item name="vetName" label={t('veterinarian')}>
-            <Input maxLength={200} placeholder={t('vetNameOptional')} />
+          <Form.Item name="vet" label={t('veterinarian')}>
+            <VetLookupOrText textPlaceholder={t('vetNameOptional')} allowClear />
           </Form.Item>
 
           <Form.Item name="notes" label={t('notes')}>
