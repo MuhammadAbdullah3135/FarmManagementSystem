@@ -1,6 +1,6 @@
 # Vets — proposal
 
-Status: **reviewed, awaiting approval**. No entity, migration, endpoint, backfill, or UI
+Status: **approved, awaiting build start**. No entity, migration, endpoint, backfill, or UI
 change has been created. This document is the decision package for the second Bucket 3
 master list, following `docs/inventory-categories-proposal.md`. It was checked against the
 four current clinical entities and `HealthCostService` during Phase C.9.
@@ -101,9 +101,10 @@ Vet writes follow the **existing medical-record writers**: the medical-record cr
 update, and delete actions are protected by `[Authorize]` plus farm membership resolution
 in `FarmContextMiddleware`, which today means any member of that farm. The vet controller
 must not be stricter or looser than that, so no user gains or loses access when this lands.
-Reads also follow the existing clinical-record reads (any farm member). If the intent is
-to narrow both surfaces to `Veterinarian`/`FarmManager`/`SystemOwner`, that should be a
-separate, explicit decision for the medical-record endpoints too (see Open for owner).
+Reads also follow the existing clinical-record reads (any farm member). The owner kept
+these roles for this phase; narrowing both surfaces to
+`Veterinarian`/`FarmManager`/`SystemOwner` would be a separate decision for the
+medical-record endpoints too.
 
 ## Migration steps
 
@@ -266,42 +267,37 @@ for explicit confirmation of that database before running the dry run, and will 
 
 ## Decisions locked
 
-These defaults were set during the Phase C.8/C.9 review and are no longer open:
+The owner approved the proposal as written. Build may start; no code, migration, or UI
+change has been made yet.
 
-1. **One vet belongs to one farm.** There is no cross-farm sharing in this phase; a vet
+1. **Approval:** approved as written, including the entity, migration, backfill, endpoints,
+   and UI.
+2. **Write roles:** keep the current medical-record write roles. Vet writes and reads
+   continue to follow the existing clinical-record access rules (any farm member through
+   farm context); no role narrowing in this phase.
+3. **Rename propagation:** do not rewrite historical `VetName` values when a vet is renamed.
+   Historical records keep the spelling they stored.
+4. **Picker strictness:** keep the free-text fallback on all four clinical screens. A
+   free-text entry leaves `VetId` null.
+5. **Menu placement:** Health → Vets.
+6. **Farm export:** exclude Vets from the full-farm export in this phase.
+7. **Retiring `VetName`:** drop the column in a later release, once every writer uses
+   `VetId`. It stays for this phase.
+8. **Gestation `performedBy`:** keep it employee-backed; it is not a vet reference.
+9. **One vet belongs to one farm.** There is no cross-farm sharing in this phase; a vet
    working for several farms is entered once per farm. A shared-vet join table would be a
    later decision.
-2. **`LicenseNumber` is optional and unique per farm when present** (trimmed,
-   case-insensitive, blank stored as `null`; partial unique index where it is not null).
-3. Names are unique per farm, case-insensitively, with a functional index plus a service
-   check, matching inventory categories.
-4. The **Health** module owns the entity, service, controller, and UI.
-5. `VetId` is nullable on the four clinical records; `VetName` is retained for at least
-   one release, and a selected vet's name is mirrored into it.
-6. Vet writes follow the **current medical-record writers** (any farm member via farm
-   context today); reads follow current clinical-record reads.
-7. Vet-cost grouping stays on `VetName` in this phase; no report or grouping code changes.
-8. `GestationHealthCheck.PerformedBy` stays employee-backed and is not part of this phase.
-9. The backfill is a separate, idempotent, dry-runnable operator step. `--apply` needs its
-   own approval and is never part of a migration.
+10. **`LicenseNumber` is optional and unique per farm when present** (trimmed,
+    case-insensitive, blank stored as `null`; partial unique index where it is not null).
+11. Names are unique per farm, case-insensitively, with a functional index plus a service
+    check, matching inventory categories.
+12. The **Health** module owns the entity, service, controller, and UI.
+13. `VetId` is nullable on the four clinical records; `VetName` is retained for this phase,
+    and a selected vet's name is mirrored into it.
+14. Vet-cost grouping stays on `VetName` in this phase; no report or grouping code changes.
+15. The backfill is a separate, idempotent, dry-runnable operator step. `--apply` needs its
+    own approval and is never part of a migration.
 
 ## Open for owner
 
-1. **Approve the proposal as a whole** (entity, migration, backfill, endpoints, and UI) so
-   implementation can start.
-2. **Should clinical write roles be narrowed?** The default keeps the current medical-record
-   rules (any farm member). Narrowing to `Veterinarian`/`FarmManager`/`SystemOwner` would
-   also change existing medical and vaccination endpoints, so it is a separate decision.
-3. **Rename propagation:** confirm that renaming a vet should leave historical `VetName`
-   strings untouched (the locked default), or say whether a rename should rewrite them in a
-   later phase once grouping moves to `VetId`.
-4. **Picker strictness:** keep the free-text fallback on the four screens for a vet who is
-   not in the list (the proposed default), or make the picker mandatory over the master
-   list? The free-text path leaves `VetId` null.
-5. **Menu placement:** Health → Vets (proposed) or Configuration → Vets?
-6. **Farm export:** should `Vets` be added to the full-farm export when the entity is
-   built? The proposal currently does not include it.
-7. **Retiring `VetName`:** when may the retained column be dropped? The proposal assumes a
-   later release after every client writes `VetId`, not this phase.
-8. **Gestation `performedBy`:** leave it employee-backed permanently, or revisit it as a
-   vet reference in a later phase?
+_None._

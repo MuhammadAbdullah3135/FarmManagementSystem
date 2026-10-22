@@ -5,7 +5,7 @@ each one is classified, and what would be needed to close it. The Phase C.6 stat
 above section 1 is the current snapshot, updated for Phase C.8. Bucket 1 and the
 client-side Bucket 2 work are implemented, and inventory categories (the first Bucket 3
 master) are implemented with their backfill still awaiting a dry run against a reachable
-database. The vet master is a reviewed proposal awaiting approval; the batch master has
+database. The vet master is approved, awaiting build start; the batch master has
 not been started.
 
 Line references are to the current working tree at the start of Phase C.6.
@@ -38,13 +38,13 @@ Line references are to the current working tree at the start of Phase C.6.
 
 | # | Field | Status | Where it stands |
 |---|-------|--------|-----------------|
-| 1 | Medical `vetName` | Reviewed, awaiting approval | Decision package in `docs/vets-proposal.md`; no entity, migration, or endpoint created. |
+| 1 | Medical `vetName` | Approved, awaiting build start | Decision package in `docs/vets-proposal.md`; no entity, migration, or endpoint created. |
 | 2 | Medical `dosage` | Done | `LookupOrText` backed by `GET /api/farms/{farmId}/suggestions/medicalDosage`. |
 | 3 | Medical `diagnosis` | Done | `LookupOrText` backed by `GET /api/farms/{farmId}/suggestions/medicalDiagnosis`. |
-| 4 | Vaccination `vetName` | Reviewed, awaiting approval | Decision package in `docs/vets-proposal.md`; no entity, migration, or endpoint created. |
+| 4 | Vaccination `vetName` | Approved, awaiting build start | Decision package in `docs/vets-proposal.md`; no entity, migration, or endpoint created. |
 | 5 | Vaccination `batchNumber` | Awaiting approval | Bucket 3 batch master only; not built. |
-| 6 | Breeding `vetName` | Reviewed, awaiting approval | Decision package in `docs/vets-proposal.md`; no entity, migration, or endpoint created. |
-| 7 | Birth `vetName` | Reviewed, awaiting approval | Decision package in `docs/vets-proposal.md`; no entity, migration, or endpoint created. |
+| 6 | Breeding `vetName` | Approved, awaiting build start | Decision package in `docs/vets-proposal.md`; no entity, migration, or endpoint created. |
+| 7 | Birth `vetName` | Approved, awaiting build start | Decision package in `docs/vets-proposal.md`; no entity, migration, or endpoint created. |
 | 8 | Gestation `performedBy` | Done | Employee names loaded from the existing employees list. |
 | 9 | Medicine `unit` | Done | Distinct units from the medicines already loaded on the page. |
 | 10 | Medicine stock `batchNumber` | Awaiting approval | Bucket 3 batch master only; not built. |
@@ -109,10 +109,10 @@ below.
 
 These need a farm-owned entity, a management screen, and a migration. Inventory
 categories are implemented (their backfill still needs a dry run against a reachable
-database; runbook: `docs/inventory-backfill-runbook.md`). Vets are a reviewed proposal
-awaiting approval. Batches have not been started.
+database; runbook: `docs/inventory-backfill-runbook.md`). Vets are approved, awaiting
+build start. Batches have not been started.
 
-- **Vets** — medical, vaccination, breeding and birth `vetName`. Reviewed decision package:
+- **Vets** — medical, vaccination, breeding and birth `vetName`. Approved decision package:
   `docs/vets-proposal.md`. Gestation `performedBy` stays employee-backed in this phase.
 - **Batch numbers** — vaccination `batchNumber`, medicine-stock `batchNumber`.
 - **Inventory categories** — inventory item `category`. Implemented; see
@@ -201,8 +201,8 @@ is explicit.
 
 ### 4.1 Vet
 
-Final decision package: **`docs/vets-proposal.md`**. Status: **reviewed, awaiting
-approval**; no entity, migration, endpoint, or backfill has been created.
+Final decision package: **`docs/vets-proposal.md`**. Status: **approved, awaiting build
+start**; no entity, migration, endpoint, or backfill has been created.
 
 ```text
 Vet
@@ -324,7 +324,7 @@ Bucket 3 batch decision is made.
 | 3 | Bucket 1 client-side suggestions: gestation `performedBy`, medicine `unit`, vaccine `defaultDosage` | 3 pages + 3 tests | Done |
 | 4 | Bucket 1 read-only suggestions: medical `diagnosis`/`dosage`, supplier `productsSupplied` | generic endpoint + 2 client pages + tests | Done |
 | 5 | Bucket 3 inventory categories (smallest master) | 18–22 files + migration | Implemented, backfill pending dry-run against a reachable database |
-| 6 | Bucket 3 vets | proposal estimates 26–32 files + migration + backfill | Reviewed, awaiting approval |
+| 6 | Bucket 3 vets | proposal estimates 26–32 files + migration + backfill | Approved, awaiting build start |
 | 7 | Bucket 3 batches (or fold into medicine stock) | 6–10 files + migration + backfill | Awaiting approval |
 
 The order is deliberate: no migration is needed for steps 1–4, and each master list is
@@ -340,6 +340,6 @@ smaller and less risky than the one after it.
    reachable database and has not been applied.
 3. **Open:** provide an employee code/number if references must be unique across
    employees; the same-employee/month collision fallback is implemented.
-4. **Open:** the vet master is a reviewed proposal in `docs/vets-proposal.md` awaiting
-   approval; the batch master has not been started. Both remain proposals. The inventory
-   backfill awaits a dry run using `docs/inventory-backfill-runbook.md`.
+4. The vet master is approved in `docs/vets-proposal.md`, awaiting build start; the batch
+   master has not been started. The inventory backfill awaits a dry run using
+   `docs/inventory-backfill-runbook.md`.
