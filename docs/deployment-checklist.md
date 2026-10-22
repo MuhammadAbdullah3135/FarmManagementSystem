@@ -194,11 +194,16 @@ This is destructive:
 6. **`AddUserIsDemo` is not nullable.** Its default makes old inserts safe, but the general
    "new columns are nullable" rollback argument applies specifically to `VetId` and
    `CategoryId`, not to `IsDemo`.
-7. **Frontend suite flakiness under load.** A repeat full `npx vitest run` with 95 isolated
-   workers hit the 5s per-test timeout in `src/i18n/enumRender.test.tsx` and
-   `src/pages/breeding/LineagePage.test.tsx`. Both files passed in isolation (21 tests, 27s).
-   This looks like runner load, not a product regression; qualify the suite with a lower
-   worker count or an isolated rerun if a full run times out.
+7. **Frontend suite timeout risk closed (2026-10-22).** The two full-suite timeouts were
+   test-cost problems amplified by 95 parallel workers, not product defects. The audit test
+   mounted the real antd `RangePicker`, rendered eight copyable rows, and ran a 1,850-key
+   raw-key scan over every text node; it now stubs the date picker (unrelated to enum text),
+   renders one row while keeping `totalCount: 8`, and skips text that cannot contain a
+   `namespace:key`. The lineage chart test drove antd's `Select` and button through
+   `userEvent`, whose pointer checks repeatedly call `getComputedStyle`; it now uses
+   `fireEvent`. The full suite then passed **832/832 three consecutive times** (596.85s,
+   636.45s, 610.65s), and `tsc -b`, lint, `vite build`, and the backend suite all passed. No
+   test timeout was raised.
 
 ## 10. Sign-off
 
