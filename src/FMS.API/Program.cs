@@ -291,6 +291,8 @@ builder.Services.AddScoped<IHealthCostService, HealthCostService>();
 builder.Services.AddScoped<IInventoryService, InventoryService>();
 builder.Services.AddScoped<IInventoryCategoryService, InventoryCategoryService>();
 builder.Services.AddScoped<IInventoryCategoryBackfillService, InventoryCategoryBackfillService>();
+builder.Services.AddScoped<IVetService, VetService>();
+builder.Services.AddScoped<IVetBackfillService, VetBackfillService>();
 builder.Services.AddScoped<ISupplierService, SupplierService>();
 builder.Services.AddScoped<ICustomerService, CustomerService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
@@ -392,6 +394,17 @@ if (InventoryCategoryBackfillCommand.Matches(args))
     var backfill = backfillScope.ServiceProvider
         .GetRequiredService<IInventoryCategoryBackfillService>();
     Environment.ExitCode = await InventoryCategoryBackfillCommand.RunAsync(backfill, args, Console.Out);
+    return;
+}
+
+//   dotnet run --project src/FMS.API -- vets:backfill
+//   dotnet run --project src/FMS.API -- vets:backfill --apply
+if (VetBackfillCommand.Matches(args))
+{
+    using var backfillScope = app.Services.CreateScope();
+    var backfill = backfillScope.ServiceProvider
+        .GetRequiredService<IVetBackfillService>();
+    Environment.ExitCode = await VetBackfillCommand.RunAsync(backfill, args, Console.Out);
     return;
 }
 

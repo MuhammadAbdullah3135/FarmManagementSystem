@@ -150,8 +150,11 @@ public static class DomainMessageKeys
     /// <summary>The exact English this API has always answered: “Inventory category not found”.</summary>
     public const string InventoryCategoryNotFound = "validation.lookup.inventoryCategory";
 
-    /// <summary>The exact English this API has always answered: “Inventory category not found in this farm”.</summary>
+    /// <summary>The exact English this API has always answered: "Inventory category not found in this farm".</summary>
     public const string InventoryCategoryNotFoundInFarm = "validation.lookup.inventoryCategoryInFarm";
+
+    /// <summary>The exact English this API has always answered: "Vet not found".</summary>
+    public const string VetNotFound = "validation.lookup.vet";
 
     /// <summary>The exact English this API has always answered: “Inventory item not found”.</summary>
     public const string InventoryItemNotFound = "validation.lookup.inventoryItem";
@@ -278,8 +281,17 @@ public static class DomainMessageKeys
     /// <summary>The exact English this API has always answered: “Cannot delete an income category that has income records”</summary>
     public const string IncomeCategoryHasRecords = "validation.conflict.incomeCategoryInUse";
 
-    /// <summary>The exact English this API has always answered: “Cannot delete an inventory category that has items; deactivate it instead”</summary>
+    /// <summary>The exact English this API has always answered: "Cannot delete an inventory category that has items; deactivate it instead"</summary>
     public const string InventoryCategoryHasItems = "validation.conflict.inventoryCategoryHasItems";
+
+    /// <summary>The exact English this API has always answered: "A vet named '{name}' already exists"</summary>
+    public const string VetNameExists = "validation.conflict.vetNameExists";
+
+    /// <summary>The exact English this API has always answered: "A vet with licence number '{licenseNumber}' already exists"</summary>
+    public const string VetLicenseNumberExists = "validation.conflict.vetLicenseNumberExists";
+
+    /// <summary>The exact English this API has always answered: "Cannot delete a vet that is referenced by clinical records; deactivate it instead"</summary>
+    public const string VetHasClinicalRecords = "validation.conflict.vetHasClinicalRecords";
 
     /// <summary>The exact English this API has always answered: “Cannot delete an inventory item with stock movement history”</summary>
     public const string InventoryItemHasStockHistory = "validation.conflict.inventoryItemHasHistory";
@@ -564,8 +576,26 @@ public static class DomainMessageKeys
     /// <summary>The exact English this API has always answered: “Category name cannot exceed {max} characters”</summary>
     public const string InventoryCategoryNameMaxLength = "validation.validation.inventoryCategoryNameMaxLength";
 
-    /// <summary>The exact English this API has always answered: “Description cannot exceed {max} characters”</summary>
+    /// <summary>The exact English this API has always answered: "Description cannot exceed {max} characters"</summary>
     public const string InventoryCategoryDescriptionMaxLength = "validation.validation.inventoryCategoryDescriptionMaxLength";
+
+    /// <summary>The exact English this API has always answered: "Vet name is required"</summary>
+    public const string VetNameRequired = "validation.validation.vetNameRequired";
+
+    /// <summary>The exact English this API has always answered: "Vet name cannot exceed {max} characters"</summary>
+    public const string VetNameMaxLength = "validation.validation.vetNameMaxLength";
+
+    /// <summary>The exact English this API has always answered: "Phone cannot exceed {max} characters"</summary>
+    public const string VetPhoneMaxLength = "validation.validation.vetPhoneMaxLength";
+
+    /// <summary>The exact English this API has always answered: "Email cannot exceed {max} characters"</summary>
+    public const string VetEmailMaxLength = "validation.validation.vetEmailMaxLength";
+
+    /// <summary>The exact English this API has always answered: "Licence number cannot exceed {max} characters"</summary>
+    public const string VetLicenseNumberMaxLength = "validation.validation.vetLicenseNumberMaxLength";
+
+    /// <summary>The exact English this API has always answered: "Notes cannot exceed {max} characters"</summary>
+    public const string VetNotesMaxLength = "validation.validation.vetNotesMaxLength";
 
     /// <summary>The exact English this API has always answered: “Document file is missing from storage”</summary>
     public const string DocumentFileMissing = "validation.validation.documentFileMissing";

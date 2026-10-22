@@ -93,7 +93,10 @@
     "taskNotPendingToStart": "Only pending tasks can be started. Current status: {{status}}",
     "taskNotOpenToComplete": "Open tasks only can be completed. Current status: {{status}}",
     "taskNotOpenToCancel": "Open tasks only can be cancelled. Current status: {{status}}",
-    "taskNotReopenable": "Only completed or cancelled tasks can be reopened. Current status: {{status}}"
+    "taskNotReopenable": "Only completed or cancelled tasks can be reopened. Current status: {{status}}",
+    "vetHasClinicalRecords": "Cannot delete a vet that is referenced by clinical records; deactivate it instead",
+    "vetLicenseNumberExists": "A vet with licence number '{{licenseNumber}}' already exists",
+    "vetNameExists": "A vet named '{{name}}' already exists"
   },
   "customer": {
     "contactInfoMaxLength": "Contact information cannot exceed {{max}} characters",
@@ -207,7 +210,8 @@
     "noAttendanceToday": "No attendance record found for today",
     "notFarmMember": "That user is not a member of this farm",
     "noExportArchiveYet": "This farm has no export archive yet. Create one and download it when it is ready.",
-    "exportArchiveGone": "The export archive is no longer stored. Create a new export to replace it."
+    "exportArchiveGone": "The export archive is no longer stored. Create a new export to replace it.",
+    "vet": "Vet not found"
   },
   "supersede": {
     "completionAlreadyApplied": "This completion was already applied",
@@ -296,7 +300,13 @@
     "unknownSuggestionField": "Unknown suggestion field",
     "invalidOrExpiredResetToken": "Invalid or expired reset token",
     "resetTokenAlreadyUsed": "Reset token has already been used",
-    "resetTokenExpired": "Reset token has expired"
+    "resetTokenExpired": "Reset token has expired",
+    "vetNameRequired": "Vet name is required",
+    "vetNameMaxLength": "Vet name cannot exceed {{max}} characters",
+    "vetPhoneMaxLength": "Phone cannot exceed {{max}} characters",
+    "vetEmailMaxLength": "Email cannot exceed {{max}} characters",
+    "vetLicenseNumberMaxLength": "Licence number cannot exceed {{max}} characters",
+    "vetNotesMaxLength": "Notes cannot exceed {{max}} characters"
   },
   "unauthorized": {
     "farmOwnerOrManagerOnly": "Only farm owners and managers can {{action}}",

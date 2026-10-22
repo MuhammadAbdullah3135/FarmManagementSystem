@@ -93,7 +93,10 @@
     "taskNotPendingToStart": "لا يمكن بدء سوى المهام المعلّقة. الحالة الحالية: {{status}}",
     "taskNotOpenToComplete": "لا يمكن إكمال سوى المهام المفتوحة. الحالة الحالية: {{status}}",
     "taskNotOpenToCancel": "لا يمكن إلغاء سوى المهام المفتوحة. الحالة الحالية: {{status}}",
-    "taskNotReopenable": "لا يمكن إعادة فتح سوى المهام المكتملة أو الملغاة. الحالة الحالية: {{status}}"
+    "taskNotReopenable": "لا يمكن إعادة فتح سوى المهام المكتملة أو الملغاة. الحالة الحالية: {{status}}",
+    "vetHasClinicalRecords": "لا يمكن حذف طبيب بيطري تشير إليه سجلات سريرية؛ قم بتعطيله بدلاً من ذلك",
+    "vetLicenseNumberExists": "يوجد طبيب بيطري بالفعل برقم الترخيص '{{licenseNumber}}'",
+    "vetNameExists": "يوجد طبيب بيطري بالفعل بالاسم '{{name}}'"
   },
   "customer": {
     "contactInfoMaxLength": "لا يمكن أن تتجاوز معلومات التواصل {{max}} حرفًا",
@@ -207,7 +210,8 @@
     "noAttendanceToday": "لم يتم العثور على سجل حضور لهذا اليوم",
     "notFarmMember": "هذا الشخص ليس عضوًا في هذه المزرعة",
     "noExportArchiveYet": "لا يوجد ملف تصدير لهذه المزرعة بعد. أنشئ واحدًا ونزّله عندما يجهز.",
-    "exportArchiveGone": "لم يعد ملف التصدير مخزّنًا. أنشئ تصديرًا جديدًا لاستبداله."
+    "exportArchiveGone": "لم يعد ملف التصدير مخزّنًا. أنشئ تصديرًا جديدًا لاستبداله.",
+    "vet": "لم يتم العثور على الطبيب البيطري"
   },
   "supersede": {
     "completionAlreadyApplied": "تم تطبيق هذا الإكمال بالفعل",
@@ -296,7 +300,13 @@
     "unknownSuggestionField": "حقل الاقتراح غير معروف",
     "invalidOrExpiredResetToken": "رمز إعادة تعيين كلمة المرور غير صالح أو منتهي الصلاحية",
     "resetTokenAlreadyUsed": "تم استخدام رمز إعادة تعيين كلمة المرور بالفعل",
-    "resetTokenExpired": "انتهت صلاحية رمز إعادة تعيين كلمة المرور"
+    "resetTokenExpired": "انتهت صلاحية رمز إعادة تعيين كلمة المرور",
+    "vetNameRequired": "اسم الطبيب البيطري مطلوب",
+    "vetNameMaxLength": "لا يمكن أن يتجاوز اسم الطبيب البيطري {{max}} حرفًا",
+    "vetPhoneMaxLength": "لا يمكن أن يتجاوز رقم الهاتف {{max}} حرفًا",
+    "vetEmailMaxLength": "لا يمكن أن يتجاوز البريد الإلكتروني {{max}} حرفًا",
+    "vetLicenseNumberMaxLength": "لا يمكن أن يتجاوز رقم الترخيص {{max}} حرفًا",
+    "vetNotesMaxLength": "لا يمكن أن تتجاوز الملاحظات {{max}} حرفًا"
   },
   "unauthorized": {
     "farmOwnerOrManagerOnly": "يمكن فقط لمالكي المزرعة ومديريها {{action}}",

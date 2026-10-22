@@ -93,7 +93,10 @@
     "taskNotPendingToStart": "Solo las tareas pendientes se pueden iniciar. Estado actual: {{status}}",
     "taskNotOpenToComplete": "Solo las tareas abiertas se pueden completar. Estado actual: {{status}}",
     "taskNotOpenToCancel": "Solo las tareas abiertas se pueden cancelar. Estado actual: {{status}}",
-    "taskNotReopenable": "Solo las tareas completadas o canceladas se pueden reabrir. Estado actual: {{status}}"
+    "taskNotReopenable": "Solo las tareas completadas o canceladas se pueden reabrir. Estado actual: {{status}}",
+    "vetHasClinicalRecords": "No se puede eliminar un veterinario al que hacen referencia registros clínicos; desactívalo en su lugar",
+    "vetLicenseNumberExists": "Ya existe un veterinario con el número de licencia '{{licenseNumber}}'",
+    "vetNameExists": "Ya existe un veterinario con el nombre '{{name}}'"
   },
   "customer": {
     "contactInfoMaxLength": "La información de contacto no puede superar los {{max}} caracteres",
@@ -207,7 +210,8 @@
     "noAttendanceToday": "No se encontró ningún registro de asistencia para hoy",
     "notFarmMember": "Esa persona no es miembro de esta granja",
     "noExportArchiveYet": "Esta granja aún no tiene un archivo de exportación. Crea uno y descárgalo cuando esté listo.",
-    "exportArchiveGone": "El archivo de exportación ya no está almacenado. Crea una exportación nueva para reemplazarlo."
+    "exportArchiveGone": "El archivo de exportación ya no está almacenado. Crea una exportación nueva para reemplazarlo.",
+    "vet": "No se encontró el veterinario"
   },
   "supersede": {
     "completionAlreadyApplied": "Esta finalización ya se aplicó",
@@ -296,7 +300,13 @@
     "unknownSuggestionField": "Campo de sugerencia desconocido",
     "invalidOrExpiredResetToken": "El token de restablecimiento no es válido o ha caducado",
     "resetTokenAlreadyUsed": "El token de restablecimiento ya se ha utilizado",
-    "resetTokenExpired": "El token de restablecimiento ha caducado"
+    "resetTokenExpired": "El token de restablecimiento ha caducado",
+    "vetNameRequired": "El nombre del veterinario es obligatorio",
+    "vetNameMaxLength": "El nombre del veterinario no puede superar los {{max}} caracteres",
+    "vetPhoneMaxLength": "El teléfono no puede superar los {{max}} caracteres",
+    "vetEmailMaxLength": "El correo electrónico no puede superar los {{max}} caracteres",
+    "vetLicenseNumberMaxLength": "El número de licencia no puede superar los {{max}} caracteres",
+    "vetNotesMaxLength": "Las notas no pueden superar los {{max}} caracteres"
   },
   "unauthorized": {
     "farmOwnerOrManagerOnly": "Solo los propietarios y gestores de la granja pueden {{action}}",
