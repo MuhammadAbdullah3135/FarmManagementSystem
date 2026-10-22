@@ -284,6 +284,13 @@ public static class FarmExportEntities
     [
         new()
         {
+            Entity = "Vet",
+            Reason = "Vet master data was added after the archive's table list was fixed. Writing a " 
+                + "vet table and its clinical file is deferred, so this phase's archive leaves vets " 
+                + "out rather than risking an incomplete or unreadable file."
+        },
+        new()
+        {
             Entity = "FarmHealthStatusSnapshot",
             Reason = "Derived cache of the farm's due and overdue counts. Recomputed by the "
                 + "health-status job from the records this archive already contains."

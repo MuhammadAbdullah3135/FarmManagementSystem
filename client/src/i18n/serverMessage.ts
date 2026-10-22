@@ -114,6 +114,8 @@ const ARG_KINDS: Record<string, Record<string, ArgKind>> = {
   'validation.conflict.feedTypeNameExists': { name: 'text' },
   'validation.conflict.expenseCategoryNameExists': { name: 'text' },
   'validation.conflict.inventoryCategoryNameExists': { name: 'text' },
+  'validation.conflict.vetNameExists': { name: 'text' },
+  'validation.conflict.vetLicenseNumberExists': { licenseNumber: 'text' },
   'validation.conflict.paymentMethodNameExists': { name: 'text' },
   'validation.conflict.incomeCategoryNameExists': { name: 'text' },
   'validation.conflict.feedTypeAlreadyInDietPlan': { name: 'text' },
@@ -128,6 +130,11 @@ const ARG_KINDS: Record<string, Record<string, ArgKind>> = {
   // ── inventory categories ──
   'validation.validation.inventoryCategoryNameMaxLength': { max: 'quantity' },
   'validation.validation.inventoryCategoryDescriptionMaxLength': { max: 'quantity' },
+  'validation.validation.vetNameMaxLength': { max: 'quantity' },
+  'validation.validation.vetPhoneMaxLength': { max: 'quantity' },
+  'validation.validation.vetEmailMaxLength': { max: 'quantity' },
+  'validation.validation.vetLicenseNumberMaxLength': { max: 'quantity' },
+  'validation.validation.vetNotesMaxLength': { max: 'quantity' },
 
   // ── files ──
   'validation.validation.fileTooLarge': { max: 'megabytes' },
