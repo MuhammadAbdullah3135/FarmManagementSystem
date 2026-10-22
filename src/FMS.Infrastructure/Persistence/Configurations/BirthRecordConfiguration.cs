@@ -14,6 +14,7 @@ public class BirthRecordConfiguration : IEntityTypeConfiguration<BirthRecord>
 
         builder.HasIndex(br => new { br.FarmId, br.DamId });
         builder.HasIndex(br => new { br.FarmId, br.BirthDate });
+        builder.HasIndex(br => br.VetId);
 
         builder.HasOne(br => br.Farm)
             .WithMany()
@@ -33,6 +34,11 @@ public class BirthRecordConfiguration : IEntityTypeConfiguration<BirthRecord>
         builder.HasOne(br => br.BreedingRecord)
             .WithMany()
             .HasForeignKey(br => br.BreedingRecordId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        builder.HasOne(br => br.Vet)
+            .WithMany()
+            .HasForeignKey(br => br.VetId)
             .OnDelete(DeleteBehavior.SetNull);
     }
 }

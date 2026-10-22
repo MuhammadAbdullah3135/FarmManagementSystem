@@ -16,6 +16,7 @@ public class VaccinationRecordConfiguration : IEntityTypeConfiguration<Vaccinati
 
         builder.HasIndex(v => new { v.AnimalId, v.VaccineTypeId });
         builder.HasIndex(v => new { v.FarmId, v.DateGiven });
+        builder.HasIndex(v => v.VetId);
 
         builder.HasOne(v => v.Farm)
             .WithMany()
@@ -31,6 +32,11 @@ public class VaccinationRecordConfiguration : IEntityTypeConfiguration<Vaccinati
             .WithMany(vt => vt.VaccinationRecords)
             .HasForeignKey(v => v.VaccineTypeId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(v => v.Vet)
+            .WithMany()
+            .HasForeignKey(v => v.VetId)
+            .OnDelete(DeleteBehavior.SetNull);
 
         builder.HasIndex(v => v.ExpenseId);
     }

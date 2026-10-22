@@ -12,6 +12,7 @@ public class MedicalRecord : SoftDeleteEntity
     public string? Treatment { get; set; }
     public string? MedicineUsed { get; set; }
     public string? Dosage { get; set; }
+    public Guid? VetId { get; set; }
     public string? VetName { get; set; }
     public decimal Cost { get; set; }
     public DateTime DateRecorded { get; set; }
@@ -23,4 +24,5 @@ public class MedicalRecord : SoftDeleteEntity
 
     public Farm Farm { get; set; } = null!;
     public Animal Animal { get; set; } = null!;
+    public Vet? Vet { get; set; }
 }

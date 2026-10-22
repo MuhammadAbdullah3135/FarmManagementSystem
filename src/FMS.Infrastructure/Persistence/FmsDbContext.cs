@@ -64,6 +64,7 @@ public class FmsDbContext : DbContext
     public DbSet<FarmTask> FarmTasks => Set<FarmTask>();
     public DbSet<AttendanceRecord> AttendanceRecords => Set<AttendanceRecord>();
     public DbSet<PerformanceReview> PerformanceReviews => Set<PerformanceReview>();
+    public DbSet<Vet> Vets => Set<Vet>();
     public DbSet<MedicalRecord> MedicalRecords => Set<MedicalRecord>();
     public DbSet<Medicine> Medicines => Set<Medicine>();
     public DbSet<MedicineStock> MedicineStocks => Set<MedicineStock>();

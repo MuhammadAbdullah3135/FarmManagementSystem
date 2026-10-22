@@ -15,6 +15,7 @@ public class BreedingRecordConfiguration : IEntityTypeConfiguration<BreedingReco
         builder.HasIndex(br => new { br.FarmId, br.BreedingDate });
         builder.HasIndex(br => new { br.FarmId, br.SireId });
         builder.HasIndex(br => new { br.FarmId, br.DamId });
+        builder.HasIndex(br => br.VetId);
 
         builder.HasOne(br => br.Farm)
             .WithMany()
@@ -30,5 +31,10 @@ public class BreedingRecordConfiguration : IEntityTypeConfiguration<BreedingReco
             .WithMany()
             .HasForeignKey(br => br.DamId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(br => br.Vet)
+            .WithMany()
+            .HasForeignKey(br => br.VetId)
+            .OnDelete(DeleteBehavior.SetNull);
     }
 }
