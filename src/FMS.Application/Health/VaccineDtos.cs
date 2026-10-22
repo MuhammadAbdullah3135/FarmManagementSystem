@@ -49,6 +49,7 @@ public class CreateVaccinationRecordRequest
     public Guid AnimalId { get; set; }
     public Guid VaccineTypeId { get; set; }
     public DateTime DateGiven { get; set; }
+    public Guid? VetId { get; set; }
     public string? VetName { get; set; }
     public string? BatchNumber { get; set; }
     /// <summary>
@@ -65,6 +66,7 @@ public class UpdateVaccinationRecordRequest
     public Guid AnimalId { get; set; }
     public Guid VaccineTypeId { get; set; }
     public DateTime DateGiven { get; set; }
+    public Guid? VetId { get; set; }
     public string? VetName { get; set; }
     public string? BatchNumber { get; set; }
     public decimal Cost { get; set; }
@@ -92,6 +94,7 @@ public class VaccinationRecordDto
     public Guid VaccineTypeId { get; set; }
     public string VaccineTypeName { get; set; } = string.Empty;
     public DateTime DateGiven { get; set; }
+    public Guid? VetId { get; set; }
     public string? VetName { get; set; }
     public string? BatchNumber { get; set; }
     public decimal Cost { get; set; }
@@ -108,6 +111,7 @@ public class VaccinationRecordListItemDto
     public Guid VaccineTypeId { get; set; }
     public string VaccineTypeName { get; set; } = string.Empty;
     public DateTime DateGiven { get; set; }
+    public Guid? VetId { get; set; }
     public string? VetName { get; set; }
     public string? BatchNumber { get; set; }
     public decimal Cost { get; set; }

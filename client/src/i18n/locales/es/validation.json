@@ -211,7 +211,8 @@
     "notFarmMember": "Esa persona no es miembro de esta granja",
     "noExportArchiveYet": "Esta granja aún no tiene un archivo de exportación. Crea uno y descárgalo cuando esté listo.",
     "exportArchiveGone": "El archivo de exportación ya no está almacenado. Crea una exportación nueva para reemplazarlo.",
-    "vet": "No se encontró el veterinario"
+    "vet": "No se encontró el veterinario",
+    "vetInFarm": "No se encontró el veterinario en esta granja"
   },
   "supersede": {
     "completionAlreadyApplied": "Esta finalización ya se aplicó",

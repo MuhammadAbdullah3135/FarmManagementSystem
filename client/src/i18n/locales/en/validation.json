@@ -211,7 +211,8 @@
     "notFarmMember": "That user is not a member of this farm",
     "noExportArchiveYet": "This farm has no export archive yet. Create one and download it when it is ready.",
     "exportArchiveGone": "The export archive is no longer stored. Create a new export to replace it.",
-    "vet": "Vet not found"
+    "vet": "Vet not found",
+    "vetInFarm": "Vet not found in this farm"
   },
   "supersede": {
     "completionAlreadyApplied": "This completion was already applied",

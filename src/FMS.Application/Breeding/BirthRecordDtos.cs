@@ -9,6 +9,7 @@ public class CreateBirthRecordRequest
     public Guid? GestationRecordId { get; set; }
     public Guid? BreedingRecordId { get; set; }
     public DateTime BirthDate { get; set; }
+    public Guid? VetId { get; set; }
     public string? VetName { get; set; }
     public string? Notes { get; set; }
     public List<CreateBirthOffspringRequest> Offspring { get; set; } = new();
@@ -36,6 +37,7 @@ public class BirthRecordDto
     public DateTime BirthDate { get; set; }
     public int OffspringCount { get; set; }
     public int AliveCount { get; set; }
+    public Guid? VetId { get; set; }
     public string? VetName { get; set; }
     public string? Notes { get; set; }
     public DateTime CreatedAt { get; set; }

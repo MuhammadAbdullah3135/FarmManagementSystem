@@ -156,6 +156,9 @@ public static class DomainMessageKeys
     /// <summary>The exact English this API has always answered: "Vet not found".</summary>
     public const string VetNotFound = "validation.lookup.vet";
 
+    /// <summary>The exact English this API has always answered: "Vet not found in this farm".</summary>
+    public const string VetNotFoundInFarm = "validation.lookup.vetInFarm";
+
     /// <summary>The exact English this API has always answered: “Inventory item not found”.</summary>
     public const string InventoryItemNotFound = "validation.lookup.inventoryItem";
 

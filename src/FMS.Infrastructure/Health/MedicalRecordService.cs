@@ -63,7 +63,8 @@ public class MedicalRecordService : IMedicalRecordService
                 AnimalTagNumber = m.Animal.TagNumber,
                 AnimalName = m.Animal.Name,
                 Diagnosis = m.Diagnosis,
-                VetName = m.VetName,
+                VetId = m.VetId,
+                VetName = m.Vet != null ? m.Vet.Name : m.VetName,
                 Cost = m.Cost,
                 DateRecorded = m.DateRecorded,
                 FollowUpDate = m.FollowUpDate,
@@ -87,6 +88,7 @@ public class MedicalRecordService : IMedicalRecordService
             .AsNoTracking()
             .Where(m => m.FarmId == farmId && m.Id == id)
             .Include(m => m.Animal)
+            .Include(m => m.Vet)
             .FirstOrDefaultAsync();
 
         if (record == null)
@@ -117,7 +119,8 @@ public class MedicalRecordService : IMedicalRecordService
                 AnimalTagNumber = m.Animal.TagNumber,
                 AnimalName = m.Animal.Name,
                 Diagnosis = m.Diagnosis,
-                VetName = m.VetName,
+                VetId = m.VetId,
+                VetName = m.Vet != null ? m.Vet.Name : m.VetName,
                 Cost = m.Cost,
                 DateRecorded = m.DateRecorded,
                 FollowUpDate = m.FollowUpDate,
@@ -146,6 +149,13 @@ public class MedicalRecordService : IMedicalRecordService
         if (string.IsNullOrWhiteSpace(request.Symptoms))
             return Result<MedicalRecordDto>.Validation("Symptoms are required");
 
+        var vetResult = await ResolveVetAsync(farmId, request.VetId);
+        if (!vetResult.IsSuccess)
+            return Result<MedicalRecordDto>.Validation(
+                vetResult.Error!.Message, vetResult.Error.MessageKey, vetResult.Error.MessageArgs);
+
+        var vet = vetResult.Value;
+        var vetName = vet?.Name ?? Clean(request.VetName);
         var userId = _currentUser.GetUserId();
 
         var record = new MedicalRecord
@@ -157,7 +167,8 @@ public class MedicalRecordService : IMedicalRecordService
             Treatment = request.Treatment?.Trim(),
             MedicineUsed = request.MedicineUsed?.Trim(),
             Dosage = request.Dosage?.Trim(),
-            VetName = request.VetName?.Trim(),
+            VetId = vet?.Id,
+            VetName = vetName,
             Cost = request.Cost,
             DateRecorded = request.DateRecorded == default ? DateTime.UtcNow : request.DateRecorded,
             FollowUpDate = request.FollowUpDate,
@@ -189,7 +200,7 @@ public class MedicalRecordService : IMedicalRecordService
             {
                 FarmId = farmId,
                 Title = $"Follow-up: {request.Diagnosis ?? request.Symptoms} \u2014 {animal.TagNumber}",
-                Description = $"Follow-up for medical record. Vet: {request.VetName ?? "TBD"}",
+                Description = $"Follow-up for medical record. Vet: {vetName ?? "TBD"}",
                 Priority = FarmTaskPriority.Medium,
                 Status = FarmTaskStatus.Pending,
                 DueDate = request.FollowUpDate.Value,
@@ -209,7 +220,7 @@ public class MedicalRecordService : IMedicalRecordService
         // Auto-create Expense when Cost > 0
         if (request.Cost > 0)
         {
-            var expense = await AutoCreateVetExpenseAsync(farmId, request.Cost, request.VetName,
+            var expense = await AutoCreateVetExpenseAsync(farmId, request.Cost, vetName,
                 $"Medical: {request.Diagnosis ?? request.Symptoms}", request.DateRecorded == default ? DateTime.UtcNow : request.DateRecorded, userId);
             record.ExpenseId = expense.Id;
             await _context.SaveChangesAsync();
@@ -217,6 +228,7 @@ public class MedicalRecordService : IMedicalRecordService
 
         var created = await _context.MedicalRecords
             .Include(m => m.Animal)
+            .Include(m => m.Vet)
             .FirstAsync(m => m.Id == record.Id);
 
         return Result<MedicalRecordDto>.Success(MapToDto(created));
@@ -245,13 +257,20 @@ public class MedicalRecordService : IMedicalRecordService
 
         var userId = _currentUser.GetUserId();
 
+        var vetResult = await ResolveVetAsync(farmId, request.VetId);
+        if (!vetResult.IsSuccess)
+            return Result<MedicalRecordDto>.Validation(
+                vetResult.Error!.Message, vetResult.Error.MessageKey, vetResult.Error.MessageArgs);
+
+        var vet = vetResult.Value;
         record.AnimalId = request.AnimalId;
         record.Symptoms = request.Symptoms.Trim();
         record.Diagnosis = request.Diagnosis?.Trim();
         record.Treatment = request.Treatment?.Trim();
         record.MedicineUsed = request.MedicineUsed?.Trim();
         record.Dosage = request.Dosage?.Trim();
-        record.VetName = request.VetName?.Trim();
+        record.VetId = vet?.Id;
+        record.VetName = vet?.Name ?? Clean(request.VetName);
         record.Cost = request.Cost;
         if (record.ExpenseId.HasValue)
         {
@@ -273,6 +292,7 @@ public class MedicalRecordService : IMedicalRecordService
 
         var updated = await _context.MedicalRecords
             .Include(m => m.Animal)
+            .Include(m => m.Vet)
             .FirstAsync(m => m.Id == id);
 
         return Result<MedicalRecordDto>.Success(MapToDto(updated));
@@ -359,6 +379,22 @@ public class MedicalRecordService : IMedicalRecordService
         return expense;
     }
 
+    private async Task<Result<Vet?>> ResolveVetAsync(Guid farmId, Guid? vetId)
+    {
+        if (!vetId.HasValue)
+            return Result<Vet?>.Success(null);
+
+        var vet = await _context.Vets
+            .FirstOrDefaultAsync(v => v.Id == vetId.Value && v.FarmId == farmId);
+        return vet == null
+            ? Result<Vet?>.Validation(
+                "Vet not found in this farm", DomainMessageKeys.VetNotFoundInFarm)
+            : Result<Vet?>.Success(vet);
+    }
+
+    private static string? Clean(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
     private static MedicalRecordDto MapToDto(MedicalRecord record)
     {
         return new MedicalRecordDto
@@ -373,7 +409,8 @@ public class MedicalRecordService : IMedicalRecordService
             Treatment = record.Treatment,
             MedicineUsed = record.MedicineUsed,
             Dosage = record.Dosage,
-            VetName = record.VetName,
+            VetId = record.VetId,
+            VetName = record.Vet != null ? record.Vet.Name : record.VetName,
             Cost = record.Cost,
             DateRecorded = record.DateRecorded,
             FollowUpDate = record.FollowUpDate,

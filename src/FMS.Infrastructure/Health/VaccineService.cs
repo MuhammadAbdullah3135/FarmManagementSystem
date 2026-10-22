@@ -254,7 +254,8 @@ public class VaccineService : IVaccineService
                 VaccineTypeId = vr.VaccineTypeId,
                 VaccineTypeName = vr.VaccineType.Name,
                 DateGiven = vr.DateGiven,
-                VetName = vr.VetName,
+                VetId = vr.VetId,
+                VetName = vr.Vet != null ? vr.Vet.Name : vr.VetName,
                 BatchNumber = vr.BatchNumber,
                 Cost = vr.Cost
             })
@@ -284,7 +285,8 @@ public class VaccineService : IVaccineService
                 VaccineTypeId = vr.VaccineTypeId,
                 VaccineTypeName = vr.VaccineType.Name,
                 DateGiven = vr.DateGiven,
-                VetName = vr.VetName,
+                VetId = vr.VetId,
+                VetName = vr.Vet != null ? vr.Vet.Name : vr.VetName,
                 BatchNumber = vr.BatchNumber,
                 Cost = vr.Cost,
                 Notes = vr.Notes,
@@ -322,7 +324,8 @@ public class VaccineService : IVaccineService
                 VaccineTypeId = vr.VaccineTypeId,
                 VaccineTypeName = vr.VaccineType.Name,
                 DateGiven = vr.DateGiven,
-                VetName = vr.VetName,
+                VetId = vr.VetId,
+                VetName = vr.Vet != null ? vr.Vet.Name : vr.VetName,
                 BatchNumber = vr.BatchNumber,
                 Cost = vr.Cost
             })
@@ -349,6 +352,13 @@ public class VaccineService : IVaccineService
         if (vaxType == null)
             return Result<VaccinationRecordDto>.Validation("Vaccine type not found in this farm", DomainMessageKeys.VaccineTypeNotFoundInFarm);
 
+        var vetResult = await ResolveVetAsync(farmId, request.VetId);
+        if (!vetResult.IsSuccess)
+            return Result<VaccinationRecordDto>.Validation(
+                vetResult.Error!.Message, vetResult.Error.MessageKey, vetResult.Error.MessageArgs);
+
+        var vet = vetResult.Value;
+        var vetName = vet?.Name ?? Clean(request.VetName);
         var userId = _currentUser.GetUserId();
 
         // Dosage for the linked-medicine deduction. Defaults to 1 so existing
@@ -401,7 +411,8 @@ public class VaccineService : IVaccineService
                 AnimalId = request.AnimalId,
                 VaccineTypeId = request.VaccineTypeId,
                 DateGiven = request.DateGiven == default ? DateTime.UtcNow : request.DateGiven,
-                VetName = request.VetName?.Trim(),
+                VetId = vet?.Id,
+                VetName = vetName,
                 BatchNumber = request.BatchNumber?.Trim(),
                 Cost = request.Cost,
                 Notes = request.Notes?.Trim(),
@@ -417,7 +428,7 @@ public class VaccineService : IVaccineService
                 FarmId = farmId,
                 EventType = TimelineEventTypes.VaccinationRecord,
                 Title = $"Vaccination: {vaxType.Name}",
-                Description = $"Given by {request.VetName ?? "Unknown"}",
+                Description = $"Given by {vetName ?? "Unknown"}",
                 RelatedEntityId = record.Id,
                 RelatedEntityType = nameof(VaccinationRecord),
                 OccurredAt = record.DateGiven,
@@ -461,7 +472,7 @@ public class VaccineService : IVaccineService
             // Auto-create Expense when Cost > 0
             if (request.Cost > 0)
             {
-                var expense = await AutoCreateVetExpenseAsync(farmId, request.Cost, request.VetName,
+                var expense = await AutoCreateVetExpenseAsync(farmId, request.Cost, vetName,
                     $"Vaccination: {vaxType.Name}", record.DateGiven, userId);
                 record.ExpenseId = expense.Id;
                 await _context.SaveChangesAsync();
@@ -480,6 +491,7 @@ public class VaccineService : IVaccineService
                 VaccineTypeId = record.VaccineTypeId,
                 VaccineTypeName = vaxType.Name,
                 DateGiven = record.DateGiven,
+                VetId = record.VetId,
                 VetName = record.VetName,
                 BatchNumber = record.BatchNumber,
                 Cost = record.Cost,
@@ -521,12 +533,19 @@ public class VaccineService : IVaccineService
                 return Result<VaccinationRecordDto>.Validation("Vaccine type not found in this farm", DomainMessageKeys.VaccineTypeNotFoundInFarm);
         }
 
+        var vetResult = await ResolveVetAsync(farmId, request.VetId);
+        if (!vetResult.IsSuccess)
+            return Result<VaccinationRecordDto>.Validation(
+                vetResult.Error!.Message, vetResult.Error.MessageKey, vetResult.Error.MessageArgs);
+
+        var vet = vetResult.Value;
         var userId = _currentUser.GetUserId();
 
         record.AnimalId = request.AnimalId;
         record.VaccineTypeId = request.VaccineTypeId;
         record.DateGiven = request.DateGiven;
-        record.VetName = request.VetName?.Trim();
+        record.VetId = vet?.Id;
+        record.VetName = vet?.Name ?? Clean(request.VetName);
         record.BatchNumber = request.BatchNumber?.Trim();
         record.Cost = request.Cost;
         record.Notes = request.Notes?.Trim();
@@ -548,7 +567,8 @@ public class VaccineService : IVaccineService
                 VaccineTypeId = vr.VaccineTypeId,
                 VaccineTypeName = vr.VaccineType.Name,
                 DateGiven = vr.DateGiven,
-                VetName = vr.VetName,
+                VetId = vr.VetId,
+                VetName = vr.Vet != null ? vr.Vet.Name : vr.VetName,
                 BatchNumber = vr.BatchNumber,
                 Cost = vr.Cost,
                 Notes = vr.Notes,
@@ -831,6 +851,22 @@ public class VaccineService : IVaccineService
 
         return results.OrderBy(s => s.DaysUntilDue).ToList();
     }
+
+    private async Task<Result<Vet?>> ResolveVetAsync(Guid farmId, Guid? vetId)
+    {
+        if (!vetId.HasValue)
+            return Result<Vet?>.Success(null);
+
+        var vet = await _context.Vets
+            .FirstOrDefaultAsync(v => v.Id == vetId.Value && v.FarmId == farmId);
+        return vet == null
+            ? Result<Vet?>.Validation(
+                "Vet not found in this farm", DomainMessageKeys.VetNotFoundInFarm)
+            : Result<Vet?>.Success(vet);
+    }
+
+    private static string? Clean(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     private async Task<Expense> AutoCreateVetExpenseAsync(Guid farmId, decimal amount, string? vetName, string description, DateTime expenseDate, Guid? userId)
     {
