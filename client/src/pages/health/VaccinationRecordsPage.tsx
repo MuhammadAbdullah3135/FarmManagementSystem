@@ -10,6 +10,7 @@ import { vaccinationRecordsApi, vaccineTypesApi } from '../../api/health';
 import { lookupsApi } from '../../api/attendance';
 import { getApiError } from '../../api/farmApi';
 import LookupQuickAddSelect from '../../components/LookupQuickAddSelect';
+import VetLookupOrText from '../../components/VetLookupOrText';
 import type { VaccinationRecordListItem, VaccineTypeListItem } from '../../types';
 import { useTranslation } from 'react-i18next';
 
@@ -85,7 +86,7 @@ const VaccinationRecordsPage: React.FC = () => {const { t } = useTranslation(['h
         animalId: data.animalId,
         vaccineTypeId: data.vaccineTypeId,
         dateGiven: dayjs(data.dateGiven),
-        vetName: data.vetName,
+        vet: { vetId: data.vetId, vetName: data.vetName },
         batchNumber: data.batchNumber,
         cost: data.cost,
         notes: data.notes,
@@ -103,7 +104,8 @@ const VaccinationRecordsPage: React.FC = () => {const { t } = useTranslation(['h
         animalId: values.animalId,
         vaccineTypeId: values.vaccineTypeId,
         dateGiven: values.dateGiven.format('YYYY-MM-DD'),
-        vetName: values.vetName,
+        vetId: values.vet?.vetId,
+        vetName: values.vet?.vetName,
         batchNumber: values.batchNumber,
         cost: values.cost || 0,
         notes: values.notes,
@@ -234,8 +236,8 @@ const VaccinationRecordsPage: React.FC = () => {const { t } = useTranslation(['h
           </Form.Item>
           <Row gutter={[16, 16]}>
             <Col xs={24} sm={12}>
-              <Form.Item name="vetName" label={t('veterinarian')}>
-                <Input maxLength={200} placeholder={t('vetName')} />
+              <Form.Item name="vet" label={t('veterinarian')}>
+                <VetLookupOrText textPlaceholder={t('vetName')} allowClear />
               </Form.Item>
             </Col>
             <Col xs={24} sm={12}>

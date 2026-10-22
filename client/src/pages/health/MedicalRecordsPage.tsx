@@ -14,6 +14,7 @@ import type { MedicalRecordListItem, MedicalRecordStatus } from '../../types';
 import { useTranslation } from 'react-i18next';
 import { useEnumOptions, enumLabelOf } from '../../i18n/enumOptions';
 import LookupOrText from '../../components/LookupOrText';
+import VetLookupOrText from '../../components/VetLookupOrText';
 import type { EntityOption } from '../../components/EntityPicker';
 
 const STATUS_COLORS: Record<MedicalRecordStatus, string> = {
@@ -112,7 +113,7 @@ const MedicalRecordsPage: React.FC = () => {const { t } = useTranslation(['healt
         treatment: data.treatment,
         medicineUsed: data.medicineUsed,
         dosage: data.dosage,
-        vetName: data.vetName,
+        vet: { vetId: data.vetId, vetName: data.vetName },
         cost: data.cost,
         dateRecorded: dayjs(data.dateRecorded),
         followUpDate: data.followUpDate ? dayjs(data.followUpDate) : null,
@@ -151,7 +152,8 @@ const MedicalRecordsPage: React.FC = () => {const { t } = useTranslation(['healt
         treatment: values.treatment,
         medicineUsed: values.medicineUsed,
         dosage: values.dosage,
-        vetName: values.vetName,
+        vetId: values.vet?.vetId,
+        vetName: values.vet?.vetName,
         cost: values.cost || 0,
         dateRecorded: values.dateRecorded.format('YYYY-MM-DD'),
         followUpDate: values.followUpDate ? values.followUpDate.format('YYYY-MM-DD') : undefined,
@@ -336,8 +338,11 @@ const MedicalRecordsPage: React.FC = () => {const { t } = useTranslation(['healt
           </Row>
           <Row gutter={[16, 16]}>
             <Col xs={24} sm={12}>
-              <Form.Item name="vetName" label={t('veterinarian')}>
-                <Input maxLength={200} placeholder={t('vetName')} />
+              <Form.Item name="vet" label={t('veterinarian')}>
+                <VetLookupOrText
+                  textPlaceholder={t('vetName')}
+                  allowClear
+                />
               </Form.Item>
             </Col>
             <Col xs={24} sm={12}>
