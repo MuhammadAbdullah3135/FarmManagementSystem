@@ -1,6 +1,6 @@
 import api from './axios';
 import { farmUrl } from './farmApi';
-import type { MedicalRecord, MedicalRecordListItem, Medicine, MedicineListItem, MedicineStock, MedicineAlert, VaccineType, VaccineTypeListItem, VaccinationRecord, VaccinationRecordListItem, VaccinationSchedule, WeightCheckSchedule, WeightCheckStatus, DeltaResult, HealthCostSummary, HealthCostByVet, HealthCostByAnimal, HealthCostByMonth, PagedResult } from '../types';
+import type { MedicalRecord, MedicalRecordListItem, Medicine, MedicineListItem, MedicineStock, MedicineAlert, VaccineType, VaccineTypeListItem, VaccinationRecord, VaccinationRecordListItem, VaccinationSchedule, WeightCheckSchedule, WeightCheckStatus, DeltaResult, HealthCostSummary, HealthCostByVet, HealthCostByAnimal, HealthCostByMonth, PagedResult, Vet } from '../types';
 import type { VaccinationStatus } from '../types';
 
 export interface MedicalRecordListFilter {
@@ -27,6 +27,7 @@ export const medicalRecordsApi = {
     treatment?: string;
     medicineUsed?: string;
     dosage?: string;
+    vetId?: string;
     vetName?: string;
     cost?: number;
     dateRecorded: string;
@@ -41,6 +42,7 @@ export const medicalRecordsApi = {
     treatment?: string;
     medicineUsed?: string;
     dosage?: string;
+    vetId?: string;
     vetName?: string;
     cost?: number;
     dateRecorded: string;
@@ -52,6 +54,28 @@ export const medicalRecordsApi = {
 };
 
 // ── Medicine Inventory ──────────────────────────────────
+
+export interface VetInput {
+  name: string;
+  phone?: string;
+  email?: string;
+  licenseNumber?: string;
+  notes?: string;
+}
+
+export interface VetUpdateInput extends VetInput {
+  isActive: boolean;
+}
+
+export const vetsApi = {
+  list: (includeInactive = false) =>
+    api.get<Vet[]>(farmUrl('/vets'), { params: { includeInactive } }),
+  get: (id: string) => api.get<Vet>(farmUrl(`/vets/${id}`)),
+  create: (data: VetInput) => api.post<Vet>(farmUrl('/vets'), data),
+  update: (id: string, data: VetUpdateInput) =>
+    api.put<Vet>(farmUrl(`/vets/${id}`), data),
+  remove: (id: string) => api.delete(farmUrl(`/vets/${id}`)),
+};
 
 export const medicinesApi = {
   list: (params: { page?: number; pageSize?: number; search?: string } = {}) =>
@@ -127,6 +151,7 @@ export const vaccinationRecordsApi = {
     animalId: string;
     vaccineTypeId: string;
     dateGiven: string;
+    vetId?: string;
     vetName?: string;
     batchNumber?: string;
     /** Units of the linked medicine consumed; defaults to 1 on the backend. */
@@ -138,6 +163,7 @@ export const vaccinationRecordsApi = {
     animalId: string;
     vaccineTypeId: string;
     dateGiven: string;
+    vetId?: string;
     vetName?: string;
     batchNumber?: string;
     cost?: number;

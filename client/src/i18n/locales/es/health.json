@@ -154,5 +154,19 @@
   "vetName2": "Nombre del veterinario",
   "view": "Ver",
   "weightCheckSchedules": "Programación de control de peso",
-  "yes": "Sí"
+  "yes": "Sí",
+  "vets": "Veterinarios",
+  "addVet": "Añadir veterinario",
+  "editVet": "Editar veterinario",
+  "vetCreated": "Veterinario creado",
+  "vetUpdated": "Veterinario actualizado",
+  "vetActivated": "Veterinario activado",
+  "vetDeactivated": "Veterinario desactivado",
+  "vetDeleted": "Veterinario eliminado",
+  "deleteThisVet": "¿Eliminar este veterinario?",
+  "phone": "Teléfono",
+  "licenseNumber": "Número de licencia",
+  "inactive": "Inactivo",
+  "deactivate": "Desactivar",
+  "activate": "Activar"
 }

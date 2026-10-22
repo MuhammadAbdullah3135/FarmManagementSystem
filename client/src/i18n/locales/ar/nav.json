@@ -56,5 +56,6 @@
   "vaccinationSchedules": "جداول التحصين",
   "vaccineTypes": "أنواع اللقاحات",
   "vetCosts": "تكاليف الطبيب البيطري",
-  "weightCheckSchedules": "جداول فحص الوزن"
+  "weightCheckSchedules": "جداول فحص الوزن",
+  "vets": "الأطباء البيطريون"
 }

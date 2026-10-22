@@ -603,6 +603,7 @@ export interface MedicalRecord {
   treatment?: string;
   medicineUsed?: string;
   dosage?: string;
+  vetId?: string;
   vetName?: string;
   cost: number;
   dateRecorded: string;
@@ -620,12 +621,25 @@ export interface MedicalRecordListItem {
   animalTagNumber: string;
   animalName?: string;
   diagnosis?: string;
+  vetId?: string;
   vetName?: string;
   cost: number;
   dateRecorded: string;
   followUpDate?: string;
   status: MedicalRecordStatus;
   statusName: string;
+}
+
+export interface Vet {
+  id: string;
+  farmId: string;
+  name: string;
+  phone?: string;
+  email?: string;
+  licenseNumber?: string;
+  isActive: boolean;
+  notes?: string;
+  createdAt: string;
 }
 
 // Health - Medicine Inventory
@@ -722,6 +736,7 @@ export interface VaccinationRecord {
   vaccineTypeId: string;
   vaccineTypeName: string;
   dateGiven: string;
+  vetId?: string;
   vetName?: string;
   batchNumber?: string;
   cost: number;
@@ -737,6 +752,7 @@ export interface VaccinationRecordListItem {
   vaccineTypeId: string;
   vaccineTypeName: string;
   dateGiven: string;
+  vetId?: string;
   vetName?: string;
   batchNumber?: string;
   cost: number;
@@ -933,6 +949,7 @@ export interface BreedingRecord {
   damName?: string;
   breedingDate: string;
   method: BreedingMethod;
+  vetId?: string;
   vetName?: string;
   result: BreedingResult;
   notes?: string;
@@ -984,6 +1001,7 @@ export interface BirthRecord {
   birthDate: string;
   offspringCount: number;
   aliveCount: number;
+  vetId?: string;
   vetName?: string;
   notes?: string;
   createdAt: string;

@@ -154,5 +154,19 @@
   "vetName2": "Vet Name",
   "view": "View",
   "weightCheckSchedules": "Weight Check Schedules",
-  "yes": "Yes"
+  "yes": "Yes",
+  "vets": "Vets",
+  "addVet": "Add Vet",
+  "editVet": "Edit Vet",
+  "vetCreated": "Vet created",
+  "vetUpdated": "Vet updated",
+  "vetActivated": "Vet activated",
+  "vetDeactivated": "Vet deactivated",
+  "vetDeleted": "Vet deleted",
+  "deleteThisVet": "Delete this vet?",
+  "phone": "Phone",
+  "licenseNumber": "Licence number",
+  "inactive": "Inactive",
+  "deactivate": "Deactivate",
+  "activate": "Activate"
 }

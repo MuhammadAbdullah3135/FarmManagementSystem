@@ -56,5 +56,6 @@
   "vaccinationSchedules": "Vaccination Schedules",
   "vaccineTypes": "Vaccine Types",
   "vetCosts": "Vet Costs",
-  "weightCheckSchedules": "Weight Check Schedules"
+  "weightCheckSchedules": "Weight Check Schedules",
+  "vets": "Vets"
 }
