@@ -1,7 +1,8 @@
 # Inventory category backfill — runbook
 
-Status: **dry run completed against an empty local database only**. Real-data duplicate
-checks are still pending. Nothing in this document authorises `--apply`.
+Status: **dry run completed against a local snapshot of production**. The snapshot contains
+no inventory items, so no duplicates were found. Nothing in this document authorises
+`--apply`.
 
 ## What the command does
 
@@ -161,9 +162,56 @@ Re-run with --apply to write these changes.
 ```
 
 Because the database is empty, these zero counts validate only that the command runs
-against the migrated schema. **Duplicate checks against real farm data are still
-pending.** No canonical-name proposals can be made from this run, and nothing was
-renamed or merged. `--apply` was not run.
+against the migrated schema. See the real-data results below. No canonical-name proposals
+can be made from this empty run, and nothing was renamed or merged. `--apply` was not run.
+
+## Real-data dry run results
+
+**Run date:** 2026-10-22
+
+**Source label:** production snapshot 2026-10-21
+
+**Environment:** local PostgreSQL database `fms_prod_copy` on `localhost:5433`, restored
+from a read-only `public`-schema dump of Supabase production. The dump used `pg_dump`
+17.11 in custom format, with `--no-owner --no-acl`, and was 246,257 bytes. Production was
+read-only throughout; it was not modified, and the dry run itself ran only against the
+local copy.
+
+**Snapshot contents:** 3 farms, 3 users, 136 audit log rows, and 0 inventory items.
+
+**Migrations:**
+
+| State | Migrations |
+|---|---|
+| Present in the snapshot | 11, through `20260930092132_AddSalaryPaymentLedgerFields` |
+| Applied locally to `fms_prod_copy` only | `20261017165739_AddUserIsDemo`, `20261020152830_AddInventoryCategories` |
+| Present after migration | 13 |
+
+**Counts:**
+
+| Check | Result |
+|---|---|
+| `InventoryItems` rows | 0 |
+| unlinked non-blank `InventoryItems` | 0 |
+| `InventoryCategories` rows | 0 |
+| duplicate query rows | 0 |
+
+**Duplicate query output:** no rows returned. There are no farm IDs, spellings, or affected
+item IDs to report, and no canonical names are proposed.
+
+**Dry-run output:**
+
+```text
+Inventory category backfill dry run (no changes written).
+categories created: 0
+items linked: 0
+blank-category items left null: 0
+Re-run with --apply to write these changes.
+```
+
+The production snapshot has no inventory items, so this run validates the migration path and
+the command against real production data but does not exercise non-empty inventory
+categories. `--apply` was not run on any database.
 
 ## Interpreting the counts
 
