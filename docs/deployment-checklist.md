@@ -194,6 +194,11 @@ This is destructive:
 6. **`AddUserIsDemo` is not nullable.** Its default makes old inserts safe, but the general
    "new columns are nullable" rollback argument applies specifically to `VetId` and
    `CategoryId`, not to `IsDemo`.
+7. **Frontend suite flakiness under load.** A repeat full `npx vitest run` with 95 isolated
+   workers hit the 5s per-test timeout in `src/i18n/enumRender.test.tsx` and
+   `src/pages/breeding/LineagePage.test.tsx`. Both files passed in isolation (21 tests, 27s).
+   This looks like runner load, not a product regression; qualify the suite with a lower
+   worker count or an isolated rerun if a full run times out.
 
 ## 10. Sign-off
 
