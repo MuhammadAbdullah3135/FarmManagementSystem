@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react'
 import { offlineShell } from './tools/offline/vite-plugin-offline.ts'
 
 export default defineConfig({
-  base: '/FarmManagementSystem/',
+  base: '/',
   plugins: [
     react(),
     // Emits sw.js precaching this build, so the APK shell (and the web app) can boot
