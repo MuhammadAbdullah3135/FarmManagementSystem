@@ -66,14 +66,17 @@ Prerequisites: a **writable** PostgreSQL 14+ server. The tests create and drop
 throwaway databases (`CREATE DATABASE fms_test_<guid>`, then
 `DROP DATABASE … WITH (FORCE)`), so the role needs `CREATEDB`.
 
-> Neon: a standard Neon role does **not** have `CREATEDB`, so the suite will skip
-> there. Either grant `CREATEDB` to the role, or (preferred) point this at a local
-> server. Production connection details are not usable for this.
+> The app no longer targets Neon; the only database it touches in deployment is
+> PostgreSQL.
+
+> The app runs on PostgreSQL only (Npgsql); it no longer targets Neon. Either grant `CREATEDB` to the role, or point this at a local server. Production connection details are not usable for this.
+
+> The app runs on PostgreSQL only (Npgsql); it no longer targets Neon. Either grant `CREATEDB` to the role, or point this at a local server. Production connection details are not usable for this.
 
 ```bash
 # Any of these provide a local server:
 #   docker run --rm -e POSTGRES_PASSWORD=postgres -p 5432:5432 postgres:16-alpine
-#   a locally installed PostgreSQL, or a Neon database whose role owns CREATEDB
+#   a locally installed PostgreSQL
 
 export FMS_TEST_POSTGRES="Host=localhost;Port=5432;Database=postgres;Username=postgres;Password=postgres"
 
@@ -335,8 +338,7 @@ docker compose down -v       # -v removes the pgdata volume
 | SQL Server SA password | `YourStrong!Password123` | **No** — only `${DB_PASSWORD}` in compose | **Yes** — added in `0d06b20`, removed in `23c2efc` |
 | JWT signing key | `YourSuperSecretKeyThatIsAtLeast32BytesLong!ChangeThisInProduction!` | **Was** — `appsettings.json`; **now removed** | Yes — also in `.env.example` before Phase 1 |
 
-Neither is a production credential in this repository: production is Heroku +
-PostgreSQL (Neon), and the SA password only ever applied to the local SQL Server
+Neither is a production credential in this repository: production is Heroku + PostgreSQL, and the SA password only ever applied to the local SQL Server
 container that compose no longer runs. Treat them as compromised anyway, because
 anyone with the history can read them and nothing proves they were never reused.
 
@@ -371,10 +373,12 @@ openssl rand -base64 48                      # generate
 heroku config:set Jwt__SecretKey="<new>" --app <app>
 heroku ps:restart --app <app>                # or just deploy
 
-# 2. Database password (Neon)
-#    a. Rotate the role's password in the Neon console.
+# 2. Database password (PostgreSQL)
+#    a. Rotate the role's password in the database provider console.
 #    b. Immediately update the connection string, so the window is as short as possible:
-heroku config:set ConnectionStrings__DefaultConnection="Host=<neon-host>;Database=<db>;Username=<user>;Password=<new>;Ssl Mode=Require" --app <app>
+#       (the form below is the Heroku `heroku config:set` example; the same step applies to
+#       any other provider, e.g. Supabase's dashboard connection settings).
+heroku config:set ConnectionStrings__DefaultConnection="Host=<host>;Database=<db>;Username=<user>;Password=<new>;Ssl Mode=Require" --app <app>
 heroku ps:restart --app <app>
 ```
 
