@@ -761,6 +761,12 @@ public static class DomainMessageKeys
     // wrong password puts on screen, in the language the reader chose. The same sentence also
     // serves a non-existent account, deliberately, and the three locales keep that: it never says
     // which half was wrong.
+    /// <summary>The exact English this API has always answered: “Email and password are required.”</summary>
+    public const string LoginCredentialsRequired = "validation.validation.loginCredentialsRequired";
+
+    /// <summary>The exact English this API has always answered for an incomplete registration.</summary>
+    public const string RegisterFieldsRequired = "validation.validation.registerFieldsRequired";
+
     /// <summary>The exact English this API has always answered: “Invalid email or password”</summary>
     public const string InvalidEmailOrPassword = "validation.unauthorized.invalidEmailOrPassword";
 

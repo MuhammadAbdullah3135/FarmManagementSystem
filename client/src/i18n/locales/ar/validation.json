@@ -307,7 +307,9 @@
     "vetPhoneMaxLength": "لا يمكن أن يتجاوز رقم الهاتف {{max}} حرفًا",
     "vetEmailMaxLength": "لا يمكن أن يتجاوز البريد الإلكتروني {{max}} حرفًا",
     "vetLicenseNumberMaxLength": "لا يمكن أن يتجاوز رقم الترخيص {{max}} حرفًا",
-    "vetNotesMaxLength": "لا يمكن أن تتجاوز الملاحظات {{max}} حرفًا"
+    "vetNotesMaxLength": "لا يمكن أن تتجاوز الملاحظات {{max}} حرفًا",
+    "loginCredentialsRequired": "البريد الإلكتروني وكلمة المرور مطلوبان.",
+    "registerFieldsRequired": "البريد الإلكتروني وكلمة المرور والاسم الأول واسم العائلة واسم الحساب مطلوبة."
   },
   "unauthorized": {
     "farmOwnerOrManagerOnly": "يمكن فقط لمالكي المزرعة ومديريها {{action}}",
