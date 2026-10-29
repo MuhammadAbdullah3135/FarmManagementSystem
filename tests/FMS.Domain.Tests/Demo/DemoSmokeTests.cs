@@ -4,6 +4,7 @@ using System.Text.Json;
 using FMS.Application.Auth;
 using FMS.Application.Common;
 using FMS.Application.Farm;
+using FMS.Domain.Entities;
 using FMS.Domain.Enums;
 using FMS.Infrastructure.Auth;
 using FMS.Infrastructure.Persistence;
@@ -90,17 +91,61 @@ public class DemoSmokeTests
         return host;
     }
 
-    private static async Task<(int animals, int tasks, string? farmName, bool isDemo, Guid farmId)> SnapshotAsync(IHost host)
+    private sealed record DemoSnapshot(
+        int Animals, int Tasks, string? FarmName, bool IsDemo, Guid FarmId,
+        IReadOnlyDictionary<string, int> Counts);
+
+    private static async Task<DemoSnapshot> SnapshotAsync(IHost host)
     {
         using var scope = host.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<FmsDbContext>();
         var demoUser = await db.Users.FirstOrDefaultAsync(u => u.IsDemo);
-        if (demoUser == null) return (0, 0, null, false, Guid.Empty);
-        var farmId = await db.UserFarms.Where(uf => uf.UserId == demoUser.Id).Select(uf => uf.FarmId).FirstOrDefaultAsync();
+        if (demoUser == null) return new DemoSnapshot(0, 0, null, false, Guid.Empty,
+            new Dictionary<string, int>());
+        var farmId = await db.UserFarms.Where(uf => uf.UserId == demoUser.Id)
+            .Select(uf => uf.FarmId).FirstOrDefaultAsync();
         var farm = await db.Farms.FirstOrDefaultAsync(f => f.Id == farmId);
-        var animals = await db.Animals.CountAsync(a => a.FarmId == farmId);
-        var tasks = await db.FarmTasks.CountAsync(t => t.FarmId == farmId);
-        return (animals, tasks, farm?.Name, demoUser.IsDemo, farmId);
+        var counts = new Dictionary<string, int>
+        {
+            ["animals"] = await db.Animals.CountAsync(a => a.FarmId == farmId),
+            ["farmTasks"] = await db.FarmTasks.CountAsync(t => t.FarmId == farmId),
+            ["locations"] = await db.Locations.CountAsync(l => l.FarmId == farmId),
+            ["weights"] = await db.WeightRecords.CountAsync(w => w.FarmId == farmId),
+            ["breeding"] = await db.BreedingRecords.CountAsync(b => b.FarmId == farmId),
+            ["gestation"] = await db.GestationRecords.CountAsync(g => g.FarmId == farmId),
+            ["gestationChecks"] = await db.GestationHealthChecks.CountAsync(g => g.FarmId == farmId),
+            ["births"] = await db.BirthRecords.CountAsync(b => b.FarmId == farmId),
+            ["offspring"] = await db.BirthOffspring.CountAsync(b => b.FarmId == farmId),
+            ["medicines"] = await db.Medicines.CountAsync(m => m.FarmId == farmId),
+            ["medicineStocks"] = await db.MedicineStocks.CountAsync(m => m.FarmId == farmId),
+            ["vaccineTypes"] = await db.VaccineTypes.CountAsync(v => v.FarmId == farmId),
+            ["medicalRecords"] = await db.MedicalRecords.CountAsync(m => m.FarmId == farmId),
+            ["vaccinations"] = await db.VaccinationRecords.CountAsync(v => v.FarmId == farmId),
+            ["vaccinationSchedules"] = await db.VaccinationSchedules.CountAsync(v => v.FarmId == farmId),
+            ["weightSchedules"] = await db.WeightCheckSchedules.CountAsync(w => w.FarmId == farmId),
+            ["feedTypes"] = await db.FeedTypes.CountAsync(f => f.FarmId == farmId),
+            ["feedMovements"] = await db.FeedStockMovements.CountAsync(f => f.FarmId == farmId),
+            ["feedRecords"] = await db.FeedRecords.CountAsync(f => f.FarmId == farmId),
+            ["dietPlans"] = await db.DietPlans.CountAsync(d => d.FarmId == farmId),
+            ["dietPlanItems"] = await db.DietPlanItems.CountAsync(d =>
+                db.DietPlans.Any(p => p.Id == d.DietPlanId && p.FarmId == farmId)),
+            ["feedingSchedules"] = await db.FeedingSchedules.CountAsync(f => f.FarmId == farmId),
+            ["feedingTasks"] = await db.FeedingTasks.CountAsync(f => f.FarmId == farmId),
+            ["inventoryItems"] = await db.InventoryItems.CountAsync(i => i.FarmId == farmId),
+            ["stockMovements"] = await db.StockMovements.CountAsync(s => s.FarmId == farmId),
+            ["suppliers"] = await db.Suppliers.CountAsync(s => s.FarmId == farmId),
+            ["customers"] = await db.Customers.CountAsync(c => c.FarmId == farmId),
+            ["purchases"] = await db.SupplierPurchases.CountAsync(p => p.FarmId == farmId),
+            ["sales"] = await db.CustomerSales.CountAsync(s => s.FarmId == farmId),
+            ["expenses"] = await db.Expenses.CountAsync(e => e.FarmId == farmId),
+            ["income"] = await db.IncomeRecords.CountAsync(i => i.FarmId == farmId),
+            ["salaryPayments"] = await db.SalaryPayments.CountAsync(s => s.FarmId == farmId),
+            ["employees"] = await db.Employees.CountAsync(e => e.FarmId == farmId),
+            ["attendance"] = await db.AttendanceRecords.CountAsync(a => a.FarmId == farmId),
+            ["reviews"] = await db.PerformanceReviews.CountAsync(r => r.FarmId == farmId),
+        };
+        return new DemoSnapshot(counts["animals"], counts["farmTasks"], farm?.Name,
+            demoUser.IsDemo, farmId, counts);
     }
 
     [Fact]
@@ -110,7 +155,7 @@ public class DemoSmokeTests
         var client = host.GetTestClient();
 
         // Nothing seeded before the first demo login (lazy creation).
-        Assert.Equal(0, (await SnapshotAsync(host)).animals);
+        Assert.Equal(0, (await SnapshotAsync(host)).Animals);
 
         var login = await client.PostAsJsonAsync("/api/auth/demo-login", new { });
         Assert.Equal(HttpStatusCode.OK, login.StatusCode);
@@ -125,10 +170,80 @@ public class DemoSmokeTests
         var roles = root.GetProperty("roles").EnumerateArray().Select(r => r.GetString()).ToList();
 
         var seeded = await SnapshotAsync(host);
-        Assert.Equal("Sunrise Ranch", seeded.farmName);
-        Assert.True(seeded.isDemo);
-        Assert.Equal(9, seeded.animals);
-        Assert.Equal(4, seeded.tasks);
+        Assert.Equal("Sunrise Ranch", seeded.FarmName);
+        Assert.True(seeded.IsDemo);
+        Assert.Equal(30, seeded.Counts["animals"]);
+        Assert.Equal(18, seeded.Counts["farmTasks"]);
+        Assert.Equal(6, seeded.Counts["locations"]);
+        Assert.Equal(60, seeded.Counts["weights"]);
+        Assert.Equal(10, seeded.Counts["breeding"]);
+        Assert.Equal(4, seeded.Counts["gestation"]);
+        Assert.Equal(8, seeded.Counts["gestationChecks"]);
+        Assert.Equal(4, seeded.Counts["births"]);
+        Assert.Equal(8, seeded.Counts["offspring"]);
+        Assert.Equal(6, seeded.Counts["medicines"]);
+        Assert.Equal(10, seeded.Counts["medicineStocks"]);
+        Assert.Equal(4, seeded.Counts["vaccineTypes"]);
+        Assert.Equal(14, seeded.Counts["medicalRecords"]);
+        Assert.Equal(18, seeded.Counts["vaccinations"]);
+        Assert.Equal(5, seeded.Counts["vaccinationSchedules"]);
+        Assert.Equal(3, seeded.Counts["weightSchedules"]);
+        Assert.Equal(8, seeded.Counts["feedTypes"]);
+        Assert.Equal(20, seeded.Counts["feedMovements"]);
+        Assert.Equal(30, seeded.Counts["feedRecords"]);
+        Assert.Equal(5, seeded.Counts["dietPlans"]);
+        Assert.Equal(15, seeded.Counts["dietPlanItems"]);
+        Assert.Equal(6, seeded.Counts["feedingSchedules"]);
+        Assert.Equal(20, seeded.Counts["feedingTasks"]);
+        Assert.Equal(12, seeded.Counts["inventoryItems"]);
+        Assert.Equal(24, seeded.Counts["stockMovements"]);
+        Assert.Equal(4, seeded.Counts["suppliers"]);
+        Assert.Equal(3, seeded.Counts["customers"]);
+        Assert.Equal(6, seeded.Counts["purchases"]);
+        Assert.Equal(6, seeded.Counts["sales"]);
+        Assert.Equal(30, seeded.Counts["expenses"]);
+        Assert.Equal(18, seeded.Counts["income"]);
+        Assert.Equal(9, seeded.Counts["salaryPayments"]);
+        Assert.Equal(3, seeded.Counts["employees"]);
+        Assert.Equal(30, seeded.Counts["attendance"]);
+        Assert.Equal(3, seeded.Counts["reviews"]);
+
+        using (var scope = host.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<FmsDbContext>();
+            var animalTypeCounts = await db.Animals.Where(a => a.FarmId == seeded.FarmId)
+                .GroupBy(a => a.AnimalType.Name)
+                .Select(g => new { Name = g.Key, Count = g.Count() })
+                .ToDictionaryAsync(x => x.Name, x => x.Count);
+            Assert.Equal(12, animalTypeCounts["Cattle"]);
+            Assert.Equal(5, animalTypeCounts["Buffalo"]);
+            Assert.Equal(5, animalTypeCounts["Goat"]);
+            Assert.Equal(4, animalTypeCounts["Sheep"]);
+            Assert.Equal(4, animalTypeCounts["Poultry"]);
+
+            var statusCounts = await db.Animals.Where(a => a.FarmId == seeded.FarmId)
+                .GroupBy(a => a.AnimalStatus.Name)
+                .Select(g => new { Name = g.Key, Count = g.Count() })
+                .ToDictionaryAsync(x => x.Name, x => x.Count);
+            Assert.Equal(9, statusCounts["Active"]);
+            Assert.Equal(6, statusCounts["Lactating"]);
+            Assert.Equal(4, statusCounts["Pregnant"]);
+            Assert.Equal(3, statusCounts["Dry"]);
+            Assert.Equal(3, statusCounts["Sick"]);
+            Assert.Equal(3, statusCounts["Sold"]);
+            Assert.Equal(2, statusCounts["Deceased"]);
+
+            var deceasedAnimalIds = await db.Animals
+                .Where(a => a.FarmId == seeded.FarmId && a.AnimalStatus.Name == "Deceased")
+                .Select(a => a.Id).ToListAsync();
+            foreach (var animalId in deceasedAnimalIds)
+            {
+                Assert.True(await db.MedicalRecords.AnyAsync(m =>
+                        m.FarmId == seeded.FarmId && m.AnimalId == animalId &&
+                        m.Status == MedicalRecordStatus.Resolved),
+                    $"Deceased animal {animalId} must have a resolved medical record.");
+            }
+        }
 
         // Make the demo messy.
         using (var scope = host.Services.CreateScope())
@@ -136,12 +251,12 @@ public class DemoSmokeTests
             var db = scope.ServiceProvider.GetRequiredService<FmsDbContext>();
             db.FarmTasks.Add(new FMS.Domain.Entities.FarmTask
             {
-                Id = Guid.NewGuid(), FarmId = seeded.farmId, Title = "visitor-created task",
+                Id = Guid.NewGuid(), FarmId = seeded.FarmId, Title = "visitor-created task",
                 Priority = FarmTaskPriority.Low, Status = FarmTaskStatus.Pending,
             });
             await db.SaveChangesAsync();
         }
-        Assert.Equal(5, (await SnapshotAsync(host)).tasks);
+        Assert.Equal(19, (await SnapshotAsync(host)).Counts["farmTasks"]);
 
         // Reset (the demo user is SystemOwner). Use the token demo-login actually returned —
         // the client has no other token — so this proves the fresh demo session can reset.
@@ -150,10 +265,63 @@ public class DemoSmokeTests
             new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
         var reset = await resetClient.PostAsync("/api/auth/demo-reset", null);
         Assert.Equal(HttpStatusCode.OK, reset.StatusCode);
-        Assert.Equal(4, (await SnapshotAsync(host)).tasks);
+        var restored = await SnapshotAsync(host);
+        foreach (var key in seeded.Counts.Keys)
+            Assert.Equal(seeded.Counts[key], restored.Counts[key]);
 
         Assert.True(hasIsDemo, "demo-login response must carry isDemo=true for the client banner.");
         Assert.Contains("SystemOwner", roles);
+    }
+
+    [Fact]
+    public async Task Demo_reset_leaves_non_demo_farms_untouched()
+    {
+        using var host = BuildHost(demoEnabled: true);
+        var login = await host.GetTestClient().PostAsJsonAsync("/api/auth/demo-login", new { });
+        Assert.Equal(HttpStatusCode.OK, login.StatusCode);
+        using var json = JsonDocument.Parse(await login.Content.ReadAsStringAsync());
+        var token = json.RootElement.GetProperty("accessToken").GetString();
+
+        Guid nonDemoFarmId;
+        using (var scope = host.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<FmsDbContext>();
+            var account = new Account { Id = Guid.NewGuid(), Name = "Non-demo account" };
+            var user = new User
+            {
+                Id = Guid.NewGuid(), AccountId = account.Id,
+                Email = "owner@non-demo.example", PasswordHash = "not-used",
+                FirstName = "Non", LastName = "Demo",
+            };
+            var farm = new Farm
+            {
+                Id = Guid.NewGuid(), AccountId = account.Id, Name = "Non-demo farm",
+            };
+            nonDemoFarmId = farm.Id;
+            db.Accounts.Add(account);
+            db.Users.Add(user);
+            db.Farms.Add(farm);
+            db.FarmTasks.Add(new FMS.Domain.Entities.FarmTask
+            {
+                Id = Guid.NewGuid(), FarmId = farm.Id, Title = "non-demo task",
+                Priority = FarmTaskPriority.High, Status = FarmTaskStatus.Pending,
+            });
+            await db.SaveChangesAsync();
+        }
+
+        var resetClient = host.GetTestClient();
+        resetClient.DefaultRequestHeaders.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+        var reset = await resetClient.PostAsync("/api/auth/demo-reset", null);
+        Assert.Equal(HttpStatusCode.OK, reset.StatusCode);
+
+        using (var scope = host.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<FmsDbContext>();
+            Assert.Equal(1, await db.FarmTasks.CountAsync(t => t.FarmId == nonDemoFarmId));
+            Assert.True(await db.Farms.AnyAsync(f => f.Id == nonDemoFarmId));
+            Assert.True(await db.Users.AnyAsync(u => u.Email == "owner@non-demo.example"));
+        }
     }
 
     [Fact]
