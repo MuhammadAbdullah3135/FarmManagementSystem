@@ -95,6 +95,7 @@ public class AuthController : ControllerBase
         return result.Error?.Code switch
         {
             "Unauthorized" => Unauthorized(result.Error.Message),
+            "Validation" => BadRequest(result.Error.Message),
             _ => StatusCode(500, result.Error?.Message)
         };
     }
