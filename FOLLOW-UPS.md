@@ -57,3 +57,14 @@ again if they are unexpectedly logged out; no data was lost.
 
 A follow-up for the next rotation: announce the rotation window in advance and verify a
 real-account login immediately afterwards (see item 3).
+
+## 5. Demo dashboard shows 0 sick animals
+
+`DashboardService` defines its sick metric as animals whose status category is `Inactive`.
+The demo seeder creates the `Sick` status through `EnsureAnimalStatusAsync`, which leaves the
+category at its default `Active`, so the dashboard tile reads **0** even though the approved
+dataset contains 3 sick animals. The animals list and status breakdown show all 3 correctly.
+
+**Proposed fix:** create the demo `Sick` status in the `Inactive` category, or make the
+dashboard count the `Sick` status directly. Add a demo/dashboard assertion so the tile and the
+status breakdown cannot disagree again.
