@@ -108,6 +108,10 @@ public class DemoSmokeTests
         var counts = new Dictionary<string, int>
         {
             ["animals"] = await db.Animals.CountAsync(a => a.FarmId == farmId),
+            // DashboardService defines the sick tile as the Inactive status category.
+            ["sickByCategory"] = await db.Animals.CountAsync(a =>
+                a.FarmId == farmId && !a.IsDeleted &&
+                a.AnimalStatus.Category == AnimalStatusCategory.Inactive),
             ["farmTasks"] = await db.FarmTasks.CountAsync(t => t.FarmId == farmId),
             ["locations"] = await db.Locations.CountAsync(l => l.FarmId == farmId),
             ["weights"] = await db.WeightRecords.CountAsync(w => w.FarmId == farmId),
@@ -271,6 +275,17 @@ public class DemoSmokeTests
 
         Assert.True(hasIsDemo, "demo-login response must carry isDemo=true for the client banner.");
         Assert.Contains("SystemOwner", roles);
+    }
+
+    [Fact]
+    public async Task Demo_sick_animals_use_the_inactive_category_the_dashboard_counts()
+    {
+        using var host = BuildHost(demoEnabled: true);
+        var login = await host.GetTestClient().PostAsJsonAsync("/api/auth/demo-login", new { });
+        Assert.Equal(HttpStatusCode.OK, login.StatusCode);
+
+        var seeded = await SnapshotAsync(host);
+        Assert.Equal(3, seeded.Counts["sickByCategory"]);
     }
 
     [Fact]

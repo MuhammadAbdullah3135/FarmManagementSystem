@@ -69,7 +69,10 @@ public static partial class DemoDataSeeder
         var statuses = await context.AnimalStatuses
             .Where(s => s.FarmId == farmId)
             .ToDictionaryAsync(s => s.Name);
-        var sickStatus = await EnsureAnimalStatusAsync(context, farmId, "Sick", now);
+        // DashboardService treats the Inactive category as "sick". Seeding this status as
+        // Active made the dashboard show 0 while three animals were visibly Sick.
+        var sickStatus = await EnsureAnimalStatusAsync(
+            context, farmId, "Sick", AnimalStatusCategory.Inactive, now);
         statuses["Sick"] = sickStatus;
         var sexes = await context.SexOptions
             .Where(s => s.FarmId == farmId)
