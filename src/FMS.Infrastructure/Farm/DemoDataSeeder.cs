@@ -319,14 +319,15 @@ public static partial class DemoDataSeeder
     /// already provide it. The demo seed needs statuses (<c>Sick</c>) that the shared farm
     /// defaults intentionally do not ship, so it creates them for the demo farm only.
     /// </summary>
-    private static async Task<AnimalStatus> EnsureAnimalStatusAsync(FmsDbContext context, Guid farmId, string name, DateTime now)
+    private static async Task<AnimalStatus> EnsureAnimalStatusAsync(
+        FmsDbContext context, Guid farmId, string name, AnimalStatusCategory category, DateTime now)
     {
         var existing = await context.AnimalStatuses.FirstOrDefaultAsync(s => s.FarmId == farmId && s.Name == name);
         if (existing != null) return existing;
         var status = new AnimalStatus
         {
             Id = Guid.NewGuid(), FarmId = farmId, Name = name,
-            IsActive = true, Category = AnimalStatusCategory.Active,
+            IsActive = true, Category = category,
             IsSystemDefined = true, CreatedAt = now,
         };
         context.AnimalStatuses.Add(status);
