@@ -1,10 +1,16 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import axios from 'axios';
 import api, {
   isFarmAccessDenied,
   setFarmAccessDeniedHandler,
   setSyncTriggerHandler,
 } from './axios';
+
+afterEach(() => {
+  // Tests that assert the login redirect replace `window` because jsdom's Location
+  // properties are non-configurable and cannot be spied on directly.
+  vi.unstubAllGlobals();
+});
 
 /*
  * The mid-session revocation reaction must be keyed to the farm-context denial
@@ -22,6 +28,18 @@ const failWith = (status: number, data: unknown) => {
     error.response = { status, data, config, headers: {}, statusText: '' };
     throw error;
   };
+};
+
+/** Replaces `window` just far enough to observe `location.assign`; jsdom's is non-configurable. */
+const stubRedirect = () => {
+  const assign = vi.fn();
+  const stubbedWindow = Object.create(window);
+  Object.defineProperty(stubbedWindow, 'location', {
+    value: { assign },
+    configurable: true,
+  });
+  vi.stubGlobal('window', stubbedWindow);
+  return assign;
 };
 
 describe('isFarmAccessDenied', () => {
@@ -190,6 +208,133 @@ describe('sync support in the interceptors', () => {
 });
 
 /*
+ * Auth endpoints are not all public. The public four must not inherit a stale token, while
+ * /auth/me, /auth/demo-reset, and /auth/revoke are authenticated and must send the bearer.
+ * Skipping the whole /auth/ prefix turned every profile read and demo reset into a 401 ->
+ * refresh -> retry cycle, and a rapid second reset could race refresh-token rotation.
+ */
+describe('auth token attachment', () => {
+  interface CapturedConfig {
+    url?: string;
+    headers: Record<string, unknown>;
+  }
+
+  let captured: CapturedConfig[] = [];
+
+  beforeEach(() => {
+    localStorage.clear();
+    captured = [];
+    api.defaults.adapter = async (config) => {
+      captured.push({ url: config.url, headers: config.headers as unknown as Record<string, unknown> });
+      return { data: {}, status: 200, statusText: '', headers: {}, config };
+    };
+  });
+
+  it('skips the bearer token on the public auth endpoints', async () => {
+    localStorage.setItem('accessToken', 'a1');
+    localStorage.setItem('activeFarmId', 'farm-a');
+
+    await api.post('/auth/login', {});
+    await api.post('/auth/register', {});
+    await api.post('/auth/refresh', { refreshToken: 'r1' });
+    await api.post('/auth/demo-login', {});
+
+    for (const request of captured) {
+      expect(request.headers.Authorization).toBeUndefined();
+      // A stale farm id must not leak to an endpoint that has nothing to do with a farm.
+      expect(request.headers['X-Farm-Id']).toBeUndefined();
+    }
+  });
+
+  it('sends the bearer token on authenticated auth endpoints', async () => {
+    localStorage.setItem('accessToken', 'a1');
+    localStorage.setItem('activeFarmId', 'farm-a');
+
+    await api.get('/auth/me');
+    await api.post('/auth/demo-reset');
+    await api.post('/auth/revoke', { refreshToken: 'r1' });
+
+    for (const request of captured) {
+      expect(request.headers.Authorization).toBe('Bearer a1');
+      // These are account-scoped, so the active farm must not be stamped on them.
+      expect(request.headers['X-Farm-Id']).toBeUndefined();
+    }
+  });
+
+  it('shares one refresh across concurrent 401s and retries each with the new token', async () => {
+    localStorage.setItem('accessToken', 'stale');
+    localStorage.setItem('refreshToken', 'r1');
+
+    const retried: string[] = [];
+    let attempts = 0;
+    api.defaults.adapter = async (config) => {
+      const authorization = (config.headers as unknown as Record<string, unknown>).Authorization;
+      if (authorization === 'Bearer a2') {
+        retried.push(config.url ?? '');
+        return { data: {}, status: 200, statusText: '', headers: {}, config };
+      }
+
+      attempts += 1;
+      const error = new Error('Request failed') as Error & { config?: unknown; response?: unknown };
+      error.config = config;
+      error.response = { status: 401, data: '', config, headers: {}, statusText: '' };
+      throw error;
+    };
+
+    let resolveRefresh!: (value: unknown) => void;
+    const refreshPromise = new Promise((resolve) => {
+      resolveRefresh = resolve;
+    });
+    const refresh = vi.spyOn(axios, 'post').mockReturnValue(refreshPromise as never);
+
+    const first = api.get('/farm/farm-a/animals');
+    const second = api.get('/farm/farm-a/health');
+
+    await vi.waitFor(() => expect(attempts).toBe(2));
+    expect(refresh).toHaveBeenCalledTimes(1);
+
+    resolveRefresh({ data: { accessToken: 'a2', refreshToken: 'r2' } });
+    await Promise.all([first, second]);
+
+    expect(refresh).toHaveBeenCalledTimes(1);
+    expect(retried).toEqual(expect.arrayContaining(['/farm/farm-a/animals', '/farm/farm-a/health']));
+    expect(localStorage.getItem('accessToken')).toBe('a2');
+    expect(localStorage.getItem('refreshToken')).toBe('r2');
+
+    refresh.mockRestore();
+  });
+
+  it('clears the session once when concurrent 401s share a failed refresh', async () => {
+    localStorage.setItem('accessToken', 'stale');
+    localStorage.setItem('refreshToken', 'r1');
+    localStorage.setItem('user', JSON.stringify({ email: 'Test@apk.com' }));
+
+    failWith(401, {});
+    const refresh = vi.spyOn(axios, 'post').mockRejectedValue({
+      response: { status: 401, data: '', headers: {}, config: {}, statusText: '' },
+    });
+    const assign = stubRedirect();
+    const removeItem = vi.spyOn(Storage.prototype, 'removeItem');
+
+    const first = api.get('/farm/farm-a/animals');
+    const second = api.get('/farm/farm-a/health');
+    await Promise.allSettled([first, second]);
+
+    // The refresh itself ran once, so the terminal failure cleared the session once.
+    expect(refresh).toHaveBeenCalledTimes(1);
+    expect(removeItem.mock.calls.filter(([key]) => key === 'accessToken')).toHaveLength(1);
+    expect(localStorage.getItem('accessToken')).toBeNull();
+    expect(localStorage.getItem('refreshToken')).toBeNull();
+    expect(localStorage.getItem('user')).toBeNull();
+    expect(assign).toHaveBeenCalledTimes(1);
+    expect(assign.mock.calls[0][0]).toContain('login');
+
+    removeItem.mockRestore();
+    refresh.mockRestore();
+  });
+});
+
+/*
  * Backgrounding the Android WebView kills its sockets, so the next call 401s and the
  * refresh POST fails with a network error — no HTTP response at all. A network failure says
  * nothing about whether the refresh token is still valid, so the session must survive; only
@@ -230,6 +375,7 @@ describe('401 with a failing refresh call', () => {
     const refresh = vi.spyOn(axios, 'post').mockRejectedValue({
       response: { status: 401, data: '', headers: {}, config: {}, statusText: '' },
     });
+    const assign = stubRedirect();
 
     await expect(api.get('/farm/farm-a/animals')).rejects.toBeTruthy();
 
@@ -237,6 +383,7 @@ describe('401 with a failing refresh call', () => {
     expect(localStorage.getItem('refreshToken')).toBeNull();
     expect(localStorage.getItem('accessToken')).toBeNull();
     expect(localStorage.getItem('user')).toBeNull();
+    expect(assign).toHaveBeenCalledTimes(1);
 
     refresh.mockRestore();
   });

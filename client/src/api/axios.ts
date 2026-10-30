@@ -90,6 +90,26 @@ const api = axios.create({
 });
 
 /**
+ * Auth endpoints that must never receive a token from a previous session.
+ *
+ * This is deliberately an allowlist, not `url.includes('/auth/')`: `/auth/me`,
+ * `/auth/demo-reset`, and `/auth/revoke` are authenticated, and skipping their bearer
+ * token turns every page load and reset into a 401 -> refresh -> retry cycle. A rapid
+ * second reset could then race refresh-token rotation and end the session.
+ */
+const PUBLIC_AUTH_PATHS = [
+  '/auth/login',
+  '/auth/register',
+  '/auth/refresh',
+  '/auth/demo-login',
+] as const;
+
+const isPublicAuthRequest = (url: string): boolean => {
+  const path = url.split('?')[0];
+  return PUBLIC_AUTH_PATHS.some((authPath) => path.endsWith(authPath));
+};
+
+/**
  * The in-flight refresh, shared by every request that 401s while it runs.
  *
  * Pages fire several requests at once, so an expired access token used to produce one
@@ -98,6 +118,17 @@ const api = axios.create({
  * logout loop. One call, everyone waits on it.
  */
 let refreshInFlight: Promise<string> | null = null;
+
+/** Drops the session and sends the user to the login screen. */
+const endSession = () => {
+  localStorage.removeItem('accessToken');
+  localStorage.removeItem('refreshToken');
+  localStorage.removeItem('user');
+  localStorage.removeItem('auth-storage');
+  localStorage.removeItem('farm-storage');
+  localStorage.removeItem('activeFarmId');
+  window.location.assign(`${import.meta.env.BASE_URL}login`);
+};
 
 const refreshAccessToken = (): Promise<string> => {
   if (!refreshInFlight) {
@@ -118,9 +149,21 @@ const refreshAccessToken = (): Promise<string> => {
       // queued behind one is not stuck until the user happens to open a page.
       notifySyncTrigger('token-refreshed');
       return accessToken as string;
-    })().finally(() => {
-      refreshInFlight = null;
-    });
+    })()
+      .catch((error) => {
+        // A server answer is the only proof the refresh token itself is dead. A network
+        // failure (the Android WebView was backgrounded, airplane mode, an API blip) says
+        // nothing about the token, so the session survives and the request rejects as usual.
+        // The single-flight promise makes this endSession call happen once even when a burst
+        // of requests was waiting on the same failed refresh.
+        if ((error as { response?: unknown } | null)?.response) {
+          endSession();
+        }
+        throw error;
+      })
+      .finally(() => {
+        refreshInFlight = null;
+      });
   }
 
   return refreshInFlight;
@@ -135,29 +178,24 @@ const refreshAccessToken = (): Promise<string> => {
  */
 export const ensureFreshAccessToken = (): Promise<string> => refreshAccessToken();
 
-/** Drops the session and sends the user to the login screen. */
-const endSession = () => {
-  localStorage.removeItem('accessToken');
-  localStorage.removeItem('refreshToken');
-  localStorage.removeItem('user');
-  localStorage.removeItem('auth-storage');
-  localStorage.removeItem('farm-storage');
-  localStorage.removeItem('activeFarmId');
-  window.location.href = `${import.meta.env.BASE_URL}login`;
-};
-
 api.interceptors.request.use((config) => {
-  // Never attach auth headers to auth endpoints — stale tokens/farm IDs
-  // from a previous session cause 403 "Access denied to this farm" on
-  // login/register/reset/refresh before the endpoint can even run.
   const url = config.url ?? '';
-  if (url.includes('/auth/')) {
+
+  // Public auth endpoints must not inherit a stale token or farm id from a previous
+  // session. Authenticated /auth/* endpoints fall through and get the bearer below.
+  if (isPublicAuthRequest(url)) {
     return config;
   }
 
   const token = localStorage.getItem('accessToken');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
+  }
+
+  // Auth endpoints are account-scoped, not farm-scoped. A stale active farm must not be
+  // sent with /auth/me, /auth/demo-reset, or /auth/revoke.
+  if (url.includes('/auth/')) {
+    return config;
   }
 
   // A request that names its own farm keeps it. The sync flush walks every farm in the
@@ -193,17 +231,10 @@ api.interceptors.response.use(
           const accessToken = await refreshAccessToken();
           originalRequest.headers.Authorization = `Bearer ${accessToken}`;
           return api(originalRequest);
-        } catch (refreshError) {
-          // Only a *server* answer ends the session: it is the one thing that proves the
-          // refresh token itself is dead. A network failure (the Android WebView was
-          // backgrounded and dropped its sockets, airplane mode, an API blip) says nothing
-          // about the token, which is still valid — ending the session here used to log
-          // people out every time they switched away from the app and back. The offline
-          // queue already treats an unreachable API as a retryable condition, and the
-          // original 401 below is rejected as usual.
-          if ((refreshError as { response?: unknown } | null)?.response) {
-            endSession();
-          }
+        } catch {
+          // refreshAccessToken already ended the session for a terminal (server-answered)
+          // failure. A network failure leaves it intact so an offline device can retry, and
+          // the original 401 below is rejected as usual.
         }
       }
     }
