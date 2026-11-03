@@ -20,6 +20,7 @@ import dayjs from 'dayjs';
 import type { AnimalDetail, BreedingRecord, WeightCheckStatus } from '../../types';
 import { useTranslation } from 'react-i18next';
 import { enumLabelOf } from '../../i18n/enumOptions';
+import FieldTooltip from '../../components/FieldTooltip';
 
 /** One row of the merged weights view: the server's copy, or this device's queued one. */
 interface WeightRow {
@@ -153,7 +154,9 @@ const AnimalWeightsTab: React.FC<{ animalId: string; weightRecordsCount: number 
       )}
       {statuses.length > 0 && (
         <div style={{ marginBottom: 16 }}>
-          <strong>{t('weightCheckStatus')}</strong>
+          <FieldTooltip titleKey="tooltip:animal.weightStatus">
+            <strong>{t('weightCheckStatus')}</strong>
+          </FieldTooltip>
           <div style={{ marginTop: 8 }}>
             {statuses.map((ws, i) => (
               <Tag
@@ -425,6 +428,9 @@ export default function AnimalDetailPage() {const { t } = useTranslation('animal
           <Descriptions.Item label={t('acquisitionDate')}>{animal.acquisitionDate ? formatDate(animal.acquisitionDate) : '-'}</Descriptions.Item>
           <Descriptions.Item label={t('sire')}>{animal.sireTagNumber || '-'}</Descriptions.Item>
           <Descriptions.Item label={t('dam')}>{animal.damTagNumber || '-'}</Descriptions.Item>
+          <Text type="secondary" style={{ display: 'block', marginTop: 8 }}>
+            {t('tooltip:animal.parentTerms')}
+          </Text>
           <Descriptions.Item label={t('notes')} span={2}>{animal.notes || '-'}</Descriptions.Item>
           <Descriptions.Item label={t('weightRecords')}>{animal.weightRecordsCount}</Descriptions.Item>
           <Descriptions.Item label={t('images')}>{animal.imagesCount}</Descriptions.Item>

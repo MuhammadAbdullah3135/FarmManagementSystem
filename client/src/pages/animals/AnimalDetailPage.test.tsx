@@ -380,3 +380,84 @@ describe('AnimalDetailPage weights list', () => {
     });
   }, 20_000);
 });
+
+/**
+ * Inline help and tooltip wiring for the animal.* tooltip keys.
+ */
+describe('AnimalDetailPage animal.* help text', () => {
+  beforeEach(() => {
+    (globalThis as { indexedDB: IDBFactory }).indexedDB = new IDBFactory();
+    resetOfflineDbConnection();
+    vi.clearAllMocks();
+    vi.mocked(animalsApi.get).mockResolvedValue({ data: ANIMAL } as never);
+    vi.mocked(animalsApi.getWeights).mockResolvedValue({
+      data: { items: [], totalCount: 0, page: 1, pageSize: 20 },
+    } as never);
+    vi.mocked(weightCheckStatusApi.all).mockResolvedValue({
+      data: { items: [], page: 1, pageSize: 0, totalCount: 0, deletedIds: [], cursor: null, requiresFullSync: false },
+    } as never);
+
+    useOfflineStore.setState({
+      isOnline: true,
+      storageAvailable: true,
+      stats: { recordCount: 0, collectionCount: 0, lastSyncedAt: null },
+    });
+    useAuthStore.setState({ user, isAuthenticated: true });
+    useFarmStore.setState({ farms: [farm], activeFarm: farm, isLoading: false, error: null });
+  });
+
+  it('wraps the weight-check-status heading in a FieldTooltip with the weightStatus popup text', async () => {
+    vi.mocked(weightCheckStatusApi.all).mockResolvedValue({
+      data: {
+        items: [{
+          animalId: ANIMAL.id,
+          animalTagNumber: ANIMAL.tagNumber,
+          animalName: ANIMAL.name,
+          lastWeightDate: null,
+          nextDueDate: '2026-10-01T00:00:00.000Z',
+          status: 'Due',
+          statusName: 'Due',
+          daysUntilDue: 0,
+        }],
+        page: 1,
+        pageSize: 1,
+        totalCount: 1,
+        deletedIds: [],
+        cursor: null,
+        requiresFullSync: false,
+      },
+    } as never);
+
+    renderPage();
+
+    // Wait for the animal to load, then open the Weights tab.
+    expect(await screen.findByText('Cattle')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('tab', { name: 'Weights' }));
+
+    const heading = await screen.findByText('Weight Check Status:');
+    const wrapper = heading.closest('span[tabindex="0"]') as HTMLElement;
+    expect(wrapper).not.toBeNull();
+
+    // Follow the readTooltip pattern: focus the wrapper, then read the popup copy.
+    wrapper.focus();
+    let popupCopy = '';
+    await waitFor(() => {
+      expect(wrapper.getAttribute('aria-describedby')).not.toBeNull();
+      const popup = document.querySelector('.ant-tooltip:not(.ant-tooltip-hidden)') || null;
+      if (!popup) throw new Error('No visible FieldTooltip popup.') as unknown as never;
+      popupCopy = popup.textContent ?? '';
+    });
+    expect(popupCopy).toContain('Due: next check coming up. Overdue: past the due date — weigh as soon as you can.');
+  }, 20_000);
+
+  it('renders the parent-terms helper line below the sire and dam descriptions', async () => {
+    renderPage();
+
+    expect(await screen.findByText('C-000')).toBeInTheDocument();
+    expect(await screen.findByText('C-010')).toBeInTheDocument();
+
+    // A visible secondary line under the sire/dam pair, using the tooltip copy.
+    const helper = await screen.findByText('sire = the father, dam = the mother of this animal.');
+    expect(helper.tagName).toBe('SPAN');
+  });
+});
