@@ -91,6 +91,26 @@
         "tool": "AI agent (model name unavailable)",
         "date": "2026-10-10",
         "reviewed": false
+      },
+      {
+        "files": [
+          "es/tooltip.json"
+        ],
+        "source": "en",
+        "tool": "Codebuff agent (Buffy)",
+        "date": "2026-11-02",
+        "reviewed": false,
+        "note": "Machine-translated from en/tooltip.json; wording has not been reviewed by a translator. See locales/README.md for terminology."
+      },
+      {
+        "files": [
+          "es/tooltip.json (sync.quarantinedCount, nav.openMenu)"
+        ],
+        "source": "en",
+        "tool": "Codebuff agent (Buffy)",
+        "date": "2026-11-02",
+        "reviewed": false,
+        "note": "Added in Phase 2 Decision A; both keys added together, neither reviewed by a translator yet."
       }
     ]
   },
@@ -187,6 +207,26 @@
         "tool": "AI agent (model name unavailable)",
         "date": "2026-10-10",
         "reviewed": false
+      },
+      {
+        "files": [
+          "ar/tooltip.json"
+        ],
+        "source": "en",
+        "tool": "Codebuff agent (Buffy)",
+        "date": "2026-11-02",
+        "reviewed": false,
+        "note": "Machine-translated from en/tooltip.json; wording has not been reviewed by a translator. See locales/README.md for terminology."
+      },
+      {
+        "files": [
+          "ar/tooltip.json (sync.quarantinedCount, nav.openMenu)"
+        ],
+        "source": "en",
+        "tool": "Codebuff agent (Buffy)",
+        "date": "2026-11-02",
+        "reviewed": false,
+        "note": "Added in Phase 2 Decision A; both keys added together, neither reviewed by a translator yet."
       }
     ]
   }

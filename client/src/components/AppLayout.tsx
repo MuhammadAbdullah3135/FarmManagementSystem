@@ -38,6 +38,7 @@ import { clearAllOfflineData, clearOfflineDataForFarm } from '../offline/offline
 import OfflineBanner from './OfflineBanner';
 import DemoBanner from './DemoBanner';
 import RouteErrorBoundary from './RouteErrorBoundary';
+import FieldTooltip from './FieldTooltip';
 import { AnimalScanButton } from './AnimalScanModal';
 import { filterMenuByRole } from '../utils/permissions';
 import type { AppMenuItem } from '../utils/permissions';
@@ -474,6 +475,37 @@ const isFarmIndependent = (pathname: string) =>
   }));
 
   /**
+   * The farm selector and the sync badge, hoisted so each can be wrapped in a
+   * FieldTooltip conditionally without writing the element itself twice.
+   *
+   * The selector's FieldTooltip belongs *outside* the Dropdown: antd hands the
+   * popup handler to its child element, and a wrapper between the Dropdown and
+   * its trigger would swallow it — the menu would stop opening.
+   */
+  const farmSelector = (
+    <Dropdown menu={{ items: farmMenuItems }} trigger={['click']}>
+      <div style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+        <SwapOutlined />
+        {activeFarm ? (
+          <Text strong style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: isMobile ? 120 : undefined }}>{activeFarm.name}</Text>
+        ) : farms.length > 0 ? (
+          <Text type="secondary">{t('selectAFarm')}</Text>
+        ) : (
+          <Text type="secondary">{t('noFarmsYet')}</Text>
+        )}
+      </div>
+    </Dropdown>
+  );
+
+  const syncBadge = (
+    <Badge count={unsyncedCount} size="small" overflowCount={99}>
+      <CloudSyncOutlined
+        style={{ fontSize: 16, color: quarantinedCount > 0 ? '#cf1322' : undefined }}
+      />
+    </Badge>
+  );
+
+  /**
    * Switches language everywhere, then remembers it on the account.
    *
    * The switch happens first and unconditionally: the device already has the choice and
@@ -587,26 +619,21 @@ const isFarmIndependent = (pathname: string) =>
       <Layout style={{ overflow: 'hidden' }}>
         <Header style={{ background: '#fff', padding: isMobile ? '0 12px' : '0 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0, gap: 8 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-            {isMobile && (
+                        {isMobile && (
+              <FieldTooltip titleKey="tooltip:nav.openMenu">
               <Button
                 type="text"
                 icon={<MenuOutlined />}
                 onClick={() => setMobileMenuOpen(true)}
                 aria-label={t('openMenu')}
               />
+              </FieldTooltip>
             )}
-            <Dropdown menu={{ items: farmMenuItems }} trigger={['click']}>
-              <div style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-                <SwapOutlined />
-                {activeFarm ? (
-                  <Text strong style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: isMobile ? 120 : undefined }}>{activeFarm.name}</Text>
-                ) : farms.length > 0 ? (
-                  <Text type="secondary">{t('selectAFarm')}</Text>
-                ) : (
-                  <Text type="secondary">{t('noFarmsYet')}</Text>
-                )}
-              </div>
-            </Dropdown>
+            {activeFarm ? (
+              farmSelector
+            ) : (
+              <FieldTooltip titleKey="tooltip:farm.selectPrompt">{farmSelector}</FieldTooltip>
+            )}
           </div>
 
           <Space size={4} style={{ minWidth: 0 }}>
@@ -639,11 +666,20 @@ const isFarmIndependent = (pathname: string) =>
                 aria-label={t('offlineAndSync')}
                 onClick={() => navigate('/dashboard/sync')}
               >
-                <Badge count={unsyncedCount} size="small" overflowCount={99}>
-                  <CloudSyncOutlined
-                    style={{ fontSize: 16, color: quarantinedCount > 0 ? '#cf1322' : undefined }}
-                  />
-                </Badge>
+                {/* The pending-count key speaks only about records still on this device, so
+                    it applies while something is pending; the tooltip already wrapping this
+                    button keeps covering the rest of the queue's states. */}
+                                {pendingCount > 0 ? (
+                  <FieldTooltip titleKey="tooltip:sync.pendingCount" values={{ count: pendingCount }}>
+                    {syncBadge}
+                  </FieldTooltip>
+                ) : quarantinedCount > 0 ? (
+                  <FieldTooltip titleKey="tooltip:sync.quarantinedCount" values={{ count: quarantinedCount }}>
+                    {syncBadge}
+                  </FieldTooltip>
+                ) : (
+                  syncBadge
+                )}
               </Button>
             </Tooltip>
 

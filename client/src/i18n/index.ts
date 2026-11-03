@@ -34,6 +34,7 @@ import validation from './locales/en/validation.json';
 import errors from './locales/en/errors.json';
 import enums from './locales/en/enums.json';
 import demo from './locales/en/demo.json';
+import tooltip from './locales/en/tooltip.json';
 
 // Spanish, machine-translated and not yet reviewed by a translator (see
 // locales/README.md and locales/translation-status.json). The keys mirror English
@@ -60,6 +61,7 @@ import esValidation from './locales/es/validation.json';
 import esErrors from './locales/es/errors.json';
 import esEnums from './locales/es/enums.json';
 import esDemo from './locales/es/demo.json';
+import esTooltip from './locales/es/tooltip.json';
 
 // Arabic, machine-translated and not yet reviewed by a translator (see
 // locales/README.md and locales/translation-status.json). Arabic is the first
@@ -87,6 +89,7 @@ import arValidation from './locales/ar/validation.json';
 import arErrors from './locales/ar/errors.json';
 import arEnums from './locales/ar/enums.json';
 import arDemo from './locales/ar/demo.json';
+import arTooltip from './locales/ar/tooltip.json';
 
 /** One namespace per feature area, so a translation file maps onto a screen. */
 export const NAMESPACES = [
@@ -113,6 +116,7 @@ export const NAMESPACES = [
   'errors',
   'enums',
   'demo',
+  'tooltip',
 ] as const;
 
 export type Namespace = (typeof NAMESPACES)[number];
@@ -141,6 +145,7 @@ export const resources = {
     errors,
     enums,
     demo,
+    tooltip,
   },
   es: {
     common: esCommon,
@@ -165,6 +170,7 @@ export const resources = {
     validation: esValidation,
     errors: esErrors,
     enums: esEnums,
+    tooltip: esTooltip,
   },
   ar: {
     common: arCommon,
@@ -189,6 +195,7 @@ export const resources = {
     errors: arErrors,
     enums: arEnums,
     demo: arDemo,
+    tooltip: arTooltip,
   },
 } as const;
 

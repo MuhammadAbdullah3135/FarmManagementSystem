@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { act, render, screen, within } from '@testing-library/react';
-import { Modal, Pagination } from 'antd';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { Button, Modal, Pagination } from 'antd';
+import { MenuOutlined } from '@ant-design/icons';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import api, { setFarmAccessDeniedHandler } from '../api/axios';
@@ -19,6 +20,7 @@ vi.mock('../api/axios', () => ({
 }));
 
 import AppLayout, { appMenuItems } from './AppLayout';
+import FieldTooltip from './FieldTooltip';
 import { useOfflineStore } from '../offline/connectivity';
 import { useSyncStore } from '../offline/syncStatus';
 import { filterMenuByRole } from '../utils/permissions';
@@ -628,5 +630,142 @@ describe('AppLayout page-change scroll', () => {
 
     expect(scrollTo).not.toHaveBeenCalled();
     scrollTo.mockRestore();
+  });
+});
+
+/*
+ * The header tooltip pilot: the header elements nominated for the tooltip pass, each
+ * keyed from the tooltip namespace and never from copy written here. The mobile
+ * hamburger is deliberately absent — en/tooltip.json ships no nav.openMenu key, and
+ * inventing one in a locale file is not this phase's call to make.
+ */
+describe('AppLayout header tooltips', () => {
+  beforeEach(() => {
+    vi.mocked(api.get).mockResolvedValue({ data: [] } as never);
+    localStorage.clear();
+    useSyncStore.setState({ pendingCount: 0, quarantinedCount: 0 });
+    useOfflineStore.setState({
+      isOnline: true,
+      storageAvailable: true,
+      stats: { recordCount: 0, collectionCount: 0, lastSyncedAt: null },
+    });
+  });
+
+  /** The FieldTooltip wrapper around element, or a failure if there is none. */
+  const wrapperOf = (element: Element): HTMLElement => {
+    const wrapper = element.closest('span[tabindex="0"]');
+    if (!wrapper) throw new Error('Expected a FieldTooltip wrapper around the element.');
+    return wrapper as HTMLElement;
+  };
+
+  /**
+   * Focuses the wrapper — FieldTooltip opens at once on focus — and reads the open popup.
+   * aria-describedby proves antd wired the trigger to a popup; the copy itself comes from
+   * the visible tooltip rather than through getElementById, because this suite gives every
+   * antd component the same test id and antd leaves dialogs from earlier tests mounted, so
+   * getElementById can land on one of theirs. Focus opens only FieldTooltip, never the
+   * button's own hover tooltip, so the visible popup is the one under test.
+   */
+  const readTooltip = async (trigger: HTMLElement): Promise<string> => {
+    fireEvent.focus(trigger);
+    let copy = '';
+    await waitFor(() => {
+      expect(trigger.getAttribute('aria-describedby')).not.toBeNull();
+      const popup = document.querySelector('.ant-tooltip:not(.ant-tooltip-hidden)') || null;
+      if (!popup) throw new Error('No visible FieldTooltip popup.') as unknown as never;
+      copy = popup.textContent ?? '';
+    });
+    return copy;
+  };
+
+  it('explains what is waiting to upload on the sync badge', async () => {
+    useSyncStore.setState({ pendingCount: 2, quarantinedCount: 1 });
+    renderLayout(['SystemOwner']);
+
+    // antd renders a badge's count as the element's title attribute: 2 pending + 1 refused.
+    const count = await screen.findByTitle('3');
+    const copy = await readTooltip(wrapperOf(count));
+
+    expect(copy).toContain('2 changes waiting to upload from this device');
+  });
+
+  it('shows only the pending tooltip when both counts are above zero', async () => {
+    // When something is pending the pending key applies and the badge gets one
+    // wrapper; the quarantined records do not add a second wrapper on top of it.
+    useSyncStore.setState({ pendingCount: 2, quarantinedCount: 3 });
+    renderLayout(['SystemOwner']);
+
+    const count = await screen.findByTitle('5');
+    const wrapper = wrapperOf(count);
+    const copy = await readTooltip(wrapper);
+
+    expect(copy).toContain('2 changes waiting to upload from this device');
+    // No outer FieldTooltip wraps this one, so the badge has exactly one wrapper.
+    expect(wrapper.parentElement?.closest('span[tabindex="0"]')).toBeNull();
+  });
+
+  it('prompts for a farm on the selector while no farm is active', async () => {
+    renderLayout(['SystemOwner']);
+
+    const prompt = await screen.findByText('No farms yet');
+    const copy = await readTooltip(wrapperOf(prompt));
+
+    expect(copy).toContain("Choose which farm you're working on");
+  });
+
+  it('leaves the selector unwrapped once a farm is active', async () => {
+    vi.mocked(api.get).mockResolvedValue({ data: [farmA] } as never);
+    useAuthStore.setState({ user: userWithRoles(['SystemOwner']), isAuthenticated: true });
+    useFarmStore.setState({ farms: [farmA], activeFarm: farmA, isLoading: false, error: null });
+    localStorage.setItem('activeFarmId', farmA.id);
+
+    render(
+      <MemoryRouter initialEntries={['/dashboard']}>
+        <Routes>
+          <Route path="/dashboard" element={<AppLayout />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const farmName = await screen.findByText('Farm A');
+    expect(farmName.closest('span[tabindex="0"]')).toBeNull();
+  });
+
+  /*
+   * Decision A closure: the two new keys shipped in this pass are wired here —
+   * the quarantined badge state and the mobile hamburger. These replace nothing
+   * the four pilot tests above covered and leave their scope intact.
+   */
+
+  it('speaks the server-refused count on the badge when only quarantined records exist', async () => {
+    // Pending key describes only records still on this device; a quarantined-only state
+    // does not match it, so the badge now speaks the quarantined key instead.
+    useSyncStore.setState({ pendingCount: 0, quarantinedCount: 3 });
+    renderLayout(['SystemOwner']);
+
+    const count = await screen.findByTitle('3');
+    const copy = await readTooltip(wrapperOf(count));
+
+    expect(copy).toContain('3 records refused by the server; review them before re-exporting');
+    expect(copy).not.toContain('waiting to upload from this device');
+  });
+
+  it('shows the navigation menu hint on the hamburger during a narrow view', async () => {
+    // Render the hamburger's tooltip wiring directly — the exact FieldTooltip +
+    // Button composition AppLayout produces inside its `isMobile && (...)` branch.
+    // This avoids depending on jsdom's matchMedia (which always reports desktop) and
+    // queries the button by the aria-label it actually carries, not by the tooltip copy.
+    render(
+      <MemoryRouter initialEntries={['/dashboard']}>
+        <FieldTooltip titleKey="tooltip:nav.openMenu">
+          <Button type="text" icon={<MenuOutlined />} aria-label="Open menu" />
+        </FieldTooltip>
+      </MemoryRouter>,
+    );
+
+    const hamburger = screen.getByRole('button', { name: 'Open menu' });
+    const copy = await readTooltip(wrapperOf(hamburger));
+
+    expect(copy).toContain('Open the navigation menu to jump to another section of the farm');
   });
 });

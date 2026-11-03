@@ -1,0 +1,47 @@
+{
+  "sync": {
+    "pendingCount": "{{count}} changes waiting to upload from this device",
+    "recordStates": "Saved: on this device. Synced: on the farm server. Waiting: will upload when you're back online.",
+    "quarantinedCount": "{{count}} records refused by the server; review them before re-exporting."
+  },
+  "farm": {
+    "selectPrompt": "Choose which farm you're working on; data and tasks follow the selected farm."
+  },
+  "feed": {
+    "targetMode": "A record applies to either one animal or one location — not both.",
+    "scheduleTime": "Time of day this feeding runs, e.g. 07:00. Tasks are generated for this time.",
+    "scheduleInactive": "Turns off this schedule; no more feeding tasks will be generated from it.",
+    "rationShare": "Share of the total ration. Shares must add up to 100%."
+  },
+  "animal": {
+    "parentTerms": "sire = the father, dam = the mother of this animal.",
+    "sexCode": "M = male, F = female.",
+    "weightStatus": "Due: next check coming up. Overdue: past the due date — weigh as soon as you can."
+  },
+  "breeding": {
+    "dueWindow": "Days until the expected due date. The colour flags how urgent it is: warmer means due soon or overdue.",
+    "birthOutcome": "Alive: living at birth. Stillborn: no signs of life. Weak: alive but needs extra care."
+  },
+  "hr": {
+    "checkInOut": "Check in starts the shift, check out ends it. Times come from this device's clock."
+  },
+  "health": {
+    "batch": "batch = the manufacturer's lot number, shown on the packaging.",
+    "expiryStatus": "Red: already expired. Orange: expires within 30 days. Do not use expired stock.",
+    "lowStockThreshold": "Alert level: a low-stock warning appears when stock falls to this amount."
+  },
+  "report": {
+    "margin": "margin = revenue minus costs for this row.",
+    "animalDays": "animal-days = one animal counted for one day; total days animals were kept."
+  },
+  "member": {
+    "role": "What this member can open and change. SystemOwner has full access; Viewer can only read.",
+    "revokeEffect": "Removes their access immediately; their records stay with the farm."
+  },
+  "admin": {
+    "cron": "Schedule expression: 0 3 * * * means daily at 03:00. Six fields, minute first."
+  },
+  "nav": {
+    "openMenu": "Open the navigation menu to jump to another section of the farm."
+  }
+}
