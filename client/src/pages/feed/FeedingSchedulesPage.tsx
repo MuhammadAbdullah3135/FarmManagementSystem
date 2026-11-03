@@ -184,4 +184,6 @@ const FeedingSchedulesPage: React.FC = () => {const { t } = useTranslation('feed
   );
 };
 
+/** The control the audit flagged as medium priority; wrapped from the outside so the
+ * enabled TimePicker still receives focus/keyboard and its own props are untouched. */
 export default FeedingSchedulesPage;

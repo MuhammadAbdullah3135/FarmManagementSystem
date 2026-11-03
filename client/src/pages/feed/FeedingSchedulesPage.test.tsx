@@ -28,7 +28,7 @@ beforeEach(() => {
 });
 
 describe('FeedingSchedulesPage time picker', () => {
-  it('fills the HH:mm value from a Morning preset and sends that string', async () => {
+  it('filling a preset enables the OK button and sends the time on create', async () => {
     const user = userEvent.setup();
     render(<FeedingSchedulesPage />);
 
@@ -45,7 +45,10 @@ describe('FeedingSchedulesPage time picker', () => {
     await user.click(within(timeOfDay).getByPlaceholderText('e.g. 07:00'));
     await user.click(await screen.findByText('Morning'));
 
-    await user.click(within(modal).getByRole('button', { name: 'OK' }));
+    const okButton = within(modal).getByRole('button', { name: 'OK' });
+    expect(okButton).not.toBeDisabled();
+
+    await user.click(okButton);
 
     expect(feedingSchedulesApi.create).toHaveBeenCalledWith(
       expect.objectContaining({ dietPlanId: 'dp-1', timeOfDay: '07:00' }),

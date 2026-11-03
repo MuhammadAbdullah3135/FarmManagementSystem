@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  Button, Card, DatePicker, Form, Input, InputNumber, Modal, Popconfirm, Radio, Select, Space, Table, message,
+  Button, Card, DatePicker, Form, Input, InputNumber, Modal, Popconfirm, Radio, Select, Space, Table, Typography, message,
 } from 'antd';
+const { Text } = Typography;
 import { PlusOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs, { Dayjs } from 'dayjs';
@@ -220,17 +221,19 @@ const FeedRecordsPage: React.FC = () => {const { t: translate } = useTranslation
         destroyOnClose
       >
         <Form form={form} layout="vertical">
-          {!editing && (
-            <>
+          {!editing && (            <>
               <Form.Item label={translate('feedTarget')}>
                 <Radio.Group
                   value={targetMode}
                   onChange={(e) => setTargetMode(e.target.value)}
-options={targetModeOptions}
+                  options={targetModeOptions}
                   optionType="button"
                   buttonStyle="solid"
                 />
               </Form.Item>
+              <Text type="secondary" style={{ display: 'block', marginTop: 8 }}>
+                {translate('tooltip:feed.targetMode')}
+              </Text>
               <Form.Item name="feedTypeId" label={translate('feedType')} rules={[{ required: true }]}>
                 <LookupQuickAddSelect
                   kind="feedType"

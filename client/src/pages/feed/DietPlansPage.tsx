@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import FieldTooltip from '../../components/FieldTooltip';
 import {
   Alert, Button, Card, Col, Form, Input, InputNumber, Modal, Popconfirm, Row, Space, Statistic, Switch, Table, Tag,
   message,
@@ -433,12 +434,14 @@ const DietPlansPage: React.FC = () => {const { t: translate } = useTranslation([
 
           <Row gutter={16} style={{ marginBottom: 8 }}>
             <Col span={8}>
-              <Statistic
-                title={translate('totalPercent')}
-                value={totalShare}
-                precision={1}
-                suffix="%"
-              />
+              <FieldTooltip titleKey="tooltip:feed.rationShare">
+                <Statistic
+                  title={translate('totalPercent')}
+                  value={totalShare}
+                  precision={1}
+                  suffix="%"
+                />
+              </FieldTooltip>
             </Col>
             <Col span={8}>
               <Statistic

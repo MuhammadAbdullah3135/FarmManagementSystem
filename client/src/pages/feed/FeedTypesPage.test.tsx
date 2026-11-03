@@ -66,4 +66,5 @@ describe('FeedTypesPage supplier picker', () => {
       expect.objectContaining({ feedTypeId: 'ft-1', supplier: 'Feed Co', quantity: 25 }),
     );
   }, 90000);
+
 });

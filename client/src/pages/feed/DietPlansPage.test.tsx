@@ -106,4 +106,27 @@ describe('DietPlansPage ration builder', () => {
     const footer = screen.getByRole('button', { name: /^OK$/i });
     expect(footer).toBeDisabled();
   }, 20_000);
+
+  it('wraps the ration-share tooltip around the total share statistic', async () => {
+    const user = userEvent.setup();
+    render(<DietPlansPage />);
+
+    await user.click(await screen.findByRole('button', { name: 'Edit' }));
+
+    // The Total share statistic in the edit modal is wrapped by FieldTooltip.
+    const totalShareStat = await screen.findByText('Total share');
+    const statistic = totalShareStat.closest('.ant-statistic') as HTMLElement;
+    // FieldTooltip wraps the statistic in a focusable span ancestor.
+    const wrapper = statistic.closest('span[tabindex="0"]');
+    expect(wrapper).not.toBeNull();
+
+    // Open one of the tooltips so we can read its copy.
+    const firstShare = wrapper as HTMLElement;
+    firstShare.focus();
+    await waitFor(() =>
+      expect(firstShare.getAttribute('aria-describedby')).not.toBeNull(),
+    );
+    const popup = document.querySelector('.ant-tooltip:not(.ant-tooltip-hidden)') as HTMLElement;
+    expect(popup?.textContent).toContain('Share of the total ration');
+  });
 });
