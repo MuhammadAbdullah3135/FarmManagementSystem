@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import 'fake-indexeddb/auto';
 import { IDBFactory } from 'fake-indexeddb';
@@ -130,6 +130,45 @@ describe('AttendancePage', () => {
     // a stronger claim than "they fail when called".
     vi.mocked(employeesApi.list).mockResolvedValue(res({ items: [employee], totalCount: 1 }));
     vi.mocked(attendanceApi.list).mockResolvedValue(res({ items: [record], totalCount: 1 }));
+  });
+
+  /** The FieldTooltip wrapper around element, or a failure if there is none. */
+  const wrapperOf = (element: Element): HTMLElement => {
+    const wrapper = element.closest('span[tabindex="0"]');
+    if (!wrapper) throw new Error('Expected a FieldTooltip wrapper around the element.');
+    return wrapper as HTMLElement;
+  };
+
+  /**
+   * Focuses the trigger — FieldTooltip opens at once on focus — and reads the open popup.
+   * aria-describedby proves antd wired the trigger to a popup; the copy comes from the visible
+   * tooltip rather than through getElementById, because antd leaves tooltips from earlier tests
+   * mounted and an id lookup can land on one of theirs.
+   */
+  const readTooltip = async (trigger: HTMLElement): Promise<string> => {
+    fireEvent.focus(trigger);
+    let copy = '';
+    await waitFor(() => {
+      expect(trigger.getAttribute('aria-describedby')).not.toBeNull();
+      const popup = document.querySelector('.ant-tooltip:not(.ant-tooltip-hidden)') || null;
+      if (!popup) throw new Error('No visible FieldTooltip popup.') as unknown as never;
+      copy = popup.textContent ?? '';
+    });
+    return copy;
+  };
+
+  it('explains check-in and check-out from the attendance card head', async () => {
+    render(<AttendancePage />);
+
+    // The card head carries one info icon; its only focusable ancestor is the tooltip span.
+    const icon = await screen.findByRole('img', { name: 'info-circle' });
+    const trigger = wrapperOf(icon);
+
+    const copy = await readTooltip(trigger);
+
+    expect(copy).toContain(
+      "Check in starts the shift, check out ends it. Times come from this device's clock.",
+    );
   });
 
   it('renders the cached register and employee cards offline, with a freshness label', async () => {

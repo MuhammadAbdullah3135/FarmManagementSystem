@@ -3,7 +3,7 @@ import { formatDate } from '../../i18n/format';
 import {
   Alert, Button, Card, Col, DatePicker, Form, Input, Modal, Row, Select, Space, Table, Tag, Typography, message,
 } from 'antd';
-import { PlusOutlined } from '@ant-design/icons';
+import { InfoCircleOutlined, PlusOutlined } from '@ant-design/icons';
 import { DirectionalIcon } from '../../i18n/DirectionalIcon';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs, { Dayjs } from 'dayjs';
@@ -12,6 +12,7 @@ import { employeesApi } from '../../api/hr';
 import { getApiError } from '../../api/farmApi';
 import { useCachedQuery } from '../../offline/cachedQuery';
 import SyncAgeLabel from '../../components/SyncAgeLabel';
+import FieldTooltip from '../../components/FieldTooltip';
 import OutboxTable from '../../components/OutboxTable';
 import {
   ATTENDANCE_CHECK_IN,
@@ -261,7 +262,14 @@ const AttendancePage: React.FC = () => {const { t } = useTranslation('hr');
           />
         )}
 
-        <Card title={t('todaySAttendance')}>
+        <Card
+          title={t('todaySAttendance')}
+          extra={
+            <FieldTooltip titleKey="tooltip:hr.checkInOut">
+              <InfoCircleOutlined />
+            </FieldTooltip>
+          }
+        >
           <Space wrap>
             {employees.filter((e) => e.isActive).map((emp) => {
               const pendingIn = pendingCheckIns.get(emp.id);
