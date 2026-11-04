@@ -76,6 +76,7 @@
   "staySignedIn": "Stay signed in",
   "synced": "Synced",
   "taken": "Taken",
+  "theirRecordsStayWithFarm": "Their records stay with the farm.",
   "theyWillLoseAccessToThisFarmImmediately": "They will lose access to this farm immediately.",
   "waitingToSync": "waiting to sync.",
   "waitingToSyncCount": "{{count}} waiting to sync",

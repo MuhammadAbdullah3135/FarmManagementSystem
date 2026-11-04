@@ -82,6 +82,7 @@
   "staySignedIn": "البقاء مسجّل الدخول",
   "synced": "تمت المزامنة",
   "taken": "وقت التسجيل",
+  "theirRecordsStayWithFarm": "تبقى سجلاتهم في المزرعة.",
   "theyWillLoseAccessToThisFarmImmediately": "سيفقدون الوصول إلى هذه المزرعة فورًا.",
   "waitingToSync": "في انتظار المزامنة.",
   "waitingToSyncCount": "{{count}} في انتظار المزامنة",

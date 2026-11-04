@@ -76,6 +76,7 @@
   "staySignedIn": "Seguir conectado",
   "synced": "Sincronizado",
   "taken": "Registrado",
+  "theirRecordsStayWithFarm": "Sus registros permanecen en la granja.",
   "theyWillLoseAccessToThisFarmImmediately": "Perderán el acceso a esta granja de inmediato.",
   "waitingToSync": "pendientes de sincronizar.",
   "waitingToSyncCount": "{{count}} pendientes de sincronizar",

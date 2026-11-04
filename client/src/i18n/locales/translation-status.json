@@ -111,6 +111,16 @@
         "date": "2026-11-02",
         "reviewed": false,
         "note": "Added in Phase 2 Decision A; both keys added together, neither reviewed by a translator yet."
+      },
+      {
+        "files": [
+          "es/common.json (theirRecordsStayWithFarm)"
+        ],
+        "source": "en",
+        "tool": "Codebuff agent (Buffy)",
+        "date": "2026-11-04",
+        "reviewed": false,
+        "note": "Machine draft for the member.* tooltip rollout (member.revokeEffect wording as inline help). Not reviewed by a translator."
       }
     ]
   },
@@ -227,6 +237,16 @@
         "date": "2026-11-02",
         "reviewed": false,
         "note": "Added in Phase 2 Decision A; both keys added together, neither reviewed by a translator yet."
+      },
+      {
+        "files": [
+          "ar/common.json (theirRecordsStayWithFarm)"
+        ],
+        "source": "en",
+        "tool": "Codebuff agent (Buffy)",
+        "date": "2026-11-04",
+        "reviewed": false,
+        "note": "Machine draft for the member.* tooltip rollout (member.revokeEffect wording as inline help). Not reviewed by a translator."
       }
     ]
   }

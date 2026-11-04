@@ -3,8 +3,9 @@ import {
   Button, Card, Form, Input, Modal, Popconfirm, Select, Space, Table, Tag, Typography, message,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { PlusOutlined, ReloadOutlined } from '@ant-design/icons';
+import { InfoCircleOutlined, PlusOutlined, ReloadOutlined } from '@ant-design/icons';
 import { formatDate } from '../../i18n/format';
+import FieldTooltip from '../../components/FieldTooltip';
 
 import { membersApi, FARM_ROLES, type FarmInvitation, type FarmMember } from '../../api/members';
 import { farmRoleLabel, labeledOptions } from '../../i18n/vocabulary';
@@ -117,7 +118,14 @@ const MembersPage: React.FC = () => {const { t } = useTranslation(['common', 'va
       ),
     },
     {
-      title: t('farmRole'),
+      title: (
+        <Space size={4}>
+          {t('farmRole')}
+          <FieldTooltip titleKey="tooltip:member.role">
+            <InfoCircleOutlined />
+          </FieldTooltip>
+        </Space>
+      ),
       dataIndex: 'role',
       width: 220,
       render: (role: string, m) => (
@@ -147,7 +155,7 @@ const MembersPage: React.FC = () => {const { t } = useTranslation(['common', 'va
       render: (_, m) => (
         <Popconfirm
           title={t('removeThisMember')}
-          description={t('theyWillLoseAccessToThisFarmImmediately')}
+          description={`${t('theyWillLoseAccessToThisFarmImmediately')} ${t('theirRecordsStayWithFarm')}`}
           okText={t('remove')}
           okButtonProps={{ danger: true }}
           onConfirm={() => void handleRemove(m.userId)}

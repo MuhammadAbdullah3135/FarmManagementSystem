@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import MembersPage from './MembersPage';
 import { membersApi } from '../../api/members';
@@ -47,6 +47,48 @@ beforeEach(() => {
 });
 
 describe('MembersPage', () => {
+  /** The FieldTooltip wrapper around element, or a failure if there is none. */
+  const wrapperOf = (element: Element): HTMLElement => {
+    const wrapper = element.closest('span[tabindex="0"]');
+    if (!wrapper) throw new Error('Expected a FieldTooltip wrapper around the element.');
+    return wrapper as HTMLElement;
+  };
+
+  /**
+   * Focuses the trigger — FieldTooltip opens at once on focus — and reads the open popup.
+   * aria-describedby proves antd wired the trigger to a popup; the copy comes from the visible
+   * tooltip rather than through getElementById, because antd leaves tooltips from earlier tests
+   * mounted and an id lookup can land on one of theirs.
+   */
+  const readTooltip = async (trigger: HTMLElement): Promise<string> => {
+    fireEvent.focus(trigger);
+    let copy = '';
+    await waitFor(() => {
+      expect(trigger.getAttribute('aria-describedby')).not.toBeNull();
+      const popup = document.querySelector('.ant-tooltip:not(.ant-tooltip-hidden)') || null;
+      if (!popup) throw new Error('No visible FieldTooltip popup.') as unknown as never;
+      copy = popup.textContent ?? '';
+    });
+    return copy;
+  };
+
+  it('explains what a farm role grants from the Farm role column header', async () => {
+    render(<MembersPage />);
+    await screen.findByText('viewer@example.com');
+
+    // The header carries exactly one icon; its only focusable ancestor is the tooltip span.
+    const header = screen.getByRole('columnheader', { name: /Farm role/ });
+    const icons = within(header).getAllByRole('img');
+    expect(icons).toHaveLength(1);
+    const trigger = wrapperOf(icons[0]);
+
+    const copy = await readTooltip(trigger);
+
+    expect(copy).toContain(
+      'What this member can open and change. SystemOwner has full access; Viewer can only read.',
+    );
+  });
+
   it('lists members with their farm roles and pending invitations', async () => {
     render(<MembersPage />);
 
