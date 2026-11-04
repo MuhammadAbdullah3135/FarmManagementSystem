@@ -141,6 +141,11 @@ const CostPerAnimalPage: React.FC = () => {const { t } = useTranslation('reports
         <Text type="secondary">
           {t('whatEachAnimalCostAndEarnedInThe')}
         </Text>
+        <Text type="secondary" style={{ display: 'block', marginTop: 4 }}>
+          {t('tooltip:report.margin')}
+          <br />
+          {t('tooltip:report.animalDays')}
+        </Text>
       </Card>
 
       <Spin spinning={loading}>

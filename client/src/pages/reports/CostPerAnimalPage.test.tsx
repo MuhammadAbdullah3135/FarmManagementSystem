@@ -149,6 +149,11 @@ describe('CostPerAnimalPage', () => {
     expect(screen.getAllByText('Barn 1')).toHaveLength(3);
     // Summary cards read from the report's own totals, not from a re-summed client copy.
     expect(screen.getByText('Cost per animal-day')).toBeInTheDocument();
+    // Two figures a reader cannot infer from the numbers are spelled out in the caption.
+    expect(screen.getByText(/margin = revenue minus costs for this row\./)).toBeInTheDocument();
+    expect(
+      screen.getByText(/animal-days = one animal counted for one day; total days animals were kept\./),
+    ).toBeInTheDocument();
   });
 
   it('shows the arithmetic behind an allocated figure instead of just a number', async () => {
