@@ -20,8 +20,22 @@ function walk(dir: string, acc: string[] = []): string[] {
 const stripComments = (code: string) =>
   code.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|\s)\/\/[^\n]*/g, '$1');
 
-const tableFor = (ns: string): Record<string, string> =>
-  ((resources.en as unknown as Record<string, Record<string, string>>)[ns] ?? {});
+const tableFor = (ns: string): unknown =>
+  (resources.en as unknown as Record<string, unknown>)[ns] ?? {};
+
+/**
+ * Reads one key out of a namespace table. Most locale files are flat, but `tooltip.json` is
+ * nested (`tooltip:report.margin` lives at `{ report: { margin } }`), so a dotted key descends
+ * into nested objects and a flat key stays a single lookup.
+ */
+const lookupIn = (table: unknown, key: string): string | undefined => {
+  let node: unknown = table;
+  for (const part of key.split('.')) {
+    if (node === null || typeof node !== 'object') return undefined;
+    node = (node as Record<string, unknown>)[part];
+  }
+  return typeof node === 'string' ? node : undefined;
+};
 
 /**
  * i18next's plural suffixes. A call site that passes `count` resolves `key_one` / `key_other`
@@ -33,8 +47,8 @@ const PLURAL_SUFFIXES = ['zero', 'one', 'two', 'few', 'many', 'other', 'plural']
 /** True when the namespace holds this key, or any plural form of it. */
 const resolvesIn = (ns: string, key: string): boolean => {
   const table = tableFor(ns);
-  if (table[key] !== undefined) return true;
-  return PLURAL_SUFFIXES.some((suffix) => table[`${key}_${suffix}`] !== undefined);
+  if (lookupIn(table, key) !== undefined) return true;
+  return PLURAL_SUFFIXES.some((suffix) => lookupIn(table, `${key}_${suffix}`) !== undefined);
 };
 
 describe('english resources', () => {
