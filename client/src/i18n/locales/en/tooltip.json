@@ -50,5 +50,12 @@
   "inventory": {
     "movementType": "Purchase adds stock, Consumption removes it, Adjustment corrects a count, Transfer moves stock between locations.",
     "signedQuantity": "Signed change in stock: positive increases it, negative decreases it. Adjustments carry their own sign."
+  },
+  "finance": {
+    "category": "Category groups this entry for the reports. It does not change the amount.",
+    "account": "The bank or credit account the money went through. It is not a cost category."
+  },
+  "config": {
+    "parentLocation": "The location this one sits inside. Animals in the child are also counted in the parent."
   }
 }

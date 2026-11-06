@@ -11,6 +11,8 @@ import { lookupsApi } from '../../api/attendance';
 import { flattenLocations } from '../../api/configuration';
 import { getApiError } from '../../api/farmApi';
 import LookupQuickAddSelect from '../../components/LookupQuickAddSelect';
+import FieldTooltip from '../../components/FieldTooltip';
+import { InfoCircleOutlined } from '@ant-design/icons';
 import type { Expense, ExpenseCategory, PaymentMethod } from '../../types';
 import { useTranslation } from 'react-i18next';
 
@@ -166,7 +168,14 @@ const ExpensesPage: React.FC = () => {const { t } = useTranslation(['finance', '
       fieldProps: { placeholder: t('searchDescription') },
     },
     {
-      title: t('category'),
+      title: (
+        <Space size={4}>
+          {t('category')}
+          <FieldTooltip titleKey="tooltip:finance.category">
+            <InfoCircleOutlined />
+          </FieldTooltip>
+        </Space>
+      ),
       dataIndex: 'expenseCategoryId',
       width: 140,
       valueType: 'select',

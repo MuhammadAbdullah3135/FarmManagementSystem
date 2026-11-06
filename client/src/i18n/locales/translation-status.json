@@ -139,6 +139,16 @@
         "date": "2026-11-06",
         "reviewed": false,
         "note": "Machine draft for the app-wide tooltip rollout. Not reviewed by a translator."
+      },
+      {
+        "files": [
+          "es/tooltip.json (finance.category, finance.account, config.parentLocation)"
+        ],
+        "source": "en",
+        "tool": "Codebuff agent (Buffy)",
+        "date": "2026-11-06",
+        "reviewed": false,
+        "note": "Machine draft for the finance/configuration tooltip batch. Not reviewed by a translator."
       }
     ]
   },
@@ -283,6 +293,16 @@
         "date": "2026-11-06",
         "reviewed": false,
         "note": "Machine draft for the app-wide tooltip rollout. Not reviewed by a translator."
+      },
+      {
+        "files": [
+          "ar/tooltip.json (finance.category, finance.account, config.parentLocation)"
+        ],
+        "source": "en",
+        "tool": "Codebuff agent (Buffy)",
+        "date": "2026-11-06",
+        "reviewed": false,
+        "note": "Machine draft for the finance/configuration tooltip batch. Not reviewed by a translator."
       }
     ]
   }

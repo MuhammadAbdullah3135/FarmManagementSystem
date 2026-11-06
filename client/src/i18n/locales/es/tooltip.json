@@ -50,5 +50,12 @@
   "inventory": {
     "movementType": "Compra suma existencias, Consumo las resta, Ajuste corrige el recuento y Traslado mueve existencias entre ubicaciones.",
     "signedQuantity": "Cambio con signo: positivo aumenta el stock, negativo lo reduce. Los ajustes llevan su propio signo."
+  },
+  "finance": {
+    "category": "Categoría con la que se agrupa el movimiento en los informes. No cambia el importe.",
+    "account": "La cuenta bancaria o de crédito por la que pasó el dinero. No es una categoría de coste."
+  },
+  "config": {
+    "parentLocation": "La ubicación que contiene a esta. Los animales de la ubicación hija también cuentan en la padre."
   }
 }
