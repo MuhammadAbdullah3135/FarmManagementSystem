@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Card, Table, Button, Tag, Space, Col, Modal, Form, DatePicker, Input, InputNumber, Select, message, Descriptions, Empty, Popconfirm, Row } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { PlusOutlined, DeleteOutlined, EyeOutlined } from '@ant-design/icons';
+import { PlusOutlined, DeleteOutlined, EyeOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import { birthsApi, gestationApi, breedingRecordsApi, type CreateBirthRecordPayload } from '../../api/breeding';
 import { lookupsApi } from '../../api/attendance';
 import { getApiError } from '../../api/farmApi';
 import LookupQuickAddSelect from '../../components/LookupQuickAddSelect';
+import FieldTooltip from '../../components/FieldTooltip';
 import VetLookupOrText from '../../components/VetLookupOrText';
 import { formatDate } from '../../i18n/format';
 
@@ -414,7 +415,14 @@ export default function BirthRecordingPage() {const { t } = useTranslation(['bre
                     { title: t('name'), dataIndex: 'name', key: 'name', render: (text: string) => text || '-' },
                     { title: t('sex'), dataIndex: 'sexValue', key: 'sexValue', render: (text: string) => <Tag>{text}</Tag> },
                     {
-                      title: t('outcome'),
+                      title: (
+                        <Space size={4}>
+                          {t('outcome')}
+                          <FieldTooltip titleKey="tooltip:breeding.birthOutcome">
+                            <InfoCircleOutlined />
+                          </FieldTooltip>
+                        </Space>
+                      ),
                       dataIndex: 'outcome',
                       key: 'outcome',
                       render: (val: number) => <Tag color={OUTCOME_COLORS[val]}>{OUTCOME_LABELS[val]}</Tag>,

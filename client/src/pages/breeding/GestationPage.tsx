@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect, useCallback } from 'react';
 import { Card, Table, Button, Tag, Space, Col, Drawer, Form, DatePicker, Input, InputNumber, message, Descriptions, Empty, Tooltip, Modal, Row } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { PlusOutlined, CloseCircleOutlined, HeartOutlined } from '@ant-design/icons';
+import { PlusOutlined, CloseCircleOutlined, HeartOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import { gestationApi, breedingRecordsApi, type ConfirmPregnancyPayload, type LogHealthCheckPayload } from '../../api/breeding';
 import { employeesApi } from '../../api/hr';
 import { getApiError } from '../../api/farmApi';
@@ -9,6 +9,7 @@ import { formatDate } from '../../i18n/format';
 
 import type { Employee, GestationRecord, GestationHealthCheck, BreedingRecord } from '../../types';
 import LookupOrText from '../../components/LookupOrText';
+import FieldTooltip from '../../components/FieldTooltip';
 import type { EntityOption } from '../../components/EntityPicker';
 import { useTranslation } from 'react-i18next';
 
@@ -199,7 +200,14 @@ export default function GestationPage() {const { t } = useTranslation('breeding'
       ),
     },
     {
-      title: t('daysUntilDue'),
+      title: (
+        <Space size={4}>
+          {t('daysUntilDue')}
+          <FieldTooltip titleKey="tooltip:breeding.dueWindow">
+            <InfoCircleOutlined />
+          </FieldTooltip>
+        </Space>
+      ),
       dataIndex: 'daysUntilDue',
       key: 'daysUntilDue',
       sorter: (a, b) => a.daysUntilDue - b.daysUntilDue,
