@@ -73,7 +73,14 @@ const MedicineAlertsPage: React.FC = () => {const { t: translate } = useTranslat
         </Space>
       ), dataIndex: 'batchNumber', width: 120 },
     {
-      title: translate('expiryDate'),
+      title: (
+        <Space size={4}>
+          {translate('expiryDate')}
+          <FieldTooltip titleKey="tooltip:health.expiryStatus">
+            <InfoCircleOutlined />
+          </FieldTooltip>
+        </Space>
+      ),
       dataIndex: 'expiryDate',
       width: 130,
       render: (d: string, r) => {

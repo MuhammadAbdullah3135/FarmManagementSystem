@@ -221,7 +221,14 @@ const MedicinesPage: React.FC = () => {const { t } = useTranslation(['health', '
     { title: t('qty'), dataIndex: 'quantity', width: 80 },
     { title: t('unitCost'), dataIndex: 'unitCost', width: 100, render: (c: number) => formatMoney(c) },
     {
-      title: t('expiry'),
+      title: (
+        <Space size={4}>
+          {t('expiry')}
+          <FieldTooltip titleKey="tooltip:health.expiryStatus">
+            <InfoCircleOutlined />
+          </FieldTooltip>
+        </Space>
+      ),
       dataIndex: 'expiryDate',
       width: 120,
       render: (d: string) => {
