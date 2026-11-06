@@ -2,7 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { Card, Table, Button, Modal, Form, Input, Select, DatePicker, Space, Tag, message, Popconfirm, Row, Col } from 'antd';
 import { flattenLocations, type AnimalType } from '../../api/configuration';
 import type { ColumnsType } from 'antd/es/table';
-import { PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined, UploadOutlined, PrinterOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined, UploadOutlined, PrinterOutlined, InfoCircleOutlined } from '@ant-design/icons';
+import FieldTooltip from '../../components/FieldTooltip';
 import { AnimalScanButton } from '../../components/AnimalScanModal';
 import { animalsApi, type AnimalListFilter, type CreateAnimalPayload } from '../../api/animals';
 import { lookupsApi } from '../../api/attendance';
@@ -286,7 +287,14 @@ export default function AnimalsPage() {const { t: translate } = useTranslation('
       ),
     },
     {
-      title: translate('sire'),
+      title: (
+        <Space size={4}>
+          {translate('sire')}
+          <FieldTooltip titleKey="tooltip:animal.parentTerms">
+            <InfoCircleOutlined />
+          </FieldTooltip>
+        </Space>
+      ),
       dataIndex: 'sireTagNumber',
       key: 'sireTagNumber',
       render: (text: string) => text || '-',

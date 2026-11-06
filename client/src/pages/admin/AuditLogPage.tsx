@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Table, Card, Select, Input, DatePicker, Tag, Button, Space, Typography } from 'antd';
-import { ReloadOutlined, SearchOutlined } from '@ant-design/icons';
+import { InfoCircleOutlined, ReloadOutlined, SearchOutlined } from '@ant-design/icons';
+import FieldTooltip from '../../components/FieldTooltip';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import { auditLogsApi } from '../../api/auditLogs';
@@ -86,7 +87,14 @@ const AuditLogPage: React.FC = () => {const { t: translate } = useTranslation('a
       render: (v: string | null) => v || <Text type="secondary">{translate('system')}</Text>,
     },
     {
-      title: translate('action'),
+      title: (
+        <Space size={4}>
+          {translate('action')}
+          <FieldTooltip titleKey="tooltip:admin.auditAction">
+            <InfoCircleOutlined />
+          </FieldTooltip>
+        </Space>
+      ),
       dataIndex: 'action',
       key: 'action',
       width: 100,

@@ -31,7 +31,8 @@
     "expiryStatus": "Rojo: ya caducado. Naranja: caduca en 30 días. No uses stock caducado.",
     "lowStockThreshold": "Nivel de alerta: aparece un aviso de stock bajo cuando el stock baja hasta esta cantidad.",
     "defaultDosage": "Dosis que se rellena en un registro de vacunación con esta vacuna. Puedes cambiarla por animal.",
-    "linkedMedicine": "El stock de medicamento del que descuenta esta vacuna, así que registrar una dosis reduce su cantidad."
+    "linkedMedicine": "El stock de medicamento del que descuenta esta vacuna, así que registrar una dosis reduce su cantidad.",
+    "recurrenceDays": "Días entre dosis de esta pauta. La próxima fecha es la última dosis más este intervalo."
   },
   "report": {
     "margin": "margen = ingresos menos costos de esta fila.",
@@ -42,14 +43,17 @@
     "revokeEffect": "Elimina su acceso de inmediato; sus registros permanecen en la granja."
   },
   "admin": {
-    "cron": "Expresión de programación: 0 3 * * * es diario a las 03:00. Cinco campos: minuto, hora, día, mes, día de la semana."
+    "cron": "Expresión de programación: 0 3 * * * es diario a las 03:00. Cinco campos: minuto, hora, día, mes, día de la semana.",
+    "auditAction": "La operación registrada, como Crear, Actualizar o Eliminar, sobre la entidad de la misma fila."
   },
   "nav": {
     "openMenu": "Abre el menú de navegación para saltar a otra sección de la granja."
   },
   "inventory": {
     "movementType": "Compra suma existencias, Consumo las resta, Ajuste corrige el recuento y Traslado mueve existencias entre ubicaciones.",
-    "signedQuantity": "Cambio con signo: positivo aumenta el stock, negativo lo reduce. Los ajustes llevan su propio signo."
+    "signedQuantity": "Cambio con signo: positivo aumenta el stock, negativo lo reduce. Los ajustes llevan su propio signo.",
+    "reorderLevel": "Nivel de existencias que debe provocar una nueva compra. La alerta de stock bajo usa este número.",
+    "stockValue": "Cantidad disponible por coste unitario: el valor monetario actual del stock."
   },
   "finance": {
     "category": "Categoría con la que se agrupa el movimiento en los informes. No cambia el importe.",

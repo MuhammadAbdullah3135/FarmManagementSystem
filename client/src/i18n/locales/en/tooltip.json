@@ -31,7 +31,8 @@
     "expiryStatus": "Red: already expired. Orange: expires within 30 days. Do not use expired stock.",
     "lowStockThreshold": "Alert level: a low-stock warning appears when stock falls to this amount.",
     "defaultDosage": "Dosage filled in on a vaccination record that uses this vaccine. You can change it per animal.",
-    "linkedMedicine": "The medicine stock this vaccine draws from, so recording a dose reduces that medicine's remaining quantity."
+    "linkedMedicine": "The medicine stock this vaccine draws from, so recording a dose reduces that medicine's remaining quantity.",
+    "recurrenceDays": "Days between doses in this schedule. The next due date is the last dose plus this interval."
   },
   "report": {
     "margin": "margin = revenue minus costs for this row.",
@@ -42,14 +43,17 @@
     "revokeEffect": "Removes their access immediately; their records stay with the farm."
   },
   "admin": {
-    "cron": "Schedule expression: 0 3 * * * means daily at 03:00. Five fields, minute, hour, day, month, weekday."
+    "cron": "Schedule expression: 0 3 * * * means daily at 03:00. Five fields, minute, hour, day, month, weekday.",
+    "auditAction": "The operation that was recorded, such as Create, Update or Delete, for the entity in the same row."
   },
   "nav": {
     "openMenu": "Open the navigation menu to jump to another section of the farm."
   },
   "inventory": {
     "movementType": "Purchase adds stock, Consumption removes it, Adjustment corrects a count, Transfer moves stock between locations.",
-    "signedQuantity": "Signed change in stock: positive increases it, negative decreases it. Adjustments carry their own sign."
+    "signedQuantity": "Signed change in stock: positive increases it, negative decreases it. Adjustments carry their own sign.",
+    "reorderLevel": "Stock level that should trigger a new purchase. The low-stock warning uses this number.",
+    "stockValue": "Quantity on hand times unit cost — the money the stock is worth right now."
   },
   "finance": {
     "category": "Category groups this entry for the reports. It does not change the amount.",

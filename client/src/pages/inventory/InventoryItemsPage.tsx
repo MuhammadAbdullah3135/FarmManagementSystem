@@ -11,6 +11,8 @@ import type { InventoryCategory, InventoryItem } from '../../types';
 import { useTranslation } from 'react-i18next';
 import { useEnumOptions } from '../../i18n/enumOptions';
 import LookupOrText from '../../components/LookupOrText';
+import FieldTooltip from '../../components/FieldTooltip';
+import { InfoCircleOutlined } from '@ant-design/icons';
 import ReasonSelect, { type ReasonValue } from '../../components/ReasonSelect';
 import EntityPicker, { type EntityOption } from '../../components/EntityPicker';
 import { INVENTORY_ADJUSTMENT_REASONS, INVENTORY_UNITS } from '../../utils/inventoryOptions';
@@ -270,9 +272,32 @@ const InventoryItemsPage: React.FC = () => {const { t } = useTranslation(['inven
       title: t('quantity'), dataIndex: 'quantity', width: 120,
       render: (quantity: number, item) => <Space>{quantity} {item.isLowStock && <Tag color="error">{t('lowStock')}</Tag>}</Space>,
     },
-    { title: t('reorderLevel'), dataIndex: 'reorderLevel', width: 120 },
+    {
+      title: (
+        <Space size={4}>
+          {t('reorderLevel')}
+          <FieldTooltip titleKey="tooltip:inventory.reorderLevel">
+            <InfoCircleOutlined />
+          </FieldTooltip>
+        </Space>
+      ),
+      dataIndex: 'reorderLevel',
+      width: 120,
+    },
     { title: t('unitCost'), dataIndex: 'unitCost', width: 110, render: (value: number) => money(value) },
-    { title: t('stockValue'), dataIndex: 'stockValue', width: 110, render: (value: number) => money(value) },
+    {
+      title: (
+        <Space size={4}>
+          {t('stockValue')}
+          <FieldTooltip titleKey="tooltip:inventory.stockValue">
+            <InfoCircleOutlined />
+          </FieldTooltip>
+        </Space>
+      ),
+      dataIndex: 'stockValue',
+      width: 110,
+      render: (value: number) => money(value),
+    },
     { title: t('location'), dataIndex: 'location', width: 140, render: (value?: string) => value || '-' },
     {
       title: t('actions'), width: 145,

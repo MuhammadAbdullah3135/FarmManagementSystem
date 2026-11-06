@@ -2,12 +2,13 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   Button, Card, Form, Input, InputNumber, Modal, Popconfirm, Space, Switch, Table, Tag, message,
 } from 'antd';
-import { PlusOutlined } from '@ant-design/icons';
+import { InfoCircleOutlined, PlusOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { vaccinationSchedulesApi, vaccineTypesApi } from '../../api/health';
 import { lookupsApi } from '../../api/attendance';
 import { getApiError } from '../../api/farmApi';
 import LookupQuickAddSelect from '../../components/LookupQuickAddSelect';
+import FieldTooltip from '../../components/FieldTooltip';
 import type { VaccinationSchedule, VaccineTypeListItem } from '../../types';
 import { useTranslation } from 'react-i18next';
 
@@ -128,7 +129,14 @@ const VaccinationSchedulePage: React.FC = () => {const { t } = useTranslation(['
       render: (n?: string) => n || <Tag>{t('allTypes')}</Tag>,
     },
     {
-      title: t('interval'),
+      title: (
+        <Space size={4}>
+          {t('interval')}
+          <FieldTooltip titleKey="tooltip:health.recurrenceDays">
+            <InfoCircleOutlined />
+          </FieldTooltip>
+        </Space>
+      ),
       dataIndex: 'recurrenceDays',
       width: 120,
       // Counted in whole units for readability, and phrased by the reader's language
