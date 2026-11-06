@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  Button, Card, Col, DatePicker, Drawer, Form, Input, InputNumber, Modal, Popconfirm, Row, Space, Table, message,
+  Button, Card, Col, DatePicker, Drawer, Form, Input, InputNumber, Modal, Popconfirm, Row, Space, Table, message, Typography,
 } from 'antd';
-import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
+import { PlusOutlined, DeleteOutlined, InfoCircleOutlined } from '@ant-design/icons';
+import FieldTooltip from '../../components/FieldTooltip';
 import type { ColumnsType } from 'antd/es/table';
 import { formatDate, formatMoney } from '../../i18n/format';
 import dayjs from 'dayjs';
@@ -187,7 +188,18 @@ const MedicinesPage: React.FC = () => {const { t } = useTranslation(['health', '
         </span>
       ),
     },
-    { title: t('lowThreshold'), dataIndex: 'lowStockThreshold', width: 110 },
+    {
+      title: (
+        <Space size={4}>
+          {t('lowThreshold')}
+          <FieldTooltip titleKey="tooltip:health.lowStockThreshold">
+            <InfoCircleOutlined />
+          </FieldTooltip>
+        </Space>
+      ),
+      dataIndex: 'lowStockThreshold',
+      width: 110,
+    },
     { title: t('batches'), dataIndex: 'batchCount', width: 80 },
     {
       title: t('actions'),
@@ -286,6 +298,9 @@ const MedicinesPage: React.FC = () => {const { t } = useTranslation(['health', '
               <Form.Item name="lowStockThreshold" label={t('lowStockThreshold')}>
                 <InputNumber min={0} style={{ width: '100%' }} />
               </Form.Item>
+              <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                {t('tooltip:health.lowStockThreshold')}
+              </Typography.Text>
             </Col>
             <Col xs={24} sm={12}>
               <Form.Item name="expiringSoonDays" label={t('expiringSoonDays')}>
@@ -328,6 +343,9 @@ const MedicinesPage: React.FC = () => {const { t } = useTranslation(['health', '
           <Form.Item name="batchNumber" label={t('batchNumber')} rules={[{ required: true }]}>
             <Input maxLength={100} />
           </Form.Item>
+          <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+            {t('tooltip:health.batch')}
+          </Typography.Text>
           <Row gutter={[16, 16]}>
             <Col xs={24} sm={12}>
               <Form.Item name="quantity" label={t('quantity')} rules={[{ required: true }]}>

@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  Button, Card, Col, DatePicker, Form, Input, InputNumber, Modal, Popconfirm, Row, Select, Space, Table, message,
+  Button, Card, Col, DatePicker, Form, Input, InputNumber, Modal, Popconfirm, Row, Select, Space, Table, message, Typography,
 } from 'antd';
-import { PlusOutlined } from '@ant-design/icons';
+import { PlusOutlined, InfoCircleOutlined } from '@ant-design/icons';
+import FieldTooltip from '../../components/FieldTooltip';
 import type { ColumnsType } from 'antd/es/table';
 import { formatDate, formatMoney } from '../../i18n/format';
 import dayjs from 'dayjs';
@@ -153,7 +154,18 @@ const VaccinationRecordsPage: React.FC = () => {const { t } = useTranslation(['h
       render: (d: string) => formatDate(d),
     },
     { title: t('vet'), dataIndex: 'vetName', render: (v?: string) => v || '-' },
-    { title: t('batch'), dataIndex: 'batchNumber', render: (b?: string) => b || '-' },
+    {
+      title: (
+        <Space size={4}>
+          {t('batch')}
+          <FieldTooltip titleKey="tooltip:health.batch">
+            <InfoCircleOutlined />
+          </FieldTooltip>
+        </Space>
+      ),
+      dataIndex: 'batchNumber',
+      render: (b?: string) => b || '-',
+    },
     {
       title: t('cost'),
       dataIndex: 'cost',
@@ -244,6 +256,9 @@ const VaccinationRecordsPage: React.FC = () => {const { t } = useTranslation(['h
               <Form.Item name="batchNumber" label={t('batchNumber')}>
                 <Input maxLength={100} placeholder={t('vaccineBatch')} />
               </Form.Item>
+              <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                {t('tooltip:health.batch')}
+              </Typography.Text>
             </Col>
           </Row>
           <Form.Item name="cost" label={t('cost2')}>

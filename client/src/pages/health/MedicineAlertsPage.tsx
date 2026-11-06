@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Card, Table, Tag, message } from 'antd';
+import { Card, Table, Tag, message, Space } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { formatDate } from '../../i18n/format';
 import dayjs from 'dayjs';
@@ -7,6 +7,8 @@ import { medicinesApi } from '../../api/health';
 import { getApiError } from '../../api/farmApi';
 import type { MedicineAlert, MedicineAlertType } from '../../types';
 import { useTranslation } from 'react-i18next';
+import FieldTooltip from '../../components/FieldTooltip';
+import { InfoCircleOutlined } from '@ant-design/icons';
 
 const ALERT_COLORS: Record<MedicineAlertType, string> = {
   Expired: 'red',
@@ -37,7 +39,14 @@ const MedicineAlertsPage: React.FC = () => {const { t: translate } = useTranslat
 
   const columns: ColumnsType<MedicineAlert> = [
     {
-      title: translate('alert'),
+      title: (
+        <Space size={4}>
+          {translate('alert')}
+          <FieldTooltip titleKey="tooltip:health.expiryStatus">
+            <InfoCircleOutlined />
+          </FieldTooltip>
+        </Space>
+      ),
       dataIndex: 'alertType',
       width: 130,
       render: (t: MedicineAlertType) => <Tag color={ALERT_COLORS[t]}>{t === 'LowStock' ? translate('lowStock') : t === 'ExpiringSoon' ? translate('expiringSoon') : translate('expired')}</Tag>,
@@ -55,7 +64,14 @@ const MedicineAlertsPage: React.FC = () => {const { t: translate } = useTranslat
         </span>
       ),
     },
-    { title: translate('batch'), dataIndex: 'batchNumber', width: 120 },
+    { title: (
+        <Space size={4}>
+          {translate('batch')}
+          <FieldTooltip titleKey="tooltip:health.batch">
+            <InfoCircleOutlined />
+          </FieldTooltip>
+        </Space>
+      ), dataIndex: 'batchNumber', width: 120 },
     {
       title: translate('expiryDate'),
       dataIndex: 'expiryDate',
