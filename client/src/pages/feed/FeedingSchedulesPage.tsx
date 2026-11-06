@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  Button, Card, DatePicker, Form, Modal, Popconfirm, Select, Space, Switch, Table, TimePicker, Tag, message,
+  Button, Card, DatePicker, Form, Modal, Popconfirm, Select, Space, Switch, Table, Text, TimePicker, Tag, message,
 } from 'antd';
 import { PlusOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
@@ -150,6 +150,10 @@ const FeedingSchedulesPage: React.FC = () => {const { t } = useTranslation('feed
       }
     >
       <Table rowKey="id" columns={columns} dataSource={schedules} loading={loading} pagination={false} />
+
+      <Text type="secondary" style={{ fontSize: 12 }}>
+        {t('tooltip:feed.scheduleInactive')}
+      </Text>
 
       <Modal title={t('newFeedingSchedule')} open={modalOpen} onOk={handleCreate} onCancel={() => setModalOpen(false)} destroyOnClose>
         <Form form={form} layout="vertical">
