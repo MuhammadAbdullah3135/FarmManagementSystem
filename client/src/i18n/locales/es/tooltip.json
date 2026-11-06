@@ -39,7 +39,7 @@
     "revokeEffect": "Elimina su acceso de inmediato; sus registros permanecen en la granja."
   },
   "admin": {
-    "cron": "Expresión de programación: 0 3 * * * significa a diario a las 03:00. Seis campos, el minuto primero."
+    "cron": "Expresión de programación: 0 3 * * * es diario a las 03:00. Cinco campos: minuto, hora, día, mes, día de la semana."
   },
   "nav": {
     "openMenu": "Abre el menú de navegación para saltar a otra sección de la granja."

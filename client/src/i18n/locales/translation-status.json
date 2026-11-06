@@ -114,6 +114,14 @@
       },
       {
         "files": [
+          "es/tooltip.json (admin.cron)"
+        ],
+        "source": "en",
+        "reviewed": false,
+        "note": "admin.cron copy corrected from six fields to five fields; es wording not yet reviewed by a translator."
+      },
+      {
+        "files": [
           "es/common.json (theirRecordsStayWithFarm)"
         ],
         "source": "en",
@@ -237,6 +245,14 @@
         "date": "2026-11-02",
         "reviewed": false,
         "note": "Added in Phase 2 Decision A; both keys added together, neither reviewed by a translator yet."
+      },
+      {
+        "files": [
+          "ar/tooltip.json (admin.cron)"
+        ],
+        "source": "en",
+        "reviewed": false,
+        "note": "admin.cron copy corrected from six fields to five fields; ar wording not yet reviewed by a translator."
       },
       {
         "files": [

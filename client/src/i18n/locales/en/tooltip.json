@@ -39,7 +39,7 @@
     "revokeEffect": "Removes their access immediately; their records stay with the farm."
   },
   "admin": {
-    "cron": "Schedule expression: 0 3 * * * means daily at 03:00. Six fields, minute first."
+    "cron": "Schedule expression: 0 3 * * * means daily at 03:00. Five fields, minute, hour, day, month, weekday."
   },
   "nav": {
     "openMenu": "Open the navigation menu to jump to another section of the farm."
