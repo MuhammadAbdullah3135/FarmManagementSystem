@@ -129,6 +129,16 @@
         "date": "2026-11-04",
         "reviewed": false,
         "note": "Machine draft for the member.* tooltip rollout (member.revokeEffect wording as inline help). Not reviewed by a translator."
+      },
+      {
+        "files": [
+          "es/tooltip.json (feed.share, inventory.movementType, inventory.signedQuantity, health.defaultDosage, health.linkedMedicine)"
+        ],
+        "source": "en",
+        "tool": "Codebuff agent (Buffy)",
+        "date": "2026-11-06",
+        "reviewed": false,
+        "note": "Machine draft for the app-wide tooltip rollout. Not reviewed by a translator."
       }
     ]
   },
@@ -263,6 +273,16 @@
         "date": "2026-11-04",
         "reviewed": false,
         "note": "Machine draft for the member.* tooltip rollout (member.revokeEffect wording as inline help). Not reviewed by a translator."
+      },
+      {
+        "files": [
+          "ar/tooltip.json (feed.share, inventory.movementType, inventory.signedQuantity, health.defaultDosage, health.linkedMedicine)"
+        ],
+        "source": "en",
+        "tool": "Codebuff agent (Buffy)",
+        "date": "2026-11-06",
+        "reviewed": false,
+        "note": "Machine draft for the app-wide tooltip rollout. Not reviewed by a translator."
       }
     ]
   }

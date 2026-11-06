@@ -2,12 +2,13 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Button, Card, Form, Input, Modal, Popconfirm, Space, Table, message,
 } from 'antd';
-import { PlusOutlined } from '@ant-design/icons';
+import { InfoCircleOutlined, PlusOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { vaccineTypesApi, medicinesApi } from '../../api/health';
 import { getApiError } from '../../api/farmApi';
 import LookupQuickAddSelect from '../../components/LookupQuickAddSelect';
 import LookupOrText from '../../components/LookupOrText';
+import FieldTooltip from '../../components/FieldTooltip';
 import type { EntityOption } from '../../components/EntityPicker';
 import type { VaccineTypeListItem, MedicineListItem } from '../../types';
 import { useTranslation } from 'react-i18next';
@@ -133,9 +134,27 @@ const VaccineTypesPage: React.FC = () => {const { t } = useTranslation(['health'
 
   const columns: ColumnsType<VaccineTypeListItem> = [
     { title: t('name'), dataIndex: 'name', ellipsis: true },
-    { title: t('defaultDosage'), dataIndex: 'defaultDosage', render: (d?: string) => d || '-' },
     {
-      title: t('linkedMedicine'),
+      title: (
+        <Space size={4}>
+          {t('defaultDosage')}
+          <FieldTooltip titleKey="tooltip:health.defaultDosage">
+            <InfoCircleOutlined />
+          </FieldTooltip>
+        </Space>
+      ),
+      dataIndex: 'defaultDosage',
+      render: (d?: string) => d || '-',
+    },
+    {
+      title: (
+        <Space size={4}>
+          {t('linkedMedicine')}
+          <FieldTooltip titleKey="tooltip:health.linkedMedicine">
+            <InfoCircleOutlined />
+          </FieldTooltip>
+        </Space>
+      ),
       dataIndex: 'linkedMedicineName',
       render: (n?: string) => n || '-',
     },

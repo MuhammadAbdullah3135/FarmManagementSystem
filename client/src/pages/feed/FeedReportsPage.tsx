@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { formatMoney } from '../../i18n/format';
 import {
-  Card, DatePicker, Row, Col, Statistic, Select, Table, Tabs, Tag,
+  Card, DatePicker, Row, Col, Space, Statistic, Select, Table, Tabs, Tag,
 } from 'antd';
+import { InfoCircleOutlined } from '@ant-design/icons';
+import FieldTooltip from '../../components/FieldTooltip';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs, { Dayjs } from 'dayjs';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
@@ -77,7 +79,14 @@ const FeedReportsPage: React.FC = () => {const { t } = useTranslation('feed');
     { title: t('quantity'), dataIndex: 'quantity', align: 'right', render: (v, r) => `${v} ${r.unitName}` },
     { title: t('cost'), dataIndex: 'cost', align: 'right' },
     {
-      title: t('share'),
+      title: (
+        <Space size={4}>
+          {t('share')}
+          <FieldTooltip titleKey="tooltip:feed.share">
+            <InfoCircleOutlined />
+          </FieldTooltip>
+        </Space>
+      ),
       dataIndex: 'sharePercent',
       align: 'right',
       render: (v: number) => <Tag color="blue">{v.toFixed(1)}%</Tag>,

@@ -7,6 +7,8 @@ import { getApiError } from '../../api/farmApi';
 import type { InventoryItem, StockMovement } from '../../types';
 import { useTranslation } from 'react-i18next';
 import { enumLabelOf, useEnumOptions } from '../../i18n/enumOptions';
+import FieldTooltip from '../../components/FieldTooltip';
+import { InfoCircleOutlined } from '@ant-design/icons';
 
 const InventoryMovementsPage: React.FC = () => {const { t } = useTranslation('inventory'); 
   const movementTypeOptions = useEnumOptions('movementType');
@@ -39,8 +41,8 @@ const InventoryMovementsPage: React.FC = () => {const { t } = useTranslation('in
   const columns: ColumnsType<StockMovement> = [
     { title: t('date'), dataIndex: 'movementDate', width: 150, render: (value: string) => dayjs(value).format('YYYY-MM-DD HH:mm') },
     { title: t('item'), dataIndex: 'inventoryItemName' },
-    { title: t('type'), dataIndex: 'movementTypeName', width: 130, render: (value: string) => <Tag color={value === 'Purchase' ? 'green' : value === 'Consumption' ? 'orange' : value === 'Adjustment' ? 'blue' : 'purple'}>{enumLabelOf('movementType', value)}</Tag> },
-    { title: t('quantity'), dataIndex: 'signedQuantity', width: 110, render: (value: number, record) => <span style={{ color: value < 0 ? '#cf1322' : '#389e0d', fontWeight: 600 }}>{value > 0 ? '+' : ''}{value} {record.unit}</span> },
+    { title: <Space size={4}>{t('type')}<FieldTooltip titleKey="tooltip:inventory.movementType"><InfoCircleOutlined /></FieldTooltip></Space>, dataIndex: 'movementTypeName', width: 130, render: (value: string) => <Tag color={value === 'Purchase' ? 'green' : value === 'Consumption' ? 'orange' : value === 'Adjustment' ? 'blue' : 'purple'}>{enumLabelOf('movementType', value)}</Tag> },
+    { title: <Space size={4}>{t('quantity')}<FieldTooltip titleKey="tooltip:inventory.signedQuantity"><InfoCircleOutlined /></FieldTooltip></Space>, dataIndex: 'signedQuantity', width: 110, render: (value: number, record) => <span style={{ color: value < 0 ? '#cf1322' : '#389e0d', fontWeight: 600 }}>{value > 0 ? '+' : ''}{value} {record.unit}</span> },
     { title: t('reason'), dataIndex: 'reason', render: (value?: string) => value || '-' },
   ];
 

@@ -11,7 +11,8 @@
     "targetMode": "Un registro aplica a un solo animal o a una sola ubicación, no a ambos.",
     "scheduleTime": "Hora a la que se ejecuta esta alimentación, p. ej. 07:00. Las tareas se generan a esa hora.",
     "scheduleInactive": "Desactiva esta programación; no se generarán más tareas de alimentación a partir de ella.",
-    "rationShare": "Proporción de la ración total. Las proporciones deben sumar 100%."
+    "rationShare": "Proporción de la ración total. Las proporciones deben sumar 100%.",
+    "share": "Proporción de este tipo de alimento en el coste total del periodo. Las proporciones suman 100%."
   },
   "animal": {
     "parentTerms": "padre = el progenitor macho, madre = la progenitora de este animal.",
@@ -28,7 +29,9 @@
   "health": {
     "batch": "lote = número de lote del fabricante, indicado en el envase.",
     "expiryStatus": "Rojo: ya caducado. Naranja: caduca en 30 días. No uses stock caducado.",
-    "lowStockThreshold": "Nivel de alerta: aparece un aviso de stock bajo cuando el stock baja hasta esta cantidad."
+    "lowStockThreshold": "Nivel de alerta: aparece un aviso de stock bajo cuando el stock baja hasta esta cantidad.",
+    "defaultDosage": "Dosis que se rellena en un registro de vacunación con esta vacuna. Puedes cambiarla por animal.",
+    "linkedMedicine": "El stock de medicamento del que descuenta esta vacuna, así que registrar una dosis reduce su cantidad."
   },
   "report": {
     "margin": "margen = ingresos menos costos de esta fila.",
@@ -43,5 +46,9 @@
   },
   "nav": {
     "openMenu": "Abre el menú de navegación para saltar a otra sección de la granja."
+  },
+  "inventory": {
+    "movementType": "Compra suma existencias, Consumo las resta, Ajuste corrige el recuento y Traslado mueve existencias entre ubicaciones.",
+    "signedQuantity": "Cambio con signo: positivo aumenta el stock, negativo lo reduce. Los ajustes llevan su propio signo."
   }
 }
