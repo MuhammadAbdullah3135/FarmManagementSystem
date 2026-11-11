@@ -24,7 +24,8 @@
     "birthOutcome": "Alive: living at birth. Stillborn: no signs of life. Weak: alive but needs extra care."
   },
   "hr": {
-    "checkInOut": "Check in starts the shift, check out ends it. Times come from this device's clock."
+    "checkInOut": "Check in starts the shift, check out ends it. Times come from this device's clock.",
+    "salaryType": "How the pay is calculated, such as monthly salary, hourly rate or a one-off payment. It is not the payment method."
   },
   "health": {
     "batch": "batch = the manufacturer's lot number, shown on the packaging.",
@@ -32,7 +33,8 @@
     "lowStockThreshold": "Alert level: a low-stock warning appears when stock falls to this amount.",
     "defaultDosage": "Dosage filled in on a vaccination record that uses this vaccine. You can change it per animal.",
     "linkedMedicine": "The medicine stock this vaccine draws from, so recording a dose reduces that medicine's remaining quantity.",
-    "recurrenceDays": "Days between doses in this schedule. The next due date is the last dose plus this interval."
+    "recurrenceDays": "Days between doses in this schedule. The next due date is the last dose plus this interval.",
+    "medicalStatus": "Open: still being treated. Follow-up: needs a check-up. Resolved: treatment is finished."
   },
   "report": {
     "margin": "margin = revenue minus costs for this row.",

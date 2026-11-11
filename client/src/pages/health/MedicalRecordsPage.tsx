@@ -2,7 +2,8 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   Button, Card, Col, DatePicker, Form, Input, InputNumber, Modal, Popconfirm, Row, Select, Space, Table, Tag, message,
 } from 'antd';
-import { PlusOutlined } from '@ant-design/icons';
+import FieldTooltip from '../../components/FieldTooltip';
+import { InfoCircleOutlined, PlusOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { formatDate, formatMoney } from '../../i18n/format';
 import dayjs from 'dayjs';
@@ -225,7 +226,7 @@ const MedicalRecordsPage: React.FC = () => {const { t } = useTranslation(['healt
       render: (d?: string) => d ? formatDate(d) : '-',
     },
     {
-      title: t('status'),
+      title: <Space size={4}>{t('status')}<FieldTooltip titleKey="tooltip:health.medicalStatus"><InfoCircleOutlined /></FieldTooltip></Space>,
       dataIndex: 'statusName',
       width: 110,
       // `name` is the server's `MedicalRecordStatus.ToString()`, so it keys the colour

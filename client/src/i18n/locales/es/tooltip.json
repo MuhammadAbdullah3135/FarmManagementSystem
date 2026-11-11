@@ -24,7 +24,8 @@
     "birthOutcome": "Vivo: nacido con vida. Nacido muerto: sin signos de vida. Débil: vivo pero necesita cuidados extra."
   },
   "hr": {
-    "checkInOut": "La entrada inicia el turno, la salida lo finaliza. Las horas provienen del reloj de este dispositivo."
+    "checkInOut": "La entrada inicia el turno, la salida lo finaliza. Las horas provienen del reloj de este dispositivo.",
+    "salaryType": "Cómo se calcula el pago, como sueldo mensual, tarifa por hora o un pago puntual. No es el método de pago."
   },
   "health": {
     "batch": "lote = número de lote del fabricante, indicado en el envase.",
@@ -32,7 +33,8 @@
     "lowStockThreshold": "Nivel de alerta: aparece un aviso de stock bajo cuando el stock baja hasta esta cantidad.",
     "defaultDosage": "Dosis que se rellena en un registro de vacunación con esta vacuna. Puedes cambiarla por animal.",
     "linkedMedicine": "El stock de medicamento del que descuenta esta vacuna, así que registrar una dosis reduce su cantidad.",
-    "recurrenceDays": "Días entre dosis de esta pauta. La próxima fecha es la última dosis más este intervalo."
+    "recurrenceDays": "Días entre dosis de esta pauta. La próxima fecha es la última dosis más este intervalo.",
+    "medicalStatus": "Abierto: aún en tratamiento. Seguimiento: necesita un chequeo. Resuelto: el tratamiento ha terminado."
   },
   "report": {
     "margin": "margen = ingresos menos costos de esta fila.",

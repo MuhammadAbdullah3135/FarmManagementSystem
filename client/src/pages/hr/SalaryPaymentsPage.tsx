@@ -3,7 +3,8 @@ import { formatDate, formatMoney } from '../../i18n/format';
 import {
   Button, Card, DatePicker, Form, Input, InputNumber, Modal, Popconfirm, Row, Col, Select, Space, Statistic, Table, message,
 } from 'antd';
-import { PlusOutlined } from '@ant-design/icons';
+import FieldTooltip from '../../components/FieldTooltip';
+import { InfoCircleOutlined, PlusOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs, { Dayjs } from 'dayjs';
 import { salaryPaymentsApi, payrollApi, employeesApi } from '../../api/hr';
@@ -167,7 +168,10 @@ const SalaryPaymentsPage: React.FC = () => {
   const payCols: ColumnsType<SalaryPayment> = [
     { title: t('date'), dataIndex: 'paymentDate', render: (d: string) => formatDate(d) },
     { title: t('amount'), dataIndex: 'amount', align: 'right', render: (v: number) => formatMoney(v) },
-    { title: t('type'), dataIndex: 'salaryTypeName' },
+    {
+      title: <Space size={4}>{t('type')}<FieldTooltip titleKey="tooltip:hr.salaryType"><InfoCircleOutlined /></FieldTooltip></Space>,
+      dataIndex: 'salaryTypeName',
+    },
     {
       title: t('paymentMethod'),
       dataIndex: 'paymentType',

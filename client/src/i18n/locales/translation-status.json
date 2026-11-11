@@ -159,6 +159,16 @@
         "date": "2026-11-06",
         "reviewed": false,
         "note": "Machine draft for the inventory, admin and health header batch. Not reviewed by a translator."
+      },
+      {
+        "files": [
+          "es/tooltip.json (health.medicalStatus, hr.salaryType)"
+        ],
+        "source": "en",
+        "tool": "Codebuff agent (Buffy)",
+        "date": "2026-11-11",
+        "reviewed": false,
+        "note": "Draft tooltip keys added through scripts/add-tooltip-keys.mjs. Not reviewed by a translator."
       }
     ]
   },
@@ -323,6 +333,16 @@
         "date": "2026-11-06",
         "reviewed": false,
         "note": "Machine draft for the inventory, admin and health header batch. Not reviewed by a translator."
+      },
+      {
+        "files": [
+          "ar/tooltip.json (health.medicalStatus, hr.salaryType)"
+        ],
+        "source": "en",
+        "tool": "Codebuff agent (Buffy)",
+        "date": "2026-11-11",
+        "reviewed": false,
+        "note": "Draft tooltip keys added through scripts/add-tooltip-keys.mjs. Not reviewed by a translator."
       }
     ]
   }
