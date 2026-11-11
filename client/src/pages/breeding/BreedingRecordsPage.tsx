@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Card, Table, Button, Modal, Form, Select, DatePicker, Input, Space, Tag, message, Popconfirm, Row, Col } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
+import FieldTooltip from '../../components/FieldTooltip';
+import { InfoCircleOutlined, PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { breedingRecordsApi, type BreedingRecordListFilter, type CreateBreedingRecordPayload, type UpdateBreedingRecordPayload } from '../../api/breeding';
 import { lookupsApi } from '../../api/attendance';
 import { getApiError } from '../../api/farmApi';
@@ -181,7 +182,7 @@ export default function BreedingRecordsPage() {const { t } = useTranslation('bre
       render: (text: string) => formatDate(text),
     },
     {
-      title: t('sire'),
+      title: <Space size={4}>{t('sire')}<FieldTooltip titleKey="tooltip:animal.parentTerms"><InfoCircleOutlined /></FieldTooltip></Space>,
       key: 'sire',
       render: (_, record) => animalLabel({ tagNumber: record.sireTagNumber, name: record.sireName }),
     },
@@ -197,7 +198,7 @@ export default function BreedingRecordsPage() {const { t } = useTranslation('bre
       render: (val: number) => enumLabelOf('breedingMethod', val),
     },
     {
-      title: t('result'),
+      title: <Space size={4}>{t('result')}<FieldTooltip titleKey="tooltip:breeding.birthOutcome"><InfoCircleOutlined /></FieldTooltip></Space>,
       dataIndex: 'result',
       key: 'result',
       render: (val: number) => <Tag color={RESULT_COLORS[val]}>{enumLabelOf('breedingResult', val)}</Tag>,
