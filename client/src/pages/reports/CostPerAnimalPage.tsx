@@ -3,6 +3,7 @@ import {
   Alert, Card, Col, Descriptions, Empty, Row, Space, Spin, Statistic, Table, Tag, Tooltip, Typography, message,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
+import FieldTooltip from '../../components/FieldTooltip';
 import { InfoCircleOutlined } from '@ant-design/icons';
 import DateRangeFilter from '../../components/DateRangeFilter';
 import ExportButton from '../../components/ExportButton';
@@ -90,14 +91,37 @@ const CostPerAnimalPage: React.FC = () => {const { t } = useTranslation('reports
         {formatDate(row.presentFrom)} – {day(row.presentTo, t('stillHere'))}
       </Text>
     ) },
-    { title: t('animalDays'), dataIndex: 'animalDays', align: 'right' },
+    {
+      title: (
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+          {t('animalDays')}
+          <FieldTooltip titleKey="tooltip:report.animalDays">
+            <InfoCircleOutlined />
+          </FieldTooltip>
+        </span>
+      ),
+      dataIndex: 'animalDays',
+      align: 'right',
+    },
     { title: t('shareOfFarmDays'), dataIndex: 'shareOfFarmDays', align: 'right',
       render: (value: number) => formatPercent(value) },
     { title: t('cost'), dataIndex: 'totalCost', align: 'right', render: (value: number) => money(value) },
     { title: t('revenue'), dataIndex: 'totalRevenue', align: 'right', render: (value: number) => money(value) },
-    { title: t('margin'), dataIndex: 'margin', align: 'right', render: (value: number) => (
-      <Text type={value < 0 ? 'danger' : undefined}>{money(value)}</Text>
-    ) },
+    {
+      title: (
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+          {t('margin')}
+          <FieldTooltip titleKey="tooltip:report.margin">
+            <InfoCircleOutlined />
+          </FieldTooltip>
+        </span>
+      ),
+      dataIndex: 'margin',
+      align: 'right',
+      render: (value: number) => (
+        <Text type={value < 0 ? 'danger' : undefined}>{money(value)}</Text>
+      ),
+    },
     { title: '', key: 'warnings', width: 90, render: (_, row) => row.warnings.length > 0 ? (
       <Tooltip title={row.warnings.map(code => warningText(code)).join(' ')}>
         <Tag icon={<InfoCircleOutlined />} color="warning">{t('caveat')}</Tag>

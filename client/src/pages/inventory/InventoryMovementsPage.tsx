@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Card, DatePicker, Select, Space, Table, Tag, message } from 'antd';
+import FieldTooltip from '../../components/FieldTooltip';
+import { InfoCircleOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs, { type Dayjs } from 'dayjs';
 import { inventoryApi } from '../../api/inventory';
@@ -39,7 +41,19 @@ const InventoryMovementsPage: React.FC = () => {const { t } = useTranslation('in
   const columns: ColumnsType<StockMovement> = [
     { title: t('date'), dataIndex: 'movementDate', width: 150, render: (value: string) => dayjs(value).format('YYYY-MM-DD HH:mm') },
     { title: t('item'), dataIndex: 'inventoryItemName' },
-    { title: t('type'), dataIndex: 'movementTypeName', width: 130, render: (value: string) => <Tag color={value === 'Purchase' ? 'green' : value === 'Consumption' ? 'orange' : value === 'Adjustment' ? 'blue' : 'purple'}>{enumLabelOf('movementType', value)}</Tag> },
+    {
+      title: (
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+          {t('type')}
+          <FieldTooltip titleKey="tooltip:inventory.movementType">
+            <InfoCircleOutlined />
+          </FieldTooltip>
+        </span>
+      ),
+      dataIndex: 'movementTypeName',
+      width: 130,
+      render: (value: string) => <Tag color={value === 'Purchase' ? 'green' : value === 'Consumption' ? 'orange' : value === 'Adjustment' ? 'blue' : 'purple'}>{enumLabelOf('movementType', value)}</Tag>,
+    },
     { title: t('quantity'), dataIndex: 'signedQuantity', width: 110, render: (value: number, record) => <span style={{ color: value < 0 ? '#cf1322' : '#389e0d', fontWeight: 600 }}>{value > 0 ? '+' : ''}{value} {record.unit}</span> },
     { title: t('reason'), dataIndex: 'reason', render: (value?: string) => value || '-' },
   ];
