@@ -81,6 +81,21 @@ public class DemoSmokeTests
                     services.AddAuthentication("Test")
                         .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>("Test", _ => { });
                     services.AddAuthorization();
+                    services.AddScoped<FMS.Application.Dashboard.IDashboardService, FMS.Infrastructure.Dashboard.DashboardService>();
+                    services.AddScoped<FMS.Application.Health.IVaccineService, FMS.Infrastructure.Health.VaccineService>();
+                    services.AddScoped<FMS.Application.Health.IMedicineService, FMS.Infrastructure.Health.MedicineService>();
+                    services.AddScoped<FMS.Application.Tasks.IFarmTaskService, FMS.Infrastructure.Tasks.FarmTaskService>();
+                    services.AddScoped<FMS.Application.Breeding.IBreedingService, FMS.Infrastructure.Breeding.BreedingService>();
+                    services.AddScoped<FMS.Application.Inventory.IInventoryService, FMS.Infrastructure.Inventory.InventoryService>();
+                    services.AddScoped<FMS.Application.Feed.IFeedService, FMS.Infrastructure.Feed.FeedService>();
+                    services.AddScoped<FMS.Application.Finance.IFinanceService, FMS.Infrastructure.Finance.FinanceService>();
+                    services.AddScoped<FMS.Application.Health.IWeightCheckScheduleService, FMS.Infrastructure.Health.WeightCheckScheduleService>();
+                    services.AddMemoryCache();
+                    services.AddScoped<FMS.Infrastructure.Configuration.ConfigurationService>();
+                    services.AddScoped<FMS.Application.Configuration.IConfigurationService>(sp =>
+                        new FMS.Infrastructure.Configuration.CachedConfigurationService(
+                            sp.GetRequiredService<FMS.Infrastructure.Configuration.ConfigurationService>(),
+                            sp.GetRequiredService<Microsoft.Extensions.Caching.Memory.IMemoryCache>()));
                 });
             });
         var host = builder.Start();
@@ -379,5 +394,45 @@ public class DemoSmokeTests
 
         Assert.DoesNotContain(HttpStatusCode.TooManyRequests, statuses.Take(5));
         Assert.Equal(HttpStatusCode.TooManyRequests, statuses[5]);
+    }
+
+
+    [Fact]
+    public async Task Demo_sick_animals_use_the_inactive_category_the_dashboard_counts()
+    {
+        using var host = BuildHost(demoEnabled: true);
+        var client = host.GetTestClient();
+
+        var login = await client.PostAsJsonAsync("/api/auth/demo-login", new { });
+        Assert.Equal(HttpStatusCode.OK, login.StatusCode);
+
+        // The dashboard's sick tile is defined by the service. Assert through it, not by
+        // re-implementing the service's own SQL in the test.
+        using var dbScope = host.Services.CreateScope();
+        var db = dbScope.ServiceProvider.GetRequiredService<FmsDbContext>();
+        var demoUser = await db.Users.FirstOrDefaultAsync(u => u.IsDemo);
+        Assert.NotNull(demoUser);
+        var farmId = await db.UserFarms.Where(uf => uf.UserId == demoUser.Id)
+            .Select(uf => uf.FarmId).FirstOrDefaultAsync();
+        Assert.NotEqual(Guid.Empty, farmId);
+
+        {
+            var sickByCategory = await db.Animals.CountAsync(a =>
+                a.FarmId == farmId && !a.IsDeleted &&
+                a.AnimalStatus.Category == FMS.Domain.Enums.AnimalStatusCategory.Inactive);
+            var sickByName = await db.Animals.CountAsync(a =>
+                a.FarmId == farmId && !a.IsDeleted && a.AnimalStatus.Name == "Sick");
+            Assert.Equal(3, sickByCategory);
+            Assert.Equal(3, sickByName);
+        }
+
+        using var dashboardScope = host.Services.CreateScope();
+        var dashboard = dashboardScope.ServiceProvider.GetRequiredService<FMS.Application.Dashboard.IDashboardService>();
+        var summary = await dashboard.GetSummaryAsync(farmId);
+
+        // The seeded demo farm has three visibly Sick animals. The service counts the sick tile
+        // as every non-deleted animal whose status lives in the Inactive category; seeding the
+        // Sick status under that category keeps the dashboard and the seed row aligned.
+        Assert.Equal(3, summary.Value.SickCount);
     }
 }

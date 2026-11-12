@@ -69,7 +69,7 @@ public static partial class DemoDataSeeder
         var statuses = await context.AnimalStatuses
             .Where(s => s.FarmId == farmId)
             .ToDictionaryAsync(s => s.Name);
-        var sickStatus = await EnsureAnimalStatusAsync(context, farmId, "Sick", now);
+        var sickStatus = await EnsureAnimalStatusAsync(context, farmId, "Sick", AnimalStatusCategory.Inactive, now);
         statuses["Sick"] = sickStatus;
         var sexes = await context.SexOptions
             .Where(s => s.FarmId == farmId)
