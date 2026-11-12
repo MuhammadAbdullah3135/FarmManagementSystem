@@ -2,7 +2,8 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   Button, Card, DatePicker, Form, Modal, Popconfirm, Select, Space, Switch, Table, TimePicker, Tag, message,
 } from 'antd';
-import { PlusOutlined, ThunderboltOutlined } from '@ant-design/icons';
+import { PlusOutlined, ThunderboltOutlined, InfoCircleOutlined } from '@ant-design/icons';
+import FieldTooltip from '../../components/FieldTooltip';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs, { Dayjs } from 'dayjs';
 import { feedingSchedulesApi, feedingTasksApi, dietPlansApi } from '../../api/feed';
@@ -96,11 +97,49 @@ const FeedingSchedulesPage: React.FC = () => {const { t } = useTranslation('feed
   };
 
   const columns: ColumnsType<FeedingSchedule> = [
-    { title: t('dietPlan'), dataIndex: 'dietPlanName' },
-    { title: t('time'), dataIndex: 'timeOfDay' },
-    { title: t('label'), dataIndex: 'label', render: (l?: string) => l ?? '-' },
     {
-      title: t('active'),
+      title: (
+        <Space size={4}>
+          {t('dietPlan')}
+          <FieldTooltip titleKey="tooltip:feed.targetMode">
+            <InfoCircleOutlined />
+          </FieldTooltip>
+        </Space>
+      ),
+      dataIndex: 'dietPlanName',
+    },
+    {
+      title: (
+        <Space size={4}>
+          {t('time')}
+          <FieldTooltip titleKey="tooltip:feed.scheduleTime">
+            <InfoCircleOutlined />
+          </FieldTooltip>
+        </Space>
+      ),
+      dataIndex: 'timeOfDay',
+    },
+    {
+      title: (
+        <Space size={4}>
+          {t('label')}
+          <FieldTooltip titleKey="tooltip:feed.label">
+            <InfoCircleOutlined />
+          </FieldTooltip>
+        </Space>
+      ),
+      dataIndex: 'label',
+      render: (l?: string) => l ?? '-',
+    },
+    {
+      title: (
+        <Space size={4}>
+          {t('active')}
+          <FieldTooltip titleKey="tooltip:feed.scheduleInactive">
+            <InfoCircleOutlined />
+          </FieldTooltip>
+        </Space>
+      ),
       dataIndex: 'isActive',
       render: (v: boolean) => v ? <Tag color="green">{t('active')}</Tag> : <Tag>{t('inactive')}</Tag>,
     },
