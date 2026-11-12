@@ -116,6 +116,12 @@ jobs:
         run: npm run lint
 
       - name: Cross-check the unkeyed backlog against its guard
+      - name: Tooltip locale check
+        # Phase 1 of the tooltip pass: every locale ships every tooltip key, and
+        # no copy runs past the style guide's 120-character limit.
+        working-directory: .
+        run: node scripts/check-tooltips.mjs
+
         # The validation guard exempts a hand-maintained list of files it is not yet
         # watching, while this audit measures the same backlog from the source. Nothing
         # compared them, so a file added to one and not the other left the guard reading

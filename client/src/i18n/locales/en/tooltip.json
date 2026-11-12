@@ -1,0 +1,67 @@
+{
+  "sync": {
+    "pendingCount": "{{count}} changes waiting to upload from this device",
+    "recordStates": "Saved: on this device. Synced: on the farm server. Waiting: will upload when you're back online.",
+    "quarantinedCount": "{{count}} records refused by the server; review them before re-exporting."
+  },
+  "farm": {
+    "selectPrompt": "Choose which farm you're working on; data and tasks follow the selected farm."
+  },
+  "feed": {
+    "targetMode": "A record applies to either one animal or one location — not both.",
+    "scheduleTime": "Time of day this feeding runs, e.g. 07:00. Tasks are generated for this time.",
+    "scheduleInactive": "Turns off this schedule; no more feeding tasks will be generated from it.",
+    "rationShare": "Share of the total ration. Shares must add up to 100%.",
+    "share": "This feed type's share of total feed cost for the period. Shares add up to 100%."
+  },
+  "animal": {
+    "parentTerms": "sire = the father, dam = the mother of this animal.",
+    "sexCode": "M = male, F = female.",
+    "weightStatus": "Due: next check coming up. Overdue: past the due date — weigh as soon as you can."
+  },
+  "breeding": {
+    "dueWindow": "Days until the expected due date. The colour flags how urgent it is: warmer means due soon or overdue.",
+    "birthOutcome": "Alive: living at birth. Stillborn: no signs of life. Weak: alive but needs extra care."
+  },
+  "hr": {
+    "checkInOut": "Check in starts the shift, check out ends it. Times come from this device's clock.",
+    "salaryType": "How the pay is calculated, such as monthly salary, hourly rate or a one-off payment. It is not the payment method."
+  },
+  "health": {
+    "batch": "batch = the manufacturer's lot number, shown on the packaging.",
+    "expiryStatus": "Red: already expired. Orange: expires within 30 days. Do not use expired stock.",
+    "lowStockThreshold": "Alert level: a low-stock warning appears when stock falls to this amount.",
+    "defaultDosage": "Dosage filled in on a vaccination record that uses this vaccine. You can change it per animal.",
+    "linkedMedicine": "The medicine stock this vaccine draws from, so recording a dose reduces that medicine's remaining quantity.",
+    "recurrenceDays": "Days between doses in this schedule. The next due date is the last dose plus this interval.",
+    "medicalStatus": "Open: still being treated. Follow-up: needs a check-up. Resolved: treatment is finished."
+  },
+  "report": {
+    "margin": "margin = revenue minus costs for this row.",
+    "animalDays": "animal-days = one animal counted for one day; total days animals were kept."
+  },
+  "member": {
+    "role": "What this member can open and change. SystemOwner has full access; Viewer can only read.",
+    "revokeEffect": "Removes their access immediately; their records stay with the farm."
+  },
+  "admin": {
+    "cron": "Schedule expression: 0 3 * * * means daily at 03:00. Five fields, minute, hour, day, month, weekday.",
+    "auditAction": "The operation that was recorded, such as Create, Update or Delete, for the entity in the same row."
+  },
+  "nav": {
+    "openMenu": "Open the navigation menu to jump to another section of the farm."
+  },
+  "inventory": {
+    "movementType": "Purchase adds stock, Consumption removes it, Adjustment corrects a count, Transfer moves stock between locations.",
+    "signedQuantity": "Signed change in stock: positive increases it, negative decreases it. Adjustments carry their own sign.",
+    "reorderLevel": "Stock level that should trigger a new purchase. The low-stock warning uses this number.",
+    "stockValue": "Quantity on hand times unit cost — the money the stock is worth right now."
+  },
+  "finance": {
+    "category": "Category groups this entry for the reports. It does not change the amount.",
+    "account": "The bank or credit account the money went through. It is not a cost category."
+  },
+  "config": {
+    "parentLocation": "The location this one sits inside. Animals in the child are also counted in the parent."
+  }
+}
