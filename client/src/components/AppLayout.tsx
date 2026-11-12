@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import '../AppLayout.css';
 import { Layout, Menu, Typography, Dropdown, Avatar, Badge, Button, Drawer, Result, Space, Spin, Tooltip, message, Modal } from 'antd';
+import FieldTooltip from './FieldTooltip';
 import {
   DashboardOutlined,
   SwapOutlined,
@@ -588,24 +589,28 @@ const isFarmIndependent = (pathname: string) =>
         <Header style={{ background: '#fff', padding: isMobile ? '0 12px' : '0 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0, gap: 8 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
             {isMobile && (
-              <Button
-                type="text"
-                icon={<MenuOutlined />}
-                onClick={() => setMobileMenuOpen(true)}
-                aria-label={t('openMenu')}
-              />
+              <FieldTooltip titleKey="tooltip:nav.openMenu">
+                <Button
+                  type="text"
+                  icon={<MenuOutlined />}
+                  onClick={() => setMobileMenuOpen(true)}
+                  aria-label={t('openMenu')}
+                />
+              </FieldTooltip>
             )}
             <Dropdown menu={{ items: farmMenuItems }} trigger={['click']}>
-              <div style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-                <SwapOutlined />
-                {activeFarm ? (
-                  <Text strong style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: isMobile ? 120 : undefined }}>{activeFarm.name}</Text>
-                ) : farms.length > 0 ? (
-                  <Text type="secondary">{t('selectAFarm')}</Text>
-                ) : (
-                  <Text type="secondary">{t('noFarmsYet')}</Text>
-                )}
-              </div>
+              <FieldTooltip titleKey="tooltip:farm.selectPrompt">
+                <div style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                  <SwapOutlined />
+                  {activeFarm ? (
+                    <Text strong style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: isMobile ? 120 : undefined }}>{activeFarm.name}</Text>
+                  ) : farms.length > 0 ? (
+                    <Text type="secondary">{t('selectAFarm')}</Text>
+                  ) : (
+                    <Text type="secondary">{t('noFarmsYet')}</Text>
+                  )}
+                </div>
+              </FieldTooltip>
             </Dropdown>
           </div>
 
@@ -620,19 +625,9 @@ const isFarmIndependent = (pathname: string) =>
               The queue, at a glance: what is waiting and what the server refused. Red when a
               record needs a person (a refusal never resolves itself), otherwise a plain count.
             */}
-            <Tooltip
-              title={
-                unsyncedCount === 0
-                  ? t('offlineSync')
-                  : [
-                      t('waitingToSyncCount', { count: pendingCount }),
-                      quarantinedCount > 0
-                        ? t('refusedByServerCount', { count: quarantinedCount })
-                        : null,
-                    ]
-                      .filter(Boolean)
-                      .join(', ')
-              }
+            <FieldTooltip
+              titleKey={unsyncedCount === 0 ? 'tooltip:sync.recordStates' : 'tooltip:sync.pendingCount'}
+              values={pendingCount > 0 ? { count: pendingCount } : undefined}
             >
               <Button
                 type="text"
@@ -645,7 +640,7 @@ const isFarmIndependent = (pathname: string) =>
                   />
                 </Badge>
               </Button>
-            </Tooltip>
+            </FieldTooltip>
 
             <Button
               type="text"
