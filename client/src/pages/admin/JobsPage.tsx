@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Button, Card, Col, Row, Space, Statistic, Table, Tag, Typography } from 'antd';
-import { ReloadOutlined } from '@ant-design/icons';
+import { ReloadOutlined, InfoCircleOutlined } from '@ant-design/icons';
+import FieldTooltip from '../../components/FieldTooltip';
 import type { ColumnsType } from 'antd/es/table';
 import { jobsApi } from '../../api/jobs';
 import type { FailedJobStatus, JobStatus, RecurringJobStatus } from '../../api/jobs';
@@ -82,7 +83,14 @@ const JobsPage: React.FC = () => {const { t } = useTranslation('admin');
       render: (id: string) => <Text code>{id}</Text>,
     },
     {
-      title: t('schedule'),
+      title: (
+        <Space size={4}>
+          {t('schedule')}
+          <FieldTooltip titleKey="tooltip:admin.cron">
+            <InfoCircleOutlined />
+          </FieldTooltip>
+        </Space>
+      ),
       dataIndex: 'cron',
       key: 'cron',
       render: (cron: string) => <Text code>{cron}</Text>,
