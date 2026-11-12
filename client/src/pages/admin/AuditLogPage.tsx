@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Table, Card, Select, Input, DatePicker, Tag, Button, Space, Typography } from 'antd';
 import { ReloadOutlined, SearchOutlined, InfoCircleOutlined } from '@ant-design/icons';
+import FieldTooltip from '../../components/FieldTooltip';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import { auditLogsApi } from '../../api/auditLogs';

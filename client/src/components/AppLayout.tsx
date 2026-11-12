@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import '../AppLayout.css';
-import { Layout, Menu, Typography, Dropdown, Avatar, Badge, Button, Drawer, Result, Space, Spin, Tooltip, message, Modal } from 'antd';
+import { Layout, Menu, Typography, Dropdown, Avatar, Badge, Button, Drawer, Result, Space, Spin, message, Modal } from 'antd';
 import FieldTooltip from './FieldTooltip';
 import {
   DashboardOutlined,
