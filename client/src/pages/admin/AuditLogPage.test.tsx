@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
+import type { AxiosResponse } from 'axios';
+import type { InternalAxiosRequestConfig } from 'axios';
 import AuditLogPage from './AuditLogPage';
 import { auditLogsApi } from '../../api/auditLogs';
 import type { AuditLogEntry, PagedResult } from '../../api/auditLogs';
@@ -21,7 +23,7 @@ vi.mock('../../stores/farmStore', () => ({
 
 type LogFactoryOverrides = Partial<AuditLogEntry> & Partial<Pick<PagedResult<AuditLogEntry>, 'items' | 'totalCount' | 'page' | 'pageSize' | 'totalPages'>>;
 
-const logPage = (overrides: LogFactoryOverrides = {}): PagedResult<AuditLogEntry> => {
+function makeLogPage(overrides: LogFactoryOverrides = {}): PagedResult<AuditLogEntry> {
   const items = overrides.items ?? [
     {
       id: 'log-1',
@@ -75,7 +77,7 @@ const logPage = (overrides: LogFactoryOverrides = {}): PagedResult<AuditLogEntry
     totalPages: Math.max(1, Math.ceil(items.length / 10)),
     ...overrides,
   } as PagedResult<AuditLogEntry>;
-};
+}
 
 const emptyState = (): PagedResult<AuditLogEntry> => ({
   items: [],
@@ -85,12 +87,25 @@ const emptyState = (): PagedResult<AuditLogEntry> => ({
   totalPages: 1,
 });
 
+function mockAxiosResponse<T>(
+  data: T,
+  config: InternalAxiosRequestConfig<unknown> = {} as InternalAxiosRequestConfig<unknown>,
+): AxiosResponse<T> {
+  return {
+    data,
+    status: 200,
+    statusText: 'OK',
+    headers: {},
+    config,
+  };
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
-  (useFarmStore as unknown as vi.Mock).mockReturnValue({
+  (useFarmStore as unknown as { mockReturnValue?: (value: unknown) => void }).mockReturnValue?.({
     activeFarm: { id: 'farm-1', name: 'Demo Farm' },
   });
-  vi.mocked(auditLogsApi.getLogs).mockResolvedValue({ data: logPage() });
+  vi.mocked(auditLogsApi.getLogs).mockResolvedValue(mockAxiosResponse(makeLogPage()));
 });
 
 describe('AuditLogPage', () => {
@@ -292,9 +307,7 @@ describe('AuditLogPage', () => {
   });
 
   it('shows the empty audit trail text when the farm has no entries', async () => {
-    vi.mocked(auditLogsApi.getLogs).mockResolvedValue({
-      data: emptyState(),
-    });
+    vi.mocked(auditLogsApi.getLogs).mockResolvedValue(mockAxiosResponse(emptyState()));
 
     render(
       <MemoryRouter>
@@ -311,7 +324,7 @@ describe('AuditLogPage', () => {
   });
 
   it('does nothing on mount when there is no active farm', async () => {
-    (useFarmStore as unknown as vi.Mock).mockReturnValue({ activeFarm: null });
+    (useFarmStore as unknown as { mockReturnValue?: (value: unknown) => void }).mockReturnValue?.({ activeFarm: null });
 
     render(
       <MemoryRouter>
