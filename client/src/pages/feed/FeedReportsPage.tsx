@@ -6,6 +6,9 @@ import {
 import type { ColumnsType } from 'antd/es/table';
 import dayjs, { Dayjs } from 'dayjs';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { InfoCircleOutlined } from '@ant-design/icons';
+
+import FieldTooltip from '../../components/FieldTooltip';
 import BreakdownPieChart from '../../components/BreakdownPieChart';
 import { feedReportsApi } from '../../api/feed';
 import { getApiError } from '../../api/farmApi';
@@ -65,7 +68,18 @@ const FeedReportsPage: React.FC = () => {const { t } = useTranslation('feed');
   const trendCols: ColumnsType<ConsumptionTrendPoint> = [
     { title: t('period'), dataIndex: 'label' },
     { title: t('quantity'), dataIndex: 'quantity', align: 'right' },
-    { title: t('cost'), dataIndex: 'cost', align: 'right' },
+    {
+      title: (
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+          {t('cost')}
+          <FieldTooltip titleKey="tooltip:report.cost">
+            <InfoCircleOutlined />
+          </FieldTooltip>
+        </span>
+      ),
+      dataIndex: 'cost',
+      align: 'right',
+    },
   ];
 
   // The first column of the wide tables is pinned so the row identity stays visible while the
@@ -75,9 +89,27 @@ const FeedReportsPage: React.FC = () => {const { t } = useTranslation('feed');
   const typeCols: ColumnsType<FeedTypeBreakdown> = [
     { title: t('feedType'), dataIndex: 'feedTypeName', fixed: 'start', width: 140 },
     { title: t('quantity'), dataIndex: 'quantity', align: 'right', render: (v, r) => `${v} ${r.unitName}` },
-    { title: t('cost'), dataIndex: 'cost', align: 'right' },
     {
-      title: t('share'),
+      title: (
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+          {t('cost')}
+          <FieldTooltip titleKey="tooltip:report.cost">
+            <InfoCircleOutlined />
+          </FieldTooltip>
+        </span>
+      ),
+      dataIndex: 'cost',
+      align: 'right',
+    },
+    {
+      title: (
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+          {t('share')}
+          <FieldTooltip titleKey="tooltip:feed.share">
+            <InfoCircleOutlined />
+          </FieldTooltip>
+        </span>
+      ),
       dataIndex: 'sharePercent',
       align: 'right',
       render: (v: number) => <Tag color="blue">{v.toFixed(1)}%</Tag>,
@@ -97,7 +129,18 @@ const FeedReportsPage: React.FC = () => {const { t } = useTranslation('feed');
   const locationCols: ColumnsType<LocationConsumption> = [
     { title: t('location'), dataIndex: 'locationName', fixed: 'start', width: 130 },
     { title: t('quantity'), dataIndex: 'quantity', align: 'right' },
-    { title: t('cost'), dataIndex: 'cost', align: 'right' },
+    {
+      title: (
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+          {t('cost')}
+          <FieldTooltip titleKey="tooltip:report.cost">
+            <InfoCircleOutlined />
+          </FieldTooltip>
+        </span>
+      ),
+      dataIndex: 'cost',
+      align: 'right',
+    },
   ];
 
   return (
