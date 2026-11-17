@@ -820,6 +820,9 @@ public static class DomainMessageKeys
     /// <summary>The exact English this API has always answered: “Real data export is disabled for the demo account.”</summary>
     public const string DemoRealExportDisabled = "validation.demo.demoRealExportDisabled";
 
+    /// <summary>The exact English: “Bulk animal changes are disabled for the demo account.”</summary>
+    public const string DemoBulkAnimalChangesDisabled = "validation.demo.demoBulkAnimalChangesDisabled";
+
     // ── storage ───────────────────────────────────────────────────────────────────────────
     /// <summary>The exact English this API has always answered: “Presigned URLs are not supported by local file storage”</summary>
     public const string PresignedUrlsUnsupported = "validation.unexpected.presignedUrlsUnsupported";

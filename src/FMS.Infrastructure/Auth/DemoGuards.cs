@@ -21,6 +21,8 @@ namespace FMS.Infrastructure.Auth;
 ///   <item><description>Requesting a full-farm export of the demo farm.</description></item>
 ///   <item><description>Recording a real payment (a salary payment); there is no payment gateway
 ///   in this build, so the money-moving action is the salary-payment ledger.</description></item>
+///   <item><description>Changing or moving many animals in one bulk request, which rewrites the
+///   herd, its location history and its departure reports at once and has no undo.</description></item>
 /// </list>
 ///
 /// Each guard returns a <c>Result</c> whose <c>Code</c> is one of the <c>validation.demo.*</c>
@@ -95,6 +97,18 @@ public static class DemoGuards
     public static Result DemoExportBlocked() => Result.Validation(
         "Real data export is disabled for the demo account.",
         DomainMessageKeys.DemoRealExportDisabled);
+
+    /// <summary>
+    /// Refuses the bulk animal writes — one status for many animals, or many animals moved to
+    /// one location — because the current caller is the demo user. A visitor may still edit a
+    /// single animal: that is the ordinary way to explore the app and the seeded farm is reset
+    /// afterwards. A bulk write is different in kind — a handful of clicks can move the whole
+    /// herd to a terminal status and rewrite every departure report, and nothing in the client
+    /// undoes it.
+    /// </summary>
+    public static Result DemoBulkAnimalChangesBlocked() => Result.Validation(
+        "Bulk animal changes are disabled for the demo account.",
+        DomainMessageKeys.DemoBulkAnimalChangesDisabled);
 
     /// <summary>
     /// Refuses account deletion because the target is the demo user. No account-deletion endpoint

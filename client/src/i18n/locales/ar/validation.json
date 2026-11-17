@@ -329,6 +329,7 @@
     "demoPasswordChangeDisabled": "تغيير كلمة مرور الحساب التجريبي معطّل.",
     "demoPasswordResetDisabled": "إعادة تعيين كلمة مرور الحساب التجريبي معطّلة.",
     "demoDeleteAccountDisabled": "حذف الحساب التجريبي معطّل.",
-    "demoRealExportDisabled": "تصدير البيانات الحقيقية معطّل للحساب التجريبي."
+    "demoRealExportDisabled": "تصدير البيانات الحقيقية معطّل للحساب التجريبي.",
+    "demoBulkAnimalChangesDisabled": "التغييرات الجماعية على الحيوانات معطّلة للحساب التجريبي."
   }
 }

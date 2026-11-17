@@ -329,6 +329,7 @@
     "demoPasswordChangeDisabled": "Cambiar la contraseña de la cuenta de demo está deshabilitado.",
     "demoPasswordResetDisabled": "Restablecer la contraseña de la cuenta de demo está deshabilitado.",
     "demoDeleteAccountDisabled": "Eliminar la cuenta de demo está deshabilitado.",
-    "demoRealExportDisabled": "La exportación de datos reales está deshabilitada para la cuenta de demo."
+    "demoRealExportDisabled": "La exportación de datos reales está deshabilitada para la cuenta de demo.",
+    "demoBulkAnimalChangesDisabled": "Los cambios masivos de animales están deshabilitados para la cuenta de demo."
   }
 }

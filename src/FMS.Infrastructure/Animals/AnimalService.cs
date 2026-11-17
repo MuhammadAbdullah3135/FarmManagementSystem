@@ -3,6 +3,7 @@ using FMS.Application.Common;
 using FMS.Domain.Common;
 using FMS.Domain.Entities;
 using FMS.Domain.Enums;
+using FMS.Infrastructure.Auth;
 using FMS.Infrastructure.Common;
 using FMS.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -96,6 +97,17 @@ public class AnimalService : IAnimalService
     private static (int Page, int PageSize) ResolvePaging(AnimalListFilter filter) =>
         (filter.Page < 1 ? 1 : filter.Page,
          filter.PageSize < 1 ? DefaultPageSize : Math.Min(filter.PageSize, MaxPageSize));
+
+    /// <summary>
+    /// True when the caller is the shared demo user, read from <c>User.IsDemo</c> rather than
+    /// from anything the request carries. Used by the bulk animal writes, which are the only
+    /// actions in this service a visitor may not perform.
+    /// </summary>
+    private async Task<bool> IsDemoCallerAsync()
+    {
+        var userId = _currentUser.GetUserId();
+        return userId is { } callerId && await DemoGuards.IsDemoUserAsync(_context, callerId);
+    }
 
     /// <summary>
     /// The farm-scoped filter a list read applies, extracted so the animal table and the QR
@@ -1156,6 +1168,11 @@ public class AnimalService : IAnimalService
 
     public async Task<Result<BulkOperationResultDto>> BulkChangeStatusAsync(Guid farmId, BulkStatusChangeRequest request)
     {
+        // Guarded as one request rather than per animal: the refusal is about what a herd-wide
+        // status change does (terminal statuses rewrite the departure reports), not about one record.
+        if (await IsDemoCallerAsync())
+            return Result<BulkOperationResultDto>.Failure(DemoGuards.DemoBulkAnimalChangesBlocked().Error!);
+
         if (request.AnimalIds.Count == 0)
             return Result<BulkOperationResultDto>.Validation("No animals selected", DomainMessageKeys.NoAnimalsSelected);
 
@@ -1218,6 +1235,11 @@ public class AnimalService : IAnimalService
 
     public async Task<Result<BulkOperationResultDto>> BulkTransferAsync(Guid farmId, BulkTransferRequest request)
     {
+        // Same guard as the bulk status change: one request can move the whole herd and write a
+        // transfer record for each animal, which a visitor cannot undo from the UI.
+        if (await IsDemoCallerAsync())
+            return Result<BulkOperationResultDto>.Failure(DemoGuards.DemoBulkAnimalChangesBlocked().Error!);
+
         if (request.AnimalIds.Count == 0)
             return Result<BulkOperationResultDto>.Validation("No animals selected", DomainMessageKeys.NoAnimalsSelected);
 

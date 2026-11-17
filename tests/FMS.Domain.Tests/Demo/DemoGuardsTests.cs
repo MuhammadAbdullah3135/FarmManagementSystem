@@ -1,10 +1,13 @@
+using FMS.Application.Animal;
 using FMS.Application.Auth;
 using FMS.Application.Common;
 using FMS.Application.Employees;
 using FMS.Domain.Entities;
 using FMS.Domain.Enums;
+using FMS.Infrastructure.Animals;
 using FMS.Infrastructure.Auth;
 using FMS.Infrastructure.Employees;
+using FMS.Infrastructure.Files;
 using FMS.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -109,6 +112,7 @@ public class DemoGuardsTests
     [InlineData("email", DomainMessageKeys.DemoEmailSendingDisabled)]
     [InlineData("payments", DomainMessageKeys.DemoStaffRealPaymentsDisabled)]
     [InlineData("export", DomainMessageKeys.DemoRealExportDisabled)]
+    [InlineData("bulk-animals", DomainMessageKeys.DemoBulkAnimalChangesDisabled)]
     [InlineData("delete-account", DomainMessageKeys.DemoDeleteAccountDisabled)]
     public void Each_guard_returns_a_failure_with_its_message_key(string guard, string expectedKey)
     {
@@ -119,6 +123,7 @@ public class DemoGuardsTests
             "email" => DemoGuards.DemoEmailSendingBlocked(),
             "payments" => DemoGuards.DemoRealPaymentsBlocked(),
             "export" => DemoGuards.DemoExportBlocked(),
+            "bulk-animals" => DemoGuards.DemoBulkAnimalChangesBlocked(),
             "delete-account" => DemoGuards.DemoDeleteAccountBlocked(),
             _ => throw new ArgumentOutOfRangeException(nameof(guard), guard, "Unknown guard")
         };
@@ -222,7 +227,114 @@ public class DemoGuardsTests
         Assert.True(await _context.SalaryPayments.AnyAsync(p => p.EmployeeId == employee.Id));
     }
 
+    //
+    // Both bulk writes are guarded, and only for the demo user: a visitor still edits one animal
+    // at a time, but one request cannot rewrite the whole herd, its location history and, through
+    // a terminal status, every departure report — none of which the client can undo.
+
+    [Fact]
+    public async Task Bulk_status_change_is_refused_for_the_demo_user_and_allowed_for_a_real_one()
+    {
+        var herd = await SeedHerdAsync();
+        var currentUser = new SwitchableCurrentUser(_demoUserId);
+        var service = CreateAnimalService(currentUser);
+
+        var request = new BulkStatusChangeRequest
+        {
+            AnimalIds = new List<Guid> { herd.AnimalId },
+            NewStatusId = herd.SoldStatusId,
+            Reason = "Herd sale"
+        };
+
+        var demo = await service.BulkChangeStatusAsync(herd.FarmId, request);
+        Assert.False(demo.IsSuccess);
+        Assert.Equal(DomainMessageKeys.DemoBulkAnimalChangesDisabled, demo.Error!.MessageKey);
+        Assert.Equal(herd.ActiveStatusId, (await _context.Animals.FindAsync(herd.AnimalId))!.AnimalStatusId);
+        Assert.False(await _context.AnimalTimelineEvents.AnyAsync(e => e.AnimalId == herd.AnimalId));
+
+        currentUser.UserId = _realUserId;
+        var real = await service.BulkChangeStatusAsync(herd.FarmId, request);
+        Assert.True(real.IsSuccess, real.Error?.Message);
+        Assert.Equal(1, real.Value!.SuccessCount);
+        Assert.Equal(herd.SoldStatusId, (await _context.Animals.FindAsync(herd.AnimalId))!.AnimalStatusId);
+    }
+
+    [Fact]
+    public async Task Bulk_transfer_is_refused_for_the_demo_user_and_allowed_for_a_real_one()
+    {
+        var herd = await SeedHerdAsync();
+        var currentUser = new SwitchableCurrentUser(_demoUserId);
+        var service = CreateAnimalService(currentUser);
+
+        var request = new BulkTransferRequest
+        {
+            AnimalIds = new List<Guid> { herd.AnimalId },
+            ToLocationId = herd.FieldId,
+            Reason = "Rotating pasture"
+        };
+
+        var demo = await service.BulkTransferAsync(herd.FarmId, request);
+        Assert.False(demo.IsSuccess);
+        Assert.Equal(DomainMessageKeys.DemoBulkAnimalChangesDisabled, demo.Error!.MessageKey);
+        Assert.Equal(herd.BarnId, (await _context.Animals.FindAsync(herd.AnimalId))!.LocationId);
+        Assert.False(await _context.AnimalTransfers.AnyAsync(t => t.AnimalId == herd.AnimalId));
+
+        currentUser.UserId = _realUserId;
+        var real = await service.BulkTransferAsync(herd.FarmId, request);
+        Assert.True(real.IsSuccess, real.Error?.Message);
+        Assert.Equal(1, real.Value!.SuccessCount);
+        Assert.Equal(herd.FieldId, (await _context.Animals.FindAsync(herd.AnimalId))!.LocationId);
+        Assert.True(await _context.AnimalTransfers.AnyAsync(t => t.AnimalId == herd.AnimalId));
+    }
+
     // ── Helpers ─────────────────────────────────────────────────────────────────────────────
+
+    private sealed record Herd(
+        Guid FarmId, Guid AnimalId, Guid ActiveStatusId, Guid SoldStatusId, Guid BarnId, Guid FieldId);
+
+    private async Task<Herd> SeedHerdAsync()
+    {
+        var farm = new Farm { Id = Guid.NewGuid(), AccountId = _accountId, Name = "Farm" };
+        var type = new AnimalType { Id = Guid.NewGuid(), FarmId = farm.Id, Name = "Cow" };
+        var sex = new SexOption { Id = Guid.NewGuid(), FarmId = farm.Id, Value = "Female" };
+        var locationType = new LocationType { Id = Guid.NewGuid(), FarmId = farm.Id, Name = "Paddock" };
+        var active = new AnimalStatus
+        {
+            Id = Guid.NewGuid(), FarmId = farm.Id, Name = "Active", Category = AnimalStatusCategory.Active
+        };
+        var sold = new AnimalStatus
+        {
+            Id = Guid.NewGuid(), FarmId = farm.Id, Name = "Sold", Category = AnimalStatusCategory.Terminal
+        };
+        var barn = new Location
+        {
+            Id = Guid.NewGuid(), FarmId = farm.Id, Name = "Barn", LocationTypeId = locationType.Id
+        };
+        var field = new Location
+        {
+            Id = Guid.NewGuid(), FarmId = farm.Id, Name = "Field", LocationTypeId = locationType.Id
+        };
+        var animal = new Animal
+        {
+            Id = Guid.NewGuid(),
+            FarmId = farm.Id,
+            TagNumber = "DEMO-001",
+            AnimalTypeId = type.Id,
+            SexOptionId = sex.Id,
+            AnimalStatusId = active.Id,
+            LocationId = barn.Id
+        };
+
+        _context.AddRange(farm, type, sex, locationType, active, sold, barn, field, animal);
+        await _context.SaveChangesAsync();
+
+        return new Herd(farm.Id, animal.Id, active.Id, sold.Id, barn.Id, field.Id);
+    }
+
+    private AnimalService CreateAnimalService(ICurrentUserService currentUser) =>
+        new(_context, currentUser,
+            new FileStorageService(Path.Combine(Path.GetTempPath(), "fms-test-uploads")),
+            TestConfiguration.WithFrontend());
 
     private AuthService CreateAuthService()
     {

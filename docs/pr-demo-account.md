@@ -16,9 +16,9 @@ state by `POST /api/auth/demo-reset`.
 - **Farm-isolated.** The demo user owns only the demo farm; a demo session's writes are
   confined to it, and `demo-reset` restores the farm and its sample data.
 - **Restricted actions** are refused with a localisable `validation.demo.*` key:
-  password reset/change, real email, real payments (salary ledger), bulk export, and
-  (for the future) account deletion. See `DemoGuards` and
-  `EmailService.IsDemoRecipient`.
+  password reset/change, real email, real payments (salary ledger), bulk export, the
+  bulk animal writes (herd-wide status change and transfer), and (for the future)
+  account deletion. See `DemoGuards` and `EmailService.IsDemoRecipient`.
 - **Client:** a persistent `DemoBanner`, a "Try the demo" button on `LoginPage`, and
   translations for `en` / `es` / `ar` (RTL-aware) for the banner and the blocked-action
   messages.
