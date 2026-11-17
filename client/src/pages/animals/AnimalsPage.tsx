@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Card, Table, Button, Modal, Form, Input, Select, DatePicker, Space, Tag, Typography, message, Popconfirm, Row, Col, Tooltip } from 'antd';
+import { Card, Table, Button, Modal, Form, Input, DatePicker, Space, Tag, Typography, message, Popconfirm, Row, Col, Tooltip } from 'antd';
+import Select from '../../components/Select';
 import { flattenLocations, type AnimalType } from '../../api/configuration';
 import type { ColumnsType } from 'antd/es/table';
 import {

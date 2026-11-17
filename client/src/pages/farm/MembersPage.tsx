@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  Button, Card, Form, Input, Modal, Popconfirm, Select, Space, Table, Tag, Typography, message,
+  Button, Card, Form, Input, Modal, Popconfirm, Space, Table, Tag, Typography, message,
 } from 'antd';
+import Select from '../../components/Select';
 import type { ColumnsType } from 'antd/es/table';
 import { PlusOutlined, ReloadOutlined } from '@ant-design/icons';
 import { formatDate } from '../../i18n/format';

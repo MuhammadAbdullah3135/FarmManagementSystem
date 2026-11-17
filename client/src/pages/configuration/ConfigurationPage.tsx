@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  Button, Card, Col, Form, Input, InputNumber, Modal, Popconfirm, Row, Select, Switch, Table, Tabs, Tag, message,
+  Button, Card, Col, Form, Input, InputNumber, Modal, Popconfirm, Row, Switch, Table, Tabs, Tag, message,
 } from 'antd';
+import Select from '../../components/Select';
 import type { ColumnsType } from 'antd/es/table';
 import { PlusOutlined } from '@ant-design/icons';
 import { configurationApi } from '../../api/configuration';

@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Card, DatePicker, Select, Space, Table, Tag, message } from 'antd';
+import { Card, DatePicker, Space, Table, Tag, message } from 'antd';
+import Select from '../../components/Select';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs, { type Dayjs } from 'dayjs';
 import { inventoryApi } from '../../api/inventory';

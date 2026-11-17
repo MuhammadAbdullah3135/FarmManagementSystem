@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Alert, Button, Card, Form, Input, InputNumber, Select, Space, Typography, message } from 'antd';
+import { Alert, Button, Card, Form, Input, InputNumber, Space, Typography, message } from 'antd';
+import Select from '../../components/Select';
 import { useSearchParams } from 'react-router-dom';
 import { lookupsApi, type AnimalLookupRow } from '../../api/attendance';
 import { useCachedQuery } from '../../offline/cachedQuery';

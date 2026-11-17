@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { formatDate } from '../../i18n/format';
 import {
-  Alert, Button, Card, Col, DatePicker, Form, Input, Modal, Row, Select, Space, Table, Tag, Typography, message,
+  Alert, Button, Card, Col, DatePicker, Form, Input, Modal, Row, Space, Table, Tag, Typography, message,
 } from 'antd';
+import Select from '../../components/Select';
 import { PlusOutlined } from '@ant-design/icons';
 import { DirectionalIcon } from '../../i18n/DirectionalIcon';
 import type { ColumnsType } from 'antd/es/table';

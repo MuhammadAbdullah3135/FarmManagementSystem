@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react';
-import { Input, Select, Space } from 'antd';
+import { Input, Space } from 'antd';
+import Select from './Select';
 import { useTranslation } from 'react-i18next';
 
 export interface ReasonChoice {

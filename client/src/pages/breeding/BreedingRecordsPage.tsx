@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Card, Table, Button, Modal, Form, Select, DatePicker, Input, Space, Tag, message, Popconfirm, Row, Col } from 'antd';
+import { Card, Table, Button, Modal, Form, DatePicker, Input, Space, Tag, message, Popconfirm, Row, Col } from 'antd';
+import Select from '../../components/Select';
 import type { ColumnsType } from 'antd/es/table';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { breedingRecordsApi, type BreedingRecordListFilter, type CreateBreedingRecordPayload, type UpdateBreedingRecordPayload } from '../../api/breeding';

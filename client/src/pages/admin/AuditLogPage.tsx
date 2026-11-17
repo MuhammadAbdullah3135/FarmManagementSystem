@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Table, Card, Select, Input, DatePicker, Tag, Button, Space, Typography } from 'antd';
+import { Table, Card, Input, DatePicker, Tag, Button, Space, Typography } from 'antd';
+import Select from '../../components/Select';
 import { ReloadOutlined, SearchOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';

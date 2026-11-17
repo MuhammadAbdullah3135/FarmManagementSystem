@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Card, Col, DatePicker, Grid, Row, Select, Statistic, Table, message } from 'antd';
+import { Card, Col, DatePicker, Grid, Row, Statistic, Table, message } from 'antd';
+import Select from '../../components/Select';
 import { ArrowDownOutlined, ArrowUpOutlined, DollarOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import type { Dayjs } from 'dayjs';

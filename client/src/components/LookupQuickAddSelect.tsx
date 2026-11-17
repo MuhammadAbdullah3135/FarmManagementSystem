@@ -1,5 +1,6 @@
 import { useId, useState, type CSSProperties, type ReactElement } from 'react';
-import { Button, Divider, Form, Input, InputNumber, Modal, Select, Switch, message, type SelectProps } from 'antd';
+import { Button, Divider, Form, Input, InputNumber, Modal, Switch, message, type SelectProps } from 'antd';
+import Select from './Select';
 import { PlusOutlined } from '@ant-design/icons';
 import { getApiError } from '../api/farmApi';
 import {

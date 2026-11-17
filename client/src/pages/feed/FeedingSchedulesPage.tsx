@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  Button, Card, DatePicker, Form, Modal, Popconfirm, Select, Space, Switch, Table, TimePicker, Tag, message,
+  Button, Card, DatePicker, Form, Modal, Popconfirm, Space, Switch, Table, TimePicker, Tag, message,
 } from 'antd';
+import Select from '../../components/Select';
 import { PlusOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs, { Dayjs } from 'dayjs';

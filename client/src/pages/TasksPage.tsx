@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import {
-  Alert, Button, Card, Checkbox, Col, DatePicker, Form, Input, Modal, Popconfirm, Row, Select, Space, Table, Tag,
+  Alert, Button, Card, Checkbox, Col, DatePicker, Form, Input, Modal, Popconfirm, Row, Space, Table, Tag,
   Typography, message,
 } from 'antd';
+import Select from '../components/Select';
 import { PlusOutlined, PlayCircleOutlined, CheckOutlined, StopOutlined, UndoOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { formatDate } from '../i18n/format';
@@ -347,10 +348,7 @@ const TasksPage: React.FC = () => {const { t } = useTranslation('tasks');
           <Select allowClear placeholder={t('priority')} style={{ width: 120 }} value={filters.priority}
             onChange={(v) => applyFilters({ priority: v })}
             options={priorityOptions} />
-          {/* Virtualised, the popup's hidden listbox only mirrors the active option and its
-              neighbours, so assistive tech can never enumerate every assignee. A farm has few
-              employees, so render them all and expose the complete list instead. */}
-          <Select allowClear placeholder={t('assignee')} style={{ width: 180 }} virtual={false}
+          <Select allowClear placeholder={t('assignee')} style={{ width: 180 }}
             value={filters.assignedEmployeeId}
             onChange={(v) => applyFilters({ assignedEmployeeId: v })}
             options={employees.map((e) => ({ value: e.id, label: `${e.firstName} ${e.lastName}` }))} />
@@ -443,7 +441,7 @@ const TasksPage: React.FC = () => {const { t } = useTranslation('tasks');
             </Col>
           </Row>
           <Form.Item name="assignedEmployeeId" label={t('assignTo')}>
-            <Select allowClear showSearch optionFilterProp="label" virtual={false}
+            <Select allowClear showSearch optionFilterProp="label"
               options={employees.map((e) => ({ value: e.id, label: `${e.firstName} ${e.lastName}` }))}
               style={{ width: '100%' }} popupMatchSelectWidth={false} />
           </Form.Item>

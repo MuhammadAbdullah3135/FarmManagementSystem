@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react';
-import { Select } from 'antd';
+import Select from './Select';
 import { useTranslation } from 'react-i18next';
 
 export interface FormTemplate<T> {

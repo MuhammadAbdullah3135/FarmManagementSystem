@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, Button, Card, Empty, Input, Pagination, QRCode, Select, Space, Spin, Typography } from 'antd';
+import { Alert, Button, Card, Empty, Input, Pagination, QRCode, Space, Spin, Typography } from 'antd';
+import Select from '../../components/Select';
 import { PrinterOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { animalsApi, type AnimalQrLabel } from '../../api/animals';

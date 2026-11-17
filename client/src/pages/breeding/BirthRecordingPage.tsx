@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Card, Table, Button, Tag, Space, Col, Modal, Form, DatePicker, Input, InputNumber, Select, message, Descriptions, Empty, Popconfirm, Row } from 'antd';
+import { Card, Table, Button, Tag, Space, Col, Modal, Form, DatePicker, Input, InputNumber, message, Descriptions, Empty, Popconfirm, Row } from 'antd';
+import Select from '../../components/Select';
 import type { ColumnsType } from 'antd/es/table';
 import { PlusOutlined, DeleteOutlined, EyeOutlined } from '@ant-design/icons';
 import { birthsApi, gestationApi, breedingRecordsApi, type CreateBirthRecordPayload } from '../../api/breeding';

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Button, Card, Empty, InputNumber, Select, Space, Spin, Tag, Typography, message } from 'antd';
+import { Button, Card, Empty, InputNumber, Space, Spin, Tag, Typography, message } from 'antd';
+import Select from '../../components/Select';
 import { SearchOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { lookupsApi } from '../../api/attendance';
