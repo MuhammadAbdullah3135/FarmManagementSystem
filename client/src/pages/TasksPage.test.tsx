@@ -21,6 +21,7 @@ vi.mock('../api/sync', () => ({ syncApi: { applyMutations: vi.fn() } }));
 
 import TasksPage from './TasksPage';
 import { tasksApi } from '../api/tasks';
+import { employeesApi } from '../api/hr';
 import { syncApi } from '../api/sync';
 import { replaceCollection, resetOfflineDbConnection, touchSessionMarker } from '../offline/db';
 import { useOfflineStore } from '../offline/connectivity';
@@ -177,6 +178,65 @@ const completeTask = async (notes: string) => {
   await userEvent.type(within(dialog).getByRole('textbox'), notes);
   await userEvent.click(within(dialog).getByRole('button', { name: 'OK' }));
 };
+
+/**
+ * The list is server-paged, so a filter change has to return to page one: "page 3 of the overdue
+ * tasks" is a different question from "page 3 of everything", and the old page index usually
+ * points past the rows the filter leaves.
+ */
+describe('TasksPage filters', () => {
+  beforeEach(() => {
+    (globalThis as { indexedDB: IDBFactory }).indexedDB = new IDBFactory();
+    resetOfflineDbConnection();
+    resetSyncEngineForTests();
+    useQueueStore.setState({ revision: 0 });
+    vi.clearAllMocks();
+    useOfflineStore.setState({
+      isOnline: true,
+      storageAvailable: true,
+      stats: { recordCount: 0, collectionCount: 0, lastSyncedAt: null },
+    });
+    useAuthStore.setState({ user, isAuthenticated: true });
+    useFarmStore.setState({ farms: [farm], activeFarm: farm, isLoading: false, error: null });
+    vi.mocked(employeesApi.list).mockResolvedValue(
+      { data: { items: [], totalCount: 0 } } as never,
+    );
+  });
+
+  it('returns to the first page when a filter changes', async () => {
+    vi.mocked(tasksApi.list).mockResolvedValue({
+      data: {
+        items: [
+          {
+            id: 't-1',
+            title: 'Repair the fence',
+            priority: 'High',
+            status: 'Pending',
+            dueDate: '2026-09-24T00:00:00.000Z',
+            isOverdue: false,
+          },
+        ],
+        totalCount: 30,
+      },
+    } as never);
+
+    render(<TasksPage />);
+    await screen.findByText('Repair the fence');
+
+    await userEvent.click(await screen.findByTitle('2'));
+    await waitFor(() =>
+      expect(tasksApi.list).toHaveBeenLastCalledWith(expect.objectContaining({ page: 2 })),
+    );
+
+    await userEvent.click(screen.getByText('Overdue only'));
+
+    await waitFor(() =>
+      expect(tasksApi.list).toHaveBeenLastCalledWith(
+        expect.objectContaining({ page: 1, overdueOnly: true }),
+      ),
+    );
+  }, 20000);
+});
 
 /**
  * Task completion is fieldwork, so 4.5.5 puts it on the same outbox machinery as a weight:

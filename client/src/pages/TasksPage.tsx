@@ -30,16 +30,18 @@ const { Text } = Typography;
 const PRIORITY_COLORS: Record<FarmTaskPriority, string> = { Low: 'default', Medium: 'blue', High: 'red' };
 const STATUS_COLORS: Record<FarmTaskStatus, string> = { Pending: 'gold', InProgress: 'processing', Completed: 'green', Cancelled: 'default' };
 
+interface TaskFilters {
+  status?: string;
+  priority?: string;
+  assignee?: string;
+  overdueOnly?: boolean;
+}
+
 const TasksPage: React.FC = () => {const { t } = useTranslation('tasks'); 
   const statusOptions = useEnumOptions('taskStatus');
   const priorityOptions = useEnumOptions('taskPriority');
   const [page, setPage] = useState(1);
-  const [filters, setFilters] = useState<{
-    status?: string;
-    priority?: string;
-    assignee?: string;
-    overdueOnly?: boolean;
-  }>({});
+  const [filters, setFilters] = useState<TaskFilters>({});
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<FarmTask | null>(null);
   const [notesTarget, setNotesTarget] = useState<{ id: string; action: 'complete' | 'cancel' } | null>(null);
@@ -49,6 +51,16 @@ const TasksPage: React.FC = () => {const { t } = useTranslation('tasks');
   const accountId = useAuthStore((state) => state.user?.accountId ?? null);
   const farmId = useFarmStore((state) => state.activeFarm?.id ?? null);
   const scope = accountId && farmId ? { accountId, farmId } : null;
+
+  /**
+   * A filter change re-answers the question, so it starts from the first page: page 3 of the old
+   * filter is not page 3 of the new one, and asking for it usually lands on a set of rows that
+   * does not exist.
+   */
+  const applyFilters = (patch: Partial<TaskFilters>) => {
+    setFilters((previous) => ({ ...previous, ...patch }));
+    setPage(1);
+  };
 
   const isOnline = useOfflineStore((store) => store.isOnline);
   const isFlushing = useSyncStore((store) => store.isFlushing);
@@ -312,16 +324,16 @@ const TasksPage: React.FC = () => {const { t } = useTranslation('tasks');
       extra={
         <Space wrap>
           <Select allowClear placeholder={t('status')} style={{ width: 120 }} value={filters.status}
-            onChange={(v) => setFilters((f) => ({ ...f, status: v }))}
+            onChange={(v) => applyFilters({ status: v })}
             options={statusOptions} />
           <Select allowClear placeholder={t('priority')} style={{ width: 120 }} value={filters.priority}
-            onChange={(v) => setFilters((f) => ({ ...f, priority: v }))}
+            onChange={(v) => applyFilters({ priority: v })}
             options={priorityOptions} />
           <Select allowClear placeholder={t('assignee')} style={{ width: 180 }} value={filters.assignee}
-            onChange={(v) => setFilters((f) => ({ ...f, assignee: v }))}
+            onChange={(v) => applyFilters({ assignee: v })}
             options={employees.map((e) => ({ value: e.id, label: `${e.firstName} ${e.lastName}` }))} />
           <Checkbox checked={filters.overdueOnly}
-            onChange={(e) => setFilters((f) => ({ ...f, overdueOnly: e.target.checked }))}>
+            onChange={(e) => applyFilters({ overdueOnly: e.target.checked })}>
             {t('overdueOnly')}
           </Checkbox>
           <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>{t('newTask')}</Button>
