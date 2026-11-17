@@ -53,9 +53,6 @@ const resolvePage = (raw: string | null) => {
 const resolvePageSize = (raw: string | null) =>
   raw !== null && PAGE_SIZE_OPTIONS.includes(raw) ? Number(raw) : DEFAULT_PAGE_SIZE;
 
-/** A query parameter as a filter value: absent and empty both mean "not filtered". */
-const readParam = (params: URLSearchParams, key: string) => params.get(key) || undefined;
-
 /** Indents nested location labels so the tree structure is visible in the select. */
 const indentLocationLabel = (name: string, depth: number) => `${'\u00A0\u00A0'.repeat(depth)}${name}`;
 
@@ -65,17 +62,13 @@ export default function AnimalsPage() {const { t: translate } = useTranslation('
   const [data, setData] = useState<AnimalListItem[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
-  /*
-   * The URL is this list's view state. Reading the filters, page and page size from it means a
-   * reload lands on the same rows, and a link to "page 3, only the cows, 50 per page" is a link
-   * that still shows that after it has been shared or bookmarked.
-   */
+  // The URL is this list's view state, so a reload or a shared link shows the same rows.
   const filters = useMemo<ListFilters>(() => ({
-    search: readParam(searchParams, 'search'),
-    animalTypeId: readParam(searchParams, 'animalTypeId'),
-    statusId: readParam(searchParams, 'statusId'),
-    locationId: readParam(searchParams, 'locationId'),
-    sexOptionId: readParam(searchParams, 'sexOptionId'),
+    search: searchParams.get('search') || undefined,
+    animalTypeId: searchParams.get('animalTypeId') || undefined,
+    statusId: searchParams.get('statusId') || undefined,
+    locationId: searchParams.get('locationId') || undefined,
+    sexOptionId: searchParams.get('sexOptionId') || undefined,
   }), [searchParams]);
   const page = resolvePage(searchParams.get('page'));
   const pageSize = resolvePageSize(searchParams.get('pageSize'));
@@ -160,15 +153,12 @@ export default function AnimalsPage() {const { t: translate } = useTranslation('
     }
   }, [page, pageSize, filters]);
 
-  /**
-   * Writes one change into the URL and leaves the rest of it alone. `replace` because paging and
-   * filtering should not fill the Back button with views the user never meant to return to.
-   */
+  /** Writes one change into the URL, leaving the rest alone; `replace` keeps Back out of the pager. */
   const updateParams = (patch: Record<string, string | number | undefined>) => {
     setSearchParams((previous) => {
       const next = new URLSearchParams(previous);
       for (const [key, value] of Object.entries(patch)) {
-        if (value === undefined || value === '') next.delete(key);
+        if (value === undefined) next.delete(key);
         else next.set(key, String(value));
       }
       return next;
