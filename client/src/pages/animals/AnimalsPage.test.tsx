@@ -6,6 +6,7 @@ import AnimalsPage from './AnimalsPage';
 import { animalsApi } from '../../api/animals';
 import { lookupsApi } from '../../api/attendance';
 import { configurationApi } from '../../api/configuration';
+import { useAuthStore } from '../../stores/authStore';
 
 vi.mock('../../api/animals', () => ({
         animalsApi: {
@@ -52,6 +53,8 @@ const res = (data: unknown) => ({ data }) as never;
 type User = ReturnType<typeof userEvent.setup>;
 
 beforeEach(() => {
+  // Every test starts as a real signed-in user; the demo cases set the flag themselves.
+  useAuthStore.setState({ user: null, isAuthenticated: false });
   vi.mocked(animalsApi.list).mockResolvedValue(res({ items: [], totalCount: 0 }));
   vi.mocked(lookupsApi.animalTypes).mockResolvedValue(res([{ id: 't1', name: 'Cattle' }]));
   vi.mocked(lookupsApi.sexOptions).mockResolvedValue(res([{ id: 's1', value: 'Female' }]));
@@ -702,6 +705,38 @@ describe('AnimalsPage bulk actions', () => {
         reason: undefined,
       }),
     );
+  }, 20000);
+
+  it('disables the bulk actions and says why for the demo account', async () => {
+    const user = userEvent.setup();
+    twoAnimals();
+    useAuthStore.setState({
+      isAuthenticated: true,
+      user: {
+        userId: 'demo-1',
+        accountId: 'acct-1',
+        email: 'demo@farm.local',
+        firstName: 'Demo',
+        lastName: 'User',
+        roles: ['SystemOwner'],
+        isDemo: true,
+      },
+    });
+    renderPage();
+
+    await screen.findByText('TAG-0079');
+    await selectBothRows(user);
+
+    // The server refuses these writes for the demo account, so the buttons are disabled with the
+    // reason attached rather than left to fail after the visitor has chosen a status.
+    const changeStatus = screen.getByRole('button', { name: /change status/i });
+    expect(changeStatus).toBeDisabled();
+    expect(screen.getByRole('button', { name: /transfer to location/i })).toBeDisabled();
+
+    await user.hover(changeStatus);
+    expect(
+      await screen.findByText('Bulk changes are disabled for the demo account.'),
+    ).toBeInTheDocument();
   }, 20000);
 
   it('reports a partial result and keeps the reason the user typed', async () => {

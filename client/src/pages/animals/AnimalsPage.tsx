@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Card, Table, Button, Modal, Form, Input, Select, DatePicker, Space, Tag, Typography, message, Popconfirm, Row, Col } from 'antd';
+import { Card, Table, Button, Modal, Form, Input, Select, DatePicker, Space, Tag, Typography, message, Popconfirm, Row, Col, Tooltip } from 'antd';
 import { flattenLocations, type AnimalType } from '../../api/configuration';
 import type { ColumnsType } from 'antd/es/table';
 import {
@@ -16,6 +16,7 @@ import { formatDate } from '../../i18n/format';
 import { parentCandidates } from '../../utils/animalSex';
 import dayjs from 'dayjs';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useAuthStore } from '../../stores/authStore';
 import type { AnimalListItem } from '../../types';
 import { useTranslation } from 'react-i18next';
 
@@ -58,6 +59,9 @@ const indentLocationLabel = (name: string, depth: number) => `${'\u00A0\u00A0'.r
 
 export default function AnimalsPage() {const { t: translate } = useTranslation('animals'); 
   const navigate = useNavigate();
+  // Sign-out nulls the user, so the flag itself is the whole check.
+  const isDemo = useAuthStore((state) => Boolean(state.user?.isDemo));
+  const demoBulkHint = isDemo ? translate('bulkDisabledForDemo') : undefined;
   const [searchParams, setSearchParams] = useSearchParams();
   const [data, setData] = useState<AnimalListItem[]>([]);
   const [total, setTotal] = useState(0);
@@ -574,12 +578,22 @@ export default function AnimalsPage() {const { t: translate } = useTranslation('
         {selectedRowKeys.length > 0 && (
           <Space wrap style={{ marginBottom: 12 }}>
             <Text strong>{translate('selectedCount', { count: selectedRowKeys.length })}</Text>
-            <Button icon={<CheckCircleOutlined />} onClick={() => openBulk('status')}>
-              {translate('changeStatus')}
-            </Button>
-            <Button icon={<SwapOutlined />} onClick={() => openBulk('transfer')}>
-              {translate('transferToLocation')}
-            </Button>
+            {/* Stated at the button the API refuses, not after a status has been picked and Apply
+                pressed; the buttons stay visible because the demo shows what the app can do. */}
+            <Tooltip title={demoBulkHint}>
+              <span>
+                <Button icon={<CheckCircleOutlined />} disabled={isDemo} onClick={() => openBulk('status')}>
+                  {translate('changeStatus')}
+                </Button>
+              </span>
+            </Tooltip>
+            <Tooltip title={demoBulkHint}>
+              <span>
+                <Button icon={<SwapOutlined />} disabled={isDemo} onClick={() => openBulk('transfer')}>
+                  {translate('transferToLocation')}
+                </Button>
+              </span>
+            </Tooltip>
             <Button type="link" onClick={() => setSelectedRowKeys([])}>
               {translate('clearSelection')}
             </Button>

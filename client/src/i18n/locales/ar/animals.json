@@ -96,6 +96,7 @@
   "allSexes": "كل الأجناس",
   "allStatuses": "كل الحالات",
   "apply": "تطبيق",
+  "bulkDisabledForDemo": "التغييرات الجماعية معطّلة للحساب التجريبي.",
   "bulkRefused": "رفض الخادم {{count}}",
   "bulkStatusFinished": "تم تحديث {{count}} من {{total}} حيوانًا",
   "bulkTransferFinished": "تم نقل {{count}} من {{total}} حيوانًا",

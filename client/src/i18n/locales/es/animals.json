@@ -96,6 +96,7 @@
   "allSexes": "Todos los sexos",
   "allStatuses": "Todos los estados",
   "apply": "Aplicar",
+  "bulkDisabledForDemo": "Los cambios masivos están deshabilitados para la cuenta de demo.",
   "bulkRefused": "El servidor rechazó {{count}}",
   "bulkStatusFinished": "{{count}} de {{total}} animales actualizados",
   "bulkTransferFinished": "{{count}} de {{total}} animales trasladados",

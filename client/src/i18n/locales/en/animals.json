@@ -96,6 +96,7 @@
   "allSexes": "All sexes",
   "allStatuses": "All statuses",
   "apply": "Apply",
+  "bulkDisabledForDemo": "Bulk changes are disabled for the demo account.",
   "bulkRefused": "{{count}} were refused by the server",
   "bulkStatusFinished": "{{count}} of {{total}} animals updated",
   "bulkTransferFinished": "{{count}} of {{total}} animals transferred",
