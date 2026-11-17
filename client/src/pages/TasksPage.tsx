@@ -347,7 +347,11 @@ const TasksPage: React.FC = () => {const { t } = useTranslation('tasks');
           <Select allowClear placeholder={t('priority')} style={{ width: 120 }} value={filters.priority}
             onChange={(v) => applyFilters({ priority: v })}
             options={priorityOptions} />
-          <Select allowClear placeholder={t('assignee')} style={{ width: 180 }} value={filters.assignedEmployeeId}
+          {/* Virtualised, the popup's hidden listbox only mirrors the active option and its
+              neighbours, so assistive tech can never enumerate every assignee. A farm has few
+              employees, so render them all and expose the complete list instead. */}
+          <Select allowClear placeholder={t('assignee')} style={{ width: 180 }} virtual={false}
+            value={filters.assignedEmployeeId}
             onChange={(v) => applyFilters({ assignedEmployeeId: v })}
             options={employees.map((e) => ({ value: e.id, label: `${e.firstName} ${e.lastName}` }))} />
           <Checkbox checked={filters.includeOverdueOnly}
@@ -439,7 +443,7 @@ const TasksPage: React.FC = () => {const { t } = useTranslation('tasks');
             </Col>
           </Row>
           <Form.Item name="assignedEmployeeId" label={t('assignTo')}>
-            <Select allowClear showSearch optionFilterProp="label"
+            <Select allowClear showSearch optionFilterProp="label" virtual={false}
               options={employees.map((e) => ({ value: e.id, label: `${e.firstName} ${e.lastName}` }))}
               style={{ width: '100%' }} popupMatchSelectWidth={false} />
           </Form.Item>
