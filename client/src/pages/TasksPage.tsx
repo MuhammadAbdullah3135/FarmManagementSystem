@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import {
   Alert, Button, Card, Checkbox, Col, DatePicker, Form, Input, Modal, Popconfirm, Row, Select, Space, Table, Tag,
   Typography, message,
@@ -50,14 +50,16 @@ const TasksPage: React.FC = () => {const { t } = useTranslation('tasks');
   const statusOptions = useEnumOptions('taskStatus');
   const priorityOptions = useEnumOptions('taskPriority');
   const [searchParams, setSearchParams] = useSearchParams();
-  // The URL is this list's view state, so a reload or a shared link shows the same rows.
+  // The URL is this list's view state, so a reload or a shared link shows the same rows. The
+  // object is rebuilt each render on purpose: the query is keyed by `paramsKey` below, and
+  // `useCachedQuery` reads the fetcher from a ref, so its identity is not a dependency.
   const page = resolvePage(searchParams.get('page'));
-  const filters = useMemo<TaskListFilters>(() => ({
+  const filters: TaskListFilters = {
     status: searchParams.get('status') || undefined,
     priority: searchParams.get('priority') || undefined,
     assignedEmployeeId: searchParams.get('assignedEmployeeId') || undefined,
     includeOverdueOnly: searchParams.get('includeOverdueOnly') === '1' || undefined,
-  }), [searchParams]);
+  };
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<FarmTask | null>(null);
   const [notesTarget, setNotesTarget] = useState<{ id: string; action: 'complete' | 'cancel' } | null>(null);
