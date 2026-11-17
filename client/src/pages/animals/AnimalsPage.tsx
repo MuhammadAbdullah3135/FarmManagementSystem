@@ -14,8 +14,9 @@ import LookupQuickAddSelect, { type CreatedLookup } from '../../components/Looku
 import type { LookupKind } from '../../components/lookupQuickAdd';
 import { formatDate } from '../../i18n/format';
 import { parentCandidates } from '../../utils/animalSex';
+import { resolvePage, useListParams } from '../../utils/listParams';
 import dayjs from 'dayjs';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
 import type { AnimalListItem } from '../../types';
 import { useTranslation } from 'react-i18next';
@@ -44,12 +45,6 @@ type BulkAction = 'status' | 'transfer';
 const PAGE_SIZE_OPTIONS = ['10', '20', '50', '100'];
 const DEFAULT_PAGE_SIZE = 10;
 
-/** The page the URL asks for; anything unreadable falls back to the first page. */
-const resolvePage = (raw: string | null) => {
-  const parsed = Number(raw);
-  return Number.isInteger(parsed) && parsed > 1 ? parsed : 1;
-};
-
 /** The page size the URL asks for; only a size the control offers is honoured. */
 const resolvePageSize = (raw: string | null) =>
   raw !== null && PAGE_SIZE_OPTIONS.includes(raw) ? Number(raw) : DEFAULT_PAGE_SIZE;
@@ -62,7 +57,7 @@ export default function AnimalsPage() {const { t: translate } = useTranslation('
   // Sign-out nulls the user, so the flag itself is the whole check.
   const isDemo = useAuthStore((state) => Boolean(state.user?.isDemo));
   const demoBulkHint = isDemo ? translate('bulkDisabledForDemo') : undefined;
-  const [searchParams, setSearchParams] = useSearchParams();
+  const { searchParams, updateParams } = useListParams();
   const [data, setData] = useState<AnimalListItem[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -156,18 +151,6 @@ export default function AnimalsPage() {const { t: translate } = useTranslation('
       setLoading(false);
     }
   }, [page, pageSize, filters]);
-
-  /** Writes one change into the URL, leaving the rest alone; `replace` keeps Back out of the pager. */
-  const updateParams = (patch: Record<string, string | number | undefined>) => {
-    setSearchParams((previous) => {
-      const next = new URLSearchParams(previous);
-      for (const [key, value] of Object.entries(patch)) {
-        if (value === undefined) next.delete(key);
-        else next.set(key, String(value));
-      }
-      return next;
-    }, { replace: true });
-  };
 
   /** Re-reads the first page after a write, whatever page the user was on. */
   const refresh = () => {

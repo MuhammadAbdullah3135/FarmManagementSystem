@@ -24,7 +24,7 @@ import { useFarmStore } from '../stores/farmStore';
 import type { Employee, FarmTask, FarmTaskPriority, FarmTaskStatus } from '../types';
 import { useTranslation } from 'react-i18next';
 import { useEnumOptions, enumLabelOf } from '../i18n/enumOptions';
-import { useSearchParams } from 'react-router-dom';
+import { resolvePage, useListParams } from '../utils/listParams';
 
 const { Text } = Typography;
 
@@ -40,16 +40,10 @@ type TaskListFilters = Pick<
   'status' | 'priority' | 'assignedEmployeeId' | 'includeOverdueOnly'
 >;
 
-/** The page the URL asks for; anything unreadable falls back to the first page. */
-const resolvePage = (raw: string | null) => {
-  const parsed = Number(raw);
-  return Number.isInteger(parsed) && parsed > 1 ? parsed : 1;
-};
-
 const TasksPage: React.FC = () => {const { t } = useTranslation('tasks'); 
   const statusOptions = useEnumOptions('taskStatus');
   const priorityOptions = useEnumOptions('taskPriority');
-  const [searchParams, setSearchParams] = useSearchParams();
+  const { searchParams, updateParams } = useListParams();
   // The URL is this list's view state, so a reload or a shared link shows the same rows. The
   // object is rebuilt each render on purpose: the query is keyed by `paramsKey` below, and
   // `useCachedQuery` reads the fetcher from a ref, so its identity is not a dependency.
@@ -69,18 +63,6 @@ const TasksPage: React.FC = () => {const { t } = useTranslation('tasks');
   const accountId = useAuthStore((state) => state.user?.accountId ?? null);
   const farmId = useFarmStore((state) => state.activeFarm?.id ?? null);
   const scope = accountId && farmId ? { accountId, farmId } : null;
-
-  /** Writes one change into the URL, leaving the rest alone; `replace` keeps Back out of the pager. */
-  const updateParams = (patch: Record<string, string | number | undefined>) => {
-    setSearchParams((previous) => {
-      const next = new URLSearchParams(previous);
-      for (const [key, value] of Object.entries(patch)) {
-        if (value === undefined) next.delete(key);
-        else next.set(key, String(value));
-      }
-      return next;
-    }, { replace: true });
-  };
 
   /**
    * A filter change re-answers the question, so it returns to the first page: page 3 of the old
