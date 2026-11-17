@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Alert, Button, Card, Checkbox, Col, DatePicker, Form, Input, Modal, Popconfirm, Row, Select, Space, Table, Tag,
   Typography, message,
@@ -7,7 +7,7 @@ import { PlusOutlined, PlayCircleOutlined, CheckOutlined, StopOutlined, UndoOutl
 import type { ColumnsType } from 'antd/es/table';
 import { formatDate } from '../i18n/format';
 import dayjs from 'dayjs';
-import { tasksApi } from '../api/tasks';
+import { tasksApi, type FarmTaskListFilter } from '../api/tasks';
 import { employeesApi } from '../api/hr';
 import { getApiError } from '../api/farmApi';
 import { useCachedQuery } from '../offline/cachedQuery';
@@ -24,24 +24,40 @@ import { useFarmStore } from '../stores/farmStore';
 import type { Employee, FarmTask, FarmTaskPriority, FarmTaskStatus } from '../types';
 import { useTranslation } from 'react-i18next';
 import { useEnumOptions, enumLabelOf } from '../i18n/enumOptions';
+import { useSearchParams } from 'react-router-dom';
 
 const { Text } = Typography;
 
 const PRIORITY_COLORS: Record<FarmTaskPriority, string> = { Low: 'default', Medium: 'blue', High: 'red' };
 const STATUS_COLORS: Record<FarmTaskStatus, string> = { Pending: 'gold', InProgress: 'processing', Completed: 'green', Cancelled: 'default' };
 
-interface TaskFilters {
-  status?: string;
-  priority?: string;
-  assignee?: string;
-  overdueOnly?: boolean;
-}
+/**
+ * The filters this list owns, under the API's own field names: one vocabulary for the query
+ * string, the request and the service below, so no filter can be sent under a name nobody reads.
+ */
+type TaskListFilters = Pick<
+  FarmTaskListFilter,
+  'status' | 'priority' | 'assignedEmployeeId' | 'includeOverdueOnly'
+>;
+
+/** The page the URL asks for; anything unreadable falls back to the first page. */
+const resolvePage = (raw: string | null) => {
+  const parsed = Number(raw);
+  return Number.isInteger(parsed) && parsed > 1 ? parsed : 1;
+};
 
 const TasksPage: React.FC = () => {const { t } = useTranslation('tasks'); 
   const statusOptions = useEnumOptions('taskStatus');
   const priorityOptions = useEnumOptions('taskPriority');
-  const [page, setPage] = useState(1);
-  const [filters, setFilters] = useState<TaskFilters>({});
+  const [searchParams, setSearchParams] = useSearchParams();
+  // The URL is this list's view state, so a reload or a shared link shows the same rows.
+  const page = resolvePage(searchParams.get('page'));
+  const filters = useMemo<TaskListFilters>(() => ({
+    status: searchParams.get('status') || undefined,
+    priority: searchParams.get('priority') || undefined,
+    assignedEmployeeId: searchParams.get('assignedEmployeeId') || undefined,
+    includeOverdueOnly: searchParams.get('includeOverdueOnly') === '1' || undefined,
+  }), [searchParams]);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<FarmTask | null>(null);
   const [notesTarget, setNotesTarget] = useState<{ id: string; action: 'complete' | 'cancel' } | null>(null);
@@ -52,14 +68,30 @@ const TasksPage: React.FC = () => {const { t } = useTranslation('tasks');
   const farmId = useFarmStore((state) => state.activeFarm?.id ?? null);
   const scope = accountId && farmId ? { accountId, farmId } : null;
 
+  /** Writes one change into the URL, leaving the rest alone; `replace` keeps Back out of the pager. */
+  const updateParams = (patch: Record<string, string | number | undefined>) => {
+    setSearchParams((previous) => {
+      const next = new URLSearchParams(previous);
+      for (const [key, value] of Object.entries(patch)) {
+        if (value === undefined) next.delete(key);
+        else next.set(key, String(value));
+      }
+      return next;
+    }, { replace: true });
+  };
+
   /**
-   * A filter change re-answers the question, so it starts from the first page: page 3 of the old
-   * filter is not page 3 of the new one, and asking for it usually lands on a set of rows that
-   * does not exist.
+   * A filter change re-answers the question, so it returns to the first page: page 3 of the old
+   * filter is not page 3 of the new one, and asking for it usually lands on rows that do not exist.
    */
-  const applyFilters = (patch: Partial<TaskFilters>) => {
-    setFilters((previous) => ({ ...previous, ...patch }));
-    setPage(1);
+  const applyFilters = (patch: Partial<TaskListFilters>) => {
+    const next = { ...filters, ...patch };
+    updateParams({
+      ...next,
+      // A flag reads better in a URL as 1 than as true, and absence already means "off".
+      includeOverdueOnly: next.includeOverdueOnly ? 1 : undefined,
+      page: undefined,
+    });
   };
 
   const isOnline = useOfflineStore((store) => store.isOnline);
@@ -70,7 +102,9 @@ const TasksPage: React.FC = () => {const { t } = useTranslation('tasks');
    * field worker opens with no signal. Filtered and paginated views are live queries:
    * they are deliberately never written to the device.
    */
-  const hasFilters = Boolean(filters.status || filters.priority || filters.assignee || filters.overdueOnly);
+  const hasFilters = Boolean(
+    filters.status || filters.priority || filters.assignedEmployeeId || filters.includeOverdueOnly,
+  );
   const tasksQuery = useCachedQuery<FarmTask>({
     collection: 'tasks',
     variant: 'firstPage',
@@ -78,7 +112,7 @@ const TasksPage: React.FC = () => {const { t } = useTranslation('tasks');
     // whose rows were never stored, so there is nothing for a delta to merge into.
     supportsDelta: true,
     cacheable: page === 1 && !hasFilters,
-    paramsKey: `${page}|${filters.status ?? ''}|${filters.priority ?? ''}|${filters.assignee ?? ''}|${filters.overdueOnly ? '1' : '0'}`,
+    paramsKey: `${page}|${filters.status ?? ''}|${filters.priority ?? ''}|${filters.assignedEmployeeId ?? ''}|${filters.includeOverdueOnly ? '1' : '0'}`,
     fetcher: async (cursor) => {
       const res = await tasksApi.list({ ...filters, page, pageSize: 10, updatedSince: cursor });
       const data = res.data;
@@ -329,11 +363,11 @@ const TasksPage: React.FC = () => {const { t } = useTranslation('tasks');
           <Select allowClear placeholder={t('priority')} style={{ width: 120 }} value={filters.priority}
             onChange={(v) => applyFilters({ priority: v })}
             options={priorityOptions} />
-          <Select allowClear placeholder={t('assignee')} style={{ width: 180 }} value={filters.assignee}
-            onChange={(v) => applyFilters({ assignee: v })}
+          <Select allowClear placeholder={t('assignee')} style={{ width: 180 }} value={filters.assignedEmployeeId}
+            onChange={(v) => applyFilters({ assignedEmployeeId: v })}
             options={employees.map((e) => ({ value: e.id, label: `${e.firstName} ${e.lastName}` }))} />
-          <Checkbox checked={filters.overdueOnly}
-            onChange={(e) => applyFilters({ overdueOnly: e.target.checked })}>
+          <Checkbox checked={filters.includeOverdueOnly}
+            onChange={(e) => applyFilters({ includeOverdueOnly: e.target.checked })}>
             {t('overdueOnly')}
           </Checkbox>
           <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>{t('newTask')}</Button>
@@ -372,7 +406,12 @@ const TasksPage: React.FC = () => {const { t } = useTranslation('tasks');
         columns={columns}
         dataSource={tasks}
         loading={tasksQuery.isLoading}
-        pagination={{ current: page, total: tasksQuery.total, pageSize: 10, onChange: setPage }}
+        pagination={{
+          current: page,
+          total: tasksQuery.total,
+          pageSize: 10,
+          onChange: (next) => updateParams({ page: next === 1 ? undefined : next }),
+        }}
       />
 
       <div style={{ marginTop: 16 }}>

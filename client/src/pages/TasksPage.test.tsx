@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor, within } from '@testing-library/react';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 import userEvent from '@testing-library/user-event';
 import 'fake-indexeddb/auto';
 import { IDBFactory } from 'fake-indexeddb';
@@ -50,6 +51,20 @@ const user: User = {
   roles: ['FarmManager'],
 };
 const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString();
+
+/** Shows the current query string, so a test can assert what the URL carries. */
+const LocationProbe = () => {
+  const location = useLocation();
+  return <div data-testid="location-search">{location.search}</div>;
+};
+
+const renderPage = (entry = '/tasks') =>
+  render(
+    <MemoryRouter initialEntries={[entry]}>
+      <TasksPage />
+      <LocationProbe />
+    </MemoryRouter>,
+  );
 
 /**
  * The offline acceptance criterion for the cached work lists (4.5.2): with the API
@@ -108,7 +123,7 @@ describe('TasksPage offline', () => {
       { fetchedAt: twoDaysAgo },
     );
 
-    render(<TasksPage />);
+    renderPage();
 
     expect(await screen.findByText('Repair the fence')).toBeInTheDocument();
     expect(screen.getByText('Synced 2 days ago')).toBeInTheDocument();
@@ -119,7 +134,7 @@ describe('TasksPage offline', () => {
   });
 
   it('shows no freshness label when the device has nothing stored', async () => {
-    render(<TasksPage />);
+    renderPage();
 
     // An empty table (as an empty farm looks online) — honest, and no sync claim.
     expect(await screen.findByText('Title')).toBeInTheDocument();
@@ -170,7 +185,7 @@ const cacheTask = async () => {
 
 /** Completes the cached task through the modal and returns nothing: the queue is the assertion. */
 const completeTask = async (notes: string) => {
-  render(<TasksPage />);
+  renderPage();
   await screen.findByText('Repair the fence');
 
   await userEvent.click(screen.getByLabelText('Complete task'));
@@ -203,6 +218,31 @@ describe('TasksPage filters', () => {
     );
   });
 
+  it('restores the page and filters a reloaded URL asks for', async () => {
+    vi.mocked(tasksApi.list).mockResolvedValue({ data: { items: [], totalCount: 40 } } as never);
+
+    renderPage('/tasks?page=2&status=Pending');
+
+    await waitFor(() =>
+      expect(tasksApi.list).toHaveBeenCalledWith(
+        expect.objectContaining({ page: 2, status: 'Pending' }),
+      ),
+    );
+  });
+
+  it('writes a filter change into the URL, so a reload keeps it', async () => {
+    vi.mocked(tasksApi.list).mockResolvedValue({ data: { items: [], totalCount: 0 } } as never);
+
+    renderPage();
+    await screen.findByText('Title');
+
+    await userEvent.click(screen.getByText('Overdue only'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('location-search').textContent).toContain('includeOverdueOnly=1'),
+    );
+  });
+
   it('returns to the first page when a filter changes', async () => {
     vi.mocked(tasksApi.list).mockResolvedValue({
       data: {
@@ -220,7 +260,7 @@ describe('TasksPage filters', () => {
       },
     } as never);
 
-    render(<TasksPage />);
+    renderPage();
     await screen.findByText('Repair the fence');
 
     await userEvent.click(await screen.findByTitle('2'));
@@ -232,7 +272,7 @@ describe('TasksPage filters', () => {
 
     await waitFor(() =>
       expect(tasksApi.list).toHaveBeenLastCalledWith(
-        expect.objectContaining({ page: 1, overdueOnly: true }),
+        expect.objectContaining({ page: 1, includeOverdueOnly: true }),
       ),
     );
   }, 20000);
@@ -355,7 +395,7 @@ describe('TasksPage completion queue', () => {
     await cacheTask();
     vi.mocked(tasksApi.cancel).mockResolvedValue({ data: {} } as never);
 
-    render(<TasksPage />);
+    renderPage();
     await screen.findByText('Repair the fence');
     await userEvent.click(screen.getByLabelText('Cancel task'));
 
