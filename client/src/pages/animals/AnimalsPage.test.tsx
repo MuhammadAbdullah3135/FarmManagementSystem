@@ -1,19 +1,21 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, within, fireEvent } from '@testing-library/react';
+import { render, screen, within, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 import AnimalsPage from './AnimalsPage';
 import { animalsApi } from '../../api/animals';
 import { lookupsApi } from '../../api/attendance';
 import { configurationApi } from '../../api/configuration';
 
 vi.mock('../../api/animals', () => ({
-  animalsApi: {
-    list: vi.fn(),
-    create: vi.fn(),
-    update: vi.fn(),
-    delete: vi.fn(),
-  },
+        animalsApi: {
+        list: vi.fn(),
+        create: vi.fn(),
+        update: vi.fn(),
+        delete: vi.fn(),
+        bulkChangeStatus: vi.fn(),
+        bulkTransfer: vi.fn(),
+      },
 }));
 
 vi.mock('../../api/attendance', () => ({
@@ -71,10 +73,17 @@ beforeEach(() => {
   vi.mocked(configurationApi.createLocationType).mockReset();
 });
 
-const renderPage = () =>
+/** Shows the current query string, so a test can assert what the URL carries. */
+const LocationProbe = () => {
+  const location = useLocation();
+  return <div data-testid="location-search">{location.search}</div>;
+};
+
+const renderPage = (entry = '/dashboard/animals') =>
   render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={[entry]}>
       <AnimalsPage />
+      <LocationProbe />
     </MemoryRouter>,
   );
 
@@ -520,5 +529,208 @@ describe('AnimalsPage create form', () => {
     expect(configurationApi.createLocation).toHaveBeenCalledWith({ name: 'Shed B', locationTypeId: 'lt1' });
     expect(await screen.findByText('Location "Shed B" created')).toBeInTheDocument();
     expect(within(parentItem).getByText(/shed b/i)).toBeInTheDocument();
+  }, 20000);
+});
+
+/*
+ * The list controls and the two bulk writes.
+ *
+ * The filters are asserted through the request rather than the table: the page owns no filtering
+ * of its own, so what matters is that the server is asked the question the user chose — and that
+ * a filter change returns to page one instead of leaving the table on a page that no longer
+ * exists. The bulk tests assert the single call the endpoints are for, because the point of the
+ * feature is that 40 animals are one request rather than 40.
+ */
+describe('AnimalsPage list filters', () => {
+  it('sends the search term to the API and returns to the first page', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    const search = await screen.findByPlaceholderText('Search by tag or name');
+    await user.type(search, 'TAG-0079{enter}');
+
+    await waitFor(() =>
+      expect(animalsApi.list).toHaveBeenLastCalledWith({ page: 1, pageSize: 10, search: 'TAG-0079' }),
+    );
+  });
+
+  it('filters by status and clears back to the unfiltered list', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(await screen.findByLabelText('Filter by status'));
+    selectOption('Healthy');
+    await waitFor(() =>
+      expect(animalsApi.list).toHaveBeenLastCalledWith({ page: 1, pageSize: 10, statusId: 'st1' }),
+    );
+
+    // Every filter is one request: clearing them all is a single unfiltered read, not five.
+    await user.click(screen.getByRole('button', { name: 'Clear filters' }));
+    await waitFor(() =>
+      expect(animalsApi.list).toHaveBeenLastCalledWith({ page: 1, pageSize: 10 }),
+    );
+  });
+
+  it('asks for a larger page when the page-size control changes', async () => {
+    const user = userEvent.setup();
+    vi.mocked(animalsApi.list).mockResolvedValue(res({ items: [animalRow()], totalCount: 120 }));
+    renderPage();
+
+    await screen.findByText('TAG-0079');
+    const sizeSelect = document.querySelector('.ant-pagination-options .ant-select') as HTMLElement;
+    await user.click(sizeSelect);
+    selectOption('50 / page');
+
+    await waitFor(() =>
+      expect(animalsApi.list).toHaveBeenLastCalledWith({ page: 1, pageSize: 50 }),
+    );
+  }, 20000);
+});
+
+/*
+ * The list's view state lives in the URL: a reload has to land on the same filters, page and page
+ * size, so the first test renders a URL the way a refresh (or a shared link) presents it, and the
+ * second asserts that using the controls is what puts that state there in the first place.
+ */
+describe('AnimalsPage list state in the URL', () => {
+  it('restores the filters, page and page size a reloaded URL asks for', async () => {
+    renderPage('/dashboard/animals?search=TAG-0079&sexOptionId=s1&page=3&pageSize=50');
+
+    await waitFor(() =>
+      expect(animalsApi.list).toHaveBeenLastCalledWith({
+        page: 3,
+        pageSize: 50,
+        search: 'TAG-0079',
+        sexOptionId: 's1',
+      }),
+    );
+
+    // The box shows the applied search rather than opening empty over a filtered list.
+    expect(screen.getByPlaceholderText('Search by tag or name')).toHaveValue('TAG-0079');
+  });
+
+  it('writes a chosen filter and page size into the URL, so a reload keeps them', async () => {
+    const user = userEvent.setup();
+    vi.mocked(animalsApi.list).mockResolvedValue(res({ items: [animalRow()], totalCount: 120 }));
+    renderPage();
+
+    await user.click(await screen.findByLabelText('Filter by status'));
+    selectOption('Healthy');
+    await waitFor(() =>
+      expect(screen.getByTestId('location-search').textContent).toContain('statusId=st1'),
+    );
+
+    const sizeSelect = document.querySelector('.ant-pagination-options .ant-select') as HTMLElement;
+    await user.click(sizeSelect);
+    selectOption('50 / page');
+
+    await waitFor(() => {
+      const url = screen.getByTestId('location-search').textContent ?? '';
+      expect(url).toContain('statusId=st1');
+      expect(url).toContain('pageSize=50');
+    });
+  }, 20000);
+});
+
+describe('AnimalsPage bulk actions', () => {
+  const twoAnimals = () =>
+    vi.mocked(animalsApi.list).mockResolvedValue(
+      res({
+        items: [animalRow(), animalRow({ id: 'row-2', tagNumber: 'TAG-0080' })],
+        totalCount: 2,
+      }),
+    );
+
+  /** Ticks both rows and waits for the selection bar. */
+  const selectBothRows = async (user: User) => {
+    const boxes = screen.getAllByRole('checkbox');
+    // [0] is the header's select-all; the two rows follow it.
+    await user.click(boxes[1]);
+    await user.click(boxes[2]);
+    expect(await screen.findByText('2 selected')).toBeInTheDocument();
+  };
+
+  it('changes the status of every selected animal in one request', async () => {
+    const user = userEvent.setup();
+    twoAnimals();
+    vi.mocked(animalsApi.bulkChangeStatus).mockResolvedValue(
+      res({ requestedCount: 2, successCount: 2, failures: [] }),
+    );
+    renderPage();
+
+    await screen.findByText('TAG-0079');
+    await selectBothRows(user);
+
+    await user.click(screen.getByRole('button', { name: /change status/i }));
+    const modal = (await screen.findByText('Change status (2 selected)', { selector: '.ant-modal-title' }))
+      .closest('.ant-modal') as HTMLElement;
+    await user.click(within(modal).getByRole('combobox'));
+    selectOption('Healthy');
+    await user.click(within(modal).getByRole('button', { name: /^apply$/i }));
+
+    await waitFor(() =>
+      expect(animalsApi.bulkChangeStatus).toHaveBeenCalledWith({
+        animalIds: ['row-1', 'row-2'],
+        newStatusId: 'st1',
+        reason: undefined,
+      }),
+    );
+  }, 20000);
+
+  it('transfers every selected animal to the chosen location in one request', async () => {
+    const user = userEvent.setup();
+    twoAnimals();
+    vi.mocked(animalsApi.bulkTransfer).mockResolvedValue(
+      res({ requestedCount: 2, successCount: 2, failures: [] }),
+    );
+    renderPage();
+
+    await screen.findByText('TAG-0079');
+    await selectBothRows(user);
+
+    await user.click(screen.getByRole('button', { name: /transfer to location/i }));
+    const modal = (await screen.findByText('Transfer (2 selected)', { selector: '.ant-modal-title' }))
+      .closest('.ant-modal') as HTMLElement;
+    await user.click(within(modal).getByRole('combobox'));
+    selectOption('Barn');
+    await user.click(within(modal).getByRole('button', { name: /^apply$/i }));
+
+    await waitFor(() =>
+      expect(animalsApi.bulkTransfer).toHaveBeenCalledWith({
+        animalIds: ['row-1', 'row-2'],
+        toLocationId: 'l1',
+        reason: undefined,
+      }),
+    );
+  }, 20000);
+
+  it('reports a partial result and keeps the reason the user typed', async () => {
+    const user = userEvent.setup();
+    twoAnimals();
+    vi.mocked(animalsApi.bulkChangeStatus).mockResolvedValue(
+      res({ requestedCount: 2, successCount: 1, failures: [{ animalId: 'row-2', reason: 'Sold' }] }),
+    );
+    renderPage();
+
+    await screen.findByText('TAG-0079');
+    await selectBothRows(user);
+
+    await user.click(screen.getByRole('button', { name: /change status/i }));
+    const modal = (await screen.findByText('Change status (2 selected)', { selector: '.ant-modal-title' }))
+      .closest('.ant-modal') as HTMLElement;
+    await user.click(within(modal).getByRole('combobox'));
+    selectOption('Healthy');
+    await user.type(within(modal).getByRole('textbox'), 'Herd sale');
+    await user.click(within(modal).getByRole('button', { name: /^apply$/i }));
+
+    // A refusal is per animal, so the answer is "1 of 2" plus the count the server refused —
+    // never a silent success and never a lost reason.
+    expect(await screen.findByText('1 of 2 animals updated')).toBeInTheDocument();
+    expect(await screen.findByText('1 were refused by the server')).toBeInTheDocument();
+    expect(animalsApi.bulkChangeStatus).toHaveBeenCalledWith({
+      animalIds: ['row-1', 'row-2'],
+      newStatusId: 'st1',
+      reason: 'Herd sale',
+    });
   }, 20000);
 });

@@ -60,10 +60,13 @@ public class AnimalQrLabelTests
 
     private static async Task<FMS.Domain.Entities.Animal> AddAnimalAsync(
         FmsDbContext context, Seed seed, string tag, DateTime? createdAt = null, bool deleted = false,
-        Guid? statusId = null, string? name = null)
+        Guid? statusId = null, string? name = null, Guid? sexOptionId = null)
     {
         var type = await context.AnimalTypes.AsNoTracking().FirstAsync(t => t.FarmId == seed.FarmId);
-        var sex = await context.SexOptions.AsNoTracking().FirstAsync(s => s.FarmId == seed.FarmId);
+        // By value, not "whichever is first": a test that adds a second sex option must not
+        // silently move the animals seeded before it.
+        var sex = await context.SexOptions.AsNoTracking()
+            .FirstAsync(s => s.FarmId == seed.FarmId && s.Value == "Female");
 
         var animal = new FMS.Domain.Entities.Animal
         {
@@ -72,7 +75,7 @@ public class AnimalQrLabelTests
             TagNumber = tag,
             Name = name,
             AnimalTypeId = type.Id,
-            SexOptionId = sex.Id,
+            SexOptionId = sexOptionId ?? sex.Id,
             AnimalStatusId = statusId ?? seed.ActiveStatusId,
             DateOfBirth = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
             CreatedAt = createdAt ?? DateTime.UtcNow,
@@ -220,6 +223,30 @@ public class AnimalQrLabelTests
         var label = Assert.Single(sheet.Items);
         Assert.Equal(wanted.Id, label.AnimalId);
         Assert.Equal($"{TestConfiguration.FrontendBaseUrl}/dashboard/animals/{wanted.Id}", label.Url);
+    }
+
+    [Fact]
+    public async Task List_FiltersBySexAndTheSheetInheritsIt()
+    {
+        using var context = CreateContext();
+        var seed = await SeedFarmAsync(context);
+        var male = new SexOption { Id = Guid.NewGuid(), FarmId = seed.FarmId, Value = "Male" };
+        context.SexOptions.Add(male);
+        await context.SaveChangesAsync();
+
+        await AddAnimalAsync(context, seed, "COW-001");
+        var bull = await AddAnimalAsync(context, seed, "BULL-001", sexOptionId: male.Id);
+
+        var service = CreateService(context);
+        var filter = new AnimalListFilter { SexOptionId = male.Id };
+
+        var bulls = (await service.GetAnimalsAsync(seed.FarmId, filter)).Value!;
+        var sheet = (await service.GetQrLabelsAsync(seed.FarmId, filter)).Value!;
+
+        // Sex is a list filter like any other: one row, and a sheet printed from that view
+        // carries the same one animal rather than the whole herd.
+        Assert.Equal(bull.Id, Assert.Single(bulls.Items).Id);
+        Assert.Equal(bull.Id, Assert.Single(sheet.Items).AnimalId);
     }
 
     [Fact]

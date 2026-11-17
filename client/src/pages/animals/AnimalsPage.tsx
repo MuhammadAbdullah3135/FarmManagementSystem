@@ -1,10 +1,13 @@
-import { useState, useEffect, useCallback } from 'react';
-import { Card, Table, Button, Modal, Form, Input, Select, DatePicker, Space, Tag, message, Popconfirm, Row, Col } from 'antd';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { Card, Table, Button, Modal, Form, Input, Select, DatePicker, Space, Tag, Typography, message, Popconfirm, Row, Col } from 'antd';
 import { flattenLocations, type AnimalType } from '../../api/configuration';
 import type { ColumnsType } from 'antd/es/table';
-import { PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined, UploadOutlined, PrinterOutlined } from '@ant-design/icons';
+import {
+  PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined, UploadOutlined, PrinterOutlined,
+  CheckCircleOutlined, SwapOutlined,
+} from '@ant-design/icons';
 import { AnimalScanButton } from '../../components/AnimalScanModal';
-import { animalsApi, type AnimalListFilter, type CreateAnimalPayload } from '../../api/animals';
+import { animalsApi, type AnimalListFilter, type BulkOperationResult, type CreateAnimalPayload } from '../../api/animals';
 import { lookupsApi } from '../../api/attendance';
 import { getApiError } from '../../api/farmApi';
 import LookupQuickAddSelect, { type CreatedLookup } from '../../components/LookupQuickAddSelect';
@@ -12,7 +15,7 @@ import type { LookupKind } from '../../components/lookupQuickAdd';
 import { formatDate } from '../../i18n/format';
 import { parentCandidates } from '../../utils/animalSex';
 import dayjs from 'dayjs';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import type { AnimalListItem } from '../../types';
 import { useTranslation } from 'react-i18next';
 
@@ -24,15 +27,70 @@ interface LookupOption {
 
 const STATUS_COLORS: Record<number, string> = { 0: 'green', 1: 'orange', 2: 'red' };
 
+const { Text } = Typography;
+
+/** The filters this page owns; each one maps 1:1 onto an `AnimalListFilter` field. */
+interface ListFilters {
+  search?: string;
+  animalTypeId?: string;
+  statusId?: string;
+  locationId?: string;
+  sexOptionId?: string;
+}
+
+type BulkAction = 'status' | 'transfer';
+
+const PAGE_SIZE_OPTIONS = ['10', '20', '50', '100'];
+const DEFAULT_PAGE_SIZE = 10;
+
+/** The page the URL asks for; anything unreadable falls back to the first page. */
+const resolvePage = (raw: string | null) => {
+  const parsed = Number(raw);
+  return Number.isInteger(parsed) && parsed > 1 ? parsed : 1;
+};
+
+/** The page size the URL asks for; only a size the control offers is honoured. */
+const resolvePageSize = (raw: string | null) =>
+  raw !== null && PAGE_SIZE_OPTIONS.includes(raw) ? Number(raw) : DEFAULT_PAGE_SIZE;
+
+/** A query parameter as a filter value: absent and empty both mean "not filtered". */
+const readParam = (params: URLSearchParams, key: string) => params.get(key) || undefined;
+
 /** Indents nested location labels so the tree structure is visible in the select. */
 const indentLocationLabel = (name: string, depth: number) => `${'\u00A0\u00A0'.repeat(depth)}${name}`;
 
 export default function AnimalsPage() {const { t: translate } = useTranslation('animals'); 
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [data, setData] = useState<AnimalListItem[]>([]);
   const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
+  /*
+   * The URL is this list's view state. Reading the filters, page and page size from it means a
+   * reload lands on the same rows, and a link to "page 3, only the cows, 50 per page" is a link
+   * that still shows that after it has been shared or bookmarked.
+   */
+  const filters = useMemo<ListFilters>(() => ({
+    search: readParam(searchParams, 'search'),
+    animalTypeId: readParam(searchParams, 'animalTypeId'),
+    statusId: readParam(searchParams, 'statusId'),
+    locationId: readParam(searchParams, 'locationId'),
+    sexOptionId: readParam(searchParams, 'sexOptionId'),
+  }), [searchParams]);
+  const page = resolvePage(searchParams.get('page'));
+  const pageSize = resolvePageSize(searchParams.get('pageSize'));
+  // What has been typed but not yet applied; null means the box shows the applied term from the
+  // URL, which is how a reload or a Back lands with the search it is actually filtering by.
+  const [searchDraft, setSearchDraft] = useState<string | null>(null);
+  const searchValue = searchDraft ?? filters.search ?? '';
+  const [selectedRowKeys, setSelectedRowKeys] = useState<string[]>([]);
+  const [bulkAction, setBulkAction] = useState<BulkAction | null>(null);
+  const [bulkSaving, setBulkSaving] = useState(false);
+  const [bulkStatusId, setBulkStatusId] = useState<string | undefined>();
+  const [bulkLocationId, setBulkLocationId] = useState<string | undefined>();
+  const [bulkReason, setBulkReason] = useState('');
+  // Bumped after a write so the current page refetches without page or filter state having to change.
+  const [refreshToken, setRefreshToken] = useState(0);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<AnimalListItem | null>(null);
   const [animalTypes, setAnimalTypes] = useState<AnimalType[]>([]);
@@ -81,10 +139,17 @@ export default function AnimalsPage() {const { t: translate } = useTranslation('
     }
   }, []);
 
-  const load = useCallback(async (p = page, filters?: AnimalListFilter) => {
+  /**
+   * One read of the current page, size and filters.
+   *
+   * The URL is the single source of truth, so every control only writes to it and lets this run:
+   * a filter cannot be applied while the table is still on page 3 of the old result, and a page
+   * size cannot change without the page index being re-resolved against it.
+   */
+  const load = useCallback(async () => {
     setLoading(true);
     try {
-      const params: AnimalListFilter = { page: p, pageSize: 10, ...filters };
+      const params: AnimalListFilter = { page, pageSize, ...filters };
       const res = await animalsApi.list(params);
       setData(res.data.items as unknown as AnimalListItem[]);
       setTotal(res.data.totalCount);
@@ -93,12 +158,38 @@ export default function AnimalsPage() {const { t: translate } = useTranslation('
     } finally {
       setLoading(false);
     }
-  }, [page]);
+  }, [page, pageSize, filters]);
+
+  /**
+   * Writes one change into the URL and leaves the rest of it alone. `replace` because paging and
+   * filtering should not fill the Back button with views the user never meant to return to.
+   */
+  const updateParams = (patch: Record<string, string | number | undefined>) => {
+    setSearchParams((previous) => {
+      const next = new URLSearchParams(previous);
+      for (const [key, value] of Object.entries(patch)) {
+        if (value === undefined || value === '') next.delete(key);
+        else next.set(key, String(value));
+      }
+      return next;
+    }, { replace: true });
+  };
+
+  /** Re-reads the first page after a write, whatever page the user was on. */
+  const refresh = () => {
+    updateParams({ page: undefined });
+    setRefreshToken((token) => token + 1);
+  };
 
   useEffect(() => {
-    const timer = window.setTimeout(() => { void loadLookups(); void load(1); }, 0);
+    const timer = window.setTimeout(() => { void loadLookups(); }, 0);
     return () => window.clearTimeout(timer);
-  }, [loadLookups, load]);
+  }, [loadLookups]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => { void load(); }, 0);
+    return () => window.clearTimeout(timer);
+  }, [load, refreshToken]);
 
   const handleBreedsForType = async (typeId: string) => {
     if (!typeId) { setBreeds([]); return; }
@@ -229,7 +320,7 @@ export default function AnimalsPage() {const { t: translate } = useTranslation('
         message.success(translate('animalCreated'));
       }
       setModalOpen(false);
-      load(1);
+      refresh();
     } catch (err) {
       if ((err as { errorFields?: unknown }).errorFields) return;
       message.error(getApiError(err));
@@ -240,9 +331,77 @@ export default function AnimalsPage() {const { t: translate } = useTranslation('
     try {
       await animalsApi.delete(id);
       message.success(translate('animalDeleted'));
-      load(page);
+      refresh();
     } catch (err) {
       message.error(getApiError(err));
+    }
+  };
+
+  /** Applies a filter change in the URL, returns to the first page and drops a selection made under the old filter. */
+  const applyFilters = (patch: Partial<ListFilters>) => {
+    updateParams({ ...patch, page: undefined });
+    setSelectedRowKeys([]);
+  };
+
+  const activeFilterCount = Object.values(filters).filter(Boolean).length;
+
+  const clearFilters = () =>
+    applyFilters({
+      search: undefined,
+      animalTypeId: undefined,
+      statusId: undefined,
+      locationId: undefined,
+      sexOptionId: undefined,
+    });
+
+  const openBulk = (action: BulkAction) => {
+    setBulkAction(action);
+    setBulkStatusId(undefined);
+    setBulkLocationId(undefined);
+    setBulkReason('');
+  };
+
+  /**
+   * Both bulk writes take the same shape — the ticked ids, one change, an optional reason — and
+   * both answer per animal rather than all-or-nothing, so a partial result is reported as
+   * "x of y" and the selection is cleared only once the server has answered.
+   */
+  const handleBulkConfirm = async () => {
+    if (!bulkAction || selectedRowKeys.length === 0) return;
+
+    const ids = selectedRowKeys;
+    const reason = bulkReason.trim() || undefined;
+    // Resolved before the request so the modal's Apply stays inert until its one required field
+    // is chosen, and the id is narrowed rather than asserted.
+    const request = bulkAction === 'status'
+      ? (bulkStatusId
+        ? () => animalsApi.bulkChangeStatus({ animalIds: ids, newStatusId: bulkStatusId, reason })
+        : null)
+      : (bulkLocationId
+        ? () => animalsApi.bulkTransfer({ animalIds: ids, toLocationId: bulkLocationId, reason })
+        : null);
+    if (!request) return;
+
+    setBulkSaving(true);
+    try {
+      const result: BulkOperationResult = (await request()).data;
+
+      message.success(
+        bulkAction === 'status'
+          ? translate('bulkStatusFinished', { count: result.successCount, total: result.requestedCount })
+          : translate('bulkTransferFinished', { count: result.successCount, total: result.requestedCount }),
+      );
+      if (result.failures.length > 0) {
+        message.warning(translate('bulkRefused', { count: result.failures.length }));
+      }
+
+      setBulkAction(null);
+      setSelectedRowKeys([]);
+      refresh();
+    } catch (err) {
+      message.error(getApiError(err));
+    } finally {
+      setBulkSaving(false);
     }
   };
 
@@ -341,12 +500,132 @@ export default function AnimalsPage() {const { t: translate } = useTranslation('
           </Space>
         }
       >
+        {/*
+          Filters live in a row of their own rather than in the card head: five controls plus the
+          four entry points above cannot share one line at any width, and `fms-filter-row` is the
+          app's existing rule for stacking them one per line on a phone.
+        */}
+        <Row className="fms-filter-row" gutter={[8, 8]} style={{ marginBottom: 12 }}>
+          <Col xs={24} sm={12} md={6} lg={5}>
+            <Input.Search
+              aria-label={translate('searchByTagOrName')}
+              placeholder={translate('searchByTagOrName')}
+              value={searchValue}
+              onChange={(event) => {
+                const value = event.target.value;
+                // Clearing the box applies at once, instead of leaving an invisible search in force.
+                if (!value) {
+                  setSearchDraft(null);
+                  applyFilters({ search: undefined });
+                  return;
+                }
+                setSearchDraft(value);
+              }}
+              allowClear
+              onSearch={(value) => {
+                setSearchDraft(null);
+                applyFilters({ search: value.trim() || undefined });
+              }}
+            />
+          </Col>
+          <Col xs={12} sm={6} md={4} lg={3}>
+            <Select
+              aria-label={translate('filterByType')}
+              allowClear
+              placeholder={translate('allAnimalTypes')}
+              style={{ width: '100%' }}
+              value={filters.animalTypeId}
+              onChange={(value) => applyFilters({ animalTypeId: value || undefined })}
+              options={animalTypes.map((type) => ({ value: type.id, label: type.name }))}
+            />
+          </Col>
+          <Col xs={12} sm={6} md={4} lg={3}>
+            <Select
+              aria-label={translate('filterBySex')}
+              allowClear
+              placeholder={translate('allSexes')}
+              style={{ width: '100%' }}
+              value={filters.sexOptionId}
+              onChange={(value) => applyFilters({ sexOptionId: value || undefined })}
+              options={sexOptions.map((option) => ({ value: option.id, label: option.name }))}
+            />
+          </Col>
+          <Col xs={12} sm={6} md={4} lg={3}>
+            <Select
+              aria-label={translate('filterByStatus')}
+              allowClear
+              placeholder={translate('allStatuses')}
+              style={{ width: '100%' }}
+              value={filters.statusId}
+              onChange={(value) => applyFilters({ statusId: value || undefined })}
+              options={statuses.map((status) => ({ value: status.id, label: status.name }))}
+            />
+          </Col>
+          <Col xs={12} sm={6} md={4} lg={4}>
+            <Select
+              aria-label={translate('filterByLocation')}
+              allowClear
+              showSearch
+              optionFilterProp="label"
+              placeholder={translate('allLocations')}
+              style={{ width: '100%' }}
+              value={filters.locationId}
+              onChange={(value) => applyFilters({ locationId: value || undefined })}
+              options={locations.map((location) => ({ value: location.id, label: location.name }))}
+            />
+          </Col>
+          <Col xs={24} sm={12} md={4} lg={3}>
+            <Button onClick={clearFilters} disabled={activeFilterCount === 0} block>
+              {translate('clearFilters')}
+            </Button>
+          </Col>
+        </Row>
+
+        {selectedRowKeys.length > 0 && (
+          <Space wrap style={{ marginBottom: 12 }}>
+            <Text strong>{translate('selectedCount', { count: selectedRowKeys.length })}</Text>
+            <Button icon={<CheckCircleOutlined />} onClick={() => openBulk('status')}>
+              {translate('changeStatus')}
+            </Button>
+            <Button icon={<SwapOutlined />} onClick={() => openBulk('transfer')}>
+              {translate('transferToLocation')}
+            </Button>
+            <Button type="link" onClick={() => setSelectedRowKeys([])}>
+              {translate('clearSelection')}
+            </Button>
+          </Space>
+        )}
+
         <Table
           rowKey="id"
           columns={columns}
           dataSource={data}
           loading={loading}
-          pagination={{ current: page, total, pageSize: 10, onChange: (p) => { setPage(p); load(p); } }}
+          rowSelection={{
+            selectedRowKeys,
+            // Kept across pages on purpose: a bulk change is usually several pages of animals,
+            // and dropping the selection on page change would make that impossible.
+            preserveSelectedRowKeys: true,
+            onChange: (keys) => setSelectedRowKeys(keys.map(String)),
+          }}
+          pagination={{
+            current: page,
+            total,
+            pageSize,
+            showSizeChanger: true,
+            pageSizeOptions: PAGE_SIZE_OPTIONS,
+            onChange: (nextPage, nextPageSize) => {
+              // A new page size re-resolves the page index, so both always move together.
+              if (nextPageSize !== pageSize) {
+                updateParams({
+                  pageSize: nextPageSize === DEFAULT_PAGE_SIZE ? undefined : nextPageSize,
+                  page: undefined,
+                });
+                return;
+              }
+              updateParams({ page: nextPage === 1 ? undefined : nextPage });
+            },
+          }}
         />
       </Card>
 
@@ -490,6 +769,74 @@ export default function AnimalsPage() {const { t: translate } = useTranslation('
           </Row>
           <Form.Item name="notes" label={translate('notes')}>
             <Input.TextArea rows={2} maxLength={2000} />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* One modal per bulk action: the selection is the only thing the two share, and each
+          action has exactly one required field plus the same optional reason. */}
+      <Modal
+        title={translate('changeStatusForSelected', { count: selectedRowKeys.length })}
+        open={bulkAction === 'status'}
+        onOk={handleBulkConfirm}
+        onCancel={() => setBulkAction(null)}
+        confirmLoading={bulkSaving}
+        okText={translate('apply')}
+        okButtonProps={{ disabled: !bulkStatusId }}
+        destroyOnHidden
+      >
+        <Form layout="vertical">
+          <Form.Item label={translate('newStatus')} required>
+            <Select
+              aria-label={translate('newStatus')}
+              value={bulkStatusId}
+              onChange={(value: string) => setBulkStatusId(value)}
+              options={statuses.map((status) => ({ value: status.id, label: status.name }))}
+              placeholder={translate('selectStatus')}
+              style={{ width: '100%' }}
+            />
+          </Form.Item>
+          <Form.Item label={translate('reasonOptional')}>
+            <Input.TextArea
+              rows={2}
+              maxLength={500}
+              value={bulkReason}
+              onChange={(event) => setBulkReason(event.target.value)}
+            />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      <Modal
+        title={translate('transferSelected', { count: selectedRowKeys.length })}
+        open={bulkAction === 'transfer'}
+        onOk={handleBulkConfirm}
+        onCancel={() => setBulkAction(null)}
+        confirmLoading={bulkSaving}
+        okText={translate('apply')}
+        okButtonProps={{ disabled: !bulkLocationId }}
+        destroyOnHidden
+      >
+        <Form layout="vertical">
+          <Form.Item label={translate('destinationLocation')} required>
+            <Select
+              aria-label={translate('destinationLocation')}
+              value={bulkLocationId}
+              onChange={(value: string) => setBulkLocationId(value)}
+              options={locations.map((location) => ({ value: location.id, label: location.name }))}
+              placeholder={translate('selectLocation')}
+              showSearch
+              optionFilterProp="label"
+              style={{ width: '100%' }}
+            />
+          </Form.Item>
+          <Form.Item label={translate('reasonOptional')}>
+            <Input.TextArea
+              rows={2}
+              maxLength={500}
+              value={bulkReason}
+              onChange={(event) => setBulkReason(event.target.value)}
+            />
           </Form.Item>
         </Form>
       </Modal>

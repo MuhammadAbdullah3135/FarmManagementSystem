@@ -64,6 +64,7 @@ public class AnimalListFilter
     public Guid? BreedId { get; set; }
     public Guid? StatusId { get; set; }
     public Guid? LocationId { get; set; }
+    public Guid? SexOptionId { get; set; }
     public bool IncludeTerminal { get; set; }
     public int Page { get; set; } = 1;
     public int PageSize { get; set; } = 20;

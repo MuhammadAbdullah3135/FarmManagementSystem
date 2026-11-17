@@ -137,6 +137,9 @@ public class AnimalService : IAnimalService
         if (filter.LocationId.HasValue)
             query = query.Where(a => a.LocationId == filter.LocationId.Value);
 
+        if (filter.SexOptionId.HasValue)
+            query = query.Where(a => a.SexOptionId == filter.SexOptionId.Value);
+
         if (!string.IsNullOrWhiteSpace(filter.Search))
         {
             var term = filter.Search.Trim();

@@ -8,11 +8,40 @@ export interface AnimalListFilter {
   breedId?: string;
   statusId?: string;
   locationId?: string;
+  sexOptionId?: string;
   includeTerminal?: boolean;
   page?: number;
   pageSize?: number;
   sortBy?: string;
   sortDescending?: boolean;
+}
+
+/**
+ * What the two bulk endpoints answer: how many animals were asked for, how many changed, and a
+ * reason per animal the server refused. A partial answer is normal — a sold animal cannot be
+ * transferred again — so the UI reports "x of y" instead of treating the call as all-or-nothing.
+ */
+export interface BulkOperationFailure {
+  animalId: string;
+  reason: string;
+}
+
+export interface BulkOperationResult {
+  requestedCount: number;
+  successCount: number;
+  failures: BulkOperationFailure[];
+}
+
+export interface BulkStatusChangePayload {
+  animalIds: string[];
+  newStatusId: string;
+  reason?: string;
+}
+
+export interface BulkTransferPayload {
+  animalIds: string[];
+  toLocationId: string;
+  reason?: string;
 }
 
 export interface CreateAnimalPayload {
@@ -100,6 +129,14 @@ export const animalsApi = {
 
   changeStatus: (id: string, data: { newStatusId: string; reason?: string }) =>
     axios.put<unknown>(farmUrl(`/animals/${id}/status`), data),
+
+  /** One status change for every ticked animal, applied server-side per animal. */
+  bulkChangeStatus: (data: BulkStatusChangePayload) =>
+    axios.post<BulkOperationResult>(farmUrl('/animals/bulk/status'), data),
+
+  /** One move for every ticked animal, with the same per-animal refusal reporting. */
+  bulkTransfer: (data: BulkTransferPayload) =>
+    axios.post<BulkOperationResult>(farmUrl('/animals/bulk/transfer'), data),
 
   getTimeline: (id: string, page = 1, pageSize = 20, eventType?: string) => {
     const params: Record<string, string | number> = { page, pageSize };
