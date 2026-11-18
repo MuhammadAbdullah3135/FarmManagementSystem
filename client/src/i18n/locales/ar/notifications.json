@@ -35,6 +35,7 @@
   "back": "رجوع",
   "chooseWhichAlertsReachYouFor": "اختر التنبيهات التي تصلك من أجل",
   "dismiss": "تجاهل",
+  "dismissNotification": "تجاهل {{title}}",
   "dismissed": "متجاهَل",
   "dismissedHidden": "المتجاهَلة مخفية",
   "dismissedShown": "المتجاهَلة ظاهرة",

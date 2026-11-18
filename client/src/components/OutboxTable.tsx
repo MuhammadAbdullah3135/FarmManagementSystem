@@ -128,12 +128,19 @@ const OutboxTable: React.FC<OutboxTableProps> = ({
         if (item.status === 'pending' || item.status === 'applied') {
           return <Text type="secondary">—</Text>;
         }
+        /*
+          The visible words stay the name's first words ("Retry", "Dismiss"), so voice control
+          still matches what is on screen; the record follows, because a queue is mostly the same
+          two actions and the row is what tells them apart.
+        */
+        const record = describeItem(item, targetLabel?.(item) ?? null);
         return (
           <Space size={4}>
             <Tooltip title={t('sendThisRecordAgain')}>
               <Button
                 size="small"
                 icon={<ReloadOutlined />}
+                aria-label={t('retryRecord', { record })}
                 loading={busy === item.mutationId}
                 onClick={() => void handleRetry(item)}
               >
@@ -145,6 +152,7 @@ const OutboxTable: React.FC<OutboxTableProps> = ({
                 size="small"
                 danger
                 icon={<StopOutlined />}
+                aria-label={t('dismissRecord', { record })}
                 disabled={busy === item.mutationId}
                 onClick={() => {
                   setDismissing(item);

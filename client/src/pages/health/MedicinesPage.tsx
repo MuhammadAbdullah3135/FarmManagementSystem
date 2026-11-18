@@ -228,7 +228,9 @@ const MedicinesPage: React.FC = () => {const { t } = useTranslation(['health', '
       width: 40,
       render: (_, r) => (
         <Popconfirm title={t('deleteThisBatch')} onConfirm={() => handleDeleteStock(r.id)}>
-          <Button size="small" danger icon={<DeleteOutlined />} />
+          {/* Icon-only, in a drawer of batches: the name says which batch. */}
+          <Button size="small" danger icon={<DeleteOutlined />}
+            aria-label={t('deleteStockBatch', { batch: r.batchNumber })} />
         </Popconfirm>
       ),
     },

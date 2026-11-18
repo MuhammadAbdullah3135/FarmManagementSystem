@@ -445,11 +445,21 @@ export default function AnimalsPage() {const { t: translate } = useTranslation('
       key: 'actions',
       width: 120,
       render: (_, record) => (
+        /*
+          These actions are icons only, so their name has to carry the animal: a screen reader
+          walking the column would otherwise hear "Edit, button" once per row, with nothing to
+          say which animal it edits.
+        */
         <Space>
-          <Button size="small" icon={<EyeOutlined />} onClick={() => navigate(`/dashboard/animals/${record.id}`)} />
-          <Button size="small" icon={<EditOutlined />} onClick={() => openEdit(record)} />
+          <Button size="small" icon={<EyeOutlined />}
+            aria-label={translate('viewAnimalWithTag', { tag: record.tagNumber })}
+            onClick={() => navigate(`/dashboard/animals/${record.id}`)} />
+          <Button size="small" icon={<EditOutlined />}
+            aria-label={translate('editAnimalWithTag', { tag: record.tagNumber })}
+            onClick={() => openEdit(record)} />
           <Popconfirm title={translate('deleteThisAnimal')} onConfirm={() => handleDelete(record.id)}>
-            <Button size="small" danger icon={<DeleteOutlined />} />
+            <Button size="small" danger icon={<DeleteOutlined />}
+              aria-label={translate('deleteAnimalWithTag', { tag: record.tagNumber })} />
           </Popconfirm>
         </Space>
       ),

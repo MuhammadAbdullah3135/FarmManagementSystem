@@ -34,6 +34,7 @@
   "days": "days",
   "defaultDosage": "Default Dosage",
   "delete": "Delete",
+  "deleteStockBatch": "Delete batch {{batch}}",
   "deleteThisBatch": "Delete this batch?",
   "deleteThisMedicine": "Delete this medicine?",
   "deleteThisRecord": "Delete this record?",

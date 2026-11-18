@@ -268,7 +268,8 @@ const IncomesPage: React.FC = () => {const { t } = useTranslation(['finance', 'v
         }}
         pagination={{ defaultPageSize: 20, showSizeChanger: true }}
         toolBarRender={() => [
-          <Button key="reload" icon={<ReloadOutlined />} onClick={() => actionRef.current?.reload()} />,
+          <Button key="reload" icon={<ReloadOutlined />} aria-label={t('common:refresh')}
+            onClick={() => actionRef.current?.reload()} />,
           <Button key="import" icon={<UploadOutlined />} onClick={() => navigate('/dashboard/finance/income-records/import')}>
             {t('import')}
           </Button>,

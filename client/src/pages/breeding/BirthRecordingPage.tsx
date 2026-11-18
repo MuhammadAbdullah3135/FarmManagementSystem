@@ -194,11 +194,18 @@ export default function BirthRecordingPage() {const { t } = useTranslation(['bre
       title: t('actions'),
       key: 'actions',
       width: 120,
+      /*
+        Icon-only actions, so the name names the record: the dam and the date are what the row is
+        recognised by, and they are what a screen reader needs to hear repeated actions apart.
+      */
       render: (_, record) => (
         <Space>
-          <Button size="small" icon={<EyeOutlined />} onClick={() => showDetail(record)} />
+          <Button size="small" icon={<EyeOutlined />}
+            aria-label={t('viewBirthRecordForDam', { dam: record.damTagNumber, date: formatDate(record.birthDate) })}
+            onClick={() => showDetail(record)} />
           <Popconfirm title={t('deleteThisBirthRecord')} onConfirm={() => handleDelete(record.id)}>
-            <Button size="small" danger icon={<DeleteOutlined />} />
+            <Button size="small" danger icon={<DeleteOutlined />}
+              aria-label={t('deleteBirthRecordForDam', { dam: record.damTagNumber, date: formatDate(record.birthDate) })} />
           </Popconfirm>
         </Space>
       ),
@@ -326,7 +333,11 @@ export default function BirthRecordingPage() {const { t } = useTranslation(['bre
                 }
                 extra={
                   offspring.length > 1 ? (
-                    <Button size="small" danger icon={<DeleteOutlined />} onClick={() => handleRemoveOffspring(index)} />
+                    <Button size="small" danger icon={<DeleteOutlined />}
+                      aria-label={t('removeOffspringTag', {
+                        tag: selectedDamTag ? `${selectedDamTag}-${index + 1}` : `${index + 1}`,
+                      })}
+                      onClick={() => handleRemoveOffspring(index)} />
                   ) : null
                 }
               >

@@ -34,6 +34,7 @@
   "days": "أيام",
   "defaultDosage": "الجرعة الافتراضية",
   "delete": "حذف",
+  "deleteStockBatch": "حذف الدفعة {{batch}}",
   "deleteThisBatch": "حذف هذه الدفعة؟",
   "deleteThisMedicine": "حذف هذا الدواء؟",
   "deleteThisRecord": "حذف هذا السجل؟",

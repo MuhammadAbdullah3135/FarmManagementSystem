@@ -34,6 +34,7 @@
   "days": "días",
   "defaultDosage": "Dosis predeterminada",
   "delete": "Eliminar",
+  "deleteStockBatch": "Eliminar el lote {{batch}}",
   "deleteThisBatch": "¿Eliminar este lote?",
   "deleteThisMedicine": "¿Eliminar este medicamento?",
   "deleteThisRecord": "¿Eliminar este registro?",

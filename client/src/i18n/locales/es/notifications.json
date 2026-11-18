@@ -35,6 +35,7 @@
   "back": "Volver",
   "chooseWhichAlertsReachYouFor": "Elige qué alertas te llegan para",
   "dismiss": "Descartar",
+  "dismissNotification": "Descartar {{title}}",
   "dismissed": "Descartado",
   "dismissedHidden": "Descartados ocultos",
   "dismissedShown": "Descartados visibles",

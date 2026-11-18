@@ -35,6 +35,7 @@
   "back": "Back",
   "chooseWhichAlertsReachYouFor": "Choose which alerts reach you for",
   "dismiss": "Dismiss",
+  "dismissNotification": "Dismiss {{title}}",
   "dismissed": "Dismissed",
   "dismissedHidden": "Dismissed hidden",
   "dismissedShown": "Dismissed shown",

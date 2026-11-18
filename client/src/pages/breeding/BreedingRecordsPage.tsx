@@ -213,11 +213,19 @@ export default function BreedingRecordsPage() {const { t } = useTranslation('bre
       title: t('actions'),
       key: 'actions',
       width: 100,
+      /*
+        Icon-only actions, so the name carries the pair the row is about: the sire and the dam
+        are how a breeding record is told apart, and the only thing a repeated "Edit, button"
+        would leave out.
+      */
       render: (_, record) => (
         <Space>
-          <Button size="small" icon={<EditOutlined />} onClick={() => openEdit(record)} />
+          <Button size="small" icon={<EditOutlined />}
+            aria-label={t('editBreedingRecordForPair', { sire: record.sireTagNumber, dam: record.damTagNumber })}
+            onClick={() => openEdit(record)} />
           <Popconfirm title={t('deleteThisRecord')} onConfirm={() => handleDelete(record.id)}>
-            <Button size="small" danger icon={<DeleteOutlined />} />
+            <Button size="small" danger icon={<DeleteOutlined />}
+              aria-label={t('deleteBreedingRecordForPair', { sire: record.sireTagNumber, dam: record.damTagNumber })} />
           </Popconfirm>
         </Space>
       ),

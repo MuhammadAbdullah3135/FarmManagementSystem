@@ -18,6 +18,15 @@ const { Title, Text, Paragraph } = Typography;
 const PAGE_SIZE = 20;
 
 /**
+ * The alert's own heading, keyed text resolved.
+ *
+ * Used for both the row and its Dismiss button: the list repeats "Dismiss" once per alert, so the
+ * name has to say which alert — and it should say it in the words already on screen.
+ */
+const notificationHeading = (notification: Notification) =>
+  renderKeyedMessage(notification.titleKey, notification.titleArgs, notification.title);
+
+/**
  * The notification center.
  *
  * The dashboard's alert cards are a snapshot of the current conditions; this is
@@ -181,7 +190,7 @@ const NotificationsPage: React.FC = () => {const { t } = useTranslation('notific
                       <Tag>{alertTypeLabel(t, notification.alertType)}</Tag>
                       {/* Keyed when the dispatcher stored one, English text otherwise. */}
                       <Text strong={!notification.isRead}>
-                        {renderKeyedMessage(notification.titleKey, notification.titleArgs, notification.title)}
+                        {notificationHeading(notification)}
                       </Text>
                       {notification.isRead ? null : <Badge status="processing" text={t('unread')} />}
                       {notification.isDismissed ? <Tag>{t('dismissed')}</Tag> : null}
@@ -214,6 +223,7 @@ const NotificationsPage: React.FC = () => {const { t } = useTranslation('notific
                         type="link"
                         size="small"
                         icon={<DeleteOutlined />}
+                        aria-label={t('dismissNotification', { title: notificationHeading(notification) })}
                         onClick={() => void handleDismiss(notification)}
                       >
                         {t('dismiss')}
