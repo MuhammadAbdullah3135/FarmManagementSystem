@@ -342,13 +342,20 @@ const TasksPage: React.FC = () => {const { t } = useTranslation('tasks');
       title={t('farmTasks')}
       extra={
         <Space wrap>
-          <Select allowClear placeholder={t('status')} style={{ width: 120 }} value={filters.status}
+          {/*
+            The placeholder is the visible hint, not the name: a screen reader announces it as
+            the field's label otherwise, and loses it the moment a value is chosen.
+          */}
+          <Select allowClear placeholder={t('status')} aria-label={t('filterByStatus')}
+            style={{ width: 120 }} value={filters.status}
             onChange={(v) => applyFilters({ status: v })}
             options={statusOptions} />
-          <Select allowClear placeholder={t('priority')} style={{ width: 120 }} value={filters.priority}
+          <Select allowClear placeholder={t('priority')} aria-label={t('filterByPriority')}
+            style={{ width: 120 }} value={filters.priority}
             onChange={(v) => applyFilters({ priority: v })}
             options={priorityOptions} />
-          <Select allowClear placeholder={t('assignee')} style={{ width: 180 }}
+          <Select allowClear placeholder={t('assignee')} aria-label={t('filterByAssignee')}
+            style={{ width: 180 }}
             value={filters.assignedEmployeeId}
             onChange={(v) => applyFilters({ assignedEmployeeId: v })}
             options={employees.map((e) => ({ value: e.id, label: `${e.firstName} ${e.lastName}` }))} />

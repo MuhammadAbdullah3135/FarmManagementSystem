@@ -58,6 +58,10 @@ const LocationProbe = () => {
   return <div data-testid="location-search">{location.search}</div>;
 };
 
+/** The comboboxes inside a region, by the role they carry rather than by class. */
+const comboboxesIn = (root: ParentNode) =>
+  Array.from(root.querySelectorAll<HTMLElement>('[role="combobox"]'));
+
 const renderPage = (entry = '/tasks') =>
   render(
     <MemoryRouter initialEntries={[entry]}>
@@ -217,6 +221,31 @@ describe('TasksPage filters', () => {
       { data: { items: [], totalCount: 0 } } as never,
     );
   });
+
+  /*
+   * A filter select carries its visible hint in `placeholder`, which is not an accessible name:
+   * a screen reader announces the control with no label, and once a value is chosen even the hint
+   * is gone. These filters sit outside any `Form.Item`, so nothing else names them.
+   *
+   * The count is asserted so that a filter added later cannot slip in unnamed.
+   */
+  it('names every filter select for a screen reader', async () => {
+    vi.mocked(tasksApi.list).mockResolvedValue({ data: { items: [], totalCount: 0 } } as never);
+
+    renderPage();
+    await screen.findByText('Title');
+
+    const head = document.querySelector('.ant-card-head') as HTMLElement;
+    expect(head).not.toBeNull();
+    await waitFor(() => expect(comboboxesIn(head)).toHaveLength(3));
+
+    expect(comboboxesIn(head).map((combobox) => combobox.getAttribute('aria-label'))).toEqual([
+      'Filter by status',
+      'Filter by priority',
+      'Filter by assignee',
+    ]);
+    comboboxesIn(head).forEach((combobox) => expect(combobox).toHaveAccessibleName());
+  }, 20000);
 
   it('restores the page and filters a reloaded URL asks for', async () => {
     vi.mocked(tasksApi.list).mockResolvedValue({ data: { items: [], totalCount: 40 } } as never);

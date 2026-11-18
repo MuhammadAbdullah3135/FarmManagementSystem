@@ -82,6 +82,10 @@ const LocationProbe = () => {
   return <div data-testid="location-search">{location.search}</div>;
 };
 
+/** The comboboxes inside a region, by the role they carry rather than by class. */
+const comboboxesIn = (root: ParentNode) =>
+  Array.from(root.querySelectorAll<HTMLElement>('[role="combobox"]'));
+
 const renderPage = (entry = '/dashboard/animals') =>
   render(
     <MemoryRouter initialEntries={[entry]}>
@@ -545,6 +549,29 @@ describe('AnimalsPage create form', () => {
  * feature is that 40 animals are one request rather than 40.
  */
 describe('AnimalsPage list filters', () => {
+  /*
+   * A filter select carries its visible hint in `placeholder`, which is not an accessible name:
+   * a screen reader announces the control with no label, and once a value is chosen even the hint
+   * is gone. The filters sit outside any `Form.Item`, so nothing else names them.
+   *
+   * The count is asserted so that a filter added later cannot slip in unnamed.
+   */
+  it('names every filter select for a screen reader', async () => {
+    renderPage();
+
+    const row = document.querySelector('.fms-filter-row') as HTMLElement;
+    expect(row).not.toBeNull();
+    await waitFor(() => expect(comboboxesIn(row)).toHaveLength(4));
+
+    expect(comboboxesIn(row).map((combobox) => combobox.getAttribute('aria-label'))).toEqual([
+      'Filter by type',
+      'Filter by sex',
+      'Filter by status',
+      'Filter by location',
+    ]);
+    comboboxesIn(row).forEach((combobox) => expect(combobox).toHaveAccessibleName());
+  }, 20000);
+
   it('sends the search term to the API and returns to the first page', async () => {
     const user = userEvent.setup();
     renderPage();
