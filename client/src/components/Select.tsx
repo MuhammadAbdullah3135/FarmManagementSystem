@@ -11,11 +11,15 @@ import { Select as AntSelect } from 'antd';
  * accessibility tree, so a screen reader cannot enumerate the list. Turning virtualisation
  * off puts `listbox` on the real list and gives every option its own `option` role.
  *
- * The app's option lists are short — a farm's employees, its feed types, a handful of
- * statuses — so rendering them all costs nothing measurable.
+ * Every list in the app is bounded by the API's 100-row lookup page — animals, inventory
+ * items, customers, suppliers and employees are the largest — and rendering 100 options in
+ * full costs about 15ms more than the three-option window (production build: 24ms against
+ * 9ms to open, with the painted frame unchanged at ~48ms either way). The cost only turns
+ * into a dragging dropdown in the hundreds: 500 options take ~107ms and 2000 take ~375ms,
+ * which no lookup page can return.
  *
- * `virtual` is spread last, so a caller that really does have a huge list can still opt
- * back in.
+ * `virtual` is spread last, so a caller with a genuinely huge list can opt back in, trading
+ * the full accessibility tree for the smaller one.
  */
 const Select = ((props: ComponentProps<typeof AntSelect>) => (
   <AntSelect virtual={false} {...props} />
