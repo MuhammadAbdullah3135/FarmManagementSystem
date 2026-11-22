@@ -15,6 +15,7 @@ import { useTranslation } from 'react-i18next';
 // never means hunting for `=== 'ar'` comparisons.
 import { DEFAULT_LOCALE, applyDocumentLocale, directionOf, normalizeLocale } from './i18n/locale';
 import ErrorBoundary from './components/ErrorBoundary';
+import RouteAnnouncer from './components/RouteAnnouncer';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
@@ -118,6 +119,8 @@ const App: React.FC = () => {
       table={{ scroll: { x: "max-content" } }}
     >
       <Router basename={import.meta.env.BASE_URL}>
+        {/* Inside the router, outside the routes: it survives the swap and speaks for it. */}
+        <RouteAnnouncer />
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
