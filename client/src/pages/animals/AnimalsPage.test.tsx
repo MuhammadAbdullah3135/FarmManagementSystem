@@ -662,6 +662,42 @@ describe('AnimalsPage list state in the URL', () => {
   }, 20000);
 });
 
+/*
+ * The row actions are icons only, so their aria-label is the whole name. It has to carry the
+ * animal: on a full page the column repeats the same three actions once per row, and a name of
+ * just "Edit" leaves a screen reader with two dozen buttons it cannot tell apart. Asserting the
+ * tag is in the name — rather than that an aria-label merely exists — is what fails if someone
+ * later fills the label with a constant string.
+ */
+describe('AnimalsPage row actions', () => {
+  it('names each row action after the animal on that row', async () => {
+    vi.mocked(animalsApi.list).mockResolvedValue(
+      res({
+        items: [animalRow(), animalRow({ id: 'row-2', tagNumber: 'TAG-0080' })],
+        totalCount: 2,
+      }),
+    );
+    renderPage();
+
+    const actionNames = async (tag: string) => {
+      const row = (await screen.findByText(tag)).closest('tr') as HTMLElement;
+      return within(row).getAllByRole('button').map((button) => button.getAttribute('aria-label') ?? '');
+    };
+
+    const first = await actionNames('TAG-0079');
+    const second = await actionNames('TAG-0080');
+
+    // View, edit and delete.
+    expect(first).toHaveLength(3);
+    expect(second).toHaveLength(3);
+    first.forEach((name) => expect(name).toContain('TAG-0079'));
+    second.forEach((name) => expect(name).toContain('TAG-0080'));
+    // No name leaks the other row's animal, so the two rows' actions are genuinely distinct.
+    first.forEach((name) => expect(name).not.toContain('TAG-0080'));
+    expect(first).not.toEqual(second);
+  }, 20000);
+});
+
 describe('AnimalsPage bulk actions', () => {
   const twoAnimals = () =>
     vi.mocked(animalsApi.list).mockResolvedValue(
