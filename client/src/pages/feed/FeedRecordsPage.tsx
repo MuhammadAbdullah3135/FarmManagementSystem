@@ -297,15 +297,19 @@ const FeedRecordsPage: React.FC = () => {const { t: translate } = useTranslation
         pagination={{ current: page, total, pageSize: 10, onChange: loadRecords }}
       />
 
-      {/* The form is taller than a laptop viewport once the chips are in, so the body
-          scrolls on its own and the footer's Save button stays on screen. */}
+      {/* The form is taller than the viewport once the chips are in, so the body scrolls on
+          its own and the footer's Save button stays on screen. The 240px reserve is the
+          modal's own chrome plus its 100px top offset and a margin: header, footer and
+          padding add up to ~200px, and a reserve any smaller makes the wrapper scroll,
+          which pushes the dialog past the viewport edge. `dvh` so mobile browser chrome
+          does not steal the footer. */}
       <Modal
         title={editing ? translate('editFeedRecord') : translate('recordFeeding')}
         open={modalOpen}
         onOk={handleSave}
         onCancel={() => setModalOpen(false)}
         destroyOnClose
-        styles={{ body: { maxHeight: 'calc(100vh - 220px)', overflowY: 'auto' } }}
+        styles={{ body: { maxHeight: 'calc(100dvh - 240px)', overflowY: 'auto' } }}
       >
         <Form form={form} layout="vertical">
           {!editing && (
