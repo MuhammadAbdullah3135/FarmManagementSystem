@@ -78,6 +78,15 @@ using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// The process must serve where the client looks. The block before app.Run lets any PORT value
+// override every other URL setting, so a value inherited from the shell silently moves the API
+// (PORT=0 picks a random free port) and the Vite dev server, which proxies /api to 5200, then
+// talks to nothing while the API looks healthy. Refuse that in Development instead of binding.
+ListenPortGuard.EnsureUsable(
+    Environment.GetEnvironmentVariable("PORT"),
+    builder.Environment.EnvironmentName,
+    builder.Environment.IsDevelopment());
+
 // Before anything else: refuse to run outside Development on a signing key that
 // cannot be trusted. See JwtSigningKeyGuard for why a committed placeholder key
 // is worse than no authentication at all. Deliberately ahead of every service

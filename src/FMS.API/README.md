@@ -23,7 +23,10 @@ behaviour:
 2. **The shell exports `PORT=0`.** `Program.cs` reads `PORT` and, when it is set, clears
    `app.Urls` and adds `http://+:{PORT}`. `PORT=0` therefore makes Kestrel pick a random free
    port, and both `ASPNETCORE_URLS` and `--urls` are silently ignored. The Vite dev server only
-   proxies to `http://localhost:5200`, so pin `PORT=5200`.
+   proxies to `http://localhost:5200`, so pin `PORT=5200`. Any other value in Development is
+   now a startup failure naming the variable and the port (`ListenPortGuard`), instead of a
+   silent move to a port nobody proxies; outside Development, `PORT` is still the platform's
+   to set.
 
 ```bash
 PORT=5200 \
