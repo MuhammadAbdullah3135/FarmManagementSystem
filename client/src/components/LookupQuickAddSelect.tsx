@@ -11,6 +11,7 @@ import {
   type QuickAddVariant,
 } from './lookupQuickAdd';
 import { useTranslation } from 'react-i18next';
+import { quickAddText } from './lookupQuickAddText';
 
 export type { QuickAddFieldSpec } from './lookupQuickAdd';
 
@@ -127,7 +128,8 @@ const LookupQuickAddSelect = ({
   allowClear = false,
   popupMatchSelectWidth,
   style,
-}: LookupQuickAddSelectProps) => {const { t } = useTranslation('common'); 
+}: LookupQuickAddSelectProps) => {
+  const { t } = useTranslation('common');
   const [modalOpen, setModalOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [form] = Form.useForm();
@@ -139,12 +141,13 @@ const LookupQuickAddSelect = ({
   const quickAddCtx = ctx ?? {};
   const spec = kind ? getQuickAddSpec(kind, quickAddCtx, variant) : undefined;
   const resolvedLabel = spec?.label ?? label ?? '';
+  const displayLabel = quickAddText(t, resolvedLabel);
   const resolvedFields = spec?.fields ?? fields ?? [];
   // A dependent lookup (a breed without its animal type) cannot be created yet:
   // the select stays openable, only the Add affordance is replaced by a hint.
   const specReason = spec?.disabledReason?.(quickAddCtx);
   const canAdd = !disabled && !addDisabled && !specReason;
-  const hint = addDisabled ? disabledHint : specReason;
+  const hint = addDisabled ? disabledHint : quickAddText(t, specReason);
   // A picker backed only by a list (LookupOrText/EntityPicker, whose fields store a
   // label string rather than an id) has no create call at all. Without this guard the
   // footer still rendered an "Add" button that opened an empty modal and failed with
@@ -157,6 +160,14 @@ const LookupQuickAddSelect = ({
       .filter((f) => f.initialValue !== undefined)
       .map((f) => [f.name, f.initialValue]),
   );
+
+  // Preset vocabularies (feed categories/units, status categories) are chrome and
+  // get translated; the location/type options passed in by a page are farm data.
+  const fieldOptions = (f: QuickAddFieldSpec) =>
+    (f.options ?? []).map((o) => ({
+      ...o,
+      label: f.fixedOptions ? quickAddText(t, String(o.label)) : o.label,
+    }));
 
   const openModal = () => {
     form.resetFields();
@@ -174,7 +185,7 @@ const LookupQuickAddSelect = ({
       if (existing) {
         onChange?.(existing);
         onValueSelected?.(existing);
-        message.info(`${resolvedLabel} "${typedName}" already exists — selected it`);
+        message.info(t('quickAddAlreadyExists', { label: displayLabel, name: typedName }));
         setModalOpen(false);
         form.resetFields();
         return;
@@ -196,7 +207,12 @@ const LookupQuickAddSelect = ({
       const selected = selectCreatedLabel ? created.label : created.id;
       onChange?.(selected);
       onValueSelected?.(selected);
-      message.success(`${resolvedLabel} "${values[resolvedFields[0]?.name]}" created`);
+      message.success(
+        t('quickAddCreated', {
+          label: displayLabel,
+          name: String(values[resolvedFields[0]?.name] ?? ''),
+        }),
+      );
       setModalOpen(false);
       form.resetFields();
     } catch (err) {
@@ -221,7 +237,7 @@ const LookupQuickAddSelect = ({
         allowClear={allowClear}
         disabled={disabled}
         loading={loading}
-        placeholder={placeholder ?? `Select ${resolvedLabel.toLowerCase()}`}
+        placeholder={placeholder ?? t('quickAddSelect', { label: displayLabel.toLowerCase() })}
         popupMatchSelectWidth={popupMatchSelectWidth}
         style={{ width: '100%', ...style }}
         popupRender={(menu: ReactElement) =>
@@ -238,7 +254,7 @@ const LookupQuickAddSelect = ({
                     onClick={openModal}
                     data-testid={`quick-add-${resolvedLabel}`}
                   >
-                    {t('add')} {resolvedLabel}
+                    {t('quickAddAdd', { label: displayLabel })}
                   </Button>
                 ) : (
                   <span style={{ color: '#999', fontSize: 12 }}>{hint}</span>
@@ -252,12 +268,12 @@ const LookupQuickAddSelect = ({
       />
 
       <Modal
-        title={`Add ${resolvedLabel}`}
+        title={t('quickAddAdd', { label: displayLabel })}
         open={modalOpen}
         onOk={handleCreate}
         onCancel={() => setModalOpen(false)}
         confirmLoading={creating}
-        okText={`Add ${resolvedLabel}`}
+        okText={t('quickAddAdd', { label: displayLabel })}
         destroyOnClose
         // Always mounted so the Form stays connected and openModal's prefill
         // (setFieldsValue) reliably applies even on the first open.
@@ -270,12 +286,24 @@ const LookupQuickAddSelect = ({
             <Form.Item
               key={f.name}
               name={f.name}
-              label={f.label}
+              label={quickAddText(t, f.label)}
               valuePropName={f.widget === 'switch' ? 'checked' : 'value'}
-              rules={f.required ? [{ required: true, message: `${f.label} is required` }] : undefined}
+              rules={
+                f.required
+                  ? [{ required: true, message: t('quickAddRequired', { field: quickAddText(t, f.label) }) }]
+                  : undefined
+              }
             >
-              {f.widget === 'input' && <Input maxLength={f.maxLength ?? 100} placeholder={f.placeholder} />}
-              {f.widget === 'textarea' && <Input.TextArea rows={2} maxLength={f.maxLength ?? 2000} placeholder={f.placeholder} />}
+              {f.widget === 'input' && (
+                <Input maxLength={f.maxLength ?? 100} placeholder={quickAddText(t, f.placeholder)} />
+              )}
+              {f.widget === 'textarea' && (
+                <Input.TextArea
+                  rows={2}
+                  maxLength={f.maxLength ?? 2000}
+                  placeholder={quickAddText(t, f.placeholder)}
+                />
+              )}
               {f.widget === 'number' && <InputNumber min={f.min} max={f.max} style={{ width: '100%' }} />}
               {f.widget === 'select' && f.nestedQuickAdd && (
                 <LookupQuickAddSelect
@@ -286,12 +314,16 @@ const LookupQuickAddSelect = ({
                   fields={'kind' in f.nestedQuickAdd ? undefined : f.nestedQuickAdd.fields}
                   onQuickAdd={'kind' in f.nestedQuickAdd ? undefined : f.nestedQuickAdd.onQuickAdd}
                   onCreated={onCreated}
-                  options={(f.options ?? []).map((o) => ({ value: String(o.value), label: o.label }))}
-                  placeholder={f.placeholder}
+                  options={fieldOptions(f).map((o) => ({ ...o, value: String(o.value) }))}
+                  placeholder={quickAddText(t, f.placeholder)}
                 />
               )}
               {f.widget === 'select' && !f.nestedQuickAdd && (
-                <Select options={f.options ?? []} placeholder={f.placeholder} style={{ width: '100%' }} />
+                <Select
+                  options={fieldOptions(f)}
+                  placeholder={quickAddText(t, f.placeholder)}
+                  style={{ width: '100%' }}
+                />
               )}
               {f.widget === 'switch' && <Switch />}
             </Form.Item>

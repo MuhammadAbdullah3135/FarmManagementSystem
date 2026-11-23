@@ -1,8 +1,9 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, within, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import LookupQuickAddSelect from './LookupQuickAddSelect';
 import LookupOrText from './LookupOrText';
+import i18n from '../i18n';
 import { expenseCategoriesApi } from '../api/finance';
 
 vi.mock('../api/finance', () => ({
@@ -34,6 +35,10 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 
+afterEach(async () => {
+  await i18n.changeLanguage('en');
+});
+
 describe('LookupQuickAddSelect (registry-backed)', () => {
   it('offers the registry label on the dropdown footer', async () => {
     const user = userEvent.setup();
@@ -45,6 +50,27 @@ describe('LookupQuickAddSelect (registry-backed)', () => {
     expect(button).toBeInTheDocument();
     expect(button).toHaveAttribute('data-testid', 'quick-add-Expense Category');
   });
+
+  it('translates the picker, the Add action and the quick-add form in Arabic', async () => {
+    await i18n.changeLanguage('ar');
+    const user = userEvent.setup();
+    render(<LookupQuickAddSelect kind="feedType" options={[]} />);
+
+    expect(screen.getByText('اختر نوع العلف')).toBeInTheDocument();
+    await openFooter(user);
+
+    const button = await screen.findByTestId('quick-add-Feed Type');
+    expect(button).toHaveTextContent('إضافة نوع العلف');
+    expect(screen.queryByText(/Feed Type|Add Feed Type|Select feed type/)).not.toBeInTheDocument();
+
+    await user.click(button);
+    const modal = document.querySelector('.ant-modal') as HTMLElement;
+    expect(within(modal).getAllByText('إضافة نوع العلف').length).toBeGreaterThan(0);
+    for (const field of ['الاسم', 'الفئة', 'الوحدة', 'التكلفة لكل وحدة', 'ملاحظات']) {
+      expect(within(modal).getByText(field)).toBeInTheDocument();
+    }
+    expect(within(modal).getByPlaceholderText('مثال: علف البرسيم')).toBeInTheDocument();
+  }, 10000);
 
   it('replaces the Add button with the registry hint when a dependency is missing', async () => {
     const user = userEvent.setup();

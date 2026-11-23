@@ -141,5 +141,17 @@
   "feedRole": "Tipo de ración",
   "roleMain": "Principal",
   "roleSupplement": "Complemento",
-  "roleOther": "Otro"
+  "roleOther": "Otro",
+  "categoryForage": "Forraje",
+  "categoryConcentrate": "Concentrado",
+  "categoryMineral": "Minerales",
+  "categorySupplement": "Complemento",
+  "categoryAdditive": "Aditivo",
+  "categoryOther": "Otro",
+  "optionUnitKilogram": "Kilogramo",
+  "optionUnitGram": "Gramo",
+  "optionUnitTon": "Tonelada",
+  "optionUnitLiter": "Litro",
+  "optionUnitBale": "Paca",
+  "optionUnitBag": "Saco"
 }

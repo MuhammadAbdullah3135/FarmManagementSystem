@@ -98,6 +98,8 @@ export interface QuickAddFieldSpec {
   min?: number;
   max?: number;
   options?: { value: string | number; label: string }[];
+  /** Fixed preset vocabulary (translated); unset for farm-owned lookup options. */
+  fixedOptions?: boolean;
   initialValue?: unknown;
   /**
    * Renders a select with its own inline quick-add. Either registry-backed
@@ -273,6 +275,7 @@ const definitions: Record<LookupKind, QuickAddDefinition> = {
         label: 'Category',
         widget: 'select',
         initialValue: 0,
+        fixedOptions: true,
         options: Object.keys(STATUS_CATEGORY_LABELS).map((k) => ({
           value: Number(k),
           label: STATUS_CATEGORY_LABELS[Number(k)],
@@ -331,6 +334,7 @@ const definitions: Record<LookupKind, QuickAddDefinition> = {
         label: 'Category',
         widget: 'select',
         required: true,
+        fixedOptions: true,
         options: selectOptions(FEED_CATEGORIES),
       },
       {
@@ -338,6 +342,7 @@ const definitions: Record<LookupKind, QuickAddDefinition> = {
         label: 'Unit',
         widget: 'select',
         required: true,
+        fixedOptions: true,
         options: selectOptions(FEED_UNITS),
       },
       { name: 'costPerUnit', label: 'Cost per Unit', widget: 'number', required: true, min: 0 },

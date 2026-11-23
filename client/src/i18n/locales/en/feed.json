@@ -141,5 +141,17 @@
   "feedRole": "Feed role",
   "roleMain": "Main",
   "roleSupplement": "Supplement",
-  "roleOther": "Other"
+  "roleOther": "Other",
+  "categoryForage": "Forage",
+  "categoryConcentrate": "Concentrate",
+  "categoryMineral": "Mineral",
+  "categorySupplement": "Supplement",
+  "categoryAdditive": "Additive",
+  "categoryOther": "Other",
+  "optionUnitKilogram": "Kilogram",
+  "optionUnitGram": "Gram",
+  "optionUnitTon": "Ton",
+  "optionUnitLiter": "Liter",
+  "optionUnitBale": "Bale",
+  "optionUnitBag": "Bag"
 }

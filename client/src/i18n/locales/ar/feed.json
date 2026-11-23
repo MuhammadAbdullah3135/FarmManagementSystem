@@ -141,5 +141,17 @@
   "feedRole": "نوع الحصة",
   "roleMain": "رئيسي",
   "roleSupplement": "مكمّل",
-  "roleOther": "أخرى"
+  "roleOther": "أخرى",
+  "categoryForage": "علف أخضر",
+  "categoryConcentrate": "علف مركّز",
+  "categoryMineral": "معادن",
+  "categorySupplement": "مكمّل",
+  "categoryAdditive": "إضافات",
+  "categoryOther": "أخرى",
+  "optionUnitKilogram": "كيلوغرام",
+  "optionUnitGram": "غرام",
+  "optionUnitTon": "طن",
+  "optionUnitLiter": "لتر",
+  "optionUnitBale": "حزمة",
+  "optionUnitBag": "كيس"
 }
