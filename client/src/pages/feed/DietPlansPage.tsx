@@ -134,11 +134,47 @@ const DietPlansPage: React.FC = () => {const { t: translate } = useTranslation([
 
   /**
    * Shares are derived from the quantities, never stored: a percentage that can drift
-   * from the quantity it describes is worse than no percentage at all. With mixed feed
-   * units the share is of the total row count, which the note under the table says.
+   * from the quantity it describes is worse than no percentage at all. Editing a share
+   * rebalances the other complete rows so the chosen split is written back as quantities
+   * without changing the ration's total. With mixed feed units the share is of the total
+   * row count, which the note under the table says.
    */
   const shareOf = (row: RationRow): number =>
     totalQuantity > 0 && row.quantity ? (row.quantity / totalQuantity) * 100 : 0;
+
+  /** Applies an entered share to one row while keeping the total quantity unchanged. */
+  const setRowShare = (key: string, share: number | null) => {
+    if (share === null || share <= 0 || share > 100) return;
+    setRationRows((rows) => {
+      const complete = rows.filter((row) => row.feedTypeId && row.quantity && row.quantity > 0);
+      const target = complete.find((row) => row.key === key);
+      if (!target) return rows;
+
+      const total = complete.reduce((sum, row) => sum + (row.quantity ?? 0), 0);
+      const others = complete.filter((row) => row.key !== key);
+      // Match the API's two-decimal quantity precision so a saved ration keeps its split.
+      const round = (value: number) => Math.round(value * 100) / 100;
+      const quantities = new Map<string, number>([[key, round((total * share) / 100)]]);
+
+      if (others.length === 0) {
+        // One feed is the whole ration, whatever percentage is typed into the box.
+        quantities.set(key, round(total));
+      } else {
+        const otherTotal = total - (target.quantity ?? 0);
+        const remaining = total - (quantities.get(key) ?? 0);
+        for (const row of others) {
+          quantities.set(
+            row.key,
+            round(otherTotal > 0 ? ((row.quantity ?? 0) / otherTotal) * remaining : remaining / others.length),
+          );
+        }
+      }
+
+      return rows.map((row) =>
+        quantities.has(row.key) ? { ...row, quantity: quantities.get(row.key) } : row,
+      );
+    });
+  };
 
   // Rounded to two decimals so binary floating point cannot display a 99.9% total
   // for rows that are mathematically 100%.
@@ -320,8 +356,22 @@ const DietPlansPage: React.FC = () => {const { t: translate } = useTranslation([
       title: translate('shareOfRation'),
       width: 120,
       align: 'right',
-      render: (_, row) =>
-        `${formatNumber(shareOf(row), undefined, { maximumFractionDigits: 1 })}%`,
+      render: (_, row) => {
+        const disabled = !row.feedTypeId || !row.quantity;
+        return (
+          <InputNumber
+            aria-label={translate('shareOfRation')}
+            min={0.1}
+            max={100}
+            precision={1}
+            value={disabled ? undefined : Math.round(shareOf(row) * 10) / 10}
+            onChange={(share) => setRowShare(row.key, share ?? null)}
+            disabled={disabled}
+            addonAfter="%"
+            style={{ width: '100%' }}
+          />
+        );
+      },
     },
     {
       title: translate('cost'),

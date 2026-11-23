@@ -93,6 +93,38 @@ describe('DietPlansPage ration builder', () => {
     expect(statistic('Total share')).toHaveTextContent('100.0%');
   }, 20_000);
 
+  it('lets a share be edited and saves the rebalanced quantities', async () => {
+    const user = userEvent.setup();
+    render(<DietPlansPage />);
+
+    await user.click(await screen.findByRole('button', { name: 'Edit' }));
+    await waitFor(() => expect(screen.getByText('Hay (Kilogram)')).toBeInTheDocument());
+
+    const shares = screen.getAllByRole('spinbutton', { name: 'Share of ration' });
+    expect(shares[0]).toHaveValue('66.7');
+    expect(shares[1]).toHaveValue('33.3');
+
+    await user.clear(shares[0]);
+    await user.type(shares[0], '80');
+    await user.tab();
+
+    expect(shares[0]).toHaveValue('80.0');
+    expect(shares[1]).toHaveValue('20.0');
+    const statistic = (title: string) =>
+      screen.getByText(title).closest('.ant-statistic') as HTMLElement;
+    expect(statistic('Total weight (kg)')).toHaveTextContent('3.00');
+    expect(statistic('Total share')).toHaveTextContent('100.0%');
+
+    await user.click(screen.getByRole('button', { name: /^OK$/i }));
+    await waitFor(() => expect(dietPlansApi.update).toHaveBeenCalled());
+    expect(dietPlansApi.addItem).toHaveBeenCalledWith('plan-1', {
+      feedTypeId: 'hay', quantityPerFeeding: 2.4,
+    });
+    expect(dietPlansApi.addItem).toHaveBeenCalledWith('plan-1', {
+      feedTypeId: 'concentrate', quantityPerFeeding: 0.6,
+    });
+  }, 20_000);
+
   it('refuses to save a row that has no feed or quantity', async () => {
     const user = userEvent.setup();
     render(<DietPlansPage />);
