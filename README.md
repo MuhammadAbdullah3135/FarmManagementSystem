@@ -266,14 +266,15 @@ dotnet test tests/FMS.Domain.Tests/FMS.Domain.Tests.csproj --filter FullyQualifi
 ### API Backend
 
 ```bash
-# Set connection string (or use appsettings.json / .env)
-export ConnectionStrings__DefaultConnection="Host=localhost;Database=fms;Username=postgres;Password=..."
-
-# Run from repo root
+# Local PostgreSQL here listens on 5433 (appsettings.json assumes 5432), and PORT must be
+# pinned: Program.cs honours any PORT value, and this shell exports PORT=0, which makes the
+# API bind a random port the Vite proxy cannot reach.
+PORT=5200 \
+ConnectionStrings__DefaultConnection="Host=localhost;Port=5433;Database=fms;Username=postgres;Password=..." \
 dotnet run --project src/FMS.API
 ```
 
-The API starts at `http://localhost:5200`. Swagger UI is available at `/swagger` in development. Database migrations and role seeding run on first startup.
+The API starts at `http://localhost:5200` — check `netstat -ano | grep 5200` for a listener rather than trusting that it started, because a stray `PORT` moves it silently. Swagger UI is available at `/swagger` in development. Database migrations and role seeding run on first startup. Setup detail and the reasoning: [src/FMS.API/README.md](src/FMS.API/README.md#running-locally).
 
 Health check endpoints:
 - `GET /health` — full check (includes database connectivity)

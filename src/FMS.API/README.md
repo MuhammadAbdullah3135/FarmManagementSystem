@@ -15,13 +15,29 @@ ASP.NET Core 8 Web API backend for the Farm Management System. Provides all data
 
 ## Running Locally
 
-```bash
-# Set connection string (or edit appsettings.json)
-export ConnectionStrings__DefaultConnection="Host=localhost;Database=fms;Username=postgres;Password=..."
+Two facts about this dev machine will otherwise cost you an hour, and neither is application
+behaviour:
 
-# Run
-dotnet run --project src/FMS.API
+1. **PostgreSQL listens on 5433**, while `appsettings.json` assumes `Host=localhost;Port=5432`.
+   Pass the port in the connection string.
+2. **The shell exports `PORT=0`.** `Program.cs` reads `PORT` and, when it is set, clears
+   `app.Urls` and adds `http://+:{PORT}`. `PORT=0` therefore makes Kestrel pick a random free
+   port, and both `ASPNETCORE_URLS` and `--urls` are silently ignored. The Vite dev server only
+   proxies to `http://localhost:5200`, so pin `PORT=5200`.
+
+```bash
+PORT=5200 \
+ConnectionStrings__DefaultConnection="Host=localhost;Port=5433;Database=fms;Username=postgres;Password=postgres" \
+ASPNETCORE_ENVIRONMENT=Development \
+dotnet run --project src/FMS.API --no-launch-profile
 ```
+
+Confirm the port rather than trusting that it started: `netstat -ano | grep 5200` should show a
+listener, and `curl -s -o /dev/null -w '%{http_code}\n' http://localhost:5200/health/live` should
+print `200`. A random high port in `netstat` means `PORT` came in from the environment.
+
+If your PostgreSQL is on the default 5432, drop the connection-string override; if `PORT` is
+unset, the `http` launch profile's `applicationUrl` binds 5200 for you.
 
 - API: `http://localhost:5200`
 - Swagger UI: `http://localhost:5200/swagger` (opens automatically in dev)

@@ -179,7 +179,7 @@ All routes are defined in `src/App.tsx`. Features verified against source code:
 
 | Variable | Default | Description |
 |---|---|---|
-| `VITE_API_URL` | `/api` | Backend API base URL. Production: `https://fms-api-3ba95327d590.herokuapp.com/api` |
+| `VITE_API_URL` | `/api` | Backend API base URL. Production: `https://fms-api-3ba95327d590.herokuapp.com/api`. Leave it unset locally so requests go to the dev proxy; the API must be running as described in [src/FMS.API/README.md](../src/FMS.API/README.md#running-locally) — PostgreSQL is on **5433** there and the API needs **`PORT=5200`**, because a stray `PORT=0` makes it bind a random port instead. `.env.local` outranks `.env.production` in every mode, so a `VITE_API_URL` there silently bypasses the proxy; see [`.env.example`](.env.example). |
 
 ## Deployment
 
