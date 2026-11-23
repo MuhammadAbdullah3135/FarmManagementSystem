@@ -90,6 +90,12 @@ public class CreateFeedRecordRequest
     public decimal Quantity { get; set; }
     public DateTime? FedAt { get; set; }
     public string? Notes { get; set; }
+
+    /// <summary>Which feeding of the day. Defaulted from <see cref="FedAt"/> when omitted.</summary>
+    public MealSlot? MealSlot { get; set; }
+
+    /// <summary>Main ration or an accompaniment. Defaulted from the feed type's category when omitted.</summary>
+    public MealRole? MealRole { get; set; }
 }
 
 public class UpdateFeedRecordRequest
@@ -97,6 +103,12 @@ public class UpdateFeedRecordRequest
     public decimal Quantity { get; set; }
     public DateTime? FedAt { get; set; }
     public string? Notes { get; set; }
+
+    /// <summary>Null keeps the stored slot.</summary>
+    public MealSlot? MealSlot { get; set; }
+
+    /// <summary>Null keeps the stored role.</summary>
+    public MealRole? MealRole { get; set; }
 }
 
 public class FeedRecordListFilter
@@ -104,6 +116,7 @@ public class FeedRecordListFilter
     public Guid? AnimalId { get; set; }
     public Guid? LocationId { get; set; }
     public Guid? FeedTypeId { get; set; }
+    public MealSlot? MealSlot { get; set; }
     public DateTime? From { get; set; }
     public DateTime? To { get; set; }
     public int Page { get; set; } = 1;
@@ -126,6 +139,14 @@ public class FeedRecordDto
     public decimal TotalCost { get; set; }
     public DateTime FedAt { get; set; }
     public string? Notes { get; set; }
+
+    /// <summary>Wire value of <see cref="MealSlot"/>; null for records that predate it.</summary>
+    public MealSlot? MealSlot { get; set; }
+    public string? MealSlotName { get; set; }
+
+    /// <summary>Wire value of <see cref="MealRole"/>; null for records that predate it.</summary>
+    public MealRole? MealRole { get; set; }
+    public string? MealRoleName { get; set; }
 }
 
 public class DietPlanDto

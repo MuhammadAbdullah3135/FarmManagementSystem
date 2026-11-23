@@ -1,4 +1,5 @@
 using FMS.Domain.Common;
+using FMS.Domain.Enums;
 
 namespace FMS.Domain.Entities;
 
@@ -14,6 +15,16 @@ public class FeedRecord : AuditableEntity
     public Guid? LocationId { get; set; }
 
     public decimal Quantity { get; set; }
+
+    /// <summary>
+    /// Which feeding of the day this was. Null for records that predate the concept: the
+    /// slot is not inferred from <see cref="FedAt"/> after the fact, so a record never
+    /// claims a feeding the person who recorded it never chose.
+    /// </summary>
+    public MealSlot? MealSlot { get; set; }
+
+    /// <summary>Whether this was the main ration or something offered alongside it.</summary>
+    public MealRole? MealRole { get; set; }
 
     /// <summary>Snapshot of FeedType.CostPerUnit at recording time, for stable cost reporting.</summary>
     public decimal UnitCost { get; set; }

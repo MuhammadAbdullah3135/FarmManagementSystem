@@ -78,7 +78,9 @@ public class FeedRecordingTests
     {
         FeedTypeId = seed.FeedTypeId,
         AnimalId = seed.AnimalId,
-        Quantity = quantity
+        Quantity = quantity,
+        // Pinned so the timeline title, which carries the slot, is deterministic.
+        MealSlot = MealSlot.Morning
     };
 
     [Fact]
@@ -106,9 +108,120 @@ public class FeedRecordingTests
             .Where(e => e.EventType == TimelineEventTypes.Fed)
             .ToListAsync();
         Assert.Single(events);
-        Assert.Equal("Fed 3 kg Alfalfa Hay", events[0].Title);
+        Assert.Equal("Fed 3 kg Alfalfa Hay (Morning)", events[0].Title);
         Assert.Equal("FeedRecord", events[0].RelatedEntityType);
         Assert.Equal(result.Value.Id, events[0].RelatedEntityId);
+    }
+
+    [Theory]
+    [InlineData(7, MealSlot.Morning)]
+    [InlineData(13, MealSlot.Midday)]
+    [InlineData(18, MealSlot.Evening)]
+    [InlineData(23, MealSlot.Night)]
+    public async Task CreateFeedRecord_WithoutMealSlot_DefaultsFromFedAt(int hour, MealSlot expected)
+    {
+        using var context = CreateContext();
+        var seed = await SeedAsync(context);
+        var service = CreateService(context);
+
+        await service.RecordStockMovementAsync(seed.FarmId,
+            new RecordStockMovementRequest { FeedTypeId = seed.FeedTypeId, MovementType = StockMovementType.Purchase, Quantity = 100 });
+
+        var fedAt = DateTime.UtcNow.Date.AddDays(-1).AddHours(hour);
+        var result = await service.CreateFeedRecordAsync(seed.FarmId, new CreateFeedRecordRequest
+        {
+            FeedTypeId = seed.FeedTypeId,
+            AnimalId = seed.AnimalId,
+            Quantity = 1,
+            FedAt = fedAt
+        });
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(expected, result.Value!.MealSlot);
+        Assert.Equal(expected.ToString(), result.Value.MealSlotName);
+    }
+
+    [Theory]
+    [InlineData(FeedCategory.Forage, MealRole.Main)]
+    [InlineData(FeedCategory.Concentrate, MealRole.Main)]
+    [InlineData(FeedCategory.Mineral, MealRole.Supplement)]
+    [InlineData(FeedCategory.Other, MealRole.Other)]
+    public async Task CreateFeedRecord_WithoutMealRole_DefaultsFromFeedTypeCategory(FeedCategory category, MealRole expected)
+    {
+        using var context = CreateContext();
+        var seed = await SeedAsync(context);
+        var service = CreateService(context);
+
+        // The seeded feed type is Forage; move it to the category under test.
+        var feedType = await context.FeedTypes.FirstAsync(ft => ft.Id == seed.FeedTypeId);
+        feedType.Category = category;
+        await context.SaveChangesAsync();
+
+        await service.RecordStockMovementAsync(seed.FarmId,
+            new RecordStockMovementRequest { FeedTypeId = seed.FeedTypeId, MovementType = StockMovementType.Purchase, Quantity = 100 });
+
+        var result = await service.CreateFeedRecordAsync(seed.FarmId, new CreateFeedRecordRequest
+        {
+            FeedTypeId = seed.FeedTypeId,
+            LocationId = seed.LocationId,
+            Quantity = 1
+        });
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(expected, result.Value!.MealRole);
+    }
+
+    [Fact]
+    public async Task CreateFeedRecord_ExplicitMealSlotAndRole_WinOverTheDefaults()
+    {
+        using var context = CreateContext();
+        var seed = await SeedAsync(context);
+        var service = CreateService(context);
+
+        await service.RecordStockMovementAsync(seed.FarmId,
+            new RecordStockMovementRequest { FeedTypeId = seed.FeedTypeId, MovementType = StockMovementType.Purchase, Quantity = 100 });
+
+        var result = await service.CreateFeedRecordAsync(seed.FarmId, new CreateFeedRecordRequest
+        {
+            FeedTypeId = seed.FeedTypeId,
+            LocationId = seed.LocationId,
+            Quantity = 1,
+            // Evening is not what either default would choose for a Forage feed at this hour.
+            MealSlot = MealSlot.Night,
+            MealRole = MealRole.Other
+        });
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(MealSlot.Night, result.Value!.MealSlot);
+        Assert.Equal(MealRole.Other, result.Value.MealRole);
+    }
+
+    [Fact]
+    public async Task GetFeedRecords_FiltersByMealSlot()
+    {
+        using var context = CreateContext();
+        var seed = await SeedAsync(context);
+        var service = CreateService(context);
+
+        await service.RecordStockMovementAsync(seed.FarmId,
+            new RecordStockMovementRequest { FeedTypeId = seed.FeedTypeId, MovementType = StockMovementType.Purchase, Quantity = 100 });
+
+        foreach (var slot in new[] { MealSlot.Morning, MealSlot.Evening, MealSlot.Morning })
+        {
+            await service.CreateFeedRecordAsync(seed.FarmId, new CreateFeedRecordRequest
+            {
+                FeedTypeId = seed.FeedTypeId,
+                LocationId = seed.LocationId,
+                Quantity = 1,
+                FedAt = DateTime.UtcNow.AddHours(-1),
+                MealSlot = slot
+            });
+        }
+
+        var morning = await service.GetFeedRecordsAsync(seed.FarmId, new FeedRecordListFilter { MealSlot = MealSlot.Morning });
+
+        Assert.Equal(2, morning.Value!.TotalCount);
+        Assert.All(morning.Value.Items, r => Assert.Equal(MealSlot.Morning, r.MealSlot));
     }
 
     [Fact]

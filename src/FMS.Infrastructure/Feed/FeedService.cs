@@ -369,6 +369,8 @@ public class FeedService : IFeedService
             LocationId = location?.Id,
             Quantity = Math.Round(request.Quantity, 2),
             UnitCost = feedType.CostPerUnit,
+            MealSlot = request.MealSlot ?? DefaultMealSlot(fedAt),
+            MealRole = request.MealRole ?? DefaultMealRole(feedType.Category),
             FedAt = fedAt,
             Notes = request.Notes,
             StockMovementId = movement.Id,
@@ -385,7 +387,7 @@ public class FeedService : IFeedService
                 AnimalId = animal.Id,
                 FarmId = farmId,
                 EventType = TimelineEventTypes.Fed,
-                Title = $"Fed {record.Quantity} {UnitAbbreviation(feedType.Unit)} {feedType.Name}",
+                Title = $"Fed {record.Quantity} {UnitAbbreviation(feedType.Unit)} {feedType.Name}{MealSuffix(record.MealSlot)}",
                 Description = request.Notes,
                 RelatedEntityId = record.Id,
                 RelatedEntityType = "FeedRecord",
@@ -430,6 +432,8 @@ public class FeedService : IFeedService
             query = query.Where(r => r.LocationId == filter.LocationId.Value);
         if (filter.FeedTypeId.HasValue)
             query = query.Where(r => r.FeedTypeId == filter.FeedTypeId.Value);
+        if (filter.MealSlot.HasValue)
+            query = query.Where(r => r.MealSlot == filter.MealSlot.Value);
         if (filter.From.HasValue)
             query = query.Where(r => r.FedAt >= filter.From.Value);
         if (filter.To.HasValue)
@@ -493,6 +497,8 @@ public class FeedService : IFeedService
         record.Quantity = newQuantity;
         record.FedAt = fedAt;
         record.Notes = request.Notes;
+        record.MealSlot = request.MealSlot ?? record.MealSlot;
+        record.MealRole = request.MealRole ?? record.MealRole;
         record.ModifiedAt = now;
         record.ModifiedBy = userId;
 
@@ -1374,6 +1380,34 @@ public class FeedService : IFeedService
 
     private static string FormatTime(TimeSpan time) => $"{time.Hours:D2}:{time.Minutes:D2}";
 
+    /// <summary>
+    /// The slot a feed recorded at this time belongs to, for callers that do not send one.
+    /// The hour is the timestamp's own (UTC as the API stores it); the client derives its
+    /// default from the farm's local clock and sends it explicitly, so this only settles
+    /// API clients, imports and seeds that omit the field.
+    /// </summary>
+    private static MealSlot DefaultMealSlot(DateTime fedAt) => fedAt.Hour switch
+    {
+        < 11 => MealSlot.Morning,
+        < 15 => MealSlot.Midday,
+        < 20 => MealSlot.Evening,
+        _ => MealSlot.Night
+    };
+
+    /// <summary>
+    /// A forage or concentrate is the day's ration; a mineral, supplement or additive is
+    /// offered alongside it. Used only when the caller does not send a role.
+    /// </summary>
+    private static MealRole DefaultMealRole(FeedCategory category) => category switch
+    {
+        FeedCategory.Forage or FeedCategory.Concentrate => MealRole.Main,
+        FeedCategory.Mineral or FeedCategory.Supplement or FeedCategory.Additive => MealRole.Supplement,
+        _ => MealRole.Other
+    };
+
+    /// <summary>" (Morning)" for a timeline title, or nothing when no slot was chosen.</summary>
+    private static string MealSuffix(MealSlot? slot) => slot.HasValue ? $" ({slot.Value})" : string.Empty;
+
     private static string UnitAbbreviation(FeedUnit unit) => unit switch
     {
         FeedUnit.Kilogram => "kg",
@@ -1428,7 +1462,11 @@ public class FeedService : IFeedService
         UnitCost = record.UnitCost,
         TotalCost = Math.Round(record.Quantity * record.UnitCost, 2),
         FedAt = record.FedAt,
-        Notes = record.Notes
+        Notes = record.Notes,
+        MealSlot = record.MealSlot,
+        MealSlotName = record.MealSlot?.ToString(),
+        MealRole = record.MealRole,
+        MealRoleName = record.MealRole?.ToString()
     };
 
     private static DietPlanDto MapDietPlan(DietPlan plan) => new()

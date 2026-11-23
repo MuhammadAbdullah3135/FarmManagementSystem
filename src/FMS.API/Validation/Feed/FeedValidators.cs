@@ -27,6 +27,8 @@ public class CreateFeedRecordRequestValidator : AbstractValidator<CreateFeedReco
         RuleFor(x => x.FeedTypeId).NotEmpty().WithMessage("Feed type is required");
         RuleFor(x => x.Quantity).GreaterThan(0).WithMessage("Quantity must be greater than zero");
         RuleFor(x => x.Notes).MaximumLength(1000);
+        RuleFor(x => x.MealSlot!.Value).IsInEnum().When(x => x.MealSlot.HasValue);
+        RuleFor(x => x.MealRole!.Value).IsInEnum().When(x => x.MealRole.HasValue);
     }
 }
 public class UpdateFeedRecordRequestValidator : AbstractValidator<UpdateFeedRecordRequest>
@@ -35,6 +37,8 @@ public class UpdateFeedRecordRequestValidator : AbstractValidator<UpdateFeedReco
     {
         RuleFor(x => x.Quantity).GreaterThan(0);
         RuleFor(x => x.Notes).MaximumLength(1000);
+        RuleFor(x => x.MealSlot!.Value).IsInEnum().When(x => x.MealSlot.HasValue);
+        RuleFor(x => x.MealRole!.Value).IsInEnum().When(x => x.MealRole.HasValue);
     }
 }
 public class CreateDietPlanRequestValidator : AbstractValidator<CreateDietPlanRequest>
