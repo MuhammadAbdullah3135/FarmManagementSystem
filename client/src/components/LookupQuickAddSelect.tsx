@@ -32,6 +32,13 @@ interface LookupQuickAddSelectProps {
   variant?: QuickAddVariant;
   /** Shown on the footer button ("Add Breed") and as the modal title. */
   label?: string;
+  /**
+   * Select the created lookup by its label instead of its id. Needed by
+   * `LookupOrText` fields, whose DTO stores a name string: the record is still
+   * created for real, but its id would be written into a text column. With this
+   * set, a name `options` already offers is selected instead of created again.
+   */
+  selectCreatedLabel?: boolean;
   options: NonNullable<SelectProps['options']>;
   /** Injected by Form.Item. */
   value?: string;
@@ -67,11 +74,43 @@ interface LookupQuickAddSelectProps {
   style?: CSSProperties;
 }
 
+/**
+ * Finds the value of an option whose label matches `label`, ignoring case and
+ * surrounding spaces. The list may be grouped (`{ label, options }`), which is the
+ * shape EntityPicker's recently-used section produces.
+ */
+const findOptionByLabel = (
+  options: NonNullable<SelectProps['options']>,
+  label: string,
+): string | undefined => {
+  const wanted = label.trim().toLowerCase();
+  let match: string | undefined;
+  const walk = (list: unknown) => {
+    if (!Array.isArray(list) || match) return;
+    for (const item of list) {
+      if (!item || typeof item !== 'object') continue;
+      const node = item as { value?: unknown; label?: unknown; options?: unknown };
+      if (Array.isArray(node.options)) {
+        walk(node.options);
+        continue;
+      }
+      const text = typeof node.label === 'string' ? node.label : undefined;
+      if (text && text.trim().toLowerCase() === wanted) {
+        match = node.value === undefined ? text : String(node.value);
+        return;
+      }
+    }
+  };
+  walk(options);
+  return match;
+};
+
 const LookupQuickAddSelect = ({
   kind,
   ctx,
   variant,
   label,
+  selectCreatedLabel = false,
   options,
   value,
   onChange,
@@ -105,6 +144,12 @@ const LookupQuickAddSelect = ({
   const specReason = spec?.disabledReason?.(quickAddCtx);
   const canAdd = !disabled && !addDisabled && !specReason;
   const hint = addDisabled ? disabledHint : specReason;
+  // A picker backed only by a list (LookupOrText/EntityPicker, whose fields store a
+  // label string rather than an id) has no create call at all. Without this guard the
+  // footer still rendered an "Add" button that opened an empty modal and failed with
+  // "No quick-add handler configured for …" on submit.
+  const hasCreatePath = Boolean(spec || onQuickAdd);
+  const showFooter = hasCreatePath || Boolean(hint);
 
   const initialValues = Object.fromEntries(
     resolvedFields
@@ -121,6 +166,18 @@ const LookupQuickAddSelect = ({
   const handleCreate = async () => {
     try {
       const values = await form.validateFields();
+      // A field that stores the label must not create a second record for a name
+      // its list already offers: select that entry and leave the server alone.
+      const typedName = String(values[resolvedFields[0]?.name] ?? '').trim();
+      const existing = selectCreatedLabel && typedName ? findOptionByLabel(options, typedName) : undefined;
+      if (existing) {
+        onChange?.(existing);
+        onValueSelected?.(existing);
+        message.info(`${resolvedLabel} "${typedName}" already exists — selected it`);
+        setModalOpen(false);
+        form.resetFields();
+        return;
+      }
       setCreating(true);
       let created: CreatedLookup;
       if (spec) {
@@ -135,8 +192,9 @@ const LookupQuickAddSelect = ({
       // Awaited before selecting: a parent that refetches its options (the
       // location tree, say) must have the new option in hand first.
       await onCreated?.(created, kind);
-      onChange?.(created.id);
-      onValueSelected?.(created.id);
+      const selected = selectCreatedLabel ? created.label : created.id;
+      onChange?.(selected);
+      onValueSelected?.(selected);
       message.success(`${resolvedLabel} "${values[resolvedFields[0]?.name]}" created`);
       setModalOpen(false);
       form.resetFields();
@@ -165,27 +223,31 @@ const LookupQuickAddSelect = ({
         placeholder={placeholder ?? `Select ${resolvedLabel.toLowerCase()}`}
         popupMatchSelectWidth={popupMatchSelectWidth}
         style={{ width: '100%', ...style }}
-        popupRender={(menu: ReactElement) => (
-          <>
-            {menu}
-            <Divider style={{ margin: '4px 0' }} />
-            <div style={{ padding: '0 8px 4px' }}>
-              {canAdd ? (
-                <Button
-                  type="link"
-                  size="small"
-                  icon={<PlusOutlined />}
-                  onClick={openModal}
-                  data-testid={`quick-add-${resolvedLabel}`}
-                >
-                  {t('add')} {resolvedLabel}
-                </Button>
-              ) : (
-                <span style={{ color: '#999', fontSize: 12 }}>{hint}</span>
-              )}
-            </div>
-          </>
-        )}
+        popupRender={(menu: ReactElement) =>
+          showFooter ? (
+            <>
+              {menu}
+              <Divider style={{ margin: '4px 0' }} />
+              <div style={{ padding: '0 8px 4px' }}>
+                {canAdd ? (
+                  <Button
+                    type="link"
+                    size="small"
+                    icon={<PlusOutlined />}
+                    onClick={openModal}
+                    data-testid={`quick-add-${resolvedLabel}`}
+                  >
+                    {t('add')} {resolvedLabel}
+                  </Button>
+                ) : (
+                  <span style={{ color: '#999', fontSize: 12 }}>{hint}</span>
+                )}
+              </div>
+            </>
+          ) : (
+            menu
+          )
+        }
       />
 
       <Modal

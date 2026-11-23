@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, within, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import LookupQuickAddSelect from './LookupQuickAddSelect';
+import LookupOrText from './LookupOrText';
 import { expenseCategoriesApi } from '../api/finance';
 
 vi.mock('../api/finance', () => ({
@@ -130,6 +131,18 @@ describe('LookupQuickAddSelect (registry-backed)', () => {
     expect(expenseCategoriesApi.create).toHaveBeenCalledTimes(1);
   });
 
+  it('offers no Add affordance when the picker only serves an existing list', async () => {
+    const user = userEvent.setup();
+    // LookupOrText/EntityPicker back label-string fields: there is nothing to create,
+    // so an Add button here would open an empty modal and fail on submit.
+    render(<LookupQuickAddSelect options={[{ value: 'Agri Supplies Ltd', label: 'Agri Supplies Ltd' }]} />);
+
+    await openFooter(user);
+
+    expect(await screen.findByTitle('Agri Supplies Ltd')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /add/i })).not.toBeInTheDocument();
+  });
+
   it('still supports an explicit field/handler pair for lookups outside the registry', async () => {
     const onQuickAdd = vi.fn(async () => 'custom-1');
 
@@ -154,5 +167,94 @@ describe('LookupQuickAddSelect (registry-backed)', () => {
 
     expect(onQuickAdd).toHaveBeenCalledWith({ name: 'Crank' });
     expect(await screen.findByText('Widget "Crank" created')).toBeInTheDocument();
+  });
+});
+
+describe('LookupQuickAddSelect (label-string fields)', () => {
+  const nameOnly = [
+    { name: 'name', label: 'Name', widget: 'input' as const, required: true, placeholder: 'e.g. Agri Supplies Ltd' },
+  ];
+
+  it('selects the created label rather than its id when selectCreatedLabel is set', async () => {
+    const onQuickAdd = vi.fn(async () => 'supplier-1');
+    const onChange = vi.fn();
+
+    const user = userEvent.setup();
+    render(
+      <LookupQuickAddSelect
+        label="Supplier"
+        selectCreatedLabel
+        options={[]}
+        fields={nameOnly}
+        onQuickAdd={onQuickAdd}
+        onChange={onChange}
+      />,
+    );
+
+    await openFooter(user);
+    await user.click(await screen.findByRole('button', { name: /Add Supplier/i }));
+
+    const modal = addModal();
+    await user.type(within(modal).getByLabelText('Name'), 'Agri Supplies Ltd');
+    await user.click(within(modal).getByRole('button', { name: 'Add Supplier' }));
+
+    await waitFor(() => expect(onChange).toHaveBeenCalledWith('Agri Supplies Ltd'));
+  });
+
+  it('selects an existing option for a typed name instead of creating a duplicate', async () => {
+    const onQuickAdd = vi.fn(async () => 'supplier-2');
+    const onChange = vi.fn();
+
+    const user = userEvent.setup();
+    render(
+      <LookupQuickAddSelect
+        label="Supplier"
+        selectCreatedLabel
+        options={[{ value: 'Agri Supplies Ltd', label: 'Agri Supplies Ltd' }]}
+        fields={nameOnly}
+        onQuickAdd={onQuickAdd}
+        onChange={onChange}
+      />,
+    );
+
+    await openFooter(user);
+    await user.click(await screen.findByRole('button', { name: /Add Supplier/i }));
+
+    const modal = addModal();
+    // Case and surrounding spaces do not make it a different supplier.
+    await user.type(within(modal).getByLabelText('Name'), '  agri supplies ltd ');
+    await user.click(within(modal).getByRole('button', { name: 'Add Supplier' }));
+
+    await waitFor(() => expect(onChange).toHaveBeenCalledWith('Agri Supplies Ltd'));
+    expect(onQuickAdd).not.toHaveBeenCalled();
+    expect(
+      await screen.findByText('Supplier "agri supplies ltd" already exists — selected it'),
+    ).toBeInTheDocument();
+  });
+
+  it('gives LookupOrText a working quick-add that stores the new name', async () => {
+    vi.mocked(expenseCategoriesApi.create).mockResolvedValue(res({ id: 'ec-7', name: 'Utilities' }));
+    const onChange = vi.fn();
+
+    const user = userEvent.setup();
+    render(
+      <LookupOrText
+        kind="expenseCategory"
+        options={[]}
+        placeholder="Category"
+        onChange={onChange}
+      />,
+    );
+
+    await user.click(screen.getByRole('combobox'));
+    await user.click(await screen.findByRole('button', { name: /Add Expense Category/i }));
+
+    const modal = addModal();
+    await user.type(within(modal).getByLabelText('Name'), 'Utilities');
+    await user.click(within(modal).getByRole('button', { name: 'Add Expense Category' }));
+
+    // The field stores a string, so the name is written — never the created id.
+    await waitFor(() => expect(onChange).toHaveBeenCalledWith('Utilities'));
+    expect(onChange).not.toHaveBeenCalledWith('ec-7');
   });
 });

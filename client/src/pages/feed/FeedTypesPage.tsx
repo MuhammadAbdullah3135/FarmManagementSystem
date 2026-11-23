@@ -301,6 +301,7 @@ const FeedTypesPage: React.FC = () => {const { t: translate } = useTranslation([
           <Form.Item name="supplier" label={translate('supplier')}>
             <LookupOrText
               loadOptions={loadSupplierOptions}
+              kind="supplier"
               recentStorageKey="supplier"
               allowClear
             />

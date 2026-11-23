@@ -26,6 +26,13 @@ interface EntityPickerProps {
   variant?: QuickAddVariant;
   /** Noun shown on the quick-add button when `kind` is not registry-backed. */
   label?: string;
+  /**
+   * Select the created lookup by its label rather than its id. Use it for fields
+   * that store a name string (`LookupOrText`): the created record is real, but
+   * the id would land in a text column. A name the list already offers is
+   * selected instead of being created twice.
+   */
+  selectCreatedLabel?: boolean;
   value?: string;
   onChange?: (value?: string) => void;
   onCreated?: (created: CreatedLookup, kind?: LookupKind) => void | Promise<void>;
@@ -79,6 +86,7 @@ const EntityPicker = ({
   ctx,
   variant,
   label,
+  selectCreatedLabel,
   value,
   onChange,
   onCreated,
@@ -151,6 +159,7 @@ const EntityPicker = ({
       ctx={ctx}
       variant={variant}
       label={label}
+      selectCreatedLabel={selectCreatedLabel}
       options={groupedOptions}
       value={value}
       loading={loading}
@@ -158,7 +167,18 @@ const EntityPicker = ({
         remember(chosen);
         onChange?.(chosen);
       }}
-      onCreated={onCreated}
+      onCreated={async (created, createdKind) => {
+        // A label-string field selects the name, so the new entry has to be in the
+        // list before `onChange` sets it, or the picker would show a bare value.
+        if (selectCreatedLabel) {
+          setLoaded((prev) =>
+            prev.some((option) => option.value === created.label)
+              ? prev
+              : [...prev, { value: created.label, label: created.label }],
+          );
+        }
+        await onCreated?.(created, createdKind);
+      }}
       placeholder={placeholder ?? t('searchOrSelect')}
       allowClear={allowClear}
       disabled={disabled}
