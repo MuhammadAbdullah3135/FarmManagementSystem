@@ -13,6 +13,8 @@ import type {
   AnimalConsumption,
   LocationConsumption,
   FeedCostSummary,
+  MealSlot,
+  MealRole,
   PagedResult,
 } from '../types';
 
@@ -47,6 +49,7 @@ export const feedRecordsApi = {
     feedTypeId?: string;
     animalId?: string;
     locationId?: string;
+    mealSlot?: MealSlot;
     from?: string;
     to?: string;
     page?: number;
@@ -59,10 +62,12 @@ export const feedRecordsApi = {
     quantity: number;
     fedAt?: string;
     notes?: string;
+    mealSlot?: MealSlot;
+    mealRole?: MealRole;
   }) => api.post(farmUrl('/feed/records'), data),
   update: (
     id: string,
-    data: { quantity: number; fedAt?: string; notes?: string }
+    data: { quantity: number; fedAt?: string; notes?: string; mealSlot?: MealSlot; mealRole?: MealRole }
   ) => api.put(farmUrl(`/feed/records/${id}`), data),
   remove: (id: string) => api.delete(farmUrl(`/feed/records/${id}`)),
 };

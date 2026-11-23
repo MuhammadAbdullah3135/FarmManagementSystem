@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  Button, Card, DatePicker, Form, Input, InputNumber, Modal, Popconfirm, Radio, Space, Table, message,
+  Button, Card, DatePicker, Form, Input, InputNumber, Modal, Popconfirm, Radio, Space, Table, Tag, message,
 } from 'antd';
 import Select from '../../components/Select';
 import { PlusOutlined } from '@ant-design/icons';
@@ -11,9 +11,10 @@ import { lookupsApi } from '../../api/attendance';
 import { flattenLocations } from '../../api/configuration';
 import { getApiError } from '../../api/farmApi';
 import LookupQuickAddSelect from '../../components/LookupQuickAddSelect';
-import type { FeedRecord, FeedType } from '../../types';
+import type { FeedRecord, FeedType, MealRole, MealSlot } from '../../types';
 import { useTranslation } from 'react-i18next';
 import { useEnumOptions } from '../../i18n/enumOptions';
+import { feedUnitLabel } from '../../i18n/vocabulary';
 
 interface AnimalOption {
   id: string;
@@ -26,8 +27,46 @@ interface LocationOption {
   name: string;
 }
 
+/**
+ * Which feeding a clock time belongs to. Mirrors `FeedService.DefaultMealSlot`, so a record
+ * created from this form and one created by an API caller without a slot agree.
+ */
+const slotForHour = (hour: number): MealSlot =>
+  hour < 11 ? 'Morning' : hour < 15 ? 'Midday' : hour < 20 ? 'Evening' : 'Night';
+
+/**
+ * The ration's main course vs an accompaniment, from the feed type's own category.
+ * Mirrors `FeedService.DefaultMealRole`.
+ */
+const roleForCategory = (category?: string): MealRole =>
+  category === 'Forage' || category === 'Concentrate'
+    ? 'Main'
+    : category === 'Mineral' || category === 'Supplement' || category === 'Additive'
+      ? 'Supplement'
+      : 'Other';
+
 const FeedRecordsPage: React.FC = () => {const { t: translate } = useTranslation('feed'); 
   const targetModeOptions = useEnumOptions('feedTargetMode');
+  // One label map per chip row, so the chips and the table column can never disagree.
+  const mealSlotLabels: Record<MealSlot, string> = {
+    Morning: translate('morning'),
+    Midday: translate('midday'),
+    Evening: translate('evening'),
+    Night: translate('night'),
+  };
+  const mealRoleLabels: Record<MealRole, string> = {
+    Main: translate('roleMain'),
+    Supplement: translate('roleSupplement'),
+    Other: translate('roleOther'),
+  };
+  const mealSlotOptions = (Object.keys(mealSlotLabels) as MealSlot[]).map((value) => ({
+    value,
+    label: mealSlotLabels[value],
+  }));
+  const mealRoleOptions = (Object.keys(mealRoleLabels) as MealRole[]).map((value) => ({
+    value,
+    label: mealRoleLabels[value],
+  }));
   const [records, setRecords] = useState<FeedRecord[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -39,8 +78,19 @@ const FeedRecordsPage: React.FC = () => {const { t: translate } = useTranslation
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<FeedRecord | null>(null);
   const [targetMode, setTargetMode] = useState<'animal' | 'location'>('animal');
-  const [filters, setFilters] = useState<{ feedTypeId?: string; range?: [Dayjs | null, Dayjs | null] }>({});
+  const [filters, setFilters] = useState<{
+    feedTypeId?: string;
+    mealSlot?: MealSlot;
+    range?: [Dayjs | null, Dayjs | null];
+  }>({});
   const [form] = Form.useForm();
+  // Derived, not stored: the addon follows whatever feed type is selected.
+  const watchedFeedTypeId = Form.useWatch('feedTypeId', form);
+  // In edit mode there is no feed-type field; the record already carries its unit.
+  const quantityUnit = editing?.unitName ?? feedTypes.find((ft) => ft.id === watchedFeedTypeId)?.unitName;
+  // A chip the user picked outranks the derivation from the clock or the category.
+  const [slotTouched, setSlotTouched] = useState(false);
+  const [roleTouched, setRoleTouched] = useState(false);
 
   const loadLookups = useCallback(async () => {
     try {
@@ -71,6 +121,7 @@ const FeedRecordsPage: React.FC = () => {const { t: translate } = useTranslation
     try {
       const res = await feedRecordsApi.list({
         feedTypeId: filters.feedTypeId,
+        mealSlot: filters.mealSlot,
         from: filters.range?.[0]?.toISOString(),
         to: filters.range?.[1]?.toISOString(),
         page: p,
@@ -100,18 +151,27 @@ const FeedRecordsPage: React.FC = () => {const { t: translate } = useTranslation
     setEditing(null);
     setTargetMode('animal');
     form.resetFields();
-    form.setFieldsValue({ fedAt: dayjs() });
+    setSlotTouched(false);
+    setRoleTouched(false);
+    const now = dayjs();
+    // Pre-filled from the clock so recording the feeding taking place now is two clicks.
+    form.setFieldsValue({ fedAt: now, mealSlot: slotForHour(now.hour()) });
     setModalOpen(true);
   };
 
   const openEdit = (record: FeedRecord) => {
     setEditing(record);
+    // An existing record's own choices are deliberate: changing the time must not overwrite them.
+    setSlotTouched(Boolean(record.mealSlot));
+    setRoleTouched(Boolean(record.mealRole));
     setTargetMode(record.animalId ? 'animal' : 'location');
     form.resetFields();
     form.setFieldsValue({
       quantity: record.quantity,
       fedAt: dayjs(record.fedAt),
       notes: record.notes,
+      mealSlot: record.mealSlot,
+      mealRole: record.mealRole,
     });
     setModalOpen(true);
   };
@@ -121,6 +181,8 @@ const FeedRecordsPage: React.FC = () => {const { t: translate } = useTranslation
       const values = await form.validateFields();
       if (editing) {
         await feedRecordsApi.update(editing.id, {
+          mealSlot: values.mealSlot,
+          mealRole: values.mealRole,
           quantity: values.quantity,
           fedAt: values.fedAt?.toISOString(),
           notes: values.notes,
@@ -129,6 +191,8 @@ const FeedRecordsPage: React.FC = () => {const { t: translate } = useTranslation
       } else {
         await feedRecordsApi.create({
           feedTypeId: values.feedTypeId,
+          mealSlot: values.mealSlot,
+          mealRole: values.mealRole,
           animalId: targetMode === 'animal' ? values.animalId : undefined,
           locationId: targetMode === 'location' ? values.locationId : undefined,
           quantity: values.quantity,
@@ -158,6 +222,18 @@ const FeedRecordsPage: React.FC = () => {const { t: translate } = useTranslation
   const columns: ColumnsType<FeedRecord> = [
     { title: translate('fedAt'), dataIndex: 'fedAt', render: (d: string) => dayjs(d).format('YYYY-MM-DD HH:mm') },
     { title: translate('feedType'), dataIndex: 'feedTypeName' },
+    {
+      title: translate('meal'),
+      render: (_, record) =>
+        record.mealSlot || record.mealRole ? (
+          <Space size={4} wrap>
+            {record.mealSlot && <Tag>{mealSlotLabels[record.mealSlot]}</Tag>}
+            {record.mealRole && <Tag color="default">{mealRoleLabels[record.mealRole]}</Tag>}
+          </Space>
+        ) : (
+          '-'
+        ),
+    },
     {
       title: translate('target'),
       render: (_, record) =>
@@ -199,6 +275,14 @@ const FeedRecordsPage: React.FC = () => {const { t: translate } = useTranslation
           onChange={(v) => setFilters((f) => ({ ...f, feedTypeId: v }))}
           options={feedTypes.map((t) => ({ value: t.id, label: t.name }))}
         />
+        <Select
+          allowClear
+          placeholder={translate('filterByMeal')}
+          style={{ width: 160 }}
+          value={filters.mealSlot}
+          onChange={(v) => setFilters((f) => ({ ...f, mealSlot: v }))}
+          options={mealSlotOptions}
+        />
         <DatePicker.RangePicker
           value={filters.range}
           onChange={(range) => setFilters((f) => ({ ...f, range: range ?? undefined }))}
@@ -213,12 +297,15 @@ const FeedRecordsPage: React.FC = () => {const { t: translate } = useTranslation
         pagination={{ current: page, total, pageSize: 10, onChange: loadRecords }}
       />
 
+      {/* The form is taller than a laptop viewport once the chips are in, so the body
+          scrolls on its own and the footer's Save button stays on screen. */}
       <Modal
         title={editing ? translate('editFeedRecord') : translate('recordFeeding')}
         open={modalOpen}
         onOk={handleSave}
         onCancel={() => setModalOpen(false)}
         destroyOnClose
+        styles={{ body: { maxHeight: 'calc(100vh - 220px)', overflowY: 'auto' } }}
       >
         <Form form={form} layout="vertical">
           {!editing && (
@@ -236,7 +323,30 @@ options={targetModeOptions}
                 <LookupQuickAddSelect
                   kind="feedType"
                   options={feedTypes.map((t) => ({ value: t.id, label: `${t.name} (${t.unitName})` }))}
+                  onValueSelected={(id) => {
+                    // The category decides what kind of course this is; a chip the user
+                    // already picked is never overwritten.
+                    if (roleTouched) return;
+                    const feed = feedTypes.find((t) => t.id === id);
+                    form.setFieldsValue({ mealRole: roleForCategory(feed?.category) });
+                  }}
                   onCreated={() => loadLookups()}
+                />
+              </Form.Item>
+              <Form.Item name="mealSlot" label={translate('meal')}>
+                <Radio.Group
+                  options={mealSlotOptions}
+                  optionType="button"
+                  buttonStyle="solid"
+                  onChange={() => setSlotTouched(true)}
+                />
+              </Form.Item>
+              <Form.Item name="mealRole" label={translate('feedRole')}>
+                <Radio.Group
+                  options={mealRoleOptions}
+                  optionType="button"
+                  buttonStyle="solid"
+                  onChange={() => setRoleTouched(true)}
                 />
               </Form.Item>
               {targetMode === 'animal' ? (
@@ -266,10 +376,26 @@ options={targetModeOptions}
             </>
           )}
           <Form.Item name="quantity" label={translate('quantity')} rules={[{ required: true }]}>
-            <InputNumber min={0.01} style={{ width: '100%' }} />
+            <InputNumber
+              min={0.01}
+              style={{ width: '100%' }}
+              // The feed type owns the unit, so the box says what the number is in.
+              // `suffix`, not `addonAfter`: the addon wraps the control in a Space.Compact
+              // that does not take the field's width, leaving the quantity box at a
+              // third of the width of every other field.
+              suffix={quantityUnit ? feedUnitLabel(translate, quantityUnit) : undefined}
+            />
           </Form.Item>
           <Form.Item name="fedAt" label={translate('fedAt')} rules={[{ required: true }]}>
-            <DatePicker showTime style={{ width: '100%' }} />
+            <DatePicker
+              showTime
+              style={{ width: '100%' }}
+              onChange={(value) => {
+                // The slot follows the clock until the user picks a chip themselves.
+                if (slotTouched || !value) return;
+                form.setFieldsValue({ mealSlot: slotForHour(value.hour()) });
+              }}
+            />
           </Form.Item>
           <Form.Item name="notes" label={translate('notes')}>
             <Input.TextArea rows={2} maxLength={500} />

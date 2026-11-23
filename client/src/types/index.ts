@@ -206,6 +206,10 @@ export interface InventoryItem {
 // Feed management
 export type FeedCategory = 'Forage' | 'Concentrate' | 'Mineral' | 'Supplement' | 'Additive' | 'Other';
 export type FeedUnit = 'Kilogram' | 'Gram' | 'Ton' | 'Liter' | 'Bale' | 'Bag' | 'Other';
+/** Which feeding of the day. 'Midday' covers what a farm might call the afternoon feeding. */
+export type MealSlot = 'Morning' | 'Midday' | 'Evening' | 'Night';
+/** Main ration, an accompaniment offered alongside it, or neither. */
+export type MealRole = 'Main' | 'Supplement' | 'Other';
 export type StockMovementType = 'Purchase' | 'Consumption' | 'Adjustment';
 
 export type InventoryMovementType = 'Purchase' | 'Consumption' | 'Transfer' | 'Adjustment';
@@ -277,6 +281,11 @@ export interface FeedRecord {
   totalCost: number;
   fedAt: string;
   notes?: string;
+  /** Null on records written before the slot existed. */
+  mealSlot?: MealSlot | null;
+  mealSlotName?: string | null;
+  mealRole?: MealRole | null;
+  mealRoleName?: string | null;
 }
 
 export interface DietPlanItem {

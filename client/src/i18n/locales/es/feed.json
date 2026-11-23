@@ -134,5 +134,12 @@
   "totalPercent": "Parte total",
   "morning": "Mañana",
   "midday": "Mediodía",
-  "evening": "Tarde"
+  "evening": "Tarde",
+  "meal": "Comida",
+  "filterByMeal": "Filtrar por comida",
+  "night": "Noche",
+  "feedRole": "Tipo de ración",
+  "roleMain": "Principal",
+  "roleSupplement": "Complemento",
+  "roleOther": "Otro"
 }

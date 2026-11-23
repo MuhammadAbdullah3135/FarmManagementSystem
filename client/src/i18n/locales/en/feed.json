@@ -134,5 +134,12 @@
   "totalPercent": "Total share",
   "morning": "Morning",
   "midday": "Midday",
-  "evening": "Evening"
+  "evening": "Evening",
+  "meal": "Meal",
+  "filterByMeal": "Filter by meal",
+  "night": "Night",
+  "feedRole": "Feed role",
+  "roleMain": "Main",
+  "roleSupplement": "Supplement",
+  "roleOther": "Other"
 }

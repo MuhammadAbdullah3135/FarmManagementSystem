@@ -134,5 +134,12 @@
   "totalPercent": "النسبة الإجمالية",
   "morning": "صباحًا",
   "midday": "ظهرًا",
-  "evening": "مساءً"
+  "evening": "مساءً",
+  "meal": "الوجبة",
+  "filterByMeal": "تصفية حسب الوجبة",
+  "night": "ليلًا",
+  "feedRole": "نوع الحصة",
+  "roleMain": "رئيسي",
+  "roleSupplement": "مكمّل",
+  "roleOther": "أخرى"
 }
