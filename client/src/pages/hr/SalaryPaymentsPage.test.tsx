@@ -76,6 +76,26 @@ describe('SalaryPaymentsPage mobile layout', () => {
 });
 
 /*
+ * Before an employee is picked the payments card would be an empty box. The roster fills it, and
+ * picking someone there must be the same choice as the head's dropdown — not a second, unlinked
+ * piece of state.
+ */
+describe('SalaryPaymentsPage employee roster', () => {
+  it('picks an employee from the roster and mirrors it in the dropdown', async () => {
+    const user = userEvent.setup();
+    render(<SalaryPaymentsPage />);
+
+    await user.click(await screen.findByTestId('employee-choice-e1'));
+
+    await waitFor(() => expect(salaryPaymentsApi.list).toHaveBeenCalledWith('e1', 1, 10));
+    const head = screen.getByText('Salary Payments').closest('.ant-card-head') as HTMLElement;
+    // antd v6 draws the chosen value in `.ant-select-content`, titled with the option label.
+    expect(head.querySelector('.ant-select-content')?.getAttribute('title')).toBe('Ayesha Khan');
+    expect(await screen.findByRole('button', { name: /record payment/i })).toBeInTheDocument();
+  });
+});
+
+/*
  * The payroll range picker is ~340px wide and the report card is a third of the row (lg={8}), so a
  * picker in the card's `extra` squeezed antd's `flex: 1` title down to "P…" — and hung past the
  * card's border — on every window narrower than about 1800px. The range belongs in the page's

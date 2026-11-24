@@ -273,7 +273,33 @@ const SalaryPaymentsPage: React.FC = () => {
                 pagination={{ current: paymentPage, total: paymentTotal, pageSize: 10, onChange: (p) => loadPayments(selectedEmp, p) }}
               />
             ) : (
-              <p style={{ color: '#999' }}>{t('selectAnEmployeeToViewPaymentHistory')}</p>
+              <div>
+                <p style={{ color: '#999', marginTop: 0 }}>{t('selectAnEmployeeToViewPaymentHistory')}</p>
+                {/* The roster is the page's starting point: with no employee picked the card would
+                    otherwise be an empty box. Picking here is the same state change as the head's
+                    dropdown, so both stay in sync and either one can be used. */}
+                <Row gutter={[8, 8]}>
+                  {employees.map((employee) => (
+                    <Col key={employee.id} xs={24} sm={12} xxl={8}>
+                      <Button
+                        block
+                        data-testid={`employee-choice-${employee.id}`}
+                        onClick={() => setSelectedEmp(employee.id)}
+                        style={{ height: 'auto', paddingBlock: 8, textAlign: 'start' }}
+                      >
+                        <span style={{ display: 'block', fontWeight: 500 }}>
+                          {`${employee.firstName} ${employee.lastName}`}
+                        </span>
+                        <span style={{ display: 'block', color: '#8c8c8c', fontSize: 12 }}>
+                          {[employee.employeeRoleName ?? employee.departmentName, formatMoney(employee.salaryRate)]
+                            .filter(Boolean)
+                            .join(' · ')}
+                        </span>
+                      </Button>
+                    </Col>
+                  ))}
+                </Row>
+              </div>
             )}
           </Card>
         </Col>
