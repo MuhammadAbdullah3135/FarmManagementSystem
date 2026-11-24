@@ -307,7 +307,9 @@
     "vetPhoneMaxLength": "Phone cannot exceed {{max}} characters",
     "vetEmailMaxLength": "Email cannot exceed {{max}} characters",
     "vetLicenseNumberMaxLength": "Licence number cannot exceed {{max}} characters",
-    "vetNotesMaxLength": "Notes cannot exceed {{max}} characters"
+    "vetNotesMaxLength": "Notes cannot exceed {{max}} characters",
+    "loginCredentialsRequired": "Email and password are required.",
+    "registerFieldsRequired": "Email, password, first name, last name, and account name are required."
   },
   "unauthorized": {
     "farmOwnerOrManagerOnly": "Only farm owners and managers can {{action}}",

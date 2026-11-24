@@ -39,6 +39,17 @@ public class AuthService : IAuthService
 
     public async Task<Result<AuthResponse>> RegisterAsync(RegisterRequest request)
     {
+        // Registration uses the same credential surface as login. Reject incomplete input
+        // before creating an account, user, farm, role, or refresh token.
+        if (string.IsNullOrWhiteSpace(request.Email)
+            || string.IsNullOrWhiteSpace(request.Password)
+            || string.IsNullOrWhiteSpace(request.FirstName)
+            || string.IsNullOrWhiteSpace(request.LastName)
+            || string.IsNullOrWhiteSpace(request.AccountName))
+            return Result<AuthResponse>.Validation(
+                "Email, password, first name, last name, and account name are required.",
+                DomainMessageKeys.RegisterFieldsRequired);
+
         if (await _context.Users.AnyAsync(u => u.Email == request.Email))
             return Result<AuthResponse>.Conflict("Email already registered", DomainMessageKeys.EmailAlreadyRegistered);
 
@@ -181,6 +192,15 @@ public class AuthService : IAuthService
 
     public async Task<Result<AuthResponse>> LoginAsync(LoginRequest request)
     {
+        // Reject missing/whitespace credentials before touching the database. This guard is
+        // intentionally here as well as in the request validator: validation must still hold
+        // when the service is called directly, and a user row with an empty email must never
+        // be reachable through the credential login path.
+        if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Password))
+            return Result<AuthResponse>.Validation(
+                "Email and password are required.",
+                DomainMessageKeys.LoginCredentialsRequired);
+
         var user = await _context.Users
             .Include(u => u.Account)
             .Include(u => u.UserRoles)

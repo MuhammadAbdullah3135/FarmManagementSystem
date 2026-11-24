@@ -307,7 +307,9 @@
     "vetPhoneMaxLength": "El teléfono no puede superar los {{max}} caracteres",
     "vetEmailMaxLength": "El correo electrónico no puede superar los {{max}} caracteres",
     "vetLicenseNumberMaxLength": "El número de licencia no puede superar los {{max}} caracteres",
-    "vetNotesMaxLength": "Las notas no pueden superar los {{max}} caracteres"
+    "vetNotesMaxLength": "Las notas no pueden superar los {{max}} caracteres",
+    "loginCredentialsRequired": "El correo electrónico y la contraseña son obligatorios.",
+    "registerFieldsRequired": "El correo electrónico, la contraseña, el nombre, los apellidos y el nombre de la cuenta son obligatorios."
   },
   "unauthorized": {
     "farmOwnerOrManagerOnly": "Solo los propietarios y gestores de la granja pueden {{action}}",

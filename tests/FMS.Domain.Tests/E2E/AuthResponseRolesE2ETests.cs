@@ -74,6 +74,26 @@ public class AuthResponseRolesE2ETests : IClassFixture<AuthResponseRolesE2ETests
         Assert.Contains("SystemOwner", body!.Roles);
     }
 
+    [Theory]
+    [InlineData("", "")]
+    [InlineData("   ", "   ")]
+    [InlineData("", "TestPass123!")]
+    [InlineData("testuser@test.com", "")]
+    public async Task Login_RejectsEmptyOrWhitespaceCredentials(string email, string password)
+    {
+        var response = await _factory.CreateClient().PostAsJsonAsync("/api/auth/login", new
+        {
+            email,
+            password,
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains("Email and password are required.", body);
+        Assert.DoesNotContain("accessToken", body);
+        Assert.DoesNotContain("refreshToken", body);
+    }
+
     [Fact]
     public async Task Refresh_KeepsRolesOnTheNewPair()
     {
@@ -116,5 +136,28 @@ public class AuthResponseRolesE2ETests : IClassFixture<AuthResponseRolesE2ETests
         var body = await response.Content.ReadFromJsonAsync<AuthResponseBody>();
         Assert.NotNull(body);
         Assert.Contains("SystemOwner", body!.Roles);
+    }
+
+    [Theory]
+    [InlineData("", "", "Role", "Tester", "Role Test Account")]
+    [InlineData("   ", "   ", "Role", "Tester", "Role Test Account")]
+    [InlineData("roles-empty@test.com", "", "Role", "Tester", "Role Test Account")]
+    public async Task Register_RejectsEmptyOrWhitespaceCredentials(
+        string email, string password, string firstName, string lastName, string accountName)
+    {
+        var response = await _factory.CreateClient().PostAsJsonAsync("/api/auth/register", new
+        {
+            email,
+            password,
+            firstName,
+            lastName,
+            accountName,
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains("are required", body);
+        Assert.DoesNotContain("accessToken", body);
+        Assert.DoesNotContain("refreshToken", body);
     }
 }
