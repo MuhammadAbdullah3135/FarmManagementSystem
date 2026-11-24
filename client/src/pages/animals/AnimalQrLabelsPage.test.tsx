@@ -70,6 +70,14 @@ describe('AnimalQrLabelsPage', () => {
     expect(await screen.findByText('No animals match this filter.')).toBeInTheDocument();
   });
 
+  it('releases the app scroller for printing, and restores it on leaving the page', () => {
+    const { unmount } = render(<AnimalQrLabelsPage />);
+
+    expect(document.body).toHaveClass('fms-labels-print');
+    unmount();
+    expect(document.body).not.toHaveClass('fms-labels-print');
+  });
+
   it('prints the page it is showing', async () => {
     sheetOf([BESSIE]);
 

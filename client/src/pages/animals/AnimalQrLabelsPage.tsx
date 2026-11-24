@@ -39,6 +39,19 @@ export default function AnimalQrLabelsPage() {
   const [loading, setLoading] = useState(false);
   const [failed, setFailed] = useState(false);
 
+  /*
+   * The app shell is a viewport-height scroller: body, #root and both layouts are pinned to
+   * 100vh with overflow hidden so navigation never scrolls the whole document. That is right
+   * on screen and fatal in print — a sheet placed inside it is clipped at the first page's
+   * edge. Mark the document so the print stylesheet can release the shell only while this
+   * page is mounted; the class goes away when the user navigates, so no other screen's
+   * print layout is touched (Vite keeps this module's CSS in the bundle).
+   */
+  useEffect(() => {
+    document.body.classList.add('fms-labels-print');
+    return () => document.body.classList.remove('fms-labels-print');
+  }, []);
+
   const load = useCallback(async (nextPage: number, nextPageSize: number, nextSearch: string) => {
     setLoading(true);
     try {
@@ -72,12 +85,12 @@ export default function AnimalQrLabelsPage() {
 
   return (
     <Space direction="vertical" size={16} style={{ width: '100%' }}>
-      <div>
+      <div className="fms-labels-heading">
         <Title level={4} style={{ marginBottom: 0 }}>{t('qrLabels')}</Title>
         <Text type="secondary">{t('labelSheetIntro')}</Text>
       </div>
 
-      <Space wrap>
+      <Space className="fms-labels-controls" wrap>
         <Input.Search
           allowClear
           placeholder={t('searchByTagOrName')}
@@ -111,6 +124,7 @@ export default function AnimalQrLabelsPage() {
 
       {failed && (
         <Alert
+          className="fms-labels-alert"
           type="warning"
           showIcon
           message={t('labelsNeedAConnection')}
@@ -118,7 +132,7 @@ export default function AnimalQrLabelsPage() {
         />
       )}
 
-      <Card>
+      <Card className="fms-labels-card">
         {loading ? (
           <Spin style={{ display: 'block', margin: '40px auto' }} />
         ) : labels.length === 0 && !failed ? (
@@ -150,6 +164,7 @@ export default function AnimalQrLabelsPage() {
 
       {total > 0 && (
         <Pagination
+          className="fms-labels-pager"
           current={page}
           pageSize={pageSize}
           total={total}

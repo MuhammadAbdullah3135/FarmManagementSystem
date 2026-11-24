@@ -36,30 +36,59 @@
 }
 
 @media print {
-  /*
-   * Only the sheet prints. The app's chrome — sider, header, buttons, the hint above the grid —
-   * is hidden rather than removed: `visibility` keeps each element's box, so the layout does not
-   * reflow into a different arrangement for print than the one the user just approved on screen.
-   * `print:` hidden via `display` is the version that silently changes the grid.
-   */
-  body * {
-    visibility: hidden;
+  @page {
+    margin: 10mm;
   }
 
-  .fms-label-sheet,
-  .fms-label-sheet * {
-    visibility: visible;
+  /*
+   * The whole app is a fixed-height scroller (see AppLayout): body, #root and both layouts are
+   * pinned to the viewport and clip overflow. That keeps the navigation from scrolling the
+   * document on screen, but in print it clips the sheet to the first page — and because the
+   * sheet used to be absolutely positioned inside the card, it sat *below* the visible part of
+   * that clipped box. The result was a blank preview with the labels just out of reach.
+   *
+   * Release the shell instead of working around it. `!important` is required because those
+   * dimensions are inline styles, and the body class keeps every rule here scoped to this page
+   * (the stylesheet stays loaded after navigating away).
+   */
+  body.fms-labels-print,
+  body.fms-labels-print #root,
+  body.fms-labels-print .ant-layout,
+  body.fms-labels-print .ant-layout-content {
+    block-size: auto !important;
+    min-block-size: 0 !important;
+    overflow: visible !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+  }
+
+  /*
+   * Unlike the old `visibility: hidden`, `display: none` actually removes the chrome from the
+   * flow, so the sheet starts at the top of the first page rather than after the header, the
+   * banners and the search controls. The grid itself is untouched — what prints is the sheet
+   * the user just checked on screen, at the size they checked it at.
+   */
+  body.fms-labels-print .ant-layout-sider,
+  body.fms-labels-print .ant-layout-header,
+  body.fms-labels-print .ant-layout-content > .ant-alert,
+  body.fms-labels-print .fms-labels-heading,
+  body.fms-labels-print .fms-labels-controls,
+  body.fms-labels-print .fms-labels-alert,
+  body.fms-labels-print .fms-labels-pager {
+    display: none !important;
+  }
+
+  body.fms-labels-print .fms-labels-card,
+  body.fms-labels-print .fms-labels-card .ant-card-body {
+    border: 0 !important;
+    padding: 0 !important;
   }
 
   .fms-label-sheet {
-    position: absolute;
-    inset-block-start: 0;
-    inset-inline-start: 0;
+    /* In flow, so the browser can paginate a tall sheet instead of clipping it. */
+    position: static;
     inline-size: 100%;
     grid-template-columns: repeat(3, 1fr);
-  }
-
-  @page {
-    margin: 10mm;
   }
 }
