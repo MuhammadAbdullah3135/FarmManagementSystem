@@ -1,5 +1,6 @@
 using FMS.Application.Common;
 using FMS.Application.Farm;
+using FMS.Application.Notifications;
 using FMS.Domain.Entities;
 using FMS.Domain.Enums;
 using FMS.Infrastructure.Persistence;
@@ -132,7 +133,7 @@ public static class DemoDataSeeder
         // Re-seed the lookup defaults (idempotent per category) + the domain data. The ensure
         // helpers re-create anything the wipe removed, and are no-ops for anything still present.
         await FarmDefaultsSeeder.EnsureFarmDefaultsAsync(context, farmId);
-        await SeedEverythingAsync(context, farmId, now);
+        await SeedEverythingAsync(context, farmId, demoUser.Id, now);
         await context.SaveChangesAsync();
     }
 
@@ -188,7 +189,7 @@ public static class DemoDataSeeder
         });
 
         await FarmDefaultsSeeder.EnsureFarmDefaultsAsync(context, farmId);
-        await SeedEverythingAsync(context, farmId, now);
+        await SeedEverythingAsync(context, farmId, user.Id, now);
         await context.SaveChangesAsync();
     }
 
@@ -234,6 +235,9 @@ public static class DemoDataSeeder
         // not wiped here — no demo seed data writes to it, so nothing leaks across resets.
         await RemoveRangeAsync(context, context.MedicalRecords.Where(a => a.FarmId == farmId));
         await RemoveRangeAsync(context, context.VaccinationRecords.Where(a => a.FarmId == farmId));
+        // Vets are referenced by the clinical records above, so they go after them. The demo
+        // seeds its own contacts (the Vets screen would otherwise be empty on first login).
+        await RemoveRangeAsync(context, context.Vets.Where(a => a.FarmId == farmId));
         await RemoveRangeAsync(context, context.VaccinationSchedules.Where(a => a.FarmId == farmId));
         await RemoveRangeAsync(context, context.MedicineStocks.Where(a => a.FarmId == farmId));
         await RemoveRangeAsync(context, context.Medicines.Where(a => a.FarmId == farmId));
@@ -302,7 +306,7 @@ public static class DemoDataSeeder
 
     // ── domain data seed ──────────────────────────────────────────────────────────────────
 
-    private static async Task SeedEverythingAsync(FmsDbContext context, Guid farmId, DateTime now)
+    private static async Task SeedEverythingAsync(FmsDbContext context, Guid farmId, Guid demoUserId, DateTime now)
     {
         // ── Staff: a small, believable team ──────────────────────────────────────────────
         var vet = await EnsureEmployeeAsync(context, farmId, now,
@@ -782,6 +786,807 @@ public static class DemoDataSeeder
             Reference = "SAL-2026-" + now.Month,
             Notes = "Monthly salary — March."
         });
+
+        // The blocks above give every screen a first page of data. The enrichment below adds
+        // the history that makes the demo feel like a working farm: multiple species, clinical
+        // and stock narratives, several months of ledger entries and a populated alert centre.
+        await SeedRicherDemoHistoryAsync(context, farmId, demoUserId, now);
+    }
+
+    // ── richer demo history ────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Adds believable depth to the demo farm without touching any other farm. Each helper
+    /// re-reads the anchors it needs by their stable tag/name, so the skeleton seed above can
+    /// stay focused on "one meaningful row per screen" and this method can be tuned independently.
+    /// </summary>
+    private static async Task SeedRicherDemoHistoryAsync(FmsDbContext context, Guid farmId, Guid demoUserId, DateTime now)
+    {
+        await SeedDemoVetsAsync(context, farmId, now);
+        await SeedDemoAnimalDetailAsync(context, farmId, now);
+        await SeedDemoClinicalHistoryAsync(context, farmId, now);
+        await SeedDemoFeedHistoryAsync(context, farmId, now);
+        await SeedDemoTradeAndFinanceHistoryAsync(context, farmId, now);
+        await SeedDemoStaffAndTaskHistoryAsync(context, farmId, now);
+        await SeedDemoNotificationsAsync(context, farmId, demoUserId, now);
+    }
+
+    /// <summary>
+    /// The Vets screen has no data until a vet is added by hand, yet three of the seeded
+    /// clinical records already name a vet. Seed the contacts those records refer to (plus a
+    /// retired one so the Active/Inactive toggle has something to show) and link the records.
+    /// </summary>
+    private static async Task SeedDemoVetsAsync(FmsDbContext context, Guid farmId, DateTime now)
+    {
+        var aisha = await EnsureVetAsync(context, farmId, now, "Dr. Aisha Karim",
+            "a.karim@sunriseranch.example", "+1 555 0101", "VET-4821",
+            "Herd health, reproduction and emergency cover.");
+        var peter = await EnsureVetAsync(context, farmId, now, "Dr. Peter Njoroge",
+            "p.njoroge@sunriseranch.example", "+1 555 0102", "VET-5176",
+            "Routine visits and vaccination rounds.");
+        var leila = await EnsureVetAsync(context, farmId, now, "Dr. Leila Hassan",
+            "l.hassan@sunriseranch.example", "+1 555 0103", "VET-2290",
+            "Historical records only; no longer on call.");
+        leila.IsActive = false;
+        leila.ModifiedAt = now;
+
+        foreach (var record in await context.MedicalRecords
+                     .Where(m => m.FarmId == farmId && m.VetId == null).ToListAsync())
+            record.VetId = aisha.Id;
+        foreach (var record in await context.VaccinationRecords
+                     .Where(v => v.FarmId == farmId && v.VetId == null).ToListAsync())
+            record.VetId = peter.Id;
+        foreach (var record in await context.BreedingRecords
+                     .Where(b => b.FarmId == farmId && b.VetId == null).ToListAsync())
+            record.VetId = aisha.Id;
+        await context.SaveChangesAsync();
+    }
+
+    /// <summary>
+    /// A one-location, cattle-only herd leaves the animal filters, lineage view and transfer
+    /// history looking empty. Add two more species, a location tree, ear-tag/RFID identifiers
+    /// and movement history so those screens have something real to display.
+    /// </summary>
+    private static async Task SeedDemoAnimalDetailAsync(FmsDbContext context, Guid farmId, DateTime now)
+    {
+        var northPaddock = await EnsureLocationAsync(context, farmId, now, "North Paddock", "Paddock", null);
+        var calfPen = await EnsureLocationAsync(context, farmId, now, "Calf Pen", "Pen", northPaddock.Id);
+        var isolationPen = await EnsureLocationAsync(context, farmId, now, "Isolation Pen", "Pen", northPaddock.Id);
+
+        var earTag = await EnsureIdentificationTypeAsync(context, farmId, "Ear Tag");
+        var rfid = await EnsureIdentificationTypeAsync(context, farmId, "RFID");
+        var brand = await EnsureIdentificationTypeAsync(context, farmId, "Brand");
+
+        var cattleType = await context.AnimalTypes.FirstAsync(t => t.FarmId == farmId && t.Name == "Cattle");
+        var sahiwal = await context.Breeds.FirstAsync(b => b.AnimalTypeId == cattleType.Id && b.Name == "Sahiwal");
+        var holstein = await context.Breeds.FirstAsync(b => b.AnimalTypeId == cattleType.Id && b.Name == "Holstein Friesian");
+        var buffaloType = await context.AnimalTypes.FirstAsync(t => t.FarmId == farmId && t.Name == "Buffalo");
+        var murrah = await context.Breeds.FirstAsync(b => b.AnimalTypeId == buffaloType.Id && b.Name == "Murrah");
+        var goatType = await context.AnimalTypes.FirstAsync(t => t.FarmId == farmId && t.Name == "Goat");
+        var beetal = await context.Breeds.FirstAsync(b => b.AnimalTypeId == goatType.Id && b.Name == "Beetal");
+        var boer = await context.Breeds.FirstAsync(b => b.AnimalTypeId == goatType.Id && b.Name == "Boer");
+        var male = await context.SexOptions.FirstAsync(s => s.FarmId == farmId && s.Value == "Male");
+        var female = await context.SexOptions.FirstAsync(s => s.FarmId == farmId && s.Value == "Female");
+        var active = await context.AnimalStatuses.FirstAsync(s => s.FarmId == farmId && s.Name == "Active");
+        var lactating = await context.AnimalStatuses.FirstAsync(s => s.FarmId == farmId && s.Name == "Lactating");
+        var sick = await context.AnimalStatuses.FirstAsync(s => s.FarmId == farmId && s.Name == "Sick");
+        var mainBarn = await context.Locations.FirstAsync(l => l.FarmId == farmId && l.Name == "Main Barn");
+
+        Animal NewAnimal(string tag, string? name, AnimalType type, Breed breed, SexOption sex,
+            AnimalStatus status, Guid locationId, DateTime dob, DateTime acquired, string? notes = null)
+        {
+            var animal = new Animal
+            {
+                Id = Guid.NewGuid(), FarmId = farmId, TagNumber = tag, Name = name,
+                AnimalTypeId = type.Id, BreedId = breed.Id, SexOptionId = sex.Id,
+                AnimalStatusId = status.Id, LocationId = locationId,
+                DateOfBirth = dob, AcquisitionDate = acquired, Notes = notes,
+                CreatedAt = acquired
+            };
+            context.Animals.Add(animal);
+            return animal;
+        }
+
+        var zayna = NewAnimal("SR-1006", "Zayna", cattleType, holstein, female, lactating, mainBarn.Id,
+            now.AddYears(-3).AddMonths(-4), now.AddYears(-3).AddMonths(-3), "High-yielding Holstein, second lactation.");
+        var hana = NewAnimal("SR-1007", "Hana", cattleType, sahiwal, female, active, northPaddock.Id,
+            now.AddYears(-2), now.AddYears(-2));
+        var omar = NewAnimal("SR-1008", "Omar", cattleType, holstein, male, active, northPaddock.Id,
+            now.AddMonths(-18), now.AddMonths(-17), "Young bull, being grown out for breeding.");
+        var rania = NewAnimal("SR-1009", "Rania", cattleType, sahiwal, female, sick, isolationPen.Id,
+            now.AddYears(-5), now.AddYears(-5), "Being treated for respiratory infection — kept separate from the herd.");
+        var sana = NewAnimal("BF-3001", "Sana", buffaloType, murrah, female, lactating, northPaddock.Id,
+            now.AddYears(-4), now.AddYears(-4), "Buffalo milk for the local market.");
+        var tariq = NewAnimal("BF-3002", "Tariq", buffaloType, murrah, male, active, northPaddock.Id,
+            now.AddYears(-2).AddMonths(-3), now.AddYears(-2));
+        var biscuit = NewAnimal("GT-2001", "Biscuit", goatType, beetal, female, active, calfPen.Id,
+            now.AddMonths(-14), now.AddMonths(-13));
+        var cocoa = NewAnimal("GT-2002", "Cocoa", goatType, boer, male, active, calfPen.Id,
+            now.AddMonths(-10), now.AddMonths(-9));
+        var ginger = NewAnimal("GT-2003", "Ginger", goatType, beetal, female, active, calfPen.Id,
+            now.AddMonths(-8), now.AddMonths(-8), "Gentle milker, used for the kids.");
+        await context.SaveChangesAsync();
+
+        // Identifiers: every new animal gets a primary ear tag; a few also carry an RFID chip or
+        // a brand, so the "identifications" list is not a single repeated row.
+        var identificationRows = new (Guid AnimalId, Guid TypeId, string Value, bool Primary, int DaysAgo)[]
+        {
+            (zayna.Id, earTag.Id, "EAR-SR-1006", true, 900),
+            (zayna.Id, rfid.Id, "RFID-9820004112", false, 900),
+            (hana.Id, earTag.Id, "EAR-SR-1007", true, 700),
+            (sana.Id, earTag.Id, "EAR-BF-3001", true, 1400),
+            (sana.Id, brand.Id, "SR-BUFF-01", false, 1400),
+            (biscuit.Id, earTag.Id, "EAR-GT-2001", true, 380),
+            (cocoa.Id, earTag.Id, "EAR-GT-2002", true, 300),
+            (ginger.Id, earTag.Id, "EAR-GT-2003", true, 240),
+            (omar.Id, rfid.Id, "RFID-9820007889", true, 500)
+        };
+        context.AnimalIdentifications.AddRange(identificationRows.Select(i => new AnimalIdentification
+        {
+            Id = Guid.NewGuid(), FarmId = farmId, AnimalId = i.AnimalId,
+            IdentificationTypeId = i.TypeId, Value = i.Value,
+            IsPrimary = i.Primary, DateAttached = now.AddDays(-i.DaysAgo)
+        }));
+
+        // A short movement trail: the goats moved into the calf pen, the sick cow into isolation,
+        // and one heifer came in from the north paddock.
+        context.AnimalTransfers.AddRange(
+            new AnimalTransfer
+            {
+                Id = Guid.NewGuid(), FarmId = farmId, AnimalId = biscuit.Id,
+                FromLocationId = mainBarn.Id, ToLocationId = calfPen.Id,
+                TransferredAt = now.AddDays(-120), Reason = "Moved in with the other milking goats."
+            },
+            new AnimalTransfer
+            {
+                Id = Guid.NewGuid(), FarmId = farmId, AnimalId = ginger.Id,
+                FromLocationId = northPaddock.Id, ToLocationId = calfPen.Id,
+                TransferredAt = now.AddDays(-60), Reason = "Brought in for the season."
+            },
+            new AnimalTransfer
+            {
+                Id = Guid.NewGuid(), FarmId = farmId, AnimalId = rania.Id,
+                FromLocationId = mainBarn.Id, ToLocationId = isolationPen.Id,
+                TransferredAt = now.AddDays(-9), Reason = "Isolated while respiratory infection is treated."
+            });
+        await context.SaveChangesAsync();
+
+        // Weigh history: a multi-month series for the star cow and a shorter one for each new
+        // animal, so the weight report and growth chart show a trend rather than single points.
+        var series = new (Guid AnimalId, decimal[] Weights, int StartDaysAgo)[]
+        {
+            (await context.Animals.Where(a => a.TagNumber == "SR-1001").Select(a => a.Id).FirstAsync(),
+                [474m, 479m, 483m, 487m], 105),
+            (zayna.Id, [430m, 441m, 452m, 461m], 100),
+            (hana.Id, [388m, 394m, 401m], 80),
+            (sana.Id, [512m, 520m, 526m], 90),
+            (omar.Id, [290m, 312m, 335m], 75),
+            (biscuit.Id, [34m, 37m, 39m], 70),
+            (cocoa.Id, [28m, 32m, 36m], 60),
+            (ginger.Id, [31m, 33m], 45)
+        };
+        var weightRows = new List<WeightRecord>();
+        foreach (var (animalId, weights, startDaysAgo) in series)
+        {
+            for (var i = 0; i < weights.Length; i++)
+            {
+                weightRows.Add(new WeightRecord
+                {
+                    Id = Guid.NewGuid(), FarmId = farmId, AnimalId = animalId,
+                    WeightKg = weights[i], RecordedAt = now.AddDays(-(startDaysAgo - i * 30)),
+                    Notes = "Routine weigh-in."
+                });
+            }
+        }
+        context.WeightRecords.AddRange(weightRows);
+        await context.SaveChangesAsync();
+    }
+
+    /// <summary>
+    /// Adds clinical depth: more diagnoses, a second vaccine with its own schedule, and the
+    /// health-check history the gestation screen expects for a confirmed pregnancy.
+    /// </summary>
+    private static async Task SeedDemoClinicalHistoryAsync(FmsDbContext context, Guid farmId, DateTime now)
+    {
+        var aisha = await context.Vets.FirstAsync(v => v.FarmId == farmId && v.Name == "Dr. Aisha Karim");
+        var peter = await context.Vets.FirstAsync(v => v.FarmId == farmId && v.Name == "Dr. Peter Njoroge");
+        var fadila = await context.Animals.FirstAsync(a => a.TagNumber == "SR-2001");
+        var rudaina = await context.Animals.FirstAsync(a => a.TagNumber == "SR-2002");
+        var rania = await context.Animals.FirstAsync(a => a.TagNumber == "SR-1009");
+        var zayna = await context.Animals.FirstAsync(a => a.TagNumber == "SR-1006");
+        var biscuit = await context.Animals.FirstAsync(a => a.TagNumber == "GT-2001");
+        var ginger = await context.Animals.FirstAsync(a => a.TagNumber == "GT-2003");
+        var sana = await context.Animals.FirstAsync(a => a.TagNumber == "BF-3001");
+
+        context.MedicalRecords.AddRange(
+            new MedicalRecord
+            {
+                Id = Guid.NewGuid(), FarmId = farmId, AnimalId = rania.Id,
+                Symptoms = "Coughing, nasal discharge and reduced appetite.",
+                Diagnosis = "Bovine respiratory disease", Treatment = "Antibiotics + supportive care",
+                MedicineUsed = "Oxytetracycline", Dosage = "20ml IM daily x 5 days",
+                VetId = aisha.Id, VetName = aisha.Name, Cost = 96m,
+                DateRecorded = now.AddDays(-9), FollowUpDate = now.AddDays(2),
+                Status = MedicalRecordStatus.InProgress, Notes = "Isolated in the isolation pen."
+            },
+            new MedicalRecord
+            {
+                Id = Guid.NewGuid(), FarmId = farmId, AnimalId = rudaina.Id,
+                Symptoms = "Mastitis follow-up, udder swelling much reduced.",
+                Diagnosis = "Clinical mastitis — resolving", Treatment = "Continue anti-inflammatory",
+                MedicineUsed = "Meloxicam", Dosage = "10ml IM once daily x 2 days",
+                VetId = aisha.Id, VetName = aisha.Name, Cost = 28m,
+                DateRecorded = now.AddDays(-3), Status = MedicalRecordStatus.InProgress
+            },
+            new MedicalRecord
+            {
+                Id = Guid.NewGuid(), FarmId = farmId, AnimalId = biscuit.Id,
+                Symptoms = "Scouring and weight loss over three days.",
+                Diagnosis = "Goat coccidiosis", Treatment = "Oral anticoccidial + electrolytes",
+                MedicineUsed = "Coccidiostat suspension", Dosage = "5ml orally daily x 3 days",
+                VetId = peter.Id, VetName = peter.Name, Cost = 22m,
+                DateRecorded = now.AddDays(-18), Status = MedicalRecordStatus.Resolved,
+                Notes = "Full recovery; pen cleaned and bedding replaced."
+            },
+            new MedicalRecord
+            {
+                Id = Guid.NewGuid(), FarmId = farmId, AnimalId = zayna.Id,
+                Symptoms = "Routine post-calving check — no abnormalities.",
+                Diagnosis = "Post-partum check", Treatment = "None required",
+                VetId = aisha.Id, VetName = aisha.Name, Cost = 35m,
+                DateRecorded = now.AddDays(-26), Status = MedicalRecordStatus.Resolved
+            });
+
+        var brucella = await EnsureMedicineWithStockAsync(context, farmId, now,
+            "Brucellosis Vaccine", "dose", 20, 60, 40, 1.40m, "BATCH-BRU-001", now.AddDays(120), now.AddDays(-20));
+        var fmd = await context.VaccineTypes.FirstAsync(v => v.FarmId == farmId && v.Name == "Foot and Mouth Disease Vaccine");
+        var brucellaVax = await EnsureVaccineTypeAsync(context, farmId, now,
+            "Brucellosis Vaccine", "2ml", brucella.Id);
+
+        var oxyBatch = await context.MedicineStocks
+            .Where(s => s.FarmId == farmId && s.BatchNumber == "BATCH-OXY-001")
+            .Select(s => s.BatchNumber).FirstAsync();
+        context.VaccinationRecords.AddRange(
+            new VaccinationRecord
+            {
+                Id = Guid.NewGuid(), FarmId = farmId, AnimalId = zayna.Id,
+                VaccineTypeId = fmd.Id, DateGiven = now.AddDays(-40),
+                VetId = peter.Id, VetName = peter.Name, BatchNumber = oxyBatch,
+                Cost = 12m, Notes = "Post-calving booster."
+            },
+            new VaccinationRecord
+            {
+                Id = Guid.NewGuid(), FarmId = farmId,
+                AnimalId = await context.Animals.Where(a => a.TagNumber == "SR-1007").Select(a => a.Id).FirstAsync(),
+                VaccineTypeId = fmd.Id, DateGiven = now.AddDays(-25),
+                VetId = peter.Id, VetName = peter.Name, BatchNumber = oxyBatch, Cost = 12m
+            },
+            new VaccinationRecord
+            {
+                Id = Guid.NewGuid(), FarmId = farmId, AnimalId = sana.Id,
+                VaccineTypeId = brucellaVax.Id, DateGiven = now.AddDays(-35),
+                VetId = peter.Id, VetName = peter.Name, BatchNumber = "BATCH-BRU-001",
+                Cost = 15m, Notes = "Annual buffalo brucellosis vaccination."
+            },
+            new VaccinationRecord
+            {
+                Id = Guid.NewGuid(), FarmId = farmId, AnimalId = ginger.Id,
+                VaccineTypeId = fmd.Id, DateGiven = now.AddDays(-14),
+                VetId = peter.Id, VetName = peter.Name, Cost = 8m,
+                Notes = "Kid vaccination at eight weeks."
+            });
+        await context.SaveChangesAsync();
+
+        // The gestation screen's health-check table was empty. Give the confirmed pregnancy a
+        // few month-by-month checks, and add a second, earlier pregnancy for variety.
+        var karimGestation = await context.GestationRecords
+            .Include(g => g.Animal)
+            .FirstAsync(g => g.FarmId == farmId && g.Animal.TagNumber == "SR-1002");
+        context.GestationHealthChecks.AddRange(
+            new GestationHealthCheck
+            {
+                Id = Guid.NewGuid(), FarmId = farmId, GestationRecordId = karimGestation.Id,
+                CheckDate = now.AddDays(-150), WeightKg = 455m, PerformedBy = aisha.Name,
+                Notes = "Pregnancy confirmed by ultrasound at 60 days."
+            },
+            new GestationHealthCheck
+            {
+                Id = Guid.NewGuid(), FarmId = farmId, GestationRecordId = karimGestation.Id,
+                CheckDate = now.AddDays(-90), WeightKg = 468m, PerformedBy = aisha.Name,
+                Notes = "Fetal heartbeat strong; body condition good."
+            },
+            new GestationHealthCheck
+            {
+                Id = Guid.NewGuid(), FarmId = farmId, GestationRecordId = karimGestation.Id,
+                CheckDate = now.AddDays(-30), WeightKg = 479m, PerformedBy = aisha.Name,
+                Notes = "Late gestation, udder developing normally."
+            });
+
+        var sudan = await context.Animals.FirstAsync(a => a.TagNumber == "SR-1005");
+        var secondBreeding = new BreedingRecord
+        {
+            Id = Guid.NewGuid(), FarmId = farmId, SireId = sudan.Id, DamId = zayna.Id,
+            BreedingDate = now.AddDays(-95), Method = BreedingMethod.AI,
+            VetId = aisha.Id, VetName = aisha.Name, Result = BreedingResult.Confirmed,
+            Notes = "AI with proven sire; confirmation at 60 days."
+        };
+        context.BreedingRecords.Add(secondBreeding);
+        var secondGestationId = Guid.NewGuid();
+        context.GestationRecords.Add(new GestationRecord
+        {
+            Id = secondGestationId, FarmId = farmId, BreedingRecordId = secondBreeding.Id,
+            AnimalId = zayna.Id, ConfirmedDate = now.AddDays(-35),
+            ExpectedDeliveryDate = now.AddDays(150), CurrentStage = GestationStage.Early,
+            HealthCheckNotes = "Early pregnancy, progressing normally."
+        });
+        context.GestationHealthChecks.Add(new GestationHealthCheck
+        {
+            Id = Guid.NewGuid(), FarmId = farmId,
+            GestationRecordId = secondGestationId,
+            CheckDate = now.AddDays(-35), WeightKg = 465m, PerformedBy = aisha.Name,
+            Notes = "Confirmed by ultrasound."
+        });
+        await context.SaveChangesAsync();
+    }
+
+    /// <summary>
+    /// Two feed types and a goat ration turn the feed module from a single day's entries into a
+    /// week of records with a visible cost trail and a mix of completed/pending feeding tasks.
+    /// </summary>
+    private static async Task SeedDemoFeedHistoryAsync(FmsDbContext context, Guid farmId, DateTime now)
+    {
+        var straw = await EnsureFeedTypeAsync(context, farmId, now,
+            "Wheat Straw", FeedCategory.Forage, FeedUnit.Bale, 11m, "Baled straw, fed to the dry herd.");
+        var goatPellets = await EnsureFeedTypeAsync(context, farmId, now,
+            "Goat Grower Pellets", FeedCategory.Concentrate, FeedUnit.Kilogram, 680m, "Pelleted ration for the goat pen.");
+        var lucerne = await context.FeedTypes.FirstAsync(f => f.FarmId == farmId && f.Name == "Lucerne Hay");
+        var concentrate = await context.FeedTypes.FirstAsync(f => f.FarmId == farmId && f.Name == "Dairy Protein Concentrate");
+        var calfPen = await context.Locations.FirstAsync(l => l.FarmId == farmId && l.Name == "Calf Pen");
+        var zayna = await context.Animals.FirstAsync(a => a.TagNumber == "SR-1006");
+        var sana = await context.Animals.FirstAsync(a => a.TagNumber == "BF-3001");
+        var biscuit = await context.Animals.FirstAsync(a => a.TagNumber == "GT-2001");
+
+        await EnsureFeedStockMovementAsync(context, farmId, now, straw.Id, StockMovementType.Purchase, 40, straw.CostPerUnit, "Sunrise Feeds Co.", now.AddDays(-25));
+        await EnsureFeedStockMovementAsync(context, farmId, now, goatPellets.Id, StockMovementType.Purchase, 90, goatPellets.CostPerUnit, "AgriMinerals", now.AddDays(-12));
+        await EnsureFeedStockMovementAsync(context, farmId, now, lucerne.Id, StockMovementType.Purchase, 20, lucerne.CostPerUnit, "Sunrise Feeds Co.", now.AddDays(-18));
+
+        context.FeedRecords.AddRange(
+            new FeedRecord
+            {
+                Id = Guid.NewGuid(), FarmId = farmId, FeedTypeId = straw.Id, AnimalId = sana.Id,
+                Quantity = 4, UnitCost = straw.CostPerUnit, FedAt = now.AddDays(-6),
+                MealSlot = MealSlot.Morning, MealRole = MealRole.Main,
+                Notes = "Straw ration for the buffalo."
+            },
+            new FeedRecord
+            {
+                Id = Guid.NewGuid(), FarmId = farmId, FeedTypeId = goatPellets.Id, AnimalId = biscuit.Id,
+                Quantity = 1.5m, UnitCost = goatPellets.CostPerUnit, FedAt = now.AddDays(-5),
+                MealSlot = MealSlot.Morning, MealRole = MealRole.Main
+            },
+            new FeedRecord
+            {
+                Id = Guid.NewGuid(), FarmId = farmId, FeedTypeId = goatPellets.Id, LocationId = calfPen.Id,
+                Quantity = 4m, UnitCost = goatPellets.CostPerUnit, FedAt = now.AddDays(-4),
+                MealSlot = MealSlot.Evening, MealRole = MealRole.Supplement,
+                Notes = "Evening ration for the whole goat pen."
+            },
+            new FeedRecord
+            {
+                Id = Guid.NewGuid(), FarmId = farmId, FeedTypeId = concentrate.Id, AnimalId = zayna.Id,
+                Quantity = 5m, UnitCost = concentrate.CostPerUnit, FedAt = now.AddDays(-3),
+                MealSlot = MealSlot.Morning, MealRole = MealRole.Main
+            },
+            new FeedRecord
+            {
+                Id = Guid.NewGuid(), FarmId = farmId, FeedTypeId = lucerne.Id, AnimalId = sana.Id,
+                Quantity = 3m, UnitCost = lucerne.CostPerUnit, FedAt = now.AddDays(-2),
+                MealSlot = MealSlot.Evening, MealRole = MealRole.Main
+            },
+            new FeedRecord
+            {
+                Id = Guid.NewGuid(), FarmId = farmId, FeedTypeId = straw.Id, LocationId = calfPen.Id,
+                Quantity = 2m, UnitCost = straw.CostPerUnit, FedAt = now.AddDays(-1),
+                MealSlot = MealSlot.Midday, MealRole = MealRole.Other
+            });
+        await context.SaveChangesAsync();
+
+        var goatType = await context.AnimalTypes.FirstAsync(t => t.FarmId == farmId && t.Name == "Goat");
+        var beetal = await context.Breeds.FirstAsync(b => b.AnimalTypeId == goatType.Id && b.Name == "Beetal");
+        var goatPlan = await EnsureDietPlanAsync(context, farmId, now, goatType.Id, beetal.Id,
+            "Goat Kid Ration", "Growing ration for the kids in the calf pen.",
+            [(goatPellets.Id, 1.5m), (straw.Id, 2m)]);
+        await EnsureFeedingScheduleAsync(context, farmId, now, goatPlan.Id, new TimeSpan(8, 0, 0), "Goat morning feed");
+
+        // One completed and two pending/goat tasks across the last few days, so the feeding-task
+        // board is not a single row. Dates are unique per schedule (the model enforces that).
+        var morning = await context.FeedingSchedules.FirstAsync(s => s.DietPlanId != goatPlan.Id && s.Label == "Morning milking feed");
+        var evening = await context.FeedingSchedules.FirstAsync(s => s.DietPlanId != goatPlan.Id && s.Label == "Evening feed");
+        var goatMorning = await context.FeedingSchedules.FirstAsync(s => s.DietPlanId == goatPlan.Id && s.Label == "Goat morning feed");
+        var milkPlanId = await context.FeedingSchedules.Where(s => s.Id == morning.Id).Select(s => s.DietPlanId).FirstAsync();
+
+        context.FeedingTasks.AddRange(
+            new FeedingTask
+            {
+                Id = Guid.NewGuid(), FarmId = farmId, FeedingScheduleId = morning.Id, DietPlanId = milkPlanId,
+                TaskDate = now.AddDays(-4), TimeOfDay = TimeSpan.FromHours(6),
+                Status = FeedingTaskStatus.Completed, CompletedAt = now.AddDays(-4).AddHours(6),
+                TargetAnimalCount = 8, Notes = "Fed on time."
+            },
+            new FeedingTask
+            {
+                Id = Guid.NewGuid(), FarmId = farmId, FeedingScheduleId = evening.Id, DietPlanId = milkPlanId,
+                TaskDate = now.AddDays(-2), TimeOfDay = new TimeSpan(17, 30, 0),
+                Status = FeedingTaskStatus.Skipped, TargetAnimalCount = 8,
+                Notes = "Skipped during the fence repair; hay was left in the paddock."
+            },
+            new FeedingTask
+            {
+                Id = Guid.NewGuid(), FarmId = farmId, FeedingScheduleId = goatMorning.Id, DietPlanId = goatPlan.Id,
+                TaskDate = now.AddDays(-1), TimeOfDay = new TimeSpan(8, 0, 0),
+                Status = FeedingTaskStatus.Completed, CompletedAt = now.AddDays(-1).AddHours(8),
+                TargetAnimalCount = 3, Notes = "Kids fed and water refreshed."
+            },
+            new FeedingTask
+            {
+                Id = Guid.NewGuid(), FarmId = farmId, FeedingScheduleId = goatMorning.Id, DietPlanId = goatPlan.Id,
+                TaskDate = now.Date, TimeOfDay = new TimeSpan(8, 0, 0),
+                Status = FeedingTaskStatus.Pending, TargetAnimalCount = 3
+            });
+        await context.SaveChangesAsync();
+    }
+
+    /// <summary>
+    /// Extends inventory, purchasing and sales with a few more lines of stock history, then adds
+    /// a six-month ledger so the finance charts and report filters have real month-to-month data.
+    /// </summary>
+    private static async Task SeedDemoTradeAndFinanceHistoryAsync(FmsDbContext context, Guid farmId, DateTime now)
+    {
+        var dairyCo = await EnsureSupplierAsync(context, farmId, now,
+            "DairyCo Feeds", "orders@dairyco.example", "Concentrates and mineral supplements");
+        var agriSupply = await EnsureSupplierAsync(context, farmId, now,
+            "AgriSupply", "sales@agrisupply.example", "Vaccines, veterinary consumables and spares");
+        var greenValley = await EnsureCustomerAsync(context, farmId, now,
+            "Green Valley Dairy", "sales@greenvalley.example");
+        var townMarket = await EnsureCustomerAsync(context, farmId, now,
+            "Town Market Stall", "stall@townmarket.example");
+        var organicCo = await EnsureCustomerAsync(context, farmId, now,
+            "Organic Harvest Co.", "buyers@organicharvest.example");
+
+        var strawBales = await EnsureInventoryItemAsync(context, farmId, now,
+            "Wheat Straw Bales", "Forage", "Bale", 11m, 16, 20);
+        var goatFeed = await EnsureInventoryItemAsync(context, farmId, now,
+            "Goat Grower Pellets", "Feed", "Kg", 0.68m, 55, 30);
+        var vetKit = await EnsureInventoryItemAsync(context, farmId, now,
+            "Vet Consumables Kit", "Health", "Kit", 48m, 5, 4);
+        var spareParts = await EnsureInventoryItemAsync(context, farmId, now,
+            "Milking Machine Spares", "Equipment", "Set", 120m, 3, 2);
+
+        await EnsureStockMovementAsync(context, farmId, now, strawBales.Id, InventoryMovementType.Purchase, 40, 11m, "Sunrise Feeds Co.");
+        await EnsureStockMovementAsync(context, farmId, now, goatFeed.Id, InventoryMovementType.Purchase, 90, 0.68m, "DairyCo Feeds");
+        await EnsureStockMovementAsync(context, farmId, now, vetKit.Id, InventoryMovementType.Purchase, 8, 48m, "AgriSupply");
+        await EnsureStockMovementAsync(context, farmId, now, spareParts.Id, InventoryMovementType.Consumption, 1, 120m, null);
+
+        await EnsureSupplierPurchaseAsync(context, farmId, now, dairyCo.Id, goatFeed.Id, 90, 612m, "Monthly concentrate order", now.AddDays(-12));
+        await EnsureSupplierPurchaseAsync(context, farmId, now, agriSupply.Id, vetKit.Id, 8, 384m, "Veterinary consumables restock", now.AddDays(-21));
+        await EnsureCustomerSaleAsync(context, farmId, now, townMarket.Id, strawBales.Id, 10, 145m, "Retail bale sales", now.AddDays(-8));
+        await EnsureCustomerSaleAsync(context, farmId, now, organicCo.Id, goatFeed.Id, 20, 220m, "Goat feed resale", now.AddDays(-4));
+
+        var feedCat = await context.ExpenseCategories.FirstAsync(c => c.FarmId == farmId && c.Name == "Feed");
+        var healthCat = await context.ExpenseCategories.FirstAsync(c => c.FarmId == farmId && c.Name == "Veterinary");
+        var maintCat = await context.ExpenseCategories.FirstAsync(c => c.FarmId == farmId && c.Name == "Maintenance");
+        var labourCat = await EnsureExpenseCategoryAsync(context, farmId, now, "Labour", "Wages and casual labour");
+        var utilitiesCat = await EnsureExpenseCategoryAsync(context, farmId, now, "Utilities", "Water, power and fuel");
+        var milkCat = await context.IncomeCategories.FirstAsync(c => c.FarmId == farmId && c.Name == "Milk Sales");
+        var livestockCat = await context.IncomeCategories.FirstAsync(c => c.FarmId == farmId && c.Name == "Livestock Sales");
+        var produceCat = await EnsureIncomeCategoryAsync(context, farmId, now, "Farm Produce", "Straw, silage and minor produce");
+        var cash = await context.PaymentMethods.FirstAsync(p => p.FarmId == farmId && p.Name == "Cash");
+        var bank = await context.PaymentMethods.FirstAsync(p => p.FarmId == farmId && p.Name == "Bank Transfer");
+        var mobile = await EnsurePaymentMethodAsync(context, farmId, now, "Mobile Money", "Mobile money transfers");
+
+        // A fixed pattern over six months, keyed off the seed date so the rolling reports always
+        // show a trend: milk income grows, feed and labour stay the biggest costs.
+        for (var month = 1; month <= 6; month++)
+        {
+            var baseDate = now.AddMonths(-month);
+            var when = new DateTime(baseDate.Year, baseDate.Month, 12);
+            context.IncomeRecords.Add(new IncomeRecord
+            {
+                Id = Guid.NewGuid(), FarmId = farmId, IncomeDate = when,
+                Amount = 1_180m + month * 55m, IncomeCategoryId = milkCat.Id,
+                PaymentMethodId = bank.Id, Description = $"Milk sales — {when:MMMM yyyy}"
+            });
+            context.Expenses.Add(new Expense
+            {
+                Id = Guid.NewGuid(), FarmId = farmId, ExpenseDate = when.AddDays(2),
+                Amount = 360m + month * 18m, ExpenseCategoryId = feedCat.Id,
+                PaymentMethodId = bank.Id, Description = $"Feed and forage — {when:MMMM yyyy}"
+            });
+            context.Expenses.Add(new Expense
+            {
+                Id = Guid.NewGuid(), FarmId = farmId, ExpenseDate = when.AddDays(5),
+                Amount = 2_850m, ExpenseCategoryId = labourCat.Id,
+                PaymentMethodId = bank.Id, Description = $"Staff wages — {when:MMMM yyyy}"
+            });
+            context.Expenses.Add(new Expense
+            {
+                Id = Guid.NewGuid(), FarmId = farmId, ExpenseDate = when.AddDays(9),
+                Amount = 95m + month * 7m, ExpenseCategoryId = utilitiesCat.Id,
+                PaymentMethodId = mobile.Id, Description = $"Water and power — {when:MMMM yyyy}"
+            });
+        }
+
+        context.IncomeRecords.AddRange(
+            new IncomeRecord
+            {
+                Id = Guid.NewGuid(), FarmId = farmId, IncomeDate = now.AddMonths(-4).AddDays(18),
+                Amount = 2_400m, IncomeCategoryId = livestockCat.Id, PaymentMethodId = bank.Id,
+                Description = "Sale of a breeding heifer to a neighbouring farm"
+            },
+            new IncomeRecord
+            {
+                Id = Guid.NewGuid(), FarmId = farmId, IncomeDate = now.AddDays(-11),
+                Amount = 620m, IncomeCategoryId = produceCat.Id, PaymentMethodId = cash.Id,
+                Description = "Straw and silage sold to a neighbouring dairy"
+            });
+        context.Expenses.AddRange(
+            new Expense
+            {
+                Id = Guid.NewGuid(), FarmId = farmId, ExpenseDate = now.AddDays(-20),
+                Amount = 410m, ExpenseCategoryId = healthCat.Id, PaymentMethodId = cash.Id,
+                Description = "Vaccines and veterinary consumables"
+            },
+            new Expense
+            {
+                Id = Guid.NewGuid(), FarmId = farmId, ExpenseDate = now.AddMonths(-2).AddDays(6),
+                Amount = 780m, ExpenseCategoryId = maintCat.Id, PaymentMethodId = bank.Id,
+                Description = "Milking parlour pump replacement"
+            });
+        await context.SaveChangesAsync();
+    }
+
+    /// <summary>
+    /// Assigns the seeded staff to their departments and roles, fills a fortnight of attendance,
+    /// and gives the task board a realistic spread of owners, priorities and statuses.
+    /// </summary>
+    private static async Task SeedDemoStaffAndTaskHistoryAsync(FmsDbContext context, Guid farmId, DateTime now)
+    {
+        var vetRole = await context.EmployeeRoles.FirstAsync(r => r.FarmId == farmId && r.Name == "Veterinarian");
+        var herdRole = await context.EmployeeRoles.FirstAsync(r => r.FarmId == farmId && r.Name == "Herdsman");
+        var vetDept = await context.Departments.FirstAsync(d => d.FarmId == farmId && d.Name == "Veterinary");
+        var opsDept = await context.Departments.FirstAsync(d => d.FarmId == farmId && d.Name == "Operations");
+
+        var aishaEmployee = await context.Employees.FirstAsync(e => e.Email == "avet@sunriseranch.example");
+        var marcus = await context.Employees.FirstAsync(e => e.Email == "mbell@sunriseranch.example");
+        var liam = await context.Employees.FirstAsync(e => e.Email == "liam@sunriseranch.example");
+
+        aishaEmployee.DepartmentId = vetDept.Id;
+        aishaEmployee.EmployeeRoleId = vetRole.Id;
+        marcus.DepartmentId = opsDept.Id;
+        marcus.EmployeeRoleId = herdRole.Id;
+        liam.DepartmentId = opsDept.Id;
+        liam.EmployeeRoleId = herdRole.Id;
+
+        var grace = await EnsureEmployeeAsync(context, farmId, now,
+            "Grace Mwangi", "grace@sunriseranch.example", SalaryType.Monthly, 2_800m, now.AddYears(-1),
+            opsDept, herdRole, "+1 555 0108");
+        var noah = await EnsureEmployeeAsync(context, farmId, now,
+            "Noah Rahman", "noah@sunriseranch.example", SalaryType.Daily, 95m, now.AddMonths(-7),
+            vetDept, vetRole, "+1 555 0109");
+        noah.IsActive = false; // left the team recently — History views still need his records
+        noah.Notes = "Resigned; kept for historical attendance and payroll.";
+        await context.SaveChangesAsync();
+
+        // Fourteen weekdays of attendance with a deterministic pattern: mostly present, a late,
+        // an absent, a half day and a leave — so the calendar has more than one colour.
+        var statuses = new[] { AttendanceStatus.Present, AttendanceStatus.Present, AttendanceStatus.Present,
+            AttendanceStatus.Present, AttendanceStatus.Late, AttendanceStatus.Present, AttendanceStatus.Absent,
+            AttendanceStatus.HalfDay, AttendanceStatus.Present, AttendanceStatus.Present,
+            AttendanceStatus.Leave, AttendanceStatus.Present, AttendanceStatus.Present, AttendanceStatus.Present };
+        var team = new[] { aishaEmployee, marcus, liam, grace };
+        for (var i = 0; i < statuses.Length; i++)
+        {
+            var day = now.AddDays(-(i + 1));
+            for (var e = 0; e < team.Length; e++)
+            {
+                // Stagger absences so no single day empties the farm.
+                var status = statuses[(i + e * 3) % statuses.Length];
+                await EnsureAttendanceAsync(context, farmId, now, team[e].Id, status, day);
+            }
+        }
+
+        context.PerformanceReviews.AddRange(
+            new PerformanceReview
+            {
+                Id = Guid.NewGuid(), FarmId = farmId, EmployeeId = marcus.Id,
+                Rating = 4, ReviewDate = now.AddMonths(-3),
+                PeriodStart = now.AddMonths(-9), PeriodEnd = now.AddMonths(-3),
+                Strengths = "Dependable herd manager; calving rates improved this year.",
+                AreasForImprovement = "Delegate routine tasks more consistently.",
+                ReviewedBy = aishaEmployee.Id
+            },
+            new PerformanceReview
+            {
+                Id = Guid.NewGuid(), FarmId = farmId, EmployeeId = grace.Id,
+                Rating = 4, ReviewDate = now.AddMonths(-1),
+                PeriodStart = now.AddMonths(-7), PeriodEnd = now.AddMonths(-1),
+                Strengths = "Careful record keeping and reliable feeding rounds.",
+                AreasForImprovement = "Build confidence with the milking equipment checks.",
+                ReviewedBy = marcus.Id
+            });
+
+        var period = new DateTime(now.Year, now.Month, 1).AddMonths(-1);
+        foreach (var employee in new[] { aishaEmployee, marcus, liam, grace })
+        {
+            context.SalaryPayments.Add(new SalaryPayment
+            {
+                Id = Guid.NewGuid(), FarmId = farmId, EmployeeId = employee.Id,
+                Amount = employee.SalaryRate, PaymentDate = period.AddDays(25),
+                SalaryType = employee.SalaryType, PaymentType = SalaryPaymentType.BankTransfer,
+                PeriodCovered = period, Reference = $"SAL-{period:yyyyMM}",
+                Notes = $"Monthly salary — {period:MMMM yyyy}."
+            });
+        }
+        await context.SaveChangesAsync();
+
+        var mainBarn = await context.Locations.FirstAsync(l => l.FarmId == farmId && l.Name == "Main Barn");
+        var isolation = await context.Locations.FirstAsync(l => l.FarmId == farmId && l.Name == "Isolation Pen");
+        var affected = await context.Animals.FirstAsync(a => a.TagNumber == "SR-1009");
+        var overdue = new (string Title, string Description, FarmTaskPriority Priority, FarmTaskStatus Status,
+            int DueOffset, Guid? EmployeeId, Guid? AnimalId, Guid? LocationId)[]
+        {
+            ("Check fencing along the east boundary", "Walk the full line after last week's storm and report any loose posts.", FarmTaskPriority.Medium, FarmTaskStatus.Pending, -6, liam.Id, null, null),
+            ("Blood-test new arrivals before joining the herd", "Required before the two heifers move into the main barn.", FarmTaskPriority.High, FarmTaskStatus.Pending, -2, aishaEmployee.Id, null, null),
+            ("Service the milking machine", "Monthly service: seals, vacuum pump and cleaning cycle.", FarmTaskPriority.Medium, FarmTaskStatus.InProgress, 2, marcus.Id, null, mainBarn.Id),
+            ("Recheck Rania's respiratory treatment", "Vet to review temperature and appetite before ending isolation.", FarmTaskPriority.High, FarmTaskStatus.Pending, 1, aishaEmployee.Id, affected.Id, isolation.Id),
+            ("Top up mineral blocks in all paddocks", "Blocks in the north paddock are almost finished.", FarmTaskPriority.Low, FarmTaskStatus.Pending, 5, grace.Id, null, null),
+            ("Clean and bed the goat pen", "Weekly pen clean before the kids are weighed again.", FarmTaskPriority.Medium, FarmTaskStatus.Completed, -4, grace.Id, null, null),
+            ("File quarterly vaccination records", "Compile the batch numbers and dates for the regulator.", FarmTaskPriority.Low, FarmTaskStatus.Completed, -8, marcus.Id, null, null),
+            ("Replace broken water trough in north paddock", "Trough cracked overnight; temporary bucket in place.", FarmTaskPriority.High, FarmTaskStatus.Cancelled, -3, liam.Id, null, null)
+        };
+        context.FarmTasks.AddRange(overdue.Select(t => new FMS.Domain.Entities.FarmTask
+        {
+            Id = Guid.NewGuid(), FarmId = farmId, Title = t.Title, Description = t.Description,
+            Priority = t.Priority, Status = t.Status, DueDate = now.AddDays(t.DueOffset),
+            AssignedEmployeeId = t.EmployeeId, AnimalId = t.AnimalId, LocationId = t.LocationId,
+            StartedAt = t.Status == FarmTaskStatus.InProgress || t.Status == FarmTaskStatus.Completed
+                ? now.AddDays(-1) : null,
+            CompletedAt = t.Status == FarmTaskStatus.Completed ? now.AddDays(-5) : null,
+            CancelReason = t.Status == FarmTaskStatus.Cancelled ? "Replaced by a repair visit from the supplier." : null
+        }));
+        await context.SaveChangesAsync();
+    }
+
+    /// <summary>
+    /// The notification centre used to stay empty until the 15-minute dispatcher job ran. Seed a
+    /// small set of the alerts the dashboard already computes for this farm, with the same
+    /// source keys, so the list is populated on first login and the dispatcher refreshes the
+    /// existing rows instead of creating duplicates.
+    /// </summary>
+    private static async Task SeedDemoNotificationsAsync(FmsDbContext context, Guid farmId, Guid userId, DateTime now)
+    {
+        var overdueTask = await context.FarmTasks
+            .FirstAsync(t => t.FarmId == farmId && t.Status == FarmTaskStatus.Pending && t.DueDate < now);
+        var gestation = await context.GestationRecords
+            .FirstAsync(g => g.FarmId == farmId && g.ExpectedDeliveryDate > now && g.ExpectedDeliveryDate <= now.AddDays(14));
+        var lowStock = await context.InventoryItems
+            .FirstAsync(i => i.FarmId == farmId && i.Quantity < i.ReorderLevel);
+        var expiredBatch = await context.MedicineStocks
+            .FirstAsync(s => s.FarmId == farmId && s.ExpiryDate < now);
+        var expiredMedicine = await context.Medicines
+            .Where(m => m.Id == expiredBatch.MedicineId)
+            .Select(m => new { m.Name, m.Unit, m.LowStockThreshold })
+            .FirstAsync();
+        var overdueAnimal = await context.Animals
+            .FirstAsync(a => a.FarmId == farmId && a.TagNumber == "SR-1007");
+
+        var notifications = new List<Notification>
+        {
+            new()
+            {
+                Id = Guid.NewGuid(), FarmId = farmId, UserId = userId,
+                AlertType = NotificationAlertTypes.OverdueTask, Severity = NotificationSeverity.Critical,
+                SourceKey = NotificationAlertTypes.SourceKeys.ForOverdueTask(overdueTask.Id),
+                Title = $"Overdue: {overdueTask.Title}",
+                Message = $"Task was due {overdueTask.DueDate:MMM dd, yyyy}",
+                TitleKey = AlertMessageKeys.OverdueTaskTitle,
+                TitleArgsJson = MessageArgsJson.Serialize(AlertMessageKeys.Args(("title", overdueTask.Title))),
+                MessageKey = AlertMessageKeys.OverdueTaskMessage,
+                MessageArgsJson = MessageArgsJson.Serialize(AlertMessageKeys.Args(("dueDate", overdueTask.DueDate))),
+                Link = "/dashboard/tasks", DueDate = overdueTask.DueDate,
+                CreatedAt = now.AddDays(-1)
+            },
+            new()
+            {
+                Id = Guid.NewGuid(), FarmId = farmId, UserId = userId,
+                AlertType = NotificationAlertTypes.DueBirth, Severity = NotificationSeverity.Warning,
+                SourceKey = NotificationAlertTypes.SourceKeys.ForDueBirth(gestation.Id),
+                Title = "Birth due: SR-1002",
+                Message = $"Expected {gestation.ExpectedDeliveryDate:MMM dd, yyyy} ({(gestation.ExpectedDeliveryDate.Date - now.Date).Days} days). Stage: {gestation.CurrentStage}.",
+                TitleKey = AlertMessageKeys.DueBirthTitle,
+                TitleArgsJson = MessageArgsJson.Serialize(AlertMessageKeys.Args(("tag", "SR-1002"))),
+                MessageKey = AlertMessageKeys.DueBirthMessage,
+                MessageArgsJson = MessageArgsJson.Serialize(AlertMessageKeys.Args(
+                    ("expectedDate", gestation.ExpectedDeliveryDate),
+                    ("days", (gestation.ExpectedDeliveryDate.Date - now.Date).Days),
+                    ("stage", gestation.CurrentStage.ToString()))),
+                Link = "/dashboard/breeding/gestation", DueDate = gestation.ExpectedDeliveryDate,
+                CreatedAt = now.AddDays(-2), ReadAtUtc = now.AddDays(-1)
+            },
+            new()
+            {
+                Id = Guid.NewGuid(), FarmId = farmId, UserId = userId,
+                AlertType = NotificationAlertTypes.LowInventory, Severity = NotificationSeverity.Warning,
+                SourceKey = NotificationAlertTypes.SourceKeys.ForLowInventory(lowStock.Id),
+                Title = $"Low stock: {lowStock.Name}",
+                Message = $"{lowStock.Quantity} {lowStock.Unit} remaining (reorder level: {lowStock.ReorderLevel}).",
+                TitleKey = AlertMessageKeys.LowInventoryTitle,
+                TitleArgsJson = MessageArgsJson.Serialize(AlertMessageKeys.Args(("item", lowStock.Name))),
+                MessageKey = AlertMessageKeys.LowInventoryMessage,
+                MessageArgsJson = MessageArgsJson.Serialize(AlertMessageKeys.Args(
+                    ("quantity", lowStock.Quantity), ("unit", lowStock.Unit),
+                    ("reorderLevel", lowStock.ReorderLevel),
+                    ("shortfall", lowStock.ReorderLevel - lowStock.Quantity))),
+                Link = "/dashboard/inventory/reports", CreatedAt = now.AddDays(-3)
+            },
+            new()
+            {
+                Id = Guid.NewGuid(), FarmId = farmId, UserId = userId,
+                AlertType = NotificationAlertTypes.Medicine, Severity = NotificationSeverity.Critical,
+                SourceKey = NotificationAlertTypes.SourceKeys.ForMedicine(
+                    expiredBatch.MedicineId, expiredBatch.Id, "Expired"),
+                Title = $"Expired: {expiredMedicine.Name}",
+                Message = $"Batch {expiredBatch.BatchNumber} expired on {expiredBatch.ExpiryDate:MMM dd, yyyy}.",
+                TitleKey = AlertMessageKeys.MedicineExpiredTitle,
+                TitleArgsJson = MessageArgsJson.Serialize(AlertMessageKeys.Args(("medicine", expiredMedicine.Name))),
+                MessageKey = AlertMessageKeys.MedicineMessage,
+                MessageArgsJson = MessageArgsJson.Serialize(AlertMessageKeys.Args(
+                    ("batch", expiredBatch.BatchNumber),
+                    ("quantity", expiredBatch.Quantity),
+                    ("unit", expiredMedicine.Unit),
+                    ("threshold", expiredMedicine.LowStockThreshold),
+                    ("expiryDate", expiredBatch.ExpiryDate))),
+                Link = "/dashboard/health/medicines/alerts", DueDate = expiredBatch.ExpiryDate,
+                CreatedAt = now.AddDays(-4), DismissedAtUtc = now.AddDays(-3)
+            },
+            new()
+            {
+                Id = Guid.NewGuid(), FarmId = farmId, UserId = userId,
+                AlertType = NotificationAlertTypes.OverdueVaccination, Severity = NotificationSeverity.Critical,
+                SourceKey = NotificationAlertTypes.SourceKeys.ForOverdueVaccination(
+                    overdueAnimal.Id, await context.VaccineTypes
+                        .Where(v => v.FarmId == farmId && v.Name == "Foot and Mouth Disease Vaccine")
+                        .Select(v => v.Id).FirstAsync()),
+                Title = "Overdue: Foot and Mouth Disease Vaccine",
+                Message = $"Animal {overdueAnimal.TagNumber} is due for Foot and Mouth Disease Vaccine.",
+                TitleKey = AlertMessageKeys.OverdueVaccinationTitle,
+                TitleArgsJson = MessageArgsJson.Serialize(AlertMessageKeys.Args(
+                    ("vaccineType", "Foot and Mouth Disease Vaccine"))),
+                Link = "/dashboard/health/vaccinations", DueDate = now,
+                CreatedAt = now.AddDays(-1)
+            }
+        };
+        context.Notifications.AddRange(notifications);
+
+        // A few explicit preferences so the preferences page is not empty. The demo never sends
+        // email or push (DemoGuards blocks the real-email paths), so out-of-app channels stay off.
+        foreach (var alertType in new[]
+                 {
+                     NotificationAlertTypes.OverdueTask,
+                     NotificationAlertTypes.DueBirth,
+                     NotificationAlertTypes.Medicine,
+                     NotificationAlertTypes.LowInventory
+                 })
+        {
+            context.NotificationPreferences.Add(new NotificationPreference
+            {
+                Id = Guid.NewGuid(), FarmId = farmId, UserId = userId,
+                AlertType = alertType, InAppEnabled = true,
+                EmailEnabled = false, PushEnabled = false,
+                CreatedAt = now.AddMonths(-1)
+            });
+        }
+        await context.SaveChangesAsync();
     }
 
     // ── tiny helpers ──────────────────────────────────────────────────────────────────────
@@ -820,7 +1625,8 @@ public static class DemoDataSeeder
 
     private static async Task<Employee> EnsureEmployeeAsync(FmsDbContext context, Guid farmId, DateTime now,
         string fullName, string email,
-        SalaryType salaryType, decimal salaryRate, DateTime hireDate)
+        SalaryType salaryType, decimal salaryRate, DateTime hireDate,
+        Department? department = null, EmployeeRole? employeeRole = null, string? phone = null)
     {
         var nameParts = fullName.Split(' ', 2);
         var firstName = nameParts[0];
@@ -832,7 +1638,8 @@ public static class DemoDataSeeder
         {
             Id = Guid.NewGuid(), FarmId = farmId,
             FirstName = firstName, LastName = lastName,
-            Email = email, Phone = email,
+            Email = email, Phone = phone ?? email,
+            DepartmentId = department?.Id, EmployeeRoleId = employeeRole?.Id,
             SalaryType = salaryType, SalaryRate = salaryRate,
             HireDate = hireDate, IsActive = true,
             Notes = ""
@@ -1120,5 +1927,53 @@ public static class DemoDataSeeder
             Date = date.Date, Status = status, Notes = ""
         });
         await context.SaveChangesAsync();
+    }
+
+    private static async Task<Vet> EnsureVetAsync(FmsDbContext context, Guid farmId, DateTime now,
+        string name, string email, string? phone, string? licenceNumber, string? notes)
+    {
+        var existing = await context.Vets.FirstOrDefaultAsync(v => v.FarmId == farmId && v.Name == name);
+        if (existing != null) return existing;
+        var vet = new Vet
+        {
+            Id = Guid.NewGuid(), FarmId = farmId, Name = name,
+            Email = email, Phone = phone, LicenseNumber = licenceNumber,
+            IsActive = true, Notes = notes, CreatedAt = now
+        };
+        context.Vets.Add(vet);
+        await context.SaveChangesAsync();
+        return vet;
+    }
+
+    private static async Task<Location> EnsureLocationAsync(FmsDbContext context, Guid farmId, DateTime now,
+        string name, string typeName, Guid? parentId)
+    {
+        var existing = await context.Locations.FirstOrDefaultAsync(l => l.FarmId == farmId && l.Name == name);
+        if (existing != null) return existing;
+        var type = await context.LocationTypes.FirstOrDefaultAsync(t => t.FarmId == farmId && t.Name == typeName)
+            ?? throw new InvalidOperationException($"Location type '{typeName}' missing after defaults seed.");
+        var location = new Location
+        {
+            Id = Guid.NewGuid(), FarmId = farmId, Name = name,
+            LocationTypeId = type.Id, ParentLocationId = parentId, CreatedAt = now
+        };
+        context.Locations.Add(location);
+        await context.SaveChangesAsync();
+        return location;
+    }
+
+    private static async Task<IdentificationType> EnsureIdentificationTypeAsync(
+        FmsDbContext context, Guid farmId, string name)
+    {
+        var existing = await context.IdentificationTypes
+            .FirstOrDefaultAsync(t => t.FarmId == farmId && t.Name == name);
+        if (existing != null) return existing;
+        var type = new IdentificationType
+        {
+            Id = Guid.NewGuid(), FarmId = farmId, Name = name
+        };
+        context.IdentificationTypes.Add(type);
+        await context.SaveChangesAsync();
+        return type;
     }
 }

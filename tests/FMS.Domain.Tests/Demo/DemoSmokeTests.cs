@@ -127,8 +127,8 @@ public class DemoSmokeTests
         var seeded = await SnapshotAsync(host);
         Assert.Equal("Sunrise Ranch", seeded.farmName);
         Assert.True(seeded.isDemo);
-        Assert.Equal(9, seeded.animals);
-        Assert.Equal(4, seeded.tasks);
+        Assert.Equal(18, seeded.animals);
+        Assert.Equal(12, seeded.tasks);
 
         // Make the demo messy.
         using (var scope = host.Services.CreateScope())
@@ -141,7 +141,7 @@ public class DemoSmokeTests
             });
             await db.SaveChangesAsync();
         }
-        Assert.Equal(5, (await SnapshotAsync(host)).tasks);
+        Assert.Equal(13, (await SnapshotAsync(host)).tasks);
 
         // Reset (the demo user is SystemOwner). Use the token demo-login actually returned —
         // the client has no other token — so this proves the fresh demo session can reset.
@@ -150,10 +150,60 @@ public class DemoSmokeTests
             new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
         var reset = await resetClient.PostAsync("/api/auth/demo-reset", null);
         Assert.Equal(HttpStatusCode.OK, reset.StatusCode);
-        Assert.Equal(4, (await SnapshotAsync(host)).tasks);
+        Assert.Equal(12, (await SnapshotAsync(host)).tasks);
 
         Assert.True(hasIsDemo, "demo-login response must carry isDemo=true for the client banner.");
         Assert.Contains("SystemOwner", roles);
+    }
+
+    [Fact]
+    public async Task Demo_login_seeds_richer_history_and_reset_restores_it()
+    {
+        using var host = BuildHost(demoEnabled: true);
+        var client = host.GetTestClient();
+
+        var login = await client.PostAsJsonAsync("/api/auth/demo-login", new { });
+        Assert.Equal(HttpStatusCode.OK, login.StatusCode);
+        using var json = JsonDocument.Parse(await login.Content.ReadAsStringAsync());
+        var token = json.RootElement.GetProperty("accessToken").GetString();
+        var farmId = (await SnapshotAsync(host)).farmId;
+
+        static async Task<(int vets, int ids, int transfers, int checks, int notes, int prefs)> CountsAsync(IHost h, Guid id)
+        {
+            using var scope = h.Services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<FmsDbContext>();
+            return (
+                await db.Vets.CountAsync(v => v.FarmId == id && v.IsActive),
+                await db.AnimalIdentifications.CountAsync(i => i.FarmId == id),
+                await db.AnimalTransfers.CountAsync(t => t.FarmId == id),
+                await db.GestationHealthChecks.CountAsync(c => c.FarmId == id),
+                await db.Notifications.CountAsync(n => n.FarmId == id),
+                await db.NotificationPreferences.CountAsync(p => p.FarmId == id));
+        }
+
+        var seeded = await CountsAsync(host, farmId);
+        Assert.Equal(2, seeded.vets); // two active, one retired
+        Assert.Equal(9, seeded.ids);
+        Assert.Equal(3, seeded.transfers);
+        Assert.Equal(4, seeded.checks);
+        Assert.Equal(5, seeded.notes);
+        Assert.Equal(4, seeded.prefs);
+
+        using (var scope = host.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<FmsDbContext>();
+            Assert.True(await db.MedicalRecords.AnyAsync(m => m.FarmId == farmId && m.VetId != null));
+            Assert.True(await db.VaccinationRecords.AnyAsync(v => v.FarmId == farmId && v.VetId != null));
+            Assert.True(await db.Expenses.CountAsync(e => e.FarmId == farmId) >= 20);
+            Assert.True(await db.IncomeRecords.CountAsync(i => i.FarmId == farmId) >= 10);
+        }
+
+        // Reset wipes and re-seeds the farm: the richer data must come back once, not twice.
+        var resetClient = host.GetTestClient();
+        resetClient.DefaultRequestHeaders.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+        Assert.Equal(HttpStatusCode.OK, (await resetClient.PostAsync("/api/auth/demo-reset", null)).StatusCode);
+        Assert.Equal(seeded, await CountsAsync(host, farmId));
     }
 
     [Fact]
