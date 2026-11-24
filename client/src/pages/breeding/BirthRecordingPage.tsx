@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Card, Table, Button, Tag, Space, Col, Modal, Form, DatePicker, Input, InputNumber, message, Descriptions, Empty, Popconfirm, Row } from 'antd';
 import Select from '../../components/Select';
 import type { ColumnsType } from 'antd/es/table';
@@ -29,7 +29,12 @@ export default function BirthRecordingPage() {const { t } = useTranslation(['bre
   const [animals, setAnimals] = useState<{ id: string; tagNumber: string; name?: string }[]>([]);
   const [pendingGestations, setPendingGestations] = useState<GestationRecord[]>([]);
   const [pendingBreedingRecords, setPendingBreedingRecords] = useState<BreedingRecord[]>([]);
+  const [selectedDamId, setSelectedDamId] = useState('');
   const [selectedDamTag, setSelectedDamTag] = useState('');
+  const [linkOptionsLoading, setLinkOptionsLoading] = useState(false);
+  // Both link dropdowns are loaded per dam; a late response for a dam the user already
+  // moved away from must not overwrite the options for the current one.
+  const linkRequestRef = useRef(0);
   const [submitting, setSubmitting] = useState(false);
 
   // Detail drawer
@@ -68,36 +73,91 @@ export default function BirthRecordingPage() {const { t } = useTranslation(['bre
     setModalOpen(true);
     form.resetFields();
     form.setFieldsValue({ offspring: [{ outcome: 0 }] });
+    setSelectedDamId('');
     setSelectedDamTag('');
+    setPendingGestations([]);
+    setPendingBreedingRecords([]);
+    // Invalidate any option load still in flight from the previous visit.
+    linkRequestRef.current += 1;
     try {
-      const [sexRes, animalsRes, gestRes, breedRes] = await Promise.all([
+      const [sexRes, animalsRes] = await Promise.all([
         lookupsApi.sexOptions(),
         lookupsApi.animals(),
-        gestationApi.list({ activeOnly: true, pageSize: 100 }),
-        breedingRecordsApi.list({ result: 0, pageSize: 100 }),
       ]);
       setSexOptions(sexRes.data);
       setAnimals(animalsRes.data.items);
-      setPendingGestations(gestRes.data.items);
-      setPendingBreedingRecords(breedRes.data.items);
     } catch {
       // ignore
     }
   };
 
-  const handleDamChange = (damId: string) => {
+  const clearLineageErrors = () => {
+    form.setFields([
+      { name: 'gestationRecordId', errors: [] },
+      { name: 'breedingRecordId', errors: [] },
+    ]);
+  };
+
+  /**
+   * Both link dropdowns only ever offer records that belong to the chosen dam: the API rejects
+   * a gestation or breeding record from another animal, so offering the farm's whole history
+   * let the user pick a link that could not be saved.
+   */
+  const handleDamChange = async (damId?: string) => {
     const dam = animals.find(a => a.id === damId);
+    setSelectedDamId(damId || '');
     setSelectedDamTag(dam?.tagNumber || '');
-    // Try to find matching pending gestation for this dam
-    const matchGestation = pendingGestations.find(g => g.animalId === damId);
-    if (matchGestation) {
-      form.setFieldValue('gestationRecordId', matchGestation.id);
+    // A link is only valid for the dam it was chosen for, so a dam change clears both.
+    form.setFieldValue('gestationRecordId', undefined);
+    form.setFieldValue('breedingRecordId', undefined);
+    setPendingGestations([]);
+    setPendingBreedingRecords([]);
+    clearLineageErrors();
+
+    const requestId = linkRequestRef.current + 1;
+    linkRequestRef.current = requestId;
+    if (!damId) {
+      setLinkOptionsLoading(false);
+      return;
+    }
+
+    setLinkOptionsLoading(true);
+    try {
+      const [gestRes, breedRes] = await Promise.all([
+        gestationApi.list({ activeOnly: true, damId, pageSize: 100 }),
+        breedingRecordsApi.list({ damId, pageSize: 100 }),
+      ]);
+      if (linkRequestRef.current !== requestId) return;
+      setPendingGestations(gestRes.data.items);
+      // A failed mating cannot establish a live birth's lineage.
+      setPendingBreedingRecords(breedRes.data.items.filter(r => r.result !== 2));
+      if (gestRes.data.items.length > 0) {
+        form.setFieldValue('gestationRecordId', gestRes.data.items[0].id);
+      }
+    } catch (err) {
+      if (linkRequestRef.current === requestId) message.error(getApiError(err));
+    } finally {
+      if (linkRequestRef.current === requestId) setLinkOptionsLoading(false);
     }
   };
 
   const handleSubmit = async () => {
     try {
       const values = await form.validateFields();
+
+      // The API requires at least one link to establish lineage. Neither field is required on
+      // its own, so the pair is checked here and both are marked, instead of letting the
+      // request fail with a message that names a rule the form never showed.
+      if (!values.gestationRecordId && !values.breedingRecordId) {
+        const lineageMessage = t('validation:lineageRecordRequired');
+        form.setFields([
+          { name: 'gestationRecordId', errors: [lineageMessage] },
+          { name: 'breedingRecordId', errors: [lineageMessage] },
+        ]);
+        message.warning(lineageMessage);
+        return;
+      }
+
       setSubmitting(true);
 
       const payload: CreateBirthRecordPayload = {
@@ -254,7 +314,11 @@ export default function BirthRecordingPage() {const { t } = useTranslation(['bre
               <Form.Item name="gestationRecordId" label={t('gestationRecordOptional')}>
                 <Select
                   allowClear
-                  placeholder={t('linkToGestationRecord')}
+                  disabled={!selectedDamId}
+                  loading={linkOptionsLoading}
+                  placeholder={selectedDamId ? t('linkToGestationRecord') : t('selectDamFirst')}
+                  notFoundContent={selectedDamId ? t('noGestationRecordsForDam') : t('selectDamFirst')}
+                  onChange={clearLineageErrors}
                   options={pendingGestations.map(g => ({
                     value: g.id,
                     label: `${formatDate(g.breedingDate)} | ${g.animalTagNumber} (${g.daysUntilDue}d to due)`,
@@ -268,7 +332,11 @@ export default function BirthRecordingPage() {const { t } = useTranslation(['bre
               <Form.Item name="breedingRecordId" label={t('breedingRecordOptional')}>
                 <Select
                   allowClear
-                  placeholder={t('linkToBreedingRecord')}
+                  disabled={!selectedDamId}
+                  loading={linkOptionsLoading}
+                  placeholder={selectedDamId ? t('linkToBreedingRecord') : t('selectDamFirst')}
+                  notFoundContent={selectedDamId ? t('noBreedingRecordsForDam') : t('selectDamFirst')}
+                  onChange={clearLineageErrors}
                   options={pendingBreedingRecords.map(r => ({
                     value: r.id,
                     label: `${formatDate(r.breedingDate)} | ${r.sireTagNumber} x ${r.damTagNumber}`,
@@ -279,6 +347,10 @@ export default function BirthRecordingPage() {const { t } = useTranslation(['bre
               </Form.Item>
             </Col>
           </Row>
+
+          <div style={{ marginBottom: 16, padding: '6px 10px', background: '#fffbe6', border: '1px solid #ffe58f', borderRadius: 6, color: '#614700' }}>
+            {t('lineageRecordRequiredHint')}
+          </div>
 
           <Form.Item name="birthDate" label={t('birthDate')} rules={[{ required: true, message: t('validation:common.selectBirthDate') }]}>
             <DatePicker style={{ width: '100%' }} />

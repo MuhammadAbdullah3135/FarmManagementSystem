@@ -53,6 +53,7 @@ public class GestationHealthCheckDto
 public class GestationRecordListFilter
 {
     public GestationStage? Stage { get; set; }
+    public Guid? DamId { get; set; }
     public bool ActiveOnly { get; set; } = true;
     public int Page { get; set; } = 1;
     public int PageSize { get; set; } = 20;

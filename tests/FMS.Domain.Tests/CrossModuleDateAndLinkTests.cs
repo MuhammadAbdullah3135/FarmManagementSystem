@@ -188,6 +188,57 @@ public class CrossModuleDateAndLinkTests
     }
 
     [Fact]
+    public async Task GestationList_FilteredByDam_ReturnsOnlyThatDamsRecords()
+    {
+        using var context = CreateContext();
+        var seed = await SeedBreedingAsync(context);
+        var svc = CreateBreedingService(context);
+
+        var seededDam = await context.Animals.SingleAsync(a => a.Id == seed.DamId);
+        var otherDam = new Domain.Entities.Animal
+        {
+            Id = Guid.NewGuid(),
+            FarmId = seed.FarmId,
+            TagNumber = "DAM-2",
+            Name = "Buttercup",
+            AnimalTypeId = seededDam.AnimalTypeId,
+            BreedId = seededDam.BreedId,
+            SexOptionId = seededDam.SexOptionId,
+            AnimalStatusId = seededDam.AnimalStatusId
+        };
+        context.Animals.Add(otherDam);
+        await context.SaveChangesAsync();
+
+        var otherMating = await svc.CreateBreedingRecordAsync(seed.FarmId, new CreateBreedingRecordRequest
+        {
+            SireId = seed.SireId, DamId = otherDam.Id, BreedingDate = DateTime.UtcNow.AddDays(-120),
+            Method = BreedingMethod.Natural
+        });
+        Assert.True(otherMating.IsSuccess);
+
+        foreach (var matingId in new[] { seed.BreedingRecordId, otherMating.Value!.Id })
+        {
+            var confirmed = await svc.ConfirmPregnancyAsync(seed.FarmId, new ConfirmPregnancyRequest
+            {
+                BreedingRecordId = matingId, ConfirmedDate = DateTime.UtcNow.AddDays(-30)
+            });
+            Assert.True(confirmed.IsSuccess);
+        }
+
+        var forSeededDam = await svc.GetGestationRecordsAsync(seed.FarmId, new GestationRecordListFilter { DamId = seed.DamId });
+        Assert.True(forSeededDam.IsSuccess);
+        Assert.Equal(seed.DamId, Assert.Single(forSeededDam.Value!.Items).AnimalId);
+
+        var forOtherDam = await svc.GetGestationRecordsAsync(seed.FarmId, new GestationRecordListFilter { DamId = otherDam.Id });
+        Assert.True(forOtherDam.IsSuccess);
+        Assert.Equal(otherDam.Id, Assert.Single(forOtherDam.Value!.Items).AnimalId);
+
+        // Without the filter the farm still lists both, so the filter narrows rather than replaces.
+        var unfiltered = await svc.GetGestationRecordsAsync(seed.FarmId, new GestationRecordListFilter());
+        Assert.Equal(2, unfiltered.Value!.TotalCount);
+    }
+
+    [Fact]
     public async Task Birth_WithoutBreedingOrGestation_IsRejected()
     {
         using var context = CreateContext();

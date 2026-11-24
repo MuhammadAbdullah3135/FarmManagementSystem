@@ -28,6 +28,7 @@ export interface UpdateBreedingRecordPayload extends CreateBreedingRecordPayload
 
 export interface GestationRecordListFilter {
   stage?: number;
+  damId?: string;
   activeOnly?: boolean;
   page?: number;
   pageSize?: number;

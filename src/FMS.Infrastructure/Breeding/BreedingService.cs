@@ -312,6 +312,9 @@ public class BreedingService : IBreedingService
         if (filter.Stage.HasValue)
             query = query.Where(gr => gr.CurrentStage == filter.Stage.Value);
 
+        if (filter.DamId.HasValue)
+            query = query.Where(gr => gr.AnimalId == filter.DamId.Value);
+
         var total = await query.CountAsync();
 
         var now = DateTime.UtcNow;
