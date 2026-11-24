@@ -285,7 +285,18 @@ const SalaryPaymentsPage: React.FC = () => {
                         block
                         data-testid={`employee-choice-${employee.id}`}
                         onClick={() => setSelectedEmp(employee.id)}
-                        style={{ height: 'auto', paddingBlock: 8, textAlign: 'start' }}
+                        // antd's Button is an inline-flex row, so the name and the salary would sit
+                        // side by side, centred. A column of start-aligned lines reads as a roster
+                        // entry at every width, and follows the direction in Arabic.
+                        style={{
+                          height: 'auto',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'flex-start',
+                          gap: 2,
+                          paddingBlock: 8,
+                          textAlign: 'start',
+                        }}
                       >
                         <span style={{ display: 'block', fontWeight: 500 }}>
                           {`${employee.firstName} ${employee.lastName}`}
