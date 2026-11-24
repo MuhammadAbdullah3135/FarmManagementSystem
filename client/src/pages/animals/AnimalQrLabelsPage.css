@@ -60,11 +60,34 @@
    * The app shell is a viewport-height scroller with overflow hidden. Anything printed inside it
    * gets clipped at the first page. Hide the whole React root and let the standalone sheet below
    * be the only printed content, so the browser paginates from the document body instead.
+   *
+   * Keyed on the sheet being in the document rather than on the body class, and deliberately not
+   * on both. The class is set by a `beforeprint` listener and the sheet by a React render; hiding
+   * #root on the class alone is how this screen can print a blank page — the browser snapshots
+   * between the two, and the only printable content is a root that is `display: none`. The sheet
+   * existing is the one fact that cannot disagree with itself: when it is there it prints, and
+   * when it is not there the app prints, which is a worse sheet of labels but never an empty one.
+   *
+   * Separate rules, not one selector list: an engine without `:has()` drops a whole list that
+   * contains it, which would take every other selector in that list down with it.
    */
-  body.fms-labels-print > #root {
+  body:has(> .fms-print-sheet) > #root {
     display: none !important;
   }
 
+  body:has(> .fms-print-sheet) > .fms-print-sheet {
+    display: grid !important;
+    position: static;
+    inline-size: 100%;
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  /*
+   * An engine without `:has()` still gets the sheet's printed layout; it appears at the end of
+   * the app's own pages instead of on its own, because nothing here can ask whether a sibling
+   * exists. Deliberately no `#root { display: none }` companion: on such an engine that rule is
+   * the only thing that would print, and a blank preview is the outcome this screen is fixing.
+   */
   body.fms-labels-print > .fms-print-sheet {
     display: grid !important;
     position: static;
