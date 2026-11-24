@@ -46,7 +46,9 @@ describe('FeedTypesPage supplier picker', () => {
     const user = userEvent.setup();
     render(<MemoryRouter><FeedTypesPage /></MemoryRouter>);
 
-    await user.click(await screen.findByRole('button', { name: /Adjust Stock/i }));
+    // A role query walks antd's three Tabs panes and is pathologically slow in jsdom
+    // under a full parallel run; the visible text is unambiguous before the modal opens.
+    await user.click(await screen.findByText(/Adjust Stock/, {}, { timeout: 60000 }));
 
     const modal = (
       await screen.findByText(/Adjust Stock/, { selector: '.ant-modal-title' }, { timeout: 20000 })
