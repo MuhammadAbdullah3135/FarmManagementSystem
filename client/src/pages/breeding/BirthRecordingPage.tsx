@@ -67,7 +67,7 @@ export default function BirthRecordingPage() {const { t } = useTranslation(['bre
   const openCreateModal = async () => {
     setModalOpen(true);
     form.resetFields();
-    form.setFieldsValue({ offspring: [{}] });
+    form.setFieldsValue({ offspring: [{ outcome: 0 }] });
     setSelectedDamTag('');
     try {
       const [sexRes, animalsRes, gestRes, breedRes] = await Promise.all([
@@ -93,17 +93,6 @@ export default function BirthRecordingPage() {const { t } = useTranslation(['bre
     if (matchGestation) {
       form.setFieldValue('gestationRecordId', matchGestation.id);
     }
-  };
-
-  const handleAddOffspring = () => {
-    const current = form.getFieldValue('offspring') || [];
-    form.setFieldsValue({ offspring: [...current, {}] });
-  };
-
-  const handleRemoveOffspring = (index: number) => {
-    const current = form.getFieldValue('offspring') || [];
-    if (current.length <= 1) return;
-    form.setFieldsValue({ offspring: current.filter((_: unknown, i: number) => i !== index) });
   };
 
   const handleSubmit = async () => {
@@ -212,8 +201,6 @@ export default function BirthRecordingPage() {const { t } = useTranslation(['bre
     },
   ];
 
-  const offspring = Form.useWatch('offspring', form) || [];
-
   return (
     <>
       <Card
@@ -305,91 +292,95 @@ export default function BirthRecordingPage() {const { t } = useTranslation(['bre
             <Input.TextArea rows={2} maxLength={2000} />
           </Form.Item>
 
-          {/* Offspring section */}
-          <Card
-            title={`Offspring (${offspring.length})`}
-            size="small"
-            style={{ marginBottom: 16 }}
-            extra={
-              <Button size="small" icon={<PlusOutlined />} onClick={handleAddOffspring}>
-                {t('addOffspring')}
-              </Button>
-            }
-          >
-            {offspring.map((_: Record<string, unknown>, index: number) => (
+          {/* Offspring section. Form.List owns the array: it registers the rows under
+              `offspring[i].*`, so both the add/remove buttons and validateFields see them. */}
+          <Form.List name="offspring">
+            {(offspringFields, { add, remove }) => (
               <Card
-                key={index}
+                title={`${t('offspring')} (${offspringFields.length})`}
                 size="small"
-                style={{ marginBottom: 8 }}
-                title={
-                  <span>
-                    {t('offspring2')}{index + 1}
-                    {selectedDamTag && (
-                      <Tag style={{ marginInlineStart: 8 }} color="blue">
-                        {t('tag')} {selectedDamTag}-{index + 1}
-                      </Tag>
-                    )}
-                  </span>
-                }
+                style={{ marginBottom: 16 }}
                 extra={
-                  offspring.length > 1 ? (
-                    <Button size="small" danger icon={<DeleteOutlined />}
-                      aria-label={t('removeOffspringTag', {
-                        tag: selectedDamTag ? `${selectedDamTag}-${index + 1}` : `${index + 1}`,
-                      })}
-                      onClick={() => handleRemoveOffspring(index)} />
-                  ) : null
+                  <Button size="small" icon={<PlusOutlined />} onClick={() => add({ outcome: 0 })}>
+                    {t('addOffspring')}
+                  </Button>
                 }
               >
-                <Row gutter={[16, 16]}>
-                  <Col xs={24} sm={12} md={6}>
-                    <Form.Item
-                      name={[index, 'sexOptionId']}
-                      label={t('sex')}
-                      rules={[{ required: true, message: t('validation:common.required') }]}
-                    >
-                      <LookupQuickAddSelect
-                        kind="sexOption"
-                        placeholder={t('selectSex')}
-                        options={sexOptions.map(s => ({ value: s.id, label: s.value }))}
-                        onCreated={() => loadSexOptions()}
-                      />
-                    </Form.Item>
-                  </Col>
+                {offspringFields.map((field) => (
+                  <Card
+                    key={field.key}
+                    size="small"
+                    style={{ marginBottom: 8 }}
+                    title={
+                      <span>
+                        {t('offspring2')}{field.name + 1}
+                        {selectedDamTag && (
+                          <Tag style={{ marginInlineStart: 8 }} color="blue">
+                            {t('tag')} {selectedDamTag}-{field.name + 1}
+                          </Tag>
+                        )}
+                      </span>
+                    }
+                    extra={
+                      offspringFields.length > 1 ? (
+                        <Button size="small" danger icon={<DeleteOutlined />}
+                          aria-label={t('removeOffspringTag', {
+                            tag: selectedDamTag ? `${selectedDamTag}-${field.name + 1}` : `${field.name + 1}`,
+                          })}
+                          onClick={() => remove(field.name)} />
+                      ) : null
+                    }
+                  >
+                    <Row gutter={[16, 16]}>
+                      <Col xs={24} sm={12} md={6}>
+                        <Form.Item
+                          name={[field.name, 'sexOptionId']}
+                          label={t('sex')}
+                          rules={[{ required: true, message: t('validation:common.required') }]}
+                        >
+                          <LookupQuickAddSelect
+                            kind="sexOption"
+                            placeholder={t('selectSex')}
+                            options={sexOptions.map(s => ({ value: s.id, label: s.value }))}
+                            onCreated={() => loadSexOptions()}
+                          />
+                        </Form.Item>
+                      </Col>
 
-                  <Col xs={24} sm={12} md={6}>
-                    <Form.Item
-                      name={[index, 'outcome']}
-                      label={t('outcome')}
-                      initialValue={0}
-                    >
-                      <Select style={{ width: '100%' }}>
-                        <Select.Option value={0}>{t('alive')}</Select.Option>
-                        <Select.Option value={1}>{t('stillborn')}</Select.Option>
-                        <Select.Option value={2}>{t('weak')}</Select.Option>
-                      </Select>
-                    </Form.Item>
-                  </Col>
+                      <Col xs={24} sm={12} md={6}>
+                        <Form.Item
+                          name={[field.name, 'outcome']}
+                          label={t('outcome')}
+                        >
+                          <Select style={{ width: '100%' }}>
+                            <Select.Option value={0}>{t('alive')}</Select.Option>
+                            <Select.Option value={1}>{t('stillborn')}</Select.Option>
+                            <Select.Option value={2}>{t('weak')}</Select.Option>
+                          </Select>
+                        </Form.Item>
+                      </Col>
 
-                  <Col xs={24} sm={12} md={6}>
-                    <Form.Item name={[index, 'birthWeightKg']} label={t('weightKg')}>
-                      <InputNumber min={0} precision={2} style={{ width: '100%' }} />
-                    </Form.Item>
-                  </Col>
+                      <Col xs={24} sm={12} md={6}>
+                        <Form.Item name={[field.name, 'birthWeightKg']} label={t('weightKg')}>
+                          <InputNumber min={0} precision={2} style={{ width: '100%' }} />
+                        </Form.Item>
+                      </Col>
 
-                  <Col xs={24} sm={12} md={6}>
-                    <Form.Item name={[index, 'name']} label={t('name')}>
-                      <Input maxLength={200} placeholder={t('optionalName')} />
-                    </Form.Item>
-                  </Col>
-                </Row>
+                      <Col xs={24} sm={12} md={6}>
+                        <Form.Item name={[field.name, 'name']} label={t('name')}>
+                          <Input maxLength={200} placeholder={t('optionalName')} />
+                        </Form.Item>
+                      </Col>
+                    </Row>
 
-                <Form.Item name={[index, 'notes']} label={t('notes')}>
-                  <Input maxLength={500} placeholder={t('optionalNotes')} />
-                </Form.Item>
+                    <Form.Item name={[field.name, 'notes']} label={t('notes')}>
+                      <Input maxLength={500} placeholder={t('optionalNotes')} />
+                    </Form.Item>
+                  </Card>
+                ))}
               </Card>
-            ))}
-          </Card>
+            )}
+          </Form.List>
         </Form>
       </Modal>
 
