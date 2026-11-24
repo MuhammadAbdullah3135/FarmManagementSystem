@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 vi.mock('../../api/animals', () => ({
@@ -26,9 +26,18 @@ const sheetOf = (items: typeof BESSIE[]) =>
     data: { items, totalCount: items.length, page: 1, pageSize: 50 },
   } as never);
 
+const printPortal = () => document.body.querySelector('.fms-print-sheet');
+
+const dispatchPrint = (type: 'beforeprint' | 'afterprint') => {
+  act(() => {
+    window.dispatchEvent(new Event(type));
+  });
+};
+
 beforeEach(() => {
   vi.clearAllMocks();
   vi.spyOn(window, 'print').mockImplementation(() => undefined);
+  document.body.classList.remove('fms-labels-print');
 });
 
 /**
@@ -70,15 +79,35 @@ describe('AnimalQrLabelsPage', () => {
     expect(await screen.findByText('No animals match this filter.')).toBeInTheDocument();
   });
 
-  it('releases the app scroller for printing, and restores it on leaving the page', () => {
-    const { unmount } = render(<AnimalQrLabelsPage />);
+  it('mounts a standalone copy under body only while the browser is printing', async () => {
+    sheetOf([BESSIE, STAR]);
 
+    render(<AnimalQrLabelsPage />);
+    await screen.findByText('C-001');
+
+    expect(printPortal()).toBeNull();
+    dispatchPrint('beforeprint');
+
+    // A second sheet, outside the viewport-height app shell that used to clip the print job.
+    const portal = printPortal();
+    expect(portal).not.toBeNull();
+    expect(portal!.parentElement).toBe(document.body);
+    expect(portal!.querySelectorAll('.fms-label')).toHaveLength(2);
+    expect(portal!.querySelectorAll('svg')).toHaveLength(2);
+    expect(portal!.textContent).toContain('C-001');
+    expect(portal!.textContent).toContain('C-002');
     expect(document.body).toHaveClass('fms-labels-print');
-    unmount();
+
+    // The preview stays on screen while the dialog is open; hiding #root is print-only CSS.
+    expect(document.querySelectorAll('.fms-label-sheet:not(.fms-print-sheet) .fms-label')).toHaveLength(2);
+    expect(screen.getByRole('button', { name: /Print$/ })).toBeEnabled();
+
+    dispatchPrint('afterprint');
     expect(document.body).not.toHaveClass('fms-labels-print');
+    expect(printPortal()).toBeNull();
   });
 
-  it('prints the page it is showing', async () => {
+  it('prepares the print sheet before opening the dialog', async () => {
     sheetOf([BESSIE]);
 
     render(<AnimalQrLabelsPage />);
@@ -87,8 +116,34 @@ describe('AnimalQrLabelsPage', () => {
     await userEvent.click(printButton);
 
     // The browser's own dialog is where paper size and a physical printer are chosen; the app
-    // hands it a page rather than a generated file.
+    // hands it a page rather than a generated file. The sheet is mounted before the dialog opens,
+    // so even a browser that fires `beforeprint` late has something to print.
     expect(window.print).toHaveBeenCalledTimes(1);
+    expect(document.body).toHaveClass('fms-labels-print');
+    expect(printPortal()!.querySelectorAll('.fms-label')).toHaveLength(1);
+  });
+
+  it('does not hide the app when there is nothing to print', () => {
+    render(<AnimalQrLabelsPage />);
+
+    dispatchPrint('beforeprint');
+
+    expect(document.body).not.toHaveClass('fms-labels-print');
+    expect(printPortal()).toBeNull();
+  });
+
+  it('removes the print sheet and body class when leaving the page mid-print', async () => {
+    sheetOf([BESSIE]);
+
+    const { unmount } = render(<AnimalQrLabelsPage />);
+    await screen.findByText('C-001');
+    dispatchPrint('beforeprint');
+    expect(printPortal()).not.toBeNull();
+
+    unmount();
+
+    expect(printPortal()).toBeNull();
+    expect(document.body).not.toHaveClass('fms-labels-print');
   });
 
   it('says why it cannot build a sheet instead of drawing codes it cannot vouch for', async () => {

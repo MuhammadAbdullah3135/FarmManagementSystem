@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal, flushSync } from 'react-dom';
 import { Alert, Button, Card, Empty, Input, Pagination, QRCode, Space, Spin, Typography } from 'antd';
 import Select from '../../components/Select';
 import { PrinterOutlined } from '@ant-design/icons';
@@ -10,6 +11,32 @@ const { Text, Title } = Typography;
 
 /** The page sizes the sheet offers. 200 is the server's own ceiling on a page of animals. */
 const PAGE_SIZES = [20, 50, 100, 200];
+
+/**
+ * One physical label. Shared by the preview on screen and the print copy under <body>, so the
+ * two cannot drift into showing different tag numbers or codes.
+ */
+function LabelCard({ label }: { label: AnimalQrLabel }) {
+  return (
+    <div className="fms-label">
+      {/*
+        An SVG code rather than a canvas one: canvas is rasterised at one size and prints blurry,
+        and a code that a cheap scanner cannot read is a label that has to be reprinted. SVG stays
+        sharp at whatever the printer resolves.
+      */}
+      <QRCode value={label.url} type="svg" size={104} bordered={false} errorLevel="M" />
+      <div className="fms-label-text">
+        <div className="fms-label-tag">{label.tagNumber}</div>
+        {label.name && <Text>{label.name}</Text>}
+        {label.animalTypeName && (
+          <div>
+            <Text type="secondary">{label.animalTypeName}</Text>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 /**
  * A sheet of animal QR labels, ready to print and stick on the animals.
@@ -27,6 +54,13 @@ const PAGE_SIZES = [20, 50, 100, 200];
  * drawing a sheet of codes it cannot vouch for. Everything on a label is human-readable without
  * a scanner as well — the tag number is printed beside the code.
  * </para>
+ *
+ * <para>
+ * Printing uses a second copy mounted directly under &lt;body&gt;. The app shell is a
+ * viewport-height scroller with overflow hidden; anything printed inside it is clipped at the
+ * first page, no matter how the print CSS is written. The copy lives outside that shell, so the
+ * browser paginates the sheet itself.
+ * </para>
  */
 export default function AnimalQrLabelsPage() {
   const { t } = useTranslation('animals');
@@ -38,19 +72,53 @@ export default function AnimalQrLabelsPage() {
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [printing, setPrinting] = useState(false);
 
-  /*
-   * The app shell is a viewport-height scroller: body, #root and both layouts are pinned to
-   * 100vh with overflow hidden so navigation never scrolls the whole document. That is right
-   * on screen and fatal in print — a sheet placed inside it is clipped at the first page's
-   * edge. Mark the document so the print stylesheet can release the shell only while this
-   * page is mounted; the class goes away when the user navigates, so no other screen's
-   * print layout is touched (Vite keeps this module's CSS in the bundle).
-   */
-  useEffect(() => {
+  const canPrint = labels.length > 0;
+  // The print event can arrive in the same tick the labels render. A callback closed over
+  // `canPrint` would still be the one registered before the labels loaded, so keep the latest
+  // value in a ref and let the listener stay mounted for the lifetime of the page.
+  const canPrintRef = useRef(canPrint);
+  useLayoutEffect(() => {
+    canPrintRef.current = canPrint;
+  }, [canPrint]);
+
+  const beginPrint = useCallback(() => {
+    if (!canPrintRef.current) return;
+
     document.body.classList.add('fms-labels-print');
-    return () => document.body.classList.remove('fms-labels-print');
+    // The browser snapshots the page as soon as it starts printing. A normal React update would
+    // still be queued at that point, so force the portal into the DOM before the snapshot.
+    flushSync(() => setPrinting(true));
   }, []);
+
+  const endPrint = useCallback(() => {
+    document.body.classList.remove('fms-labels-print');
+    setPrinting(false);
+  }, []);
+
+  useEffect(() => {
+    const onBeforePrint = () => beginPrint();
+    const onAfterPrint = () => endPrint();
+    window.addEventListener('beforeprint', onBeforePrint);
+    window.addEventListener('afterprint', onAfterPrint);
+
+    // Firefox also reports print state through matchMedia. Both paths call the same idempotent
+    // begin/end functions, so whichever the browser fires, the sheet is mounted once.
+    const printMedia = window.matchMedia('print');
+    const onMediaChange = (event: MediaQueryListEvent) => {
+      if (event.matches) beginPrint();
+      else endPrint();
+    };
+    printMedia.addEventListener?.('change', onMediaChange);
+
+    return () => {
+      window.removeEventListener('beforeprint', onBeforePrint);
+      window.removeEventListener('afterprint', onAfterPrint);
+      printMedia.removeEventListener?.('change', onMediaChange);
+      document.body.classList.remove('fms-labels-print');
+    };
+  }, [beginPrint, endPrint]);
 
   const load = useCallback(async (nextPage: number, nextPageSize: number, nextSearch: string) => {
     setLoading(true);
@@ -84,94 +152,91 @@ export default function AnimalQrLabelsPage() {
   }, [load, page, pageSize, search]);
 
   return (
-    <Space direction="vertical" size={16} style={{ width: '100%' }}>
-      <div className="fms-labels-heading">
-        <Title level={4} style={{ marginBottom: 0 }}>{t('qrLabels')}</Title>
-        <Text type="secondary">{t('labelSheetIntro')}</Text>
-      </div>
+    <>
+      <Space direction="vertical" size={16} style={{ width: '100%' }}>
+        <div>
+          <Title level={4} style={{ marginBottom: 0 }}>{t('qrLabels')}</Title>
+          <Text type="secondary">{t('labelSheetIntro')}</Text>
+        </div>
 
-      <Space className="fms-labels-controls" wrap>
-        <Input.Search
-          allowClear
-          placeholder={t('searchByTagOrName')}
-          style={{ width: 260 }}
-          onSearch={(value) => {
-            setPage(1);
-            setSearch(value);
-          }}
-        />
-        <Select
-          value={pageSize}
-          style={{ width: 190 }}
-          options={PAGE_SIZES.map((size) => ({ value: size, label: t('labelsPerPage', { size }) }))}
-          onChange={(value) => {
-            setPage(1);
-            setPageSize(value);
-          }}
-        />
-        <Button
-          type="primary"
-          icon={<PrinterOutlined />}
-          disabled={labels.length === 0}
-          // Printing the page, not a generated file: the browser's own dialog is where paper
-          // size, margins and a physical printer are chosen, and it is the only one that knows
-          // what this device can actually reach.
-          onClick={() => window.print()}
-        >
-          {t('print')}
-        </Button>
+        <Space wrap>
+          <Input.Search
+            allowClear
+            placeholder={t('searchByTagOrName')}
+            style={{ width: 260 }}
+            onSearch={(value) => {
+              setPage(1);
+              setSearch(value);
+            }}
+          />
+          <Select
+            value={pageSize}
+            style={{ width: 190 }}
+            options={PAGE_SIZES.map((size) => ({ value: size, label: t('labelsPerPage', { size }) }))}
+            onChange={(value) => {
+              setPage(1);
+              setPageSize(value);
+            }}
+          />
+          <Button
+            type="primary"
+            icon={<PrinterOutlined />}
+            disabled={!canPrint}
+            // The browser's own dialog is where paper size and a physical printer are chosen.
+            // Mount the standalone sheet first, so even a browser that fires `beforeprint` late
+            // still receives the print copy rather than the clipped app shell.
+            onClick={() => {
+              beginPrint();
+              window.print();
+            }}
+          >
+            {t('print')}
+          </Button>
+        </Space>
+
+        {failed && (
+          <Alert
+            type="warning"
+            showIcon
+            message={t('labelsNeedAConnection')}
+            description={t('theSheetIsBuiltByTheServerSoEvery')}
+          />
+        )}
+
+        <Card>
+          {loading ? (
+            <Spin style={{ display: 'block', margin: '40px auto' }} />
+          ) : labels.length === 0 && !failed ? (
+            <Empty description={t('noAnimalsMatchThisFilter')} />
+          ) : (
+            <div className="fms-label-sheet">
+              {labels.map((label) => (
+                <LabelCard key={label.animalId} label={label} />
+              ))}
+            </div>
+          )}
+        </Card>
+
+        {total > 0 && (
+          <Pagination
+            current={page}
+            pageSize={pageSize}
+            total={total}
+            showSizeChanger={false}
+            onChange={(nextPage) => setPage(nextPage)}
+          />
+        )}
       </Space>
 
-      {failed && (
-        <Alert
-          className="fms-labels-alert"
-          type="warning"
-          showIcon
-          message={t('labelsNeedAConnection')}
-          description={t('theSheetIsBuiltByTheServerSoEvery')}
-        />
-      )}
-
-      <Card className="fms-labels-card">
-        {loading ? (
-          <Spin style={{ display: 'block', margin: '40px auto' }} />
-        ) : labels.length === 0 && !failed ? (
-          <Empty description={t('noAnimalsMatchThisFilter')} />
-        ) : (
-          <div className="fms-label-sheet">
+      {printing && canPrint &&
+        createPortal(
+          <div className="fms-label-sheet fms-print-sheet">
             {labels.map((label) => (
-              <div className="fms-label" key={label.animalId}>
-                {/*
-                  An SVG code rather than a canvas one: canvas is rasterised at one size and
-                  prints blurry, and a code that a cheap scanner cannot read is a label that has
-                  to be reprinted. SVG stays sharp at whatever the printer resolves.
-                */}
-                <QRCode value={label.url} type="svg" size={104} bordered={false} errorLevel="M" />
-                <div className="fms-label-text">
-                  <div className="fms-label-tag">{label.tagNumber}</div>
-                  {label.name && <Text>{label.name}</Text>}
-                  {label.animalTypeName && (
-                    <div>
-                      <Text type="secondary">{label.animalTypeName}</Text>
-                    </div>
-                  )}
-                </div>
-              </div>
+              <LabelCard key={label.animalId} label={label} />
             ))}
-          </div>
+          </div>,
+          document.body,
         )}
-      </Card>
-
-      {total > 0 && (
-        <Pagination
-          className="fms-labels-pager"
-          current={page}
-          pageSize={pageSize}
-          total={total}
-          showSizeChanger={false}
-          onChange={(nextPage) => setPage(nextPage)}
-        />
-      )}
-    </Space>
+    </>
   );
 }
