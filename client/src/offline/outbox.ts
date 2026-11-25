@@ -133,6 +133,14 @@ export interface EnqueueResult<TPayload> {
  * about to store, and a fourth workflow added later inherits the check by construction rather
  * than by reading the architecture note.
  */
+let lastQueuedAtMs = 0;
+
+function nextQueuedAt(): string {
+  const nowMs = Date.now();
+  lastQueuedAtMs = Math.max(nowMs, lastQueuedAtMs + 1);
+  return new Date(lastQueuedAtMs).toISOString();
+}
+
 export async function enqueueMutation<TPayload>(
   input: EnqueueInput<TPayload>,
   options: {
@@ -176,7 +184,7 @@ export async function enqueueMutation<TPayload>(
     kind: input.kind,
     targetId: input.targetId,
     occurredAt: input.occurredAt,
-    queuedAt: new Date().toISOString(),
+    queuedAt: nextQueuedAt(),
     payload: input.payload,
     status: 'pending',
     attempts: 0,

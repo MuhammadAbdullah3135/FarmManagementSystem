@@ -274,6 +274,22 @@ describe('AttendancePage', () => {
     expect(await listScopeMutations(scope)).toHaveLength(1);
   });
 
+  it('re-enables check-in after a pending check-out follows a pending check-in', async () => {
+    await seedCache();
+
+    render(<AttendancePage />);
+    await userEvent.click(await screen.findByRole('button', { name: /In/ }));
+    expect(await screen.findByText('Check-in waiting to sync')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole('button', { name: /In/ })).toBeDisabled());
+
+    await userEvent.click(screen.getByRole('button', { name: /Out/ }));
+    expect(await screen.findByText('Check-out waiting to sync')).toBeInTheDocument();
+
+    await waitFor(() => expect(screen.getByRole('button', { name: /In/ })).toBeEnabled());
+    expect(screen.getByRole('button', { name: /Out/ })).toBeDisabled();
+    expect(await listScopeMutations(scope)).toHaveLength(2);
+  }, 20_000);
+
   it('sends the queued check-in with the payload the server binds, and marks it synced', async () => {
     useOfflineStore.setState({ isOnline: true });
     vi.mocked(syncApi.applyMutations).mockImplementation(async (_farmId, items) => accepted(items));

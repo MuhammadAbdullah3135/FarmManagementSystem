@@ -153,7 +153,14 @@ const AttendancePage: React.FC = () => {const { t } = useTranslation('hr');
   for (const item of items) {
     if (item.status !== 'pending') continue;
     if (item.kind !== ATTENDANCE_CHECK_IN && item.kind !== ATTENDANCE_CHECK_OUT) continue;
-    lastPendingAttendance.set(item.targetId, item); // items are oldest-first; last write wins
+    const current = lastPendingAttendance.get(item.targetId);
+    if (
+      !current ||
+      item.queuedAt > current.queuedAt ||
+      (item.queuedAt === current.queuedAt && item.occurredAt > current.occurredAt)
+    ) {
+      lastPendingAttendance.set(item.targetId, item);
+    }
   }
 
   const attendanceStateFor = (employeeId: string): 'checked_in' | 'checked_out' | 'unknown' => {
