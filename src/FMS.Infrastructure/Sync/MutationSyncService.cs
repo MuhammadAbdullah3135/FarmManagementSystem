@@ -216,8 +216,8 @@ public class MutationSyncService : IMutationSyncService
                     .CheckInAsync(farmId, payload.EmployeeId,
                         new CheckInRequest { OccurredAt = payload.OccurredAt }, item.ClientMutationId);
 
-                // Earliest check-in wins (4.5's policy): the employee-day already has a record,
-                // so the later one is superseded rather than an error the user must resolve.
+                // An open session already satisfies a check-in; conflicts are treated as superseded
+                // so the queued device can clear the item. A closed session allows a new check-in.
                 return WorkflowOutcome.From(result, dto => dto.Id, payload.OccurredAt, conflictIsSuperseded: true);
             }
 
@@ -231,8 +231,8 @@ public class MutationSyncService : IMutationSyncService
                     .CheckOutAsync(farmId, payload.EmployeeId,
                         new CheckOutRequest { OccurredAt = payload.OccurredAt }, item.ClientMutationId);
 
-                // "Already checked out" means the intent is satisfied; a check-out with no
-                // record for that day is a genuine rejection the user has to fix.
+                // "Already checked out" / no open session means the intent is satisfied; a check-out
+                // with no attendance record for that day is a genuine rejection the user has to fix.
                 return WorkflowOutcome.From(result, dto => dto.Id, payload.OccurredAt, conflictIsSuperseded: true);
             }
 

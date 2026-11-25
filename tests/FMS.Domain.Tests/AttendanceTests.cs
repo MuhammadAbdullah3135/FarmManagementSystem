@@ -114,6 +114,31 @@ public class AttendanceTests
         Assert.Equal("Conflict", again.Error!.Code);
     }
 
+    [Fact]
+    public async Task CheckIn_AfterCheckout_CreatesNewSession_ForBreaks()
+    {
+        using var context = CreateContext();
+        var seed = await SeedAsync(context);
+        var service = CreateService(context);
+
+        var day = DateTime.UtcNow.Date.AddDays(-1);
+        var in1 = await service.CheckInAsync(seed.FarmId, seed.AliId, new CheckInRequest { OccurredAt = day.AddHours(8) });
+        Assert.True(in1.IsSuccess);
+        var out1 = await service.CheckOutAsync(seed.FarmId, seed.AliId, new CheckOutRequest { OccurredAt = day.AddHours(12) });
+        Assert.True(out1.IsSuccess);
+
+        var in2 = await service.CheckInAsync(seed.FarmId, seed.AliId, new CheckInRequest { OccurredAt = day.AddHours(13) });
+        Assert.True(in2.IsSuccess);
+        Assert.NotEqual(in1.Value!.Id, in2.Value!.Id);
+        var out2 = await service.CheckOutAsync(seed.FarmId, seed.AliId, new CheckOutRequest { OccurredAt = day.AddHours(17) });
+        Assert.True(out2.IsSuccess);
+        Assert.Equal(in2.Value.Id, out2.Value!.Id);
+
+        var list = await service.GetAttendanceAsync(seed.FarmId, new AttendanceListFilter { EmployeeId = seed.AliId });
+        Assert.Equal(2, list.Value!.TotalCount);
+        Assert.Contains(list.Value.Items, r => r.HoursWorked == 4m);
+    }
+
     // ── the queued rules: earliest check-in wins, latest check-out wins ──
 
     /// <summary>
@@ -165,7 +190,7 @@ public class AttendanceTests
             new CheckInRequest { OccurredAt = storedTime.AddHours(1) }, Guid.NewGuid());
 
         Assert.Equal(Error.SupersededCode, queued.Error!.Code);
-        Assert.Equal("Employee already has an attendance record for that day", queued.Error.Message);
+        Assert.Equal("Employee is already checked in", queued.Error.Message);
 
         var stored = await context.AttendanceRecords.AsNoTracking()
             .SingleAsync(r => r.EmployeeId == seed.AliId);
@@ -257,7 +282,7 @@ public class AttendanceTests
     }
 
     [Fact]
-    public async Task UpsertAttendance_CreatesThenUpdatesSameDate()
+    public async Task UpsertAttendance_CreatesNewSession_WhenNoIdProvided()
     {
         using var context = CreateContext();
         var seed = await SeedAsync(context);
@@ -274,10 +299,43 @@ public class AttendanceTests
         });
         Assert.True(created.IsSuccess);
         Assert.Equal(AttendanceStatus.Late, created.Value!.Status);
-        Assert.Equal("Late", created.Value.StatusName);
+
+        var second = await service.UpsertAttendanceAsync(seed.FarmId, new UpsertAttendanceRequest
+        {
+            EmployeeId = seed.BilalId,
+            Date = date,
+            Status = AttendanceStatus.Present,
+            CheckInAt = date.AddHours(13),
+            CheckOutAt = date.AddHours(17)
+        });
+        Assert.True(second.IsSuccess);
+        Assert.Equal(4m, second.Value!.HoursWorked);
+
+        var list = await service.GetAttendanceAsync(seed.FarmId, new AttendanceListFilter { EmployeeId = seed.BilalId });
+        Assert.Equal(2, list.Value!.TotalCount); // multiple sessions per day allowed
+    }
+
+    [Fact]
+    public async Task UpsertAttendance_UpdatesSpecificSession_WhenIdProvided()
+    {
+        using var context = CreateContext();
+        var seed = await SeedAsync(context);
+        var service = CreateService(context);
+
+        var date = DateTime.UtcNow.Date.AddDays(-1);
+        var created = await service.UpsertAttendanceAsync(seed.FarmId, new UpsertAttendanceRequest
+        {
+            EmployeeId = seed.BilalId,
+            Date = date,
+            Status = AttendanceStatus.Present,
+            CheckInAt = date.AddHours(8),
+            CheckOutAt = date.AddHours(12)
+        });
+        Assert.True(created.IsSuccess);
 
         var updated = await service.UpsertAttendanceAsync(seed.FarmId, new UpsertAttendanceRequest
         {
+            Id = created.Value!.Id,
             EmployeeId = seed.BilalId,
             Date = date,
             Status = AttendanceStatus.Present,
@@ -285,11 +343,11 @@ public class AttendanceTests
             CheckOutAt = date.AddHours(17)
         });
         Assert.True(updated.IsSuccess);
-        Assert.Equal(AttendanceStatus.Present, updated.Value!.Status);
+        Assert.Equal(created.Value.Id, updated.Value!.Id);
         Assert.Equal(9m, updated.Value.HoursWorked);
 
         var list = await service.GetAttendanceAsync(seed.FarmId, new AttendanceListFilter { EmployeeId = seed.BilalId });
-        Assert.Equal(1, list.Value!.TotalCount); // upsert did not duplicate
+        Assert.Equal(1, list.Value!.TotalCount);
     }
 
     [Fact]

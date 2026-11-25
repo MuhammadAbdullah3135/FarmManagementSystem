@@ -17,8 +17,9 @@ public enum SyncMutationOutcome
 
     /// <summary>
     /// The workflow refused the change but the intent is already satisfied by existing state,
-    /// so the device may treat the item as done. Today that is an attendance conflict: the
-    /// employee-day already has a record, and 4.5's policy is that the earliest check-in wins.
+    /// so the device may treat the item as done. For attendance, this covers cases like a
+    /// duplicate check-in while already checked in, or a check-out when the session is
+    /// already closed.
     /// </summary>
     Superseded,
 

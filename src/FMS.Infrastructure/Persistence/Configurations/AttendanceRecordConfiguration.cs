@@ -11,8 +11,9 @@ public class AttendanceRecordConfiguration : IEntityTypeConfiguration<Attendance
         builder.HasKey(r => r.Id);
         builder.Property(r => r.Notes).HasMaxLength(1000);
 
-        // One record per employee per day (also enforced in the service for InMemory).
-        builder.HasIndex(r => new { r.EmployeeId, r.Date }).IsUnique();
+        // Multiple sessions per employee per day are allowed (breaks/split shifts).
+        // The index supports day lookups and open-session queries.
+        builder.HasIndex(r => new { r.EmployeeId, r.Date });
         builder.HasIndex(r => new { r.FarmId, r.Date });
 
         // Idempotency: one applied mutation per farm, ever — this is what refuses a queued

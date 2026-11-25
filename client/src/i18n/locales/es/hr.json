@@ -15,6 +15,7 @@
   "checkOutWaitingToSync": "Salida pendiente de sincronizar",
   "alreadyCheckedInToday": "Este empleado ya registró su entrada hoy.",
   "alreadyCheckedOutToday": "Este empleado ya registró su salida hoy.",
+  "notCheckedInToday": "Este empleado no tiene una entrada activa ahora mismo.",
   "comments": "Comentarios",
   "date": "Fecha",
   "delete": "Eliminar",

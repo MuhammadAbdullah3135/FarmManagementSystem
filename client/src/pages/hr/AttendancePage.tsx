@@ -134,14 +134,18 @@ const AttendancePage: React.FC = () => {const { t } = useTranslation('hr');
   const records = recordsQuery.rows;
 
   // Derive today's open-shift state per employee from the records we trust (today's default view)
-  // plus pending queued mutations. This prevents the real-life impossible case of checking in again
-  // while already checked in. We only block when we have positive evidence; if today's record is
-  // unknown because the user is viewing another date range or cache is incomplete, leave buttons
-  // enabled so stale cache cannot block a legitimate action.
-  const todayRecordsByEmployee = new Map<string, AttendanceRecord>();
+  // plus pending queued mutations. Multiple sessions per day are allowed (breaks/split shifts), so
+  // "checked_out" means no open session right now - the employee can check in again for a new session.
+  // We only block when we have positive evidence; if today's record is unknown because the user is
+  // viewing another date range or cache is incomplete, leave buttons enabled so stale cache cannot
+  // block a legitimate action.
+  const todayRecordsByEmployee = new Map<string, AttendanceRecord[]>();
   if (isDefaultRange) {
     for (const record of records) {
-      if (dayjs(record.date).isSame(dayjs(), 'day')) todayRecordsByEmployee.set(record.employeeId, record);
+      if (!dayjs(record.date).isSame(dayjs(), 'day')) continue;
+      const list = todayRecordsByEmployee.get(record.employeeId) ?? [];
+      list.push(record);
+      todayRecordsByEmployee.set(record.employeeId, list);
     }
   }
 
@@ -157,11 +161,10 @@ const AttendancePage: React.FC = () => {const { t } = useTranslation('hr');
     if (pending?.kind === ATTENDANCE_CHECK_OUT) return 'checked_out';
     if (pending?.kind === ATTENDANCE_CHECK_IN) return 'checked_in';
 
-    const record = todayRecordsByEmployee.get(employeeId);
-    if (!record) return 'unknown';
-    if (record.checkInAt && !record.checkOutAt) return 'checked_in';
-    if (record.checkOutAt) return 'checked_out';
-    if (record.checkInAt) return 'checked_in';
+    const dayRecords = todayRecordsByEmployee.get(employeeId);
+    if (!dayRecords || dayRecords.length === 0) return 'unknown';
+    if (dayRecords.some((r) => r.checkInAt && !r.checkOutAt)) return 'checked_in';
+    if (dayRecords.some((r) => r.checkOutAt || r.checkInAt)) return 'checked_out';
     return 'unknown';
   };
 
@@ -177,12 +180,12 @@ const AttendancePage: React.FC = () => {const { t } = useTranslation('hr');
     }
 
     const state = attendanceStateFor(employee.id);
-    if (kind === ATTENDANCE_CHECK_IN && (state === 'checked_in' || state === 'checked_out')) {
-      message.warning(t(state === 'checked_in' ? 'alreadyCheckedInToday' : 'alreadyCheckedOutToday'));
+    if (kind === ATTENDANCE_CHECK_IN && state === 'checked_in') {
+      message.warning(t('alreadyCheckedInToday'));
       return;
     }
     if (kind === ATTENDANCE_CHECK_OUT && state === 'checked_out') {
-      message.warning(t('alreadyCheckedOutToday'));
+      message.warning(t('notCheckedInToday'));
       return;
     }
 
@@ -310,7 +313,7 @@ const AttendancePage: React.FC = () => {const { t } = useTranslation('hr');
               const pendingIn = pendingCheckIns.get(emp.id);
               const pendingOut = pendingCheckOuts.get(emp.id);
               const state = attendanceStateFor(emp.id);
-              const checkInDisabled = state === 'checked_in' || state === 'checked_out';
+              const checkInDisabled = state === 'checked_in';
               const checkOutDisabled = state === 'checked_out';
               return (
                 <Card key={emp.id} size="small" style={{ width: 220 }}>

@@ -250,6 +250,30 @@ describe('AttendancePage', () => {
     expect(await listScopeMutations(scope)).toHaveLength(1);
   });
 
+  it('allows check-in again after a closed session today (break/split shift)', async () => {
+    const closedSession: AttendanceRecord = {
+      id: 'r-closed',
+      employeeId: employee.id,
+      employeeName: 'Asha Khan',
+      date: new Date().toISOString(),
+      status: 'Present',
+      statusName: 'Present',
+      checkInAt: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
+      checkOutAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+      hoursWorked: 2,
+    };
+    await replaceCollection(scope, 'employees@options', [{ id: employee.id, data: employee }], { fetchedAt: twoDaysAgo });
+    await replaceCollection(scope, 'attendance@firstPage', [{ id: closedSession.id, data: closedSession }], { fetchedAt: twoDaysAgo });
+
+    render(<AttendancePage />);
+    const inButton = await screen.findByRole('button', { name: /In/ });
+    expect(inButton).toBeEnabled();
+    await userEvent.click(inButton);
+
+    expect(await screen.findByText('Check-in waiting to sync')).toBeInTheDocument();
+    expect(await listScopeMutations(scope)).toHaveLength(1);
+  });
+
   it('sends the queued check-in with the payload the server binds, and marks it synced', async () => {
     useOfflineStore.setState({ isOnline: true });
     vi.mocked(syncApi.applyMutations).mockImplementation(async (_farmId, items) => accepted(items));

@@ -35,20 +35,28 @@ public class AttendanceService : IAttendanceService
         if (MutationTimestampRules.IsTooFarInTheFuture(occurredAt, now))
             return Result<AttendanceRecordDto>.Validation(MutationTimestampRules.CheckInOccurredAtMessage);
 
-        // Identity is the server's — one row per (employee, day), however many devices report
-        // it — while content is the device's. So an occupied day is not automatically a
-        // refusal: the queued time is compared against what the row already says.
-        //
-        // Matched on (employee, date) with no farm filter, exactly as the pre-check this
-        // replaced did: the unique index is on that pair, so a narrower query could find
-        // nothing while the index still refuses the insert.
         var date = occurredAt.Date;
         var deviceTime = request?.OccurredAt;
-        var existing = await _context.AttendanceRecords
-            .FirstOrDefaultAsync(r => r.EmployeeId == employeeId && r.Date == date);
 
-        if (existing is null)
+        // Multiple sessions per day are allowed (breaks/split shifts). Only an open session
+        // (checked in, not checked out) blocks a new check-in.
+        var openSession = await _context.AttendanceRecords
+            .Where(r => r.EmployeeId == employeeId && r.Date == date && r.CheckInAt != null && r.CheckOutAt == null)
+            .OrderByDescending(r => r.CheckInAt)
+            .FirstOrDefaultAsync();
+
+        if (openSession is null)
         {
+            // A manual day-level record with no check-in time (Leave/Absent, etc.) is deliberate;
+            // do not overwrite it with a device check-in.
+            var manualDay = await _context.AttendanceRecords
+                .FirstOrDefaultAsync(r => r.EmployeeId == employeeId && r.Date == date && r.CheckInAt == null);
+            if (manualDay is not null)
+                return Result<AttendanceRecordDto>.Superseded(
+                    $"That day already has an attendance record marked {manualDay.Status}; it was not changed",
+                    DomainMessageKeys.AttendanceAlreadyMarked,
+                    new Dictionary<string, object?> { ["status"] = manualDay.Status.ToString() });
+
             var record = new AttendanceRecord
             {
                 Id = Guid.NewGuid(),
@@ -70,44 +78,25 @@ public class AttendanceService : IAttendanceService
 
         // Only a device's own report of when the employee was at the gate may move the stored
         // time. A live check-in supplies none — the server's clock says when the request
-        // arrived, not when the employee did — so an occupied day simply stands, which is this
-        // endpoint's original behaviour down to the wording.
+        // arrived, not when the employee did — so an open session simply stands.
         if (deviceTime is null)
             return Result<AttendanceRecordDto>.Conflict(
-                "Employee already has an attendance record for that day", DomainMessageKeys.AttendanceAlreadyRecorded);
+                "Employee is already checked in", DomainMessageKeys.AttendanceAlreadyRecorded);
 
-        // A record with no check-in time is somebody's deliberate manual entry (a Leave, an
-        // Absent) rather than a shift start, so there is no time for "earliest wins" to beat.
-        // It is left exactly as it is: no clock overturns what a person typed, and the manual
-        // endpoint can still change the day.
-        if (existing.CheckInAt is null)
+        // Earliest check-in wins for an open session. A later/equal queued time is already
+        // satisfied; an earlier queued time moves the session start back.
+        if (deviceTime.Value >= openSession.CheckInAt!.Value)
             return Result<AttendanceRecordDto>.Superseded(
-                $"That day already has an attendance record marked {existing.Status}; it was not changed",
-                DomainMessageKeys.AttendanceAlreadyMarked,
-                // The status travels as its wire value, not as a name the reader can read:
-                // the client renders it through the same enum chrome a dropdown uses, so an
-                // Arabic reader sees the translated status rather than "Present".
-                new Dictionary<string, object?> { ["status"] = existing.Status.ToString() });
+                "Employee is already checked in", DomainMessageKeys.AttendanceAlreadyRecorded);
 
-        // Earliest check-in wins: a shift's start is the first time an employee was at the
-        // gate, so an earlier queued time moves it back and a later one leaves it alone. The
-        // later case is "already satisfied", not an error — the day does have a check-in.
-        if (deviceTime.Value >= existing.CheckInAt.Value)
-            return Result<AttendanceRecordDto>.Superseded(
-                "Employee already has an attendance record for that day", DomainMessageKeys.AttendanceAlreadyRecorded);
-
-        existing.CheckInAt = occurredAt;
-
-        // The row keeps the id of the queued mutation that created it; a rewind of a row a
-        // live request created stamps this one, so a crash between the apply and the ledger
-        // row is still caught by the row's own unique index on the next attempt.
-        existing.ClientMutationId ??= mutationId;
-        existing.ModifiedAt = now;
-        existing.ModifiedBy = _currentUser.GetUserId();
+        openSession.CheckInAt = occurredAt;
+        openSession.ClientMutationId ??= mutationId;
+        openSession.ModifiedAt = now;
+        openSession.ModifiedBy = _currentUser.GetUserId();
 
         await _context.SaveChangesAsync();
 
-        return Result<AttendanceRecordDto>.Success(MapRecord(existing, employee));
+        return Result<AttendanceRecordDto>.Success(MapRecord(openSession, employee));
     }
 
     public async Task<Result<AttendanceRecordDto>> CheckOutAsync(
@@ -119,44 +108,60 @@ public class AttendanceService : IAttendanceService
         if (MutationTimestampRules.IsTooFarInTheFuture(occurredAt, now))
             return Result<AttendanceRecordDto>.Validation(MutationTimestampRules.CheckOutOccurredAtMessage);
 
-        var record = await _context.AttendanceRecords
+        var date = occurredAt.Date;
+        var openSession = await _context.AttendanceRecords
             .Include(r => r.Employee)
-            .FirstOrDefaultAsync(r => r.EmployeeId == employeeId && r.FarmId == farmId &&
-                                      r.Date == occurredAt.Date);
-        if (record == null)
-            return Result<AttendanceRecordDto>.NotFound("No attendance record found for today", DomainMessageKeys.NoAttendanceToday);
+            .Where(r => r.EmployeeId == employeeId && r.FarmId == farmId && r.Date == date && r.CheckInAt != null && r.CheckOutAt == null)
+            .OrderByDescending(r => r.CheckInAt)
+            .FirstOrDefaultAsync();
 
-        if (record.CheckOutAt.HasValue)
+        if (openSession is null)
         {
-            // Nothing to compare: without a device's time there is no evidence about when the
-            // shift ended, so a live check-out on a day that is already closed is the same
-            // conflict it has always been.
+            var lastClosed = await _context.AttendanceRecords
+                .Include(r => r.Employee)
+                .Where(r => r.EmployeeId == employeeId && r.FarmId == farmId && r.Date == date && r.CheckOutAt != null)
+                .OrderByDescending(r => r.CheckOutAt)
+                .FirstOrDefaultAsync();
+
+            if (lastClosed is null)
+                return Result<AttendanceRecordDto>.NotFound("No attendance record found for today", DomainMessageKeys.NoAttendanceToday);
+
+            // No open session: all today's sessions are closed. A live check-out is a conflict.
+            // A queued later check-out moves the last closed session forward (latest wins), which
+            // keeps offline reconciliation practical; earlier/equal is superseded.
             if (deviceTime is null)
                 return Result<AttendanceRecordDto>.Conflict("Employee has already checked out today", DomainMessageKeys.AlreadyCheckedOut);
 
-            // Latest check-out wins — the mirror of the check-in rule. The row records when the
-            // shift actually ended, so a device reporting a later time moves it forward rather
-            // than being refused, and an earlier one leaves the later time standing.
-            if (deviceTime.Value <= record.CheckOutAt.Value)
-                return Result<AttendanceRecordDto>.Superseded("Employee has already checked out today", DomainMessageKeys.AlreadyCheckedOut);
+            if (deviceTime.Value <= lastClosed.CheckOutAt!.Value)
+                return Result<AttendanceRecordDto>.Superseded(
+                    "Employee has already checked out today", DomainMessageKeys.AlreadyCheckedOut);
+
+            if (occurredAt < lastClosed.CheckInAt)
+                return Result<AttendanceRecordDto>.Validation("Check-out time cannot be before check-in time");
+
+            lastClosed.CheckOutAt = occurredAt;
+            lastClosed.ClientMutationId ??= mutationId;
+            lastClosed.ModifiedAt = now;
+            lastClosed.ModifiedBy = _currentUser.GetUserId();
+            await _context.SaveChangesAsync();
+            return Result<AttendanceRecordDto>.Success(MapRecord(lastClosed, lastClosed.Employee));
         }
 
-        if (occurredAt < record.CheckInAt)
+        if (occurredAt < openSession.CheckInAt)
             return Result<AttendanceRecordDto>.Validation("Check-out time cannot be before check-in time");
 
-        record.CheckOutAt = occurredAt;
+        openSession.CheckOutAt = occurredAt;
 
         // The row keeps the id of the first queued mutation that wrote it: a check-out does not
-        // displace the check-in that created the day's record. Both mutations are recorded in
-        // the ledger, which is what actually answers a replay.
-        record.ClientMutationId ??= mutationId;
+        // displace the check-in that created the session. Both mutations are recorded in the ledger.
+        openSession.ClientMutationId ??= mutationId;
 
-        record.ModifiedAt = now;
-        record.ModifiedBy = _currentUser.GetUserId();
+        openSession.ModifiedAt = now;
+        openSession.ModifiedBy = _currentUser.GetUserId();
 
         await _context.SaveChangesAsync();
 
-        return Result<AttendanceRecordDto>.Success(MapRecord(record, record.Employee));
+        return Result<AttendanceRecordDto>.Success(MapRecord(openSession, openSession.Employee));
     }
 
     public async Task<Result<AttendanceRecordDto>> UpsertAttendanceAsync(Guid farmId, UpsertAttendanceRequest request)
@@ -177,8 +182,14 @@ public class AttendanceService : IAttendanceService
             return Result<AttendanceRecordDto>.Validation("Notes cannot exceed 1000 characters");
 
         var now = DateTime.UtcNow;
-        var record = await _context.AttendanceRecords
-            .FirstOrDefaultAsync(r => r.EmployeeId == request.EmployeeId && r.FarmId == farmId && r.Date == date);
+        AttendanceRecord? record = null;
+        if (request.Id.HasValue)
+        {
+            record = await _context.AttendanceRecords
+                .FirstOrDefaultAsync(r => r.Id == request.Id.Value && r.FarmId == farmId);
+            if (record == null)
+                return Result<AttendanceRecordDto>.NotFound("Attendance record not found", DomainMessageKeys.AttendanceRecordNotFound);
+        }
 
         if (record == null)
         {
@@ -199,6 +210,8 @@ public class AttendanceService : IAttendanceService
             record.ModifiedBy = _currentUser.GetUserId();
         }
 
+        record.EmployeeId = request.EmployeeId;
+        record.Date = date;
         record.Status = request.Status;
         record.CheckInAt = request.CheckInAt;
         record.CheckOutAt = request.CheckOutAt;
@@ -236,6 +249,7 @@ public class AttendanceService : IAttendanceService
         var records = await query
             .OrderByDescending(r => r.Date)
             .ThenBy(r => r.Employee.LastName)
+            .ThenByDescending(r => r.CheckInAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync();

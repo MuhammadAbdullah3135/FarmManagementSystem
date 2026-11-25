@@ -35,6 +35,8 @@ public class CheckOutRequest
 
 public class UpsertAttendanceRequest
 {
+    /// <summary>When provided, updates that specific attendance session. When omitted, creates a new session.</summary>
+    public Guid? Id { get; set; }
     public Guid EmployeeId { get; set; }
     public DateTime Date { get; set; }
     public AttendanceStatus Status { get; set; } = AttendanceStatus.Present;

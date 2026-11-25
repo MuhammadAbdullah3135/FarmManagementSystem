@@ -582,8 +582,7 @@ namespace FMS.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("EmployeeId", "Date")
-                        .IsUnique();
+                    b.HasIndex("EmployeeId", "Date");
 
                     b.HasIndex("FarmId", "ClientMutationId")
                         .IsUnique()
