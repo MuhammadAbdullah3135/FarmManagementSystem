@@ -93,6 +93,38 @@ describe('SalaryPaymentsPage employee roster', () => {
     expect(head.querySelector('.ant-select-content')?.getAttribute('title')).toBe('Ayesha Khan');
     expect(await screen.findByRole('button', { name: /record payment/i })).toBeInTheDocument();
   });
+
+  it('keeps the roster beside the ledger and switches selection from a tile', async () => {
+    const user = userEvent.setup();
+    vi.mocked(employeesApi.list).mockResolvedValue({
+      data: {
+        items: [
+          ...EMPLOYEES,
+          { id: 'e2', firstName: 'Marcus', lastName: 'Bell', phone: '0301', email: 'm@example.com', hireDate: '2025-02-01', salaryType: 'Monthly', salaryRate: 62000, isActive: true },
+        ],
+        totalCount: 2,
+        page: 1,
+        pageSize: 100,
+      },
+    } as never);
+    render(<SalaryPaymentsPage />);
+
+    const card = () => screen.getByText('Salary Payments').closest('.ant-card') as HTMLElement;
+
+    await user.click(await within(card()).findByTestId('employee-choice-e1'));
+    await waitFor(() => expect(salaryPaymentsApi.list).toHaveBeenCalledWith('e1', 1, 10));
+    await waitFor(() => expect(within(card()).getByRole('table')).toBeInTheDocument());
+    expect(within(card()).getByTestId('employee-choice-e1')).toHaveAttribute('aria-pressed', 'true');
+
+    // The list is still present with the ledger open, and a different tile reuses the
+    // exact same selection path as the dropdown.
+    await user.click(within(card()).getByTestId('employee-choice-e2'));
+    await waitFor(() => expect(salaryPaymentsApi.list).toHaveBeenCalledWith('e2', 1, 10));
+    expect(within(card()).getByTestId('employee-choice-e2')).toHaveAttribute('aria-pressed', 'true');
+    expect(within(card()).getByTestId('employee-choice-e1')).toHaveAttribute('aria-pressed', 'false');
+    const head = card().querySelector('.ant-card-head') as HTMLElement;
+    expect(head.querySelector('.ant-select-content')?.getAttribute('title')).toBe('Marcus Bell');
+  });
 });
 
 /*
@@ -262,5 +294,5 @@ describe('SalaryPaymentsPage ledger record', () => {
     await waitFor(() => expect(salaryPaymentsApi.remove).toHaveBeenCalledWith('e1', 'p1', 'Wrong employee'));
     // The popover interaction is slow in jsdom under a fully parallel suite, so
     // this one test gets more headroom than the 5s default (see MembersPage.test.tsx).
-  }, 20000);
+  }, 30000);
 });

@@ -263,26 +263,19 @@ const SalaryPaymentsPage: React.FC = () => {
               )}
             </Space>
           }>
-            {selectedEmp ? (
-              <Table
-                rowKey="id"
-                columns={payCols}
-                dataSource={payments}
-                loading={loading}
-                scroll={{ x: 'max-content' }}
-                pagination={{ current: paymentPage, total: paymentTotal, pageSize: 10, onChange: (p) => loadPayments(selectedEmp, p) }}
-              />
-            ) : (
-              <div>
-                <p style={{ color: '#999', marginTop: 0 }}>{t('selectAnEmployeeToViewPaymentHistory')}</p>
-                {/* The roster is the page's starting point: with no employee picked the card would
-                    otherwise be an empty box. Picking here is the same state change as the head's
-                    dropdown, so both stay in sync and either one can be used. */}
+            <div>
+              {/* The roster fills the card's empty space and stays there once a payment ledger is
+                  open. Both these tiles and the head's dropdown write the same selectedEmp, so
+                  either can select an employee and they never disagree. */}
+              <div style={{ fontWeight: 500, marginBottom: 8 }}>{t('employees')}</div>
+              <div style={{ maxHeight: 180, overflowY: 'auto', overflowX: 'hidden', marginInline: -4, paddingInline: 4 }}>
                 <Row gutter={[8, 8]}>
                   {employees.map((employee) => (
                     <Col key={employee.id} xs={24} sm={12} xxl={8}>
                       <Button
                         block
+                        type={selectedEmp === employee.id ? 'primary' : 'default'}
+                        aria-pressed={selectedEmp === employee.id}
                         data-testid={`employee-choice-${employee.id}`}
                         onClick={() => setSelectedEmp(employee.id)}
                         // antd's Button is an inline-flex row, so the name and the salary would sit
@@ -311,7 +304,21 @@ const SalaryPaymentsPage: React.FC = () => {
                   ))}
                 </Row>
               </div>
-            )}
+              <div style={{ marginTop: 16 }}>
+                {selectedEmp ? (
+                  <Table
+                    rowKey="id"
+                    columns={payCols}
+                    dataSource={payments}
+                    loading={loading}
+                    scroll={{ x: 'max-content' }}
+                    pagination={{ current: paymentPage, total: paymentTotal, pageSize: 10, onChange: (p) => loadPayments(selectedEmp, p) }}
+                  />
+                ) : (
+                  <p style={{ color: '#999', marginTop: 0 }}>{t('selectAnEmployeeToViewPaymentHistory')}</p>
+                )}
+              </div>
+            </div>
           </Card>
         </Col>
         <Col xs={24} lg={8}>
