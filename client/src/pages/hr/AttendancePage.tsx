@@ -133,6 +133,38 @@ const AttendancePage: React.FC = () => {const { t } = useTranslation('hr');
   const employees = employeesQuery.rows;
   const records = recordsQuery.rows;
 
+  // Derive today's open-shift state per employee from the records we trust (today's default view)
+  // plus pending queued mutations. This prevents the real-life impossible case of checking in again
+  // while already checked in. We only block when we have positive evidence; if today's record is
+  // unknown because the user is viewing another date range or cache is incomplete, leave buttons
+  // enabled so stale cache cannot block a legitimate action.
+  const todayRecordsByEmployee = new Map<string, AttendanceRecord>();
+  if (isDefaultRange) {
+    for (const record of records) {
+      if (dayjs(record.date).isSame(dayjs(), 'day')) todayRecordsByEmployee.set(record.employeeId, record);
+    }
+  }
+
+  const lastPendingAttendance = new Map<string, OutboxItem>();
+  for (const item of items) {
+    if (item.status !== 'pending') continue;
+    if (item.kind !== ATTENDANCE_CHECK_IN && item.kind !== ATTENDANCE_CHECK_OUT) continue;
+    lastPendingAttendance.set(item.targetId, item); // items are oldest-first; last write wins
+  }
+
+  const attendanceStateFor = (employeeId: string): 'checked_in' | 'checked_out' | 'unknown' => {
+    const pending = lastPendingAttendance.get(employeeId);
+    if (pending?.kind === ATTENDANCE_CHECK_OUT) return 'checked_out';
+    if (pending?.kind === ATTENDANCE_CHECK_IN) return 'checked_in';
+
+    const record = todayRecordsByEmployee.get(employeeId);
+    if (!record) return 'unknown';
+    if (record.checkInAt && !record.checkOutAt) return 'checked_in';
+    if (record.checkOutAt) return 'checked_out';
+    if (record.checkInAt) return 'checked_in';
+    return 'unknown';
+  };
+
   const employeeLabel = (item: OutboxItem) => {
     const employee = employees.find((e) => e.id === item.targetId);
     return employee ? `${employee.firstName} ${employee.lastName}` : null;
@@ -141,6 +173,16 @@ const AttendancePage: React.FC = () => {const { t } = useTranslation('hr');
   const queueAttendance = async (employee: Employee, kind: string, verb: string) => {
     if (!scope) {
       message.error(t('selectAFarmFirst'));
+      return;
+    }
+
+    const state = attendanceStateFor(employee.id);
+    if (kind === ATTENDANCE_CHECK_IN && (state === 'checked_in' || state === 'checked_out')) {
+      message.warning(t(state === 'checked_in' ? 'alreadyCheckedInToday' : 'alreadyCheckedOutToday'));
+      return;
+    }
+    if (kind === ATTENDANCE_CHECK_OUT && state === 'checked_out') {
+      message.warning(t('alreadyCheckedOutToday'));
       return;
     }
 
@@ -267,6 +309,9 @@ const AttendancePage: React.FC = () => {const { t } = useTranslation('hr');
             {employees.filter((e) => e.isActive).map((emp) => {
               const pendingIn = pendingCheckIns.get(emp.id);
               const pendingOut = pendingCheckOuts.get(emp.id);
+              const state = attendanceStateFor(emp.id);
+              const checkInDisabled = state === 'checked_in' || state === 'checked_out';
+              const checkOutDisabled = state === 'checked_out';
               return (
                 <Card key={emp.id} size="small" style={{ width: 220 }}>
                   <div style={{ marginBottom: 8 }}>{emp.firstName} {emp.lastName}</div>
@@ -285,6 +330,7 @@ const AttendancePage: React.FC = () => {const { t } = useTranslation('hr');
                       size="small"
                       type="primary"
                       icon={<DirectionalIcon role="enter" />}
+                      disabled={checkInDisabled}
                       onClick={() => void queueAttendance(emp, ATTENDANCE_CHECK_IN, 'Checked in')}
                     >
                       {t('in')}
@@ -292,6 +338,7 @@ const AttendancePage: React.FC = () => {const { t } = useTranslation('hr');
                     <Button
                       size="small"
                       icon={<DirectionalIcon role="leave" />}
+                      disabled={checkOutDisabled}
                       onClick={() => void queueAttendance(emp, ATTENDANCE_CHECK_OUT, 'Checked out')}
                     >
                       {t('out')}

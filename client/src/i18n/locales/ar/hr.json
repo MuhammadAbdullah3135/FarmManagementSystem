@@ -13,6 +13,8 @@
   "checkInWaitingToSync": "تسجيل حضور بانتظار المزامنة",
   "checkOut": "تسجيل الانصراف",
   "checkOutWaitingToSync": "تسجيل انصراف بانتظار المزامنة",
+  "alreadyCheckedInToday": "هذا الموظف مسجَّل حضوره بالفعل لهذا اليوم.",
+  "alreadyCheckedOutToday": "هذا الموظف مسجَّل انصرافه بالفعل لهذا اليوم.",
   "comments": "التعليقات",
   "date": "التاريخ",
   "delete": "حذف",

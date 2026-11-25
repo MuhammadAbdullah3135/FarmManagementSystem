@@ -13,6 +13,8 @@
   "checkInWaitingToSync": "Entrada pendiente de sincronizar",
   "checkOut": "Salida",
   "checkOutWaitingToSync": "Salida pendiente de sincronizar",
+  "alreadyCheckedInToday": "Este empleado ya registró su entrada hoy.",
+  "alreadyCheckedOutToday": "Este empleado ya registró su salida hoy.",
   "comments": "Comentarios",
   "date": "Fecha",
   "delete": "Eliminar",

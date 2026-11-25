@@ -215,6 +215,41 @@ describe('AttendancePage', () => {
     expect(queued[0].kind).toBe('attendance.checkOut');
   });
 
+  it('does not queue a second check-in when the employee already has an open check-in today', async () => {
+    const todayRecord: AttendanceRecord = {
+      id: 'r-today',
+      employeeId: employee.id,
+      employeeName: 'Asha Khan',
+      date: new Date().toISOString(),
+      status: 'Present',
+      statusName: 'Present',
+      checkInAt: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
+      hoursWorked: 0,
+    };
+    await replaceCollection(scope, 'employees@options', [{ id: employee.id, data: employee }], { fetchedAt: twoDaysAgo });
+    await replaceCollection(scope, 'attendance@firstPage', [{ id: todayRecord.id, data: todayRecord }], { fetchedAt: twoDaysAgo });
+
+    render(<AttendancePage />);
+    const inButton = await screen.findByRole('button', { name: /In/ });
+    expect(inButton).toBeDisabled();
+    await userEvent.click(inButton);
+
+    expect(await listScopeMutations(scope)).toHaveLength(0);
+    expect(syncApi.applyMutations).not.toHaveBeenCalled();
+  });
+
+  it('disables check-in after a pending check-in is queued to prevent duplicates', async () => {
+    await seedCache();
+
+    render(<AttendancePage />);
+    const inButton = await screen.findByRole('button', { name: /In/ });
+    await userEvent.click(inButton);
+
+    expect(await screen.findByText('Check-in waiting to sync')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole('button', { name: /In/ })).toBeDisabled());
+    expect(await listScopeMutations(scope)).toHaveLength(1);
+  });
+
   it('sends the queued check-in with the payload the server binds, and marks it synced', async () => {
     useOfflineStore.setState({ isOnline: true });
     vi.mocked(syncApi.applyMutations).mockImplementation(async (_farmId, items) => accepted(items));

@@ -13,6 +13,8 @@
   "checkInWaitingToSync": "Check-in waiting to sync",
   "checkOut": "Check Out",
   "checkOutWaitingToSync": "Check-out waiting to sync",
+  "alreadyCheckedInToday": "This employee is already checked in for today.",
+  "alreadyCheckedOutToday": "This employee has already checked out for today.",
   "comments": "Comments",
   "date": "Date",
   "delete": "Delete",
