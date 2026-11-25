@@ -139,6 +139,8 @@ const ARG_KINDS: Record<string, Record<string, ArgKind>> = {
   // ── files ──
   'validation.validation.fileTooLarge': { max: 'megabytes' },
   'validation.validation.fileTypeNotAllowed': { extension: 'text', allowed: 'list' },
+  // A count of files, not a file size: the same `max` name, a different kind.
+  'validation.validation.receiptLimitReached': { max: 'quantity' },
 
   // ── import: field labels are the server's own English and have no vocabulary yet ──
   'validation.validation.importFieldBadColumn': { field: 'text', column: 'quantity', count: 'quantity' },

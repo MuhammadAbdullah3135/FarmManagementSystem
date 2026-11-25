@@ -6,6 +6,7 @@ using FMS.Application.Import;
 using FMS.Domain.Entities;
 using FMS.Domain.Tests.Jobs;
 using FMS.Infrastructure.Finance;
+using FMS.Infrastructure.Files;
 using FMS.Infrastructure.Import;
 using FMS.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -266,7 +267,8 @@ public class IncomeImportServiceTests
         await context.SaveChangesAsync();
 
         var (logger, logs) = TestLoggers.Create<IncomeImportService>();
-        var finance = new FinanceService(context, new FixedCurrentUser());
+        var finance = new FinanceService(context, new FixedCurrentUser(),
+            new FileStorageService(Path.Combine(Path.GetTempPath(), "fms-income-import-tests")));
 
         var options = new ImportOptions();
         configure?.Invoke(options);

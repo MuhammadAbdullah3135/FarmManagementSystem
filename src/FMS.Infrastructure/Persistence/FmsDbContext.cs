@@ -59,6 +59,7 @@ public class FmsDbContext : DbContext
     public DbSet<ExpenseCategory> ExpenseCategories => Set<ExpenseCategory>();
     public DbSet<PaymentMethod> PaymentMethods => Set<PaymentMethod>();
     public DbSet<Expense> Expenses => Set<Expense>();
+    public DbSet<ExpenseReceipt> ExpenseReceipts => Set<ExpenseReceipt>();
     public DbSet<IncomeCategory> IncomeCategories => Set<IncomeCategory>();
     public DbSet<IncomeRecord> IncomeRecords => Set<IncomeRecord>();
     public DbSet<FarmTask> FarmTasks => Set<FarmTask>();

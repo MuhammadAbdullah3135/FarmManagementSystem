@@ -45,14 +45,15 @@ public class DomainMessageKeyParityTests
         // an equality: the total can only grow as families are keyed, and the lookup family
         // itself is pinned at its own count so a reflection change that dropped *one* group
         // while keeping another would still be caught.
-        // 72 lookup + 52 conflict + 3 supersede + 84 validation + 4 unauthorized
-        // + 1 unexpected + 1 unavailable = 217.
+        // 74 lookup + 52 conflict + 3 supersede + 85 validation + 4 unauthorized
+        // + 1 unexpected + 1 unavailable = 220; the two lookup keys and the one validation
+        // key are the expense-receipt family.
         Assert.True(
             keys.Count >= 198,
             $"Only {keys.Count} domain message keys were found; at least 196 are expected. A "
             + "reflection change that enumerates fewer keys than the class declares would make "
             + "this test pass for the wrong reason.");
-        Assert.Equal(72, keys.Count(key => key.StartsWith("validation.lookup.", StringComparison.Ordinal)));
+        Assert.Equal(74, keys.Count(key => key.StartsWith("validation.lookup.", StringComparison.Ordinal)));
         // The conflict and supersede families separately, so neither can be emptied by a
         // reflection change that still leaves the other one populated. 52 includes the two
         // vet conflicts added in Phase D.1; the supersede family is 2 argument-free plus 1.
@@ -63,7 +64,7 @@ public class DomainMessageKeyParityTests
         // added for empty login/registration. Each service's sweep raises this number, which
         // is the point of pinning it - a reflection change that missed the newest group would
         // otherwise go unnoticed.
-        Assert.Equal(84, keys.Count(key => key.StartsWith("validation.validation.", StringComparison.Ordinal)));
+        Assert.Equal(85, keys.Count(key => key.StartsWith("validation.validation.", StringComparison.Ordinal)));
         // The unauthorized family is four keys — two argument-taking frames and two argument-free
         // login refusals — and is pinned for the same reason as the rest: it is the newest
         // family, so it is the one a reflection change would drop silently.

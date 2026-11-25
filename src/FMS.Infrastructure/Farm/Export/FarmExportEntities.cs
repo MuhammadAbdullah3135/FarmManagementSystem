@@ -237,6 +237,7 @@ public static class FarmExportEntities
 
         FarmExportTable<EmployeeRole>.ReflectedForFarm("EmployeeRoles", "employee-roles.csv"),
         FarmExportTable<ExpenseCategory>.ReflectedForFarm("ExpenseCategories", "expense-categories.csv"),
+        FarmExportTable<ExpenseReceipt>.ReflectedForFarm("ExpenseReceipts", "expense-receipts.csv"),
         FarmExportTable<FarmConfiguration>.ReflectedForFarm("FarmConfigurations", "farm-configurations.csv"),
         FarmExportTable<FarmInvitation>.ReflectedForFarm("FarmInvitations", "farm-invitations.csv"),
         FarmExportTable<FarmTask>.ReflectedForFarm("FarmTasks", "farm-tasks.csv"),

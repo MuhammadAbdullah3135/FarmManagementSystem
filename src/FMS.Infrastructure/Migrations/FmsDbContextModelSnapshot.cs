@@ -1374,6 +1374,66 @@ namespace FMS.Infrastructure.Migrations
                     b.ToTable("ExpenseCategories");
                 });
 
+            modelBuilder.Entity("FMS.Domain.Entities.ExpenseReceipt", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<Guid>("ExpenseId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("FarmId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<long>("FileSizeBytes")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("ModifiedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("OriginalFileName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<string>("StoragePath")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExpenseId");
+
+                    b.HasIndex("FarmId", "ExpenseId");
+
+                    b.ToTable("ExpenseReceipts");
+                });
+
             modelBuilder.Entity("FMS.Domain.Entities.Farm", b =>
                 {
                     b.Property<Guid>("Id")
@@ -4322,6 +4382,17 @@ namespace FMS.Infrastructure.Migrations
                     b.Navigation("Farm");
                 });
 
+            modelBuilder.Entity("FMS.Domain.Entities.ExpenseReceipt", b =>
+                {
+                    b.HasOne("FMS.Domain.Entities.Expense", "Expense")
+                        .WithMany("Receipts")
+                        .HasForeignKey("ExpenseId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Expense");
+                });
+
             modelBuilder.Entity("FMS.Domain.Entities.Farm", b =>
                 {
                     b.HasOne("FMS.Domain.Entities.Account", "Account")
@@ -5201,6 +5272,11 @@ namespace FMS.Infrastructure.Migrations
             modelBuilder.Entity("FMS.Domain.Entities.EmployeeRole", b =>
                 {
                     b.Navigation("Employees");
+                });
+
+            modelBuilder.Entity("FMS.Domain.Entities.Expense", b =>
+                {
+                    b.Navigation("Receipts");
                 });
 
             modelBuilder.Entity("FMS.Domain.Entities.ExpenseCategory", b =>

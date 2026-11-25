@@ -58,6 +58,9 @@ public class ExpenseDto
     public Guid? LocationId { get; set; }
     public string? LocationName { get; set; }
     public string? Description { get; set; }
+
+    /// <summary>Receipts attached to this expense, newest first. Empty when it has none.</summary>
+    public List<ExpenseReceiptDto> Receipts { get; set; } = new();
 }
 
 public class CreateExpenseRequest
@@ -80,6 +83,36 @@ public class UpdateExpenseRequest
     public Guid? AnimalId { get; set; }
     public Guid? LocationId { get; set; }
     public string? Description { get; set; }
+}
+
+/// <summary>
+/// One file attached to an expense. <see cref="Url"/> is this API's authenticated download
+/// route, not a storage path and not a bucket URL, so the client never learns where the bytes
+/// live.
+/// </summary>
+public class ExpenseReceiptDto
+{
+    public Guid Id { get; set; }
+    public Guid ExpenseId { get; set; }
+    public string Url { get; set; } = string.Empty;
+    public string OriginalFileName { get; set; } = string.Empty;
+    public string ContentType { get; set; } = string.Empty;
+    public long FileSizeBytes { get; set; }
+    public string? Description { get; set; }
+    public DateTime CreatedAt { get; set; }
+}
+
+/// <summary>
+/// What the download endpoint needs in order to serve a stored receipt.
+///
+/// Deliberately not the public DTO: it carries the storage key, which clients have no use
+/// for. Same split as <c>AnimalFileDownload</c>.
+/// </summary>
+public class ExpenseReceiptDownload
+{
+    public string StoragePath { get; set; } = string.Empty;
+    public string OriginalFileName { get; set; } = string.Empty;
+    public string ContentType { get; set; } = string.Empty;
 }
 
 public class ExpenseListFilter

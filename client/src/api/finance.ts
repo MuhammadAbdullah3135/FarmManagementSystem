@@ -1,6 +1,6 @@
 import api from './axios';
 import { farmUrl } from './farmApi';
-import type { Expense, ExpenseCategory, IncomeCategory, IncomeRecord, PaymentMethod, PagedResult, ProfitLossReport, CategoryBreakdownReport, MonthlySummaryItem } from '../types';
+import type { Expense, ExpenseCategory, ExpenseReceipt, IncomeCategory, IncomeRecord, PaymentMethod, PagedResult, ProfitLossReport, CategoryBreakdownReport, MonthlySummaryItem } from '../types';
 
 export const expenseCategoriesApi = {
   list: () => api.get<ExpenseCategory[]>(farmUrl('/finance/expense-categories')),
@@ -50,6 +50,29 @@ export const expensesApi = {
   update: (id: string, data: ExpensePayload) =>
     api.put<Expense>(farmUrl(`/finance/expenses/${id}`), data),
   remove: (id: string) => api.delete(farmUrl(`/finance/expenses/${id}`)),
+};
+
+export const expenseReceiptsApi = {
+  list: (expenseId: string) =>
+    api.get<ExpenseReceipt[]>(farmUrl(`/finance/expenses/${expenseId}/receipts`)),
+  upload: (expenseId: string, file: File, description?: string) => {
+    const form = new FormData();
+    form.append('file', file);
+    if (description) form.append('description', description);
+    // The explicit multipart content type matters for the same reason the import calls set
+    // it: the shared axios instance defaults to application/json.
+    return api.post<ExpenseReceipt>(farmUrl(`/finance/expenses/${expenseId}/receipts`), form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+  remove: (expenseId: string, receiptId: string) =>
+    api.delete(farmUrl(`/finance/expenses/${expenseId}/receipts/${receiptId}`)),
+  // Fetched as a blob through the authenticated client: a plain link to the download route
+  // would carry no bearer token and be refused.
+  download: (expenseId: string, receiptId: string) =>
+    api.get<Blob>(farmUrl(`/finance/expenses/${expenseId}/receipts/${receiptId}/download`), {
+      responseType: 'blob',
+    }),
 };
 
 export const incomeCategoriesApi = {

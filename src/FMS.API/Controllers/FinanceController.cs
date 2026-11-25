@@ -12,9 +12,12 @@ public class FinanceController : ControllerBase
 {
     private readonly IFinanceService _financeService;
 
-    public FinanceController(IFinanceService financeService)
+    private readonly IFileStorageService _fileStorage;
+
+    public FinanceController(IFinanceService financeService, IFileStorageService fileStorage)
     {
         _financeService = financeService;
+        _fileStorage = fileStorage;
     }
 
     // Expense categories
@@ -118,6 +121,46 @@ public class FinanceController : ControllerBase
     {
         var result = await _financeService.DeleteExpenseAsync(farmId, id);
         return result.IsSuccess ? NoContent() : MapError(result.Error!);
+    }
+
+    // Expense receipts
+
+    [HttpPost("expenses/{expenseId:guid}/receipts")]
+    [RequestSizeLimit(10 * 1024 * 1024)]
+    public async Task<IActionResult> AddExpenseReceipt(
+        Guid farmId, Guid expenseId,
+        IFormFile file,
+        [FromForm] string? description)
+    {
+        if (file == null || file.Length == 0)
+            return BadRequest("File is required");
+
+        await using var stream = file.OpenReadStream();
+        var result = await _financeService.AddReceiptAsync(
+            farmId, expenseId, stream, file.FileName, file.ContentType, file.Length, description);
+
+        return result.IsSuccess ? Created("", result.Value) : MapError(result.Error!);
+    }
+
+    [HttpGet("expenses/{expenseId:guid}/receipts")]
+    public async Task<IActionResult> GetExpenseReceipts(Guid farmId, Guid expenseId)
+    {
+        var result = await _financeService.GetReceiptsAsync(farmId, expenseId);
+        return MapResult(result);
+    }
+
+    [HttpDelete("expenses/{expenseId:guid}/receipts/{receiptId:guid}")]
+    public async Task<IActionResult> DeleteExpenseReceipt(Guid farmId, Guid expenseId, Guid receiptId)
+    {
+        var result = await _financeService.DeleteReceiptAsync(farmId, expenseId, receiptId);
+        return result.IsSuccess ? NoContent() : MapError(result.Error!);
+    }
+
+    [HttpGet("expenses/{expenseId:guid}/receipts/{receiptId:guid}/download")]
+    public async Task<IActionResult> DownloadExpenseReceipt(Guid farmId, Guid expenseId, Guid receiptId)
+    {
+        var result = await _financeService.GetReceiptForDownloadAsync(farmId, expenseId, receiptId);
+        return await ServeStoredFileAsync(result);
     }
 
     // Income categories
@@ -225,6 +268,29 @@ public class FinanceController : ControllerBase
     private IActionResult MapResult<T>(Result<T> result) => result.IsSuccess
         ? Ok(result.Value)
         : MapError(result.Error!);
+
+    /// <summary>
+    /// Serves a stored receipt to a caller already authorized to read this farm's expense.
+    ///
+    /// The authorization above is what gates access: on object storage we hand back a
+    /// short-lived presigned URL so the bytes come straight from the bucket, and on local disk
+    /// we stream them instead. Either way the file is never publicly addressable. Same shape as
+    /// the animal file endpoints.
+    /// </summary>
+    private async Task<IActionResult> ServeStoredFileAsync(Result<ExpenseReceiptDownload> result)
+    {
+        if (!result.IsSuccess)
+            return MapError(result.Error!);
+
+        var file = result.Value!;
+
+        var presigned = await _fileStorage.GetPresignedDownloadUrlAsync(file.StoragePath, file.OriginalFileName);
+        if (presigned.IsSuccess)
+            return Redirect(presigned.Value!.Url);
+
+        var stream = await _fileStorage.OpenReadAsync(file.StoragePath);
+        return File(stream, file.ContentType, file.OriginalFileName);
+    }
 
     /// <summary>
     /// Maps a domain failure to its response. <see cref="ApiMessageKeys.Attach"/> adds the

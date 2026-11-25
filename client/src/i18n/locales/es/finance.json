@@ -70,5 +70,12 @@
   "totalIncome": "Ingresos totales",
   "yearTotal": "Total del año",
   "noExpensesInThisPeriod": "No hay gastos en este período",
-  "noIncomeInThisPeriod": "No hay ingresos en este período"
+  "noIncomeInThisPeriod": "No hay ingresos en este período",
+  "addReceipt": "Añadir recibo",
+  "download": "Descargar",
+  "receipt": "Recibo",
+  "receiptDeleted": "Recibo eliminado",
+  "receiptHelp": "Recibos en foto o PDF, hasta 10 MB cada uno y 5 por gasto.",
+  "receipts": "Recibos",
+  "receiptUploaded": "Recibo subido"
 }

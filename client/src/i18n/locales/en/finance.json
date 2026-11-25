@@ -70,5 +70,12 @@
   "totalIncome": "Total Income",
   "yearTotal": "Year Total",
   "noExpensesInThisPeriod": "No expenses in this period",
-  "noIncomeInThisPeriod": "No income in this period"
+  "noIncomeInThisPeriod": "No income in this period",
+  "addReceipt": "Add receipt",
+  "download": "Download",
+  "receipt": "Receipt",
+  "receiptDeleted": "Receipt deleted",
+  "receiptHelp": "Photo or PDF receipts, up to 10 MB each and 5 per expense.",
+  "receipts": "Receipts",
+  "receiptUploaded": "Receipt uploaded"
 }

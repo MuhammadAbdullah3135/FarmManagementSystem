@@ -24,4 +24,7 @@ public class Expense : SoftDeleteEntity
     public PaymentMethod PaymentMethod { get; set; } = null!;
     public Animal? Animal { get; set; }
     public Location? Location { get; set; }
+
+    /// <summary>Receipt/invoice files proving this expense (see <see cref="ExpenseReceipt"/>).</summary>
+    public ICollection<ExpenseReceipt> Receipts { get; set; } = new List<ExpenseReceipt>();
 }

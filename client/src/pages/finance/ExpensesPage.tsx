@@ -1,18 +1,18 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Button, Col, DatePicker, Form, Input, InputNumber, Modal, Popconfirm, Row, Space, Tag, message } from 'antd';
+import { Button, Col, DatePicker, Form, Input, InputNumber, Modal, Popconfirm, Row, Space, Tag, Upload, message } from 'antd';
 import Select from '../../components/Select';
-import { PlusOutlined, ReloadOutlined, UploadOutlined } from '@ant-design/icons';
+import { DownloadOutlined, PaperClipOutlined, PlusOutlined, ReloadOutlined, UploadOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { ProTable } from '@ant-design/pro-components';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import dayjs, { Dayjs } from 'dayjs';
-import { expensesApi, expenseCategoriesApi, paymentMethodsApi } from '../../api/finance';
+import { expensesApi, expenseCategoriesApi, expenseReceiptsApi, paymentMethodsApi } from '../../api/finance';
 import type { ExpensePayload } from '../../api/finance';
 import { lookupsApi } from '../../api/attendance';
 import { flattenLocations } from '../../api/configuration';
 import { getApiError } from '../../api/farmApi';
 import LookupQuickAddSelect from '../../components/LookupQuickAddSelect';
-import type { Expense, ExpenseCategory, PaymentMethod } from '../../types';
+import type { Expense, ExpenseCategory, ExpenseReceipt, PaymentMethod } from '../../types';
 import { useTranslation } from 'react-i18next';
 
 interface FormValues {
@@ -40,6 +40,10 @@ const ExpensesPage: React.FC = () => {const { t } = useTranslation(['finance', '
   const [locations, setLocations] = useState<{ id: string; name: string }[]>([]);
   const [locationTypes, setLocationTypes] = useState<{ id: string; name: string }[]>([]);
   const [form] = Form.useForm();
+  // Files chosen but not sent yet: a new expense has no id to attach them to until it is
+  // saved, so they wait here and are uploaded straight after the save succeeds.
+  const [pendingReceipts, setPendingReceipts] = useState<File[]>([]);
+  const [existingReceipts, setExistingReceipts] = useState<ExpenseReceipt[]>([]);
 
   const loadOptions = useCallback(async () => {
     try {
@@ -76,6 +80,8 @@ const ExpensesPage: React.FC = () => {const { t } = useTranslation(['finance', '
     setEditing(null);
     form.resetFields();
     form.setFieldsValue({ expenseDate: dayjs() });
+    setPendingReceipts([]);
+    setExistingReceipts([]);
     setModalOpen(true);
   };
 
@@ -91,6 +97,8 @@ const ExpensesPage: React.FC = () => {const { t } = useTranslation(['finance', '
       locationId: record.locationId,
       description: record.description,
     });
+    setPendingReceipts([]);
+    setExistingReceipts(record.receipts ?? []);
     setModalOpen(true);
   };
 
@@ -108,11 +116,13 @@ const ExpensesPage: React.FC = () => {const { t } = useTranslation(['finance', '
         description: values.description,
       };
       if (editing) {
-        await expensesApi.update(editing.id, payload);
+        const saved = (await expensesApi.update(editing.id, payload)).data;
         message.success(t('expenseUpdated'));
+        if (!(await saveReceipts(saved))) return;
       } else {
-        await expensesApi.create(payload);
+        const saved = (await expensesApi.create(payload)).data;
         message.success(t('expenseRecorded'));
+        if (!(await saveReceipts(saved))) return;
       }
       setModalOpen(false);
       loadOptions();
@@ -130,6 +140,60 @@ const ExpensesPage: React.FC = () => {const { t } = useTranslation(['finance', '
       await expensesApi.remove(id);
       message.success(t('expenseDeleted'));
       loadOptions();
+      actionRef.current?.reload();
+    } catch (err) {
+      message.error(getApiError(err));
+    }
+  };
+
+  /**
+   * Uploads the queued files for an expense that is already saved.
+   *
+   * Returns whether every file made it. A failure leaves the modal open on the saved
+   * expense with the failed files still listed, so the work is never silently dropped.
+   */
+  const saveReceipts = async (expense: Expense): Promise<boolean> => {
+    if (pendingReceipts.length === 0) return true;
+
+    const failed: File[] = [];
+    for (const file of pendingReceipts) {
+      try {
+        await expenseReceiptsApi.upload(expense.id, file);
+      } catch (err) {
+        failed.push(file);
+        message.error(getApiError(err));
+      }
+    }
+
+    setPendingReceipts(failed);
+    const refreshed = (await expensesApi.get(expense.id)).data;
+    setExistingReceipts(refreshed.receipts ?? []);
+    setEditing(refreshed);
+    actionRef.current?.reload();
+
+    if (failed.length === 0) message.success(t('receiptUploaded'));
+    return failed.length === 0;
+  };
+
+  const downloadReceipt = async (receipt: ExpenseReceipt) => {
+    try {
+      const res = await expenseReceiptsApi.download(receipt.expenseId, receipt.id);
+      const url = URL.createObjectURL(res.data);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = receipt.originalFileName;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      message.error(getApiError(err));
+    }
+  };
+
+  const removeReceipt = async (receipt: ExpenseReceipt) => {
+    try {
+      await expenseReceiptsApi.remove(receipt.expenseId, receipt.id);
+      setExistingReceipts((prev) => prev.filter((r) => r.id !== receipt.id));
+      message.success(t('receiptDeleted'));
       actionRef.current?.reload();
     } catch (err) {
       message.error(getApiError(err));
@@ -218,6 +282,26 @@ const ExpensesPage: React.FC = () => {const { t } = useTranslation(['finance', '
       align: 'right',
       search: false,
       render: (_, record) => <strong>{formatAmount(record.amount)}</strong>,
+    },
+    {
+      title: t('receipt'),
+      dataIndex: 'receipts',
+      width: 90,
+      search: false,
+      render: (_, record) =>
+        record.receipts?.length ? (
+          <Button
+            type="link"
+            size="small"
+            icon={<PaperClipOutlined />}
+            aria-label={t('receipts')}
+            onClick={() => openEdit(record)}
+          >
+            {record.receipts.length}
+          </Button>
+        ) : (
+          '-'
+        ),
     },
     {
       title: '',
@@ -353,6 +437,62 @@ const ExpensesPage: React.FC = () => {const { t } = useTranslation(['finance', '
             rules={[{ max: 1000, message: t('validation:expense.descriptionMaxLength', { max: 1000 }) }]}
           >
             <Input.TextArea rows={3} maxLength={1000} placeholder={t('eG500ForVeterinaryVisit')} />
+          </Form.Item>
+          <Form.Item label={t('receipts')} extra={t('receiptHelp')}>
+            <Space direction="vertical" style={{ width: '100%' }}>
+              <Upload
+                multiple
+                showUploadList={false}
+                accept="image/jpeg,image/png,image/webp,application/pdf"
+                beforeUpload={(file) => {
+                  setPendingReceipts((prev) => [...prev, file]);
+                  return false;
+                }}
+              >
+                <Button icon={<UploadOutlined />}>{t('addReceipt')}</Button>
+              </Upload>
+              {pendingReceipts.length > 0 && (
+                <ul>
+                  {pendingReceipts.map((file, index) => (
+                    <li key={`${file.name}-${index}`}>
+                      {file.name}{' '}
+                      <Button
+                        type="link"
+                        size="small"
+                        danger
+                        onClick={() =>
+                          setPendingReceipts((prev) => prev.filter((_, i) => i !== index))
+                        }
+                      >
+                        {t('delete')}
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {existingReceipts.length > 0 && (
+                <ul>
+                  {existingReceipts.map((receipt) => (
+                    <li key={receipt.id}>
+                      <Button
+                        type="link"
+                        size="small"
+                        icon={<DownloadOutlined />}
+                        aria-label={t('download')}
+                        onClick={() => void downloadReceipt(receipt)}
+                      >
+                        {receipt.originalFileName}
+                      </Button>
+                      <Popconfirm title={t('deleteThisEntry')} onConfirm={() => void removeReceipt(receipt)}>
+                        <Button type="link" size="small" danger>
+                          {t('delete')}
+                        </Button>
+                      </Popconfirm>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Space>
           </Form.Item>
         </Form>
       </Modal>

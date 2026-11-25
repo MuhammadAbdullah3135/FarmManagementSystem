@@ -2,6 +2,7 @@ using FMS.Application.Common;
 using FMS.Application.Finance;
 using FMS.Domain.Entities;
 using FMS.Infrastructure.Finance;
+using FMS.Infrastructure.Files;
 using FMS.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -18,7 +19,8 @@ public class FinanceServiceTests
     }
 
     private static FinanceService CreateService(FmsDbContext context) =>
-        new(context, new FixedCurrentUser());
+        new(context, new FixedCurrentUser(),
+            new FileStorageService(Path.Combine(Path.GetTempPath(), "fms-finance-unit-uploads")));
 
     private sealed class FixedCurrentUser : ICurrentUserService
     {

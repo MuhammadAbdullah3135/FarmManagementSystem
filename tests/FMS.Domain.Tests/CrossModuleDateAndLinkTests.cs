@@ -3,6 +3,7 @@ using FMS.Application.Breeding;
 using FMS.Application.Finance;
 using FMS.Domain.Enums;
 using FMS.Infrastructure.Breeding;
+using FMS.Infrastructure.Files;
 using FMS.Infrastructure.Finance;
 using FMS.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -29,7 +30,8 @@ public class CrossModuleDateAndLinkTests
     // ── Finance: year-1 date reset on update ─────────────────────────
 
     private static FinanceService CreateFinanceService(FmsDbContext context) =>
-        new(context, new FixedCurrentUser());
+        new(context, new FixedCurrentUser(),
+            new FileStorageService(Path.Combine(Path.GetTempPath(), "fms-crossmodule-unit-uploads")));
 
     [Fact]
     public async Task UpdateExpense_OmittingDate_ResetsToYear1()

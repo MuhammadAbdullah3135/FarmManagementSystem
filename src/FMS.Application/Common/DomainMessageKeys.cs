@@ -112,6 +112,12 @@ public static class DomainMessageKeys
     /// <summary>The exact English this API has always answered: “Expense not found”.</summary>
     public const string ExpenseNotFound = "validation.lookup.expense";
 
+    /// <summary>The exact English this API has always answered: “Receipt not found”.</summary>
+    public const string ExpenseReceiptNotFound = "validation.lookup.expenseReceipt";
+
+    /// <summary>The exact English this API has always answered: “Receipt file is missing from storage”.</summary>
+    public const string ExpenseReceiptFileMissing = "validation.lookup.expenseReceiptFile";
+
     /// <summary>The exact English this API has always answered: “Farm not found”.</summary>
     public const string FarmNotFound = "validation.lookup.farm";
 
@@ -454,6 +460,9 @@ public static class DomainMessageKeys
 
     /// <summary>The exact English this API has always answered: “File type '{extension}' is not allowed. Allowed types: {allowed}”</summary>
     public const string FileTypeNotAllowed = "validation.validation.fileTypeNotAllowed";
+
+    /// <summary>The exact English this API has always answered: “An expense can have at most {max} receipts”</summary>
+    public const string ExpenseReceiptLimitReached = "validation.validation.receiptLimitReached";
 
     /// <summary>The exact English this API has always answered: “Insufficient stock. Available: {available} {unit}, requested: {requested}”</summary>
     public const string MedicineStockInsufficient = "validation.validation.medicineStockInsufficient";

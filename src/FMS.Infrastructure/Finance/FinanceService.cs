@@ -11,10 +11,28 @@ public class FinanceService : IFinanceService
     private readonly FmsDbContext _context;
     private readonly ICurrentUserService _currentUser;
 
-    public FinanceService(FmsDbContext context, ICurrentUserService currentUser)
+    private readonly IFileStorageService _fileStorage;
+
+    /// <summary>
+    /// What a receipt may be. Images because most receipts are photographed, PDF because
+    /// that is how an emailed invoice arrives; nothing else has a reason to be here and every
+    /// extension is one the shared validator will re-check at the storage layer too.
+    /// </summary>
+    private static readonly string[] ReceiptExtensions = { ".jpg", ".jpeg", ".png", ".webp", ".pdf" };
+
+    private const long MaxReceiptBytes = 10 * 1024 * 1024;
+
+    /// <summary>
+    /// A cap, not a rule about expenses: past a handful the modal's file list is no longer
+    /// something a person scrolls, and a single expense does not have more paper than this.
+    /// </summary>
+    private const int MaxReceiptsPerExpense = 5;
+
+    public FinanceService(FmsDbContext context, ICurrentUserService currentUser, IFileStorageService fileStorage)
     {
         _context = context;
         _currentUser = currentUser;
+        _fileStorage = fileStorage;
     }
 
     // Expense categories
@@ -239,6 +257,7 @@ public class FinanceService : IFinanceService
             .Include(e => e.PaymentMethod)
             .Include(e => e.Animal)
             .Include(e => e.Location)
+            .Include(e => e.Receipts)
             .FirstOrDefaultAsync(e => e.Id == id && e.FarmId == farmId && !e.IsDeleted);
         if (expense == null)
             return Result<ExpenseDto>.NotFound("Expense not found", DomainMessageKeys.ExpenseNotFound);
@@ -256,6 +275,7 @@ public class FinanceService : IFinanceService
             .Include(e => e.PaymentMethod)
             .Include(e => e.Animal)
             .Include(e => e.Location)
+            .Include(e => e.Receipts)
             .Where(e => e.FarmId == farmId && !e.IsDeleted);
 
         if (filter.From.HasValue)
@@ -356,6 +376,123 @@ public class FinanceService : IFinanceService
 
         return Result.Success();
     }
+
+    // Expense receipts
+
+    public async Task<Result<ExpenseReceiptDto>> AddReceiptAsync(
+        Guid farmId, Guid expenseId, Stream content, string originalFileName, string contentType,
+        long contentLength, string? description)
+    {
+        // The expense, not just the farm: a receipt is reachable only through an expense that
+        // this caller's farm owns and that has not been deleted.
+        if (!await ExpenseExistsAsync(farmId, expenseId))
+            return Result<ExpenseReceiptDto>.NotFound("Expense not found", DomainMessageKeys.ExpenseNotFound);
+
+        var receiptCount = await _context.ExpenseReceipts.CountAsync(r => r.ExpenseId == expenseId);
+        if (receiptCount >= MaxReceiptsPerExpense)
+            return Result<ExpenseReceiptDto>.Conflict(
+                $"An expense can have at most {MaxReceiptsPerExpense} receipts",
+                DomainMessageKeys.ExpenseReceiptLimitReached,
+                new Dictionary<string, object?> { ["max"] = MaxReceiptsPerExpense });
+
+        // Same sentence and key as the expense's own description field.
+        if (description is not null && description.Length > ExpenseRules.DescriptionMaxLength)
+            return Result<ExpenseReceiptDto>.Validation(
+                $"Description cannot exceed {ExpenseRules.DescriptionMaxLength} characters",
+                "validation.expense.descriptionMaxLength",
+                new Dictionary<string, object?> { ["max"] = ExpenseRules.DescriptionMaxLength });
+
+        var saved = await _fileStorage.SaveAsync(
+            $"farms/{farmId}/expenses/{expenseId}/receipts",
+            content, originalFileName, contentType, MaxReceiptBytes, ReceiptExtensions);
+        if (!saved.IsSuccess)
+            return Result<ExpenseReceiptDto>.Failure(saved.Error!);
+
+        var receipt = new ExpenseReceipt
+        {
+            Id = Guid.NewGuid(),
+            ExpenseId = expenseId,
+            FarmId = farmId,
+            StoragePath = saved.Value!.StoragePath,
+            FileName = saved.Value.FileName,
+            OriginalFileName = saved.Value.OriginalFileName,
+            ContentType = saved.Value.ContentType,
+            FileSizeBytes = contentLength,
+            Description = description?.Trim(),
+            CreatedAt = DateTime.UtcNow,
+            CreatedBy = _currentUser.GetUserId()
+        };
+        _context.ExpenseReceipts.Add(receipt);
+
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch
+        {
+            // The bytes are already in the store. A failed row write would otherwise leave a
+            // file nothing points at, so it is removed before the failure is rethrown: losing
+            // an upload is recoverable by retrying, an orphaned file is not.
+            await _fileStorage.DeleteAsync(saved.Value.StoragePath);
+            throw;
+        }
+
+        return Result<ExpenseReceiptDto>.Success(MapReceipt(receipt));
+    }
+
+    public async Task<Result<List<ExpenseReceiptDto>>> GetReceiptsAsync(Guid farmId, Guid expenseId)
+    {
+        if (!await ExpenseExistsAsync(farmId, expenseId))
+            return Result<List<ExpenseReceiptDto>>.NotFound("Expense not found", DomainMessageKeys.ExpenseNotFound);
+
+        var receipts = await _context.ExpenseReceipts
+            .AsNoTracking()
+            .Where(r => r.ExpenseId == expenseId && r.FarmId == farmId)
+            .OrderByDescending(r => r.CreatedAt)
+            .ToListAsync();
+
+        return Result<List<ExpenseReceiptDto>>.Success(receipts.Select(MapReceipt).ToList());
+    }
+
+    public async Task<Result> DeleteReceiptAsync(Guid farmId, Guid expenseId, Guid receiptId)
+    {
+        var receipt = await _context.ExpenseReceipts
+            .FirstOrDefaultAsync(r => r.Id == receiptId && r.ExpenseId == expenseId && r.FarmId == farmId);
+        if (receipt == null)
+            return Result.NotFound("Receipt not found", DomainMessageKeys.ExpenseReceiptNotFound);
+
+        // File first, then the row: a missing blob is a broken link, a row pointing at nothing
+        // is a download that fails after the user was told it exists.
+        await _fileStorage.DeleteAsync(receipt.StoragePath);
+        _context.ExpenseReceipts.Remove(receipt);
+        await _context.SaveChangesAsync();
+
+        return Result.Success();
+    }
+
+    public async Task<Result<ExpenseReceiptDownload>> GetReceiptForDownloadAsync(
+        Guid farmId, Guid expenseId, Guid receiptId)
+    {
+        var receipt = await _context.ExpenseReceipts
+            .AsNoTracking()
+            .FirstOrDefaultAsync(r => r.Id == receiptId && r.ExpenseId == expenseId && r.FarmId == farmId);
+        if (receipt == null)
+            return Result<ExpenseReceiptDownload>.NotFound("Receipt not found", DomainMessageKeys.ExpenseReceiptNotFound);
+
+        if (!await _fileStorage.ExistsAsync(receipt.StoragePath))
+            return Result<ExpenseReceiptDownload>.NotFound(
+                "Receipt file is missing from storage", DomainMessageKeys.ExpenseReceiptFileMissing);
+
+        return Result<ExpenseReceiptDownload>.Success(new ExpenseReceiptDownload
+        {
+            StoragePath = receipt.StoragePath,
+            OriginalFileName = receipt.OriginalFileName,
+            ContentType = receipt.ContentType
+        });
+    }
+
+    private Task<bool> ExpenseExistsAsync(Guid farmId, Guid expenseId) =>
+        _context.Expenses.AnyAsync(e => e.Id == expenseId && e.FarmId == farmId && !e.IsDeleted);
 
     // Income categories
 
@@ -1019,7 +1156,28 @@ public class FinanceService : IFinanceService
         AnimalName = expense.Animal?.Name,
         LocationId = expense.LocationId,
         LocationName = expense.Location?.Name,
-        Description = expense.Description
+        Description = expense.Description,
+        Receipts = expense.Receipts
+            .OrderByDescending(r => r.CreatedAt)
+            .Select(MapReceipt)
+            .ToList()
+    };
+
+    /// <summary>
+    /// The receipt as a client sees it. <c>Url</c> is this API's own authenticated download
+    /// route rather than a bucket URL: the route authorises the farm and then either redirects
+    /// to a short-lived presigned URL or streams the bytes, so one shape works on both stores.
+    /// </summary>
+    private static ExpenseReceiptDto MapReceipt(ExpenseReceipt receipt) => new()
+    {
+        Id = receipt.Id,
+        ExpenseId = receipt.ExpenseId,
+        Url = $"/api/farm/{receipt.FarmId}/finance/expenses/{receipt.ExpenseId}/receipts/{receipt.Id}/download",
+        OriginalFileName = receipt.OriginalFileName,
+        ContentType = receipt.ContentType,
+        FileSizeBytes = receipt.FileSizeBytes,
+        Description = receipt.Description,
+        CreatedAt = receipt.CreatedAt
     };
 
     private static IncomeRecordDto MapIncome(IncomeRecord record) => new()

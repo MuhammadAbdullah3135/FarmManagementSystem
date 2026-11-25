@@ -17,6 +17,7 @@ using FMS.Infrastructure.Breeding;
 using FMS.Infrastructure.Dashboard;
 using FMS.Infrastructure.Feed;
 using FMS.Infrastructure.Finance;
+using FMS.Infrastructure.Files;
 using FMS.Infrastructure.Health;
 using FMS.Infrastructure.Inventory;
 using FMS.Infrastructure.Jobs;
@@ -195,6 +196,8 @@ public class NotificationDispatcherTests
             services.AddSingleton<IEmailService>(Email);
             services.AddSingleton<IPushSender>(Push);
             services.AddSingleton<IWeightCheckScheduleService>(WeightChecks);
+            services.AddSingleton<IFileStorageService>(
+                new FileStorageService(Path.Combine(Path.GetTempPath(), "fms-notification-tests")));
             services.Configure<JobOptions>(_ => { });
             services.Configure<NotificationOptions>(_ => { });
 

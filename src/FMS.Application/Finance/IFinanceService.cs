@@ -34,6 +34,28 @@ public interface IFinanceService
     Task<Result<ExpenseDto>> UpdateExpenseAsync(Guid farmId, Guid id, UpdateExpenseRequest request);
     Task<Result> DeleteExpenseAsync(Guid farmId, Guid id);
 
+    // Expense receipts
+
+    /// <summary>
+    /// Stores one receipt file for an expense. The farm is checked first, so a receipt can
+    /// never be attached to another farm's expense, and the file itself goes through the
+    /// shared storage rules (size, extension).
+    /// </summary>
+    Task<Result<ExpenseReceiptDto>> AddReceiptAsync(
+        Guid farmId, Guid expenseId, Stream content, string originalFileName, string contentType,
+        long contentLength, string? description);
+
+    Task<Result<List<ExpenseReceiptDto>>> GetReceiptsAsync(Guid farmId, Guid expenseId);
+
+    /// <summary>Removes the row and the stored file together.</summary>
+    Task<Result> DeleteReceiptAsync(Guid farmId, Guid expenseId, Guid receiptId);
+
+    /// <summary>
+    /// Authorises and locates the file, for a caller that has already proved farm membership.
+    /// Storage keys stay inside the API.
+    /// </summary>
+    Task<Result<ExpenseReceiptDownload>> GetReceiptForDownloadAsync(Guid farmId, Guid expenseId, Guid receiptId);
+
     // Income categories
     Task<Result<List<IncomeCategoryDto>>> GetIncomeCategoriesAsync(Guid farmId);
     Task<Result<IncomeCategoryDto>> CreateIncomeCategoryAsync(Guid farmId, CreateIncomeCategoryRequest request);

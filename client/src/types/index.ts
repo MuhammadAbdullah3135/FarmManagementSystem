@@ -528,6 +528,17 @@ export interface PaymentMethod {
   incomeRecordCount: number;
 }
 
+export interface ExpenseReceipt {
+  id: string;
+  expenseId: string;
+  url: string;
+  originalFileName: string;
+  contentType: string;
+  fileSizeBytes: number;
+  description?: string;
+  createdAt: string;
+}
+
 export interface Expense {
   id: string;
   expenseDate: string;
@@ -542,6 +553,8 @@ export interface Expense {
   locationId?: string;
   locationName?: string;
   description?: string;
+  /** Receipts attached as proof of payment, newest first. */
+  receipts: ExpenseReceipt[];
 }
 
 // Finance - income

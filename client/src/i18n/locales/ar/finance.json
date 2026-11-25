@@ -70,5 +70,12 @@
   "totalIncome": "إجمالي الإيرادات",
   "yearTotal": "إجمالي السنة",
   "noExpensesInThisPeriod": "لا توجد مصروفات في هذه الفترة",
-  "noIncomeInThisPeriod": "لا يوجد دخل في هذه الفترة"
+  "noIncomeInThisPeriod": "لا يوجد دخل في هذه الفترة",
+  "addReceipt": "إضافة إيصال",
+  "download": "تنزيل",
+  "receipt": "إيصال",
+  "receiptDeleted": "تم حذف الإيصال",
+  "receiptHelp": "إيصالات مصورة أو PDF، بحد أقصى 10 ميغابايت لكل ملف و5 لكل مصروف.",
+  "receipts": "الإيصالات",
+  "receiptUploaded": "تم رفع الإيصال"
 }
